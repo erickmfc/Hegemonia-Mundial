@@ -12,6 +12,8 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
 {
     private const int LarguraTextura = 1024;
     private const int AlturaTextura = 512;
+    private const float IntervaloRenderContinuoSegundos = 1f;
+    private const float IntervaloRenderSobDemandaSegundos = 0.10f;
 
     private Camera cameraCarta;
     private RenderTexture texturaCarta;
@@ -78,6 +80,7 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
     public void MarcarRenderNecessario()
     {
         renderPendente = true;
+        proximoRender = 0f;
     }
 
     /// <summary>
@@ -96,6 +99,7 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
         ultimoCentro -= cameraCarta.transform.up * (deslocamentoViewport.y * alturaMundo);
         cameraCarta.transform.position += ultimoCentro - centroAnterior;
         renderPendente = true;
+        proximoRender = 0f;
     }
 
     /// <summary>
@@ -110,6 +114,7 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
             2.50f);
         AplicarZoomAtual();
         renderPendente = true;
+        proximoRender = 0f;
     }
 
     public float ObterZoomAtual()
@@ -242,7 +247,10 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
         }
 
         renderPendente = false;
-        proximoRender = Time.unscaledTime + 0.10f;
+        proximoRender = Time.unscaledTime
+            + (atualizacaoContinua
+                ? IntervaloRenderContinuoSegundos
+                : IntervaloRenderSobDemandaSegundos);
         RenderizarCartaSemNeblina();
     }
 
@@ -374,6 +382,7 @@ public sealed class CartaTerrenoRenderer : MonoBehaviour
 [DisallowMultipleComponent]
 public sealed class QuartelCartaTopograficaView : MonoBehaviour
 {
+    private const float IntervaloAmostragemCartaSegundos = 1f;
     public enum ModoVisualizacao
     {
         Topografico2D,
@@ -474,7 +483,7 @@ public sealed class QuartelCartaTopograficaView : MonoBehaviour
         centroMapa = centro;
         equipeMapa = equipe;
         raioMapa = Mathf.Max(100f, raio);
-        proximaAmostragem = Time.unscaledTime + 0.75f;
+        proximaAmostragem = Time.unscaledTime + IntervaloAmostragemCartaSegundos;
 
         AtualizarUnidades();
         AtualizarMisseis();

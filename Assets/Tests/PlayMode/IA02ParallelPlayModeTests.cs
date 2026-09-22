@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 
 public sealed class IA02ParallelPlayModeTests
 {
-    private const string CampaignScenePath = "Assets/Scenes/cena19).unity";
+    private const string CampaignScenePath = "Assets/_Recovery/cena19).unity";
 
     [UnityTest]
     public IEnumerator CampaignStartsIA01AndIA02OnIndependentTeams()

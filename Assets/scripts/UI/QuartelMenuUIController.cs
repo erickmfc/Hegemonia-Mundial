@@ -18,6 +18,7 @@ using UnityEngine.InputSystem;
 [DisallowMultipleComponent]
 public sealed class QuartelMenuUIController : MonoBehaviour
 {
+    private const float IntervaloAtualizacaoMenuSegundos = 1f;
     // Paleta única do Quartel: marinho profundo, ciano operacional e verde
     // apenas para indicar prontidão. O dourado fica reservado a avisos e não
     // compete com os comandos clicáveis.
@@ -65,6 +66,9 @@ public sealed class QuartelMenuUIController : MonoBehaviour
     private VisualElement camadaTrajetoriasCarta;
     private VisualElement telemetriaCartaPersistente;
     private Label escalaCartaPersistente;
+    private Label zoomCartaPersistente;
+    private Label coordenadasCartaPersistente;
+    private VisualElement barraEscalaCartaPersistente;
     private Label tituloCartaPersistente;
     private Button botaoCarta2D;
     private Button botaoCarta3D;
@@ -78,6 +82,9 @@ public sealed class QuartelMenuUIController : MonoBehaviour
     private readonly Dictionary<string, Button> botoesUnidadesLancamento = new Dictionary<string, Button>(StringComparer.Ordinal);
     private readonly Dictionary<string, Button> botoesModoUnidadesLancamento = new Dictionary<string, Button>(StringComparer.Ordinal);
     private VisualElement painelLancamentoPersistente;
+    private VisualElement conteudoPainelLancamento;
+    private Button botaoAlternarPainelLancamento;
+    private bool painelLancamentoRecolhido;
     private VisualElement contatosLancamentoPersistente;
     private VisualElement contatosLancamentoListaPersistente;
     private Label contatosLancamentoVazio;
@@ -1441,7 +1448,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             return;
         }
 
-        proximaAtualizacao = Time.unscaledTime + 0.75f;
+        proximaAtualizacao = Time.unscaledTime + IntervaloAtualizacaoMenuSegundos;
         AtualizarPainel();
     }
 
@@ -1783,6 +1790,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
     private void ConstruirLayout()
     {
         root.Clear();
+        botoesAbas.Clear();
         acoesBotoesRuntime.Clear();
         ultimoBotaoExecutado = null;
         ultimoFrameBotaoExecutado = -1;
@@ -1943,7 +1951,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         rodape.style.backgroundColor = CorLateralQuartel;
         principal.Add(rodape);
 
-        SelecionarAba(0);
+        SelecionarAba(Mathf.Clamp(abaAtual, 0, nomesAbas.Length - 1));
     }
 
     private Button CriarBotaoAbaToolkit(int indice)
@@ -2078,7 +2086,13 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             camadaMarcadoresCarta = null;
             camadaTrajetoriasCarta = null;
             telemetriaCartaPersistente = null;
+            escalaCartaPersistente = null;
+            zoomCartaPersistente = null;
+            coordenadasCartaPersistente = null;
+            barraEscalaCartaPersistente = null;
             painelLancamentoPersistente = null;
+            conteudoPainelLancamento = null;
+            botaoAlternarPainelLancamento = null;
             contatosLancamentoPersistente = null;
             contatosLancamentoListaPersistente = null;
             contatosLancamentoVazio = null;
@@ -2481,12 +2495,32 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         if (quartel == null || !quartel.habilitarLancamentoCoordenado) return;
         if (painelLancamentoPersistente == null)
         {
-            painelLancamentoPersistente = Card("LANÇAMENTO COORDENADO");
+            painelLancamentoPersistente = Card(string.Empty);
             painelLancamentoPersistente.style.flexShrink = 0;
             // Mantem a carta e a telemetria acima; o bloco de disparo fica
             // separado visualmente na parte inferior do Quartel.
-            painelLancamentoPersistente.style.marginTop = 24;
-            painelLancamentoPersistente.Add(Texto("O Quartel apenas autoriza o disparo. Navios e submarinos permanecem exatamente nas posições atuais.", 12, CorTextoSecundarioQuartel, FontStyle.Normal));
+            painelLancamentoPersistente.style.marginTop = 14;
+
+            VisualElement cabecalho = Linha();
+            cabecalho.style.marginBottom = 4;
+            Label tituloLancamento = Texto("LANÇAMENTO COORDENADO", 13, CorCianoQuartel, FontStyle.Bold);
+            tituloLancamento.style.flexGrow = 1;
+            cabecalho.Add(tituloLancamento);
+            botaoAlternarPainelLancamento = Botao(painelLancamentoRecolhido ? "＋" : "−", 38, 30, CorNavegacaoQuartel);
+            botaoAlternarPainelLancamento.tooltip = "Expandir ou recolher os controles de lançamento coordenado";
+            RegistrarAcaoBotao(botaoAlternarPainelLancamento, () =>
+            {
+                painelLancamentoRecolhido = !painelLancamentoRecolhido;
+                AtualizarVisibilidadePainelLancamento();
+            });
+            cabecalho.Add(botaoAlternarPainelLancamento);
+            painelLancamentoPersistente.Add(cabecalho);
+
+            conteudoPainelLancamento = new VisualElement { name = "quartel-lancamento-conteudo" };
+            conteudoPainelLancamento.style.flexDirection = FlexDirection.Column;
+            conteudoPainelLancamento.style.marginTop = 3;
+            painelLancamentoPersistente.Add(conteudoPainelLancamento);
+            conteudoPainelLancamento.Add(Texto("O Quartel apenas autoriza o disparo. Navios e submarinos permanecem exatamente nas posições atuais.", 12, CorTextoSecundarioQuartel, FontStyle.Normal));
 
             VisualElement modos = Linha();
             botaoModoManualLancamento = Botao("◉  ATAQUE MANUAL COORDENADO", 0, 34, CorNavegacaoQuartel);
@@ -2497,7 +2531,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             RegistrarAcaoBotao(botaoModoAutomaticoLancamento, () => { quartel.DefinirModoLancamentoCoordenado(GerenciadorQuartel.ModoLancamentoCoordenadoV2.Automatico); AtualizarPainel(); });
             modos.Add(botaoModoManualLancamento);
             modos.Add(botaoModoAutomaticoLancamento);
-            painelLancamentoPersistente.Add(modos);
+            conteudoPainelLancamento.Add(modos);
 
             contatosLancamentoPersistente = Card("CONTATOS TRANSMITIDOS PELO E-3");
             contatosLancamentoListaPersistente = new VisualElement { name = "quartel-lancamento-contatos-lista" };
@@ -2506,7 +2540,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             contatosLancamentoVazio.style.display = DisplayStyle.None;
             contatosLancamentoListaPersistente.Add(contatosLancamentoVazio);
             contatosLancamentoPersistente.Add(contatosLancamentoListaPersistente);
-            painelLancamentoPersistente.Add(contatosLancamentoPersistente);
+            conteudoPainelLancamento.Add(contatosLancamentoPersistente);
             unidadesLancamentoPersistente = Card("UNIDADES SELECIONÁVEIS");
             unidadesLancamentoListaPersistente = new VisualElement { name = "quartel-lancamento-unidades-lista" };
             unidadesLancamentoListaPersistente.style.flexDirection = FlexDirection.Column;
@@ -2514,11 +2548,11 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             unidadesLancamentoVazio.style.display = DisplayStyle.None;
             unidadesLancamentoListaPersistente.Add(unidadesLancamentoVazio);
             unidadesLancamentoPersistente.Add(unidadesLancamentoListaPersistente);
-            painelLancamentoPersistente.Add(unidadesLancamentoPersistente);
+            conteudoPainelLancamento.Add(unidadesLancamentoPersistente);
             estatisticasLancamentoPersistentes = new VisualElement { name = "quartel-lancamento-estatisticas" };
-            painelLancamentoPersistente.Add(estatisticasLancamentoPersistentes);
+            conteudoPainelLancamento.Add(estatisticasLancamentoPersistentes);
             validacaoLancamentoPersistente = Card("RESULTADO DA VALIDAÇÃO");
-            painelLancamentoPersistente.Add(validacaoLancamentoPersistente);
+            conteudoPainelLancamento.Add(validacaoLancamentoPersistente);
 
             botaoConfirmarLancamento = BotaoAcao("▶  LANÇAR", () =>
             {
@@ -2526,11 +2560,25 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             });
             botaoConfirmarLancamento.style.minHeight = 42;
             botaoConfirmarLancamento.tooltip = "Executar o lançamento a partir dos lançadores selecionados";
-            painelLancamentoPersistente.Add(botaoConfirmarLancamento);
+            conteudoPainelLancamento.Add(botaoConfirmarLancamento);
             conteudo.Add(painelLancamentoPersistente);
         }
 
+        AtualizarVisibilidadePainelLancamento();
         AtualizarPainelLancamentoCoordenado();
+    }
+
+    private void AtualizarVisibilidadePainelLancamento()
+    {
+        if (conteudoPainelLancamento != null)
+            conteudoPainelLancamento.style.display = painelLancamentoRecolhido ? DisplayStyle.None : DisplayStyle.Flex;
+        if (botaoAlternarPainelLancamento != null)
+        {
+            botaoAlternarPainelLancamento.text = painelLancamentoRecolhido ? "＋" : "−";
+            botaoAlternarPainelLancamento.tooltip = painelLancamentoRecolhido
+                ? "Expandir controles de lançamento coordenado"
+                : "Recolher controles de lançamento coordenado";
+        }
     }
 
     private void AtualizarPainelLancamentoCoordenado()
@@ -2729,16 +2777,13 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         conteudo.Add(modos);
 
         carta = new VisualElement { name = "quartel-carta" };
-        // A carta ganhou uma faixa vertical maior para que o mapa e os
-        // controles inferiores não sejam espremidos nem cubram a telemetria.
-        // O PanelSettings da campanha aplica escala ao UI Toolkit. 820px
-        // internos resultam no aumento visual pedido também no Game View
-        // reduzido, mantendo o painel de lançamento logo abaixo da Carta.
-        // O ScrollView pai permite acessar os controles inferiores quando a
-        // altura da janela for menor que a faixa operacional completa.
-        carta.style.height = 980;
-        carta.style.minHeight = 980;
-        carta.style.flexBasis = 980;
+        // A Carta ocupa a maior parte da janela, mas deixa o painel de
+        // lançamento respirar abaixo dela. O clamp evita que a interface
+        // fique enorme em monitores altos ou ilegível em Game Views menores.
+        float alturaCarta = Mathf.Clamp(Screen.height * 0.60f, 560f, 760f);
+        carta.style.height = alturaCarta;
+        carta.style.minHeight = alturaCarta;
+        carta.style.flexBasis = alturaCarta;
         carta.style.flexShrink = 0;
         carta.style.flexDirection = FlexDirection.Row;
         carta.style.position = Position.Relative;
@@ -2761,7 +2806,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         legenda.Add(LinhaInformacao("● Azul", "unidade aerea"));
         legenda.Add(LinhaInformacao("● Verde", "unidade terrestre"));
         legenda.Add(LinhaInformacao("● Ciano", "unidade naval"));
-        legenda.Add(LinhaInformacao("Atualizacao", "a cada 0,75 s enquanto a aba esta aberta"));
+        legenda.Add(LinhaInformacao("Atualizacao", "a cada 1,0 s enquanto a aba esta aberta"));
         conteudo.Add(legenda);
     }
 
@@ -2769,7 +2814,10 @@ public sealed class QuartelMenuUIController : MonoBehaviour
     {
         if (carta == null || quartel == null) return;
         carta.Clear();
-        carta.style.minHeight = 980;
+        float alturaCarta = Mathf.Clamp(Screen.height * 0.60f, 560f, 760f);
+        carta.style.height = alturaCarta;
+        carta.style.minHeight = alturaCarta;
+        carta.style.flexBasis = alturaCarta;
         carta.style.overflow = Overflow.Hidden;
 
         float raio = Mathf.Max(100f, ObterRaioCarta());
@@ -2777,26 +2825,29 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         // O mapa fica com a maior parte da largura; a telemetria permanece
         // fixa ao lado para não espremer os botões nem cortar os dados.
         mapa.style.width = 0;
-        mapa.style.flexGrow = 7;
+        mapa.style.flexGrow = 1;
         mapa.style.flexShrink = 1;
         mapa.style.height = new Length(100f, LengthUnit.Percent);
-        mapa.style.minHeight = 980;
+        mapa.style.minHeight = alturaCarta;
         mapa.style.minWidth = 430;
         mapa.style.position = Position.Relative;
         mapa.style.overflow = Overflow.Hidden;
         mapa.style.backgroundColor = new Color(0.006f, 0.045f, 0.070f, 1f);
         ScrollView telemetria = new ScrollView(ScrollViewMode.Vertical) { name = "quartel-carta-telemetria" };
-        telemetria.style.width = 0;
-        telemetria.style.flexGrow = 3;
+        telemetria.style.flexGrow = 0;
         telemetria.style.flexShrink = 1;
+        telemetria.style.width = 350;
         telemetria.style.height = new Length(100f, LengthUnit.Percent);
-        telemetria.style.minHeight = 980;
+        telemetria.style.minHeight = alturaCarta;
         telemetria.style.minWidth = 300;
+        telemetria.style.maxWidth = 380;
         telemetria.style.paddingLeft = 12;
         telemetria.style.paddingRight = 12;
         telemetria.style.paddingTop = 12;
         telemetria.style.paddingBottom = 10;
         telemetria.style.backgroundColor = CorPainelQuartel;
+        telemetria.style.borderLeftWidth = 1;
+        telemetria.style.borderLeftColor = CorBordaQuartel;
         carta.Add(mapa);
         carta.Add(telemetria);
         mapaCartaPersistente = mapa;
@@ -2822,16 +2873,21 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             vertical.style.left = new Length(i * 10f, LengthUnit.Percent);
             vertical.style.top = 0;
             vertical.style.bottom = 0;
-            vertical.style.width = 1;
-            vertical.style.backgroundColor = new Color(0.18f, 0.42f, 0.44f, 0.25f);
+            bool linhaPrincipal = i % 5 == 0;
+            vertical.style.width = linhaPrincipal ? 2 : 1;
+            vertical.style.backgroundColor = linhaPrincipal
+                ? new Color(0.20f, 0.56f, 0.60f, 0.34f)
+                : new Color(0.18f, 0.42f, 0.44f, 0.13f);
             mapa.Add(vertical);
             VisualElement horizontal = new VisualElement();
             horizontal.style.position = Position.Absolute;
             horizontal.style.top = new Length(i * 10f, LengthUnit.Percent);
             horizontal.style.left = 0;
             horizontal.style.right = 0;
-            horizontal.style.height = 1;
-            horizontal.style.backgroundColor = new Color(0.18f, 0.42f, 0.44f, 0.25f);
+            horizontal.style.height = linhaPrincipal ? 2 : 1;
+            horizontal.style.backgroundColor = linhaPrincipal
+                ? new Color(0.20f, 0.56f, 0.60f, 0.34f)
+                : new Color(0.18f, 0.42f, 0.44f, 0.13f);
             mapa.Add(horizontal);
         }
 
@@ -2842,6 +2898,29 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         tituloMapa.style.top = 10;
         tituloMapa.pickingMode = PickingMode.Ignore;
         mapa.Add(tituloMapa);
+
+        VisualElement statusMapa = new VisualElement { name = "quartel-carta-status-mapa" };
+        statusMapa.style.position = Position.Absolute;
+        statusMapa.style.right = 10;
+        statusMapa.style.top = 10;
+        statusMapa.style.paddingLeft = 9;
+        statusMapa.style.paddingRight = 9;
+        statusMapa.style.paddingTop = 6;
+        statusMapa.style.paddingBottom = 6;
+        statusMapa.style.backgroundColor = new Color(0.008f, 0.055f, 0.080f, 0.92f);
+        statusMapa.style.borderTopWidth = 1;
+        statusMapa.style.borderBottomWidth = 1;
+        statusMapa.style.borderLeftWidth = 1;
+        statusMapa.style.borderRightWidth = 1;
+        statusMapa.style.borderTopColor = CorBordaQuartel;
+        statusMapa.style.borderBottomColor = CorBordaQuartel;
+        statusMapa.style.borderLeftColor = CorBordaQuartel;
+        statusMapa.style.borderRightColor = CorBordaQuartel;
+        statusMapa.Add(Texto("LEITURA OPERACIONAL", 10, CorCianoQuartel, FontStyle.Bold));
+        coordenadasCartaPersistente = Texto("CURSOR  —  ARRASTE PARA NAVEGAR", 10, CorTextoSecundarioQuartel, FontStyle.Normal);
+        coordenadasCartaPersistente.style.marginTop = 3;
+        statusMapa.Add(coordenadasCartaPersistente);
+        mapa.Add(statusMapa);
 
         VisualElement centro = Marcador("QG", 50f, 50f, new Color(0.95f, 0.80f, 0.25f), 18);
         mapa.Add(centro);
@@ -2935,13 +3014,35 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         });
 
         GarantirCartaTopograficaView();
-        Label escala = Texto("CARTA REAL | CAMERA ESTAVEL", 11, new Color(0.65f, 0.82f, 0.82f), FontStyle.Normal);
+        VisualElement barraEscala = new VisualElement { name = "quartel-carta-barra-escala" };
+        barraEscala.style.position = Position.Absolute;
+        barraEscala.style.left = 10;
+        barraEscala.style.bottom = 28;
+        barraEscala.style.width = 132;
+        barraEscala.style.height = 4;
+        barraEscala.style.backgroundColor = CorCianoQuartel;
+        barraEscala.style.borderTopWidth = 1;
+        barraEscala.style.borderBottomWidth = 1;
+        barraEscala.style.borderTopColor = Color.white;
+        barraEscala.style.borderBottomColor = Color.white;
+        barraEscala.pickingMode = PickingMode.Ignore;
+        mapa.Add(barraEscala);
+        barraEscalaCartaPersistente = barraEscala;
+
+        Label escala = Texto("RAIO OPERACIONAL  |  GRADE 100 / 500 m", 10, new Color(0.65f, 0.82f, 0.82f), FontStyle.Normal);
         escala.style.position = Position.Absolute;
         escala.style.left = 10;
         escala.style.bottom = 8;
         escala.pickingMode = PickingMode.Ignore;
         mapa.Add(escala);
         escalaCartaPersistente = escala;
+        Label zoom = Texto("ZOOM 1.00x", 10, CorTextoSecundarioQuartel, FontStyle.Bold);
+        zoom.style.position = Position.Absolute;
+        zoom.style.right = 10;
+        zoom.style.bottom = 8;
+        zoom.pickingMode = PickingMode.Ignore;
+        mapa.Add(zoom);
+        zoomCartaPersistente = zoom;
         cartaPersistenteConstruida = true;
         AtualizarCartaPersistente();
     }
@@ -2980,6 +3081,14 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         ObterTexturaTerrenoCarta(Mathf.Max(100f, ObterRaioCarta()), ObterAspectoCarta());
         if (tituloCartaPersistente != null)
             tituloCartaPersistente.text = cartaVista3D ? "VISUALIZACAO 3D INCLINADA" : "TOPOGRAFIA 2D  |  CURVAS DE NIVEL";
+        float raioCarta = Mathf.Max(100f, ObterRaioCarta());
+        float zoomCarta = cartaTerrenoRenderer != null ? cartaTerrenoRenderer.ObterZoomAtual() : 1f;
+        if (escalaCartaPersistente != null)
+            escalaCartaPersistente.text = "RAIO " + raioCarta.ToString("0") + " m  |  GRADE 100 / 500 m";
+        if (zoomCartaPersistente != null)
+            zoomCartaPersistente.text = "ZOOM " + zoomCarta.ToString("0.00", CultureInfo.InvariantCulture) + "x";
+        if (barraEscalaCartaPersistente != null)
+            barraEscalaCartaPersistente.tooltip = "Escala operacional aproximada: raio de cobertura " + raioCarta.ToString("0") + " m";
         if (botaoCarta2D != null)
             botaoCarta2D.style.backgroundColor = cartaVista3D ? CorNavegacaoQuartel : CorNavegacaoAtivaQuartel;
         if (botaoCarta3D != null)
@@ -3850,8 +3959,9 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
     private void AoMoverArrastoCarta(PointerMoveEvent evt)
     {
-        if (!cartaToolkitArrastando || evt == null || evt.pointerId != cartaToolkitPointerId
-            || cartaTerrenoRenderer == null || camadaInteracaoCarta == null) return;
+        if (evt == null || cartaTerrenoRenderer == null || camadaInteracaoCarta == null) return;
+        AtualizarCoordenadasCursorCarta(evt.position);
+        if (!cartaToolkitArrastando || evt.pointerId != cartaToolkitPointerId) return;
 
         Vector2 delta = new Vector2(evt.position.x, evt.position.y) - cartaToolkitUltimoPonto;
         if (delta.sqrMagnitude < 0.25f) return;
@@ -3863,6 +3973,26 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         cartaTerrenoRenderer.DeslocarMapa(new Vector2(delta.x / largura, -delta.y / altura));
         cartaTerrenoRenderer.MarcarRenderNecessario();
         evt.StopPropagation();
+    }
+
+    private void AtualizarCoordenadasCursorCarta(Vector2 posicao)
+    {
+        if (coordenadasCartaPersistente == null || camadaInteracaoCarta == null || quartel == null) return;
+        Vector2 local = camadaInteracaoCarta.WorldToLocal(posicao);
+        float largura = Mathf.Max(1f, camadaInteracaoCarta.layout.width);
+        float altura = Mathf.Max(1f, camadaInteracaoCarta.layout.height);
+        Vector2 viewport = new Vector2(
+            Mathf.Clamp01(local.x / largura),
+            Mathf.Clamp01(1f - local.y / altura));
+        Ray ray;
+        if (!cartaTerrenoRenderer.TryViewportPointToRay(viewport, out ray)) return;
+
+        Plane planoOperacional = new Plane(Vector3.up, new Vector3(0f, quartel.transform.position.y, 0f));
+        float distancia;
+        if (!planoOperacional.Raycast(ray, out distancia) || distancia < 0f) return;
+        Vector3 ponto = ray.GetPoint(distancia);
+        coordenadasCartaPersistente.text = "CURSOR  X " + ponto.x.ToString("0")
+            + "  |  Z " + ponto.z.ToString("0") + " m";
     }
 
     private void AoFinalizarArrastoCarta(PointerUpEvent evt)

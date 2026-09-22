@@ -745,6 +745,11 @@ public class Construtor : MonoBehaviour
             return;
         }
 
+        // Fecha o Satélite e consome o frame da confirmação antes de criar a
+        // estrutura. Assim o clique/tecla que conclui a compra não pode ser
+        // entregue ao novo Quartel ou reabrir o menu no mesmo frame.
+        MenuComandoController.Instancia?.BloquearAberturaAposConstrucao();
+
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
         IA_RuntimeConstructionIntegration.Apply(novo, fichaSelecionada);
         GerenciadorQuartel quartelConstruido = novo.GetComponent<GerenciadorQuartel>()
@@ -755,8 +760,6 @@ public class Construtor : MonoBehaviour
             // manter o menu Satélite bloqueado no frame seguinte.
             quartelConstruido.PrepararAposConstrucao();
         }
-        MenuComandoController.Instancia?.BloquearAberturaAposConstrucao();
-
         // Prefabs comerciais importados sem configuracao recebem o componente
         // no momento da construcao e passam a constar no Governo.
         ComercioLocal.GarantirNoPrefabInstanciado(novo);

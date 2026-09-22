@@ -9,7 +9,7 @@ using UnityEngine;
 
 public sealed class IA02ParallelEditModeTests
 {
-    private const string CampaignScenePath = "Assets/Scenes/cena19).unity";
+    private const string CampaignScenePath = "Assets/_Recovery/cena19).unity";
     private const string HistoryScenePath = "Assets/_Recovery/Md Historia.unity";
     private const string ProfilePath = "Assets/IA02/Profiles/IA02NationProfile.asset";
     private const string PlanPath = "Assets/IA02/BuildPlans/IA02BuildPlan.asset";

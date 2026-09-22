@@ -13,7 +13,7 @@ public class LancadorNaval : MonoBehaviour
     public Transform[] pontosDeSaida; // Onde os mísseis nascem (bocas do VLS)
     public Transform[] pontosDeSaidaTorpedo; // Onde os torpedos nascem (tubos de torpedo)
     public GameObject prefabMissel; // O prefab que tem o script MisselNaval
-    public GameObject prefabTorpedo; // NOVO: Prefab do torpedo/missil anti-navio
+    public GameObject prefabTorpedo; // Munição secundária naval; mantido para preservar o Inspector
     [Tooltip("Se ativo, torpedos ficam reservados para o comando ATIVO do navio e nao saem pelo automatico da tecla I.")]
     public bool torpedosSomenteNoModoAtivo = false;
 
@@ -981,6 +981,7 @@ public class LancadorNaval : MonoBehaviour
         }
 
         GameObject prefabASpawnar = prefabMissel;
+        bool usarMunicaoSecundaria = false;
         bool podeUsarTorpedoNesteLancador = !torpedosSomenteNoModoAtivo;
         // No automatico, use primeiro o missil guiado. O torpedo fica como
         // fallback quando a carga de misseis acabou; assim navios de combate
@@ -992,26 +993,32 @@ public class LancadorNaval : MonoBehaviour
         else if (alvoNavalOuSubmarino && podeUsarTorpedoNesteLancador && prefabTorpedo != null && torpedosTotal > 0)
         {
             prefabASpawnar = prefabTorpedo;
+            usarMunicaoSecundaria = true;
         }
         else if (prefabASpawnar == null && podeUsarTorpedoNesteLancador && torpedosTotal > 0)
         {
             prefabASpawnar = prefabTorpedo; // Fallback se não houver missil mas tiver torpedo
+            usarMunicaoSecundaria = true;
         }
         else if (municaoTotal <= 0)
         {
             // Se nao decidiu usar torpedo e ta sem missil normal
-            if (podeUsarTorpedoNesteLancador && torpedosTotal > 0 && prefabTorpedo != null) prefabASpawnar = prefabTorpedo;
+            if (podeUsarTorpedoNesteLancador && torpedosTotal > 0 && prefabTorpedo != null)
+            {
+                prefabASpawnar = prefabTorpedo;
+                usarMunicaoSecundaria = true;
+            }
             else return; // Sem municao disponivel
         }
 
         if (prefabASpawnar == null) return;
         
-        if (prefabASpawnar == prefabTorpedo) torpedosTotal--;
+        if (usarMunicaoSecundaria) torpedosTotal--;
         else municaoTotal--;
 
         // Pega o próximo ponto de saída correto (rodízio entre os tubos)
         Transform pontoDeSaida = transform; // Fallback
-        if (prefabASpawnar == prefabTorpedo && pontosDeSaidaTorpedo != null && pontosDeSaidaTorpedo.Length > 0)
+        if (usarMunicaoSecundaria && pontosDeSaidaTorpedo != null && pontosDeSaidaTorpedo.Length > 0)
         {
             if (pontosDeSaidaTorpedo[indicePontoSaidaTorpedo] != null)
             {
@@ -1042,7 +1049,7 @@ public class LancadorNaval : MonoBehaviour
             pontoDeSaida.rotation);
         if (misselObj == null)
         {
-            if (prefabASpawnar == prefabTorpedo) torpedosTotal++;
+            if (usarMunicaoSecundaria) torpedosTotal++;
             else municaoTotal++;
             return;
         }
@@ -1063,7 +1070,7 @@ public class LancadorNaval : MonoBehaviour
                 gameObject,
                 lancamentoSubmerso))
         {
-            if (prefabASpawnar == prefabTorpedo) torpedosTotal++;
+            if (usarMunicaoSecundaria) torpedosTotal++;
             else municaoTotal++;
             PoolDeObjetosCombate.Release(misselObj);
             Debug.LogError("[LancadorNaval] Prefab sem controlador de voo válido.", this);

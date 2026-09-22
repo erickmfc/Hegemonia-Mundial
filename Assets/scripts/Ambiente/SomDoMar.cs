@@ -16,6 +16,7 @@ public sealed class SomDoMar : MonoBehaviour
     public float margemAgua = 2f;
 
     private AudioSource fonte;
+    private static AudioSource fonteAmbienteAtiva;
 
     private void Awake()
     {
@@ -27,6 +28,19 @@ public sealed class SomDoMar : MonoBehaviour
         fonte.dopplerLevel = 0f;
         fonte.priority = Mathf.Min(fonte.priority, 96);
         AudioSettingsService.RegistrarFonte(fonte, AudioChannel.Ambiente);
+
+        // A cena MD História possui mais de um tile de água. O som é 2D e
+        // global, portanto tocar uma fonte por tile duplica o volume e pode
+        // causar eco. Mantém apenas uma fonte ambiental ativa.
+        if (fonteAmbienteAtiva == null)
+        {
+            fonteAmbienteAtiva = fonte;
+        }
+        else if (fonteAmbienteAtiva != fonte)
+        {
+            fonte.enabled = false;
+            fonte.volume = 0f;
+        }
     }
 
     private void OnEnable()
@@ -44,6 +58,10 @@ public sealed class SomDoMar : MonoBehaviour
     private void OnDisable()
     {
         CameraController.CameraMudouArea -= AoMudarAreaDaCamera;
+        if (fonteAmbienteAtiva == fonte)
+        {
+            fonteAmbienteAtiva = null;
+        }
     }
 
     private void AoMudarAreaDaCamera(Vector3 posicao)

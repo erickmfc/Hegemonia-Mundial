@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 
 public static class IA01RuntimeIntegrityAudit
 {
-    private const string CampaignScenePath = "Assets/Scenes/cena19).unity";
+    private const string CampaignScenePath = ConfiguracaoCenasJogo.CaminhoCenaCampanhaCanonica;
 
     [MenuItem("Hegemonia/Diagnostics/Run IA01 Campaign Audit")]
     public static void RunCampaignAudit()

@@ -1228,7 +1228,22 @@ public class GerenciadorAeroporto : MonoBehaviour
             && (wpPreparacao == transform || wpPreparacao.IsChildOf(transform))
             && (wpPreparacao.position - transform.position).sqrMagnitude <= 40000f;
         Vector3 posSpawn = pontoPreparacaoLocal ? wpPreparacao.position : transform.position;
-        GameObject aeronaveNascente = UnityEngine.Object.Instantiate((UnityEngine.Object)prefabDeAeronave, posSpawn, Quaternion.identity) as GameObject;
+        Quaternion rotacaoSpawn = pontoPreparacaoLocal ? wpPreparacao.rotation : transform.rotation;
+
+        // Um aeroporto terrestre nunca pode materializar aviões no mar. Isso
+        // acontecia quando uma referência de preparação era inválida e o
+        // fallback usava uma base construída/posicionada sobre a água.
+        if (!(this is GerenciadorPortaAvioes) && NavalPlacementResolver.IsWaterAtPosition(posSpawn))
+        {
+            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            Debug.LogError($"[Aeroporto] Spawn aéreo bloqueado em água: {name} ({posSpawn:F1}). Corrija o ponto Preparacao/pista da base.", this);
+            return;
+        }
+
+        // A rotação do ponto Preparacao (ou da própria base no fallback) é a
+        // orientação da pista. Quaternion.identity deixava modelos importados
+        // nascerem de lado, mesmo com a base corretamente apontada.
+        GameObject aeronaveNascente = UnityEngine.Object.Instantiate((UnityEngine.Object)prefabDeAeronave, posSpawn, rotacaoSpawn) as GameObject;
         if (aeronaveNascente == null)
         {
             IAAutoProductionRegistry.Release(productionOrderId, Time.time);
@@ -3301,6 +3316,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         Vector3 alvoEstrategico = alvo;
         Vector3 alvoVoo = alvo;
         alvoVoo.y = Mathf.Max(alvoVoo.y, 60f);
+        if (!aviao.PodeExecutarMissaoComRetorno(alvoVoo))
+        {
+            Debug.LogWarning($"[Aeroporto] Sortida da IA recusada para {aviao.name}: combustível ou rota de retorno insuficientes.", aviao);
+            return false;
+        }
         ControleUnidade controle = aviao.GetComponent<ControleUnidade>();
         bool ordemAceita;
 

@@ -66,7 +66,7 @@ public class CameraController : MonoBehaviour
         }
 
         // Na cena de menu, a câmera fica parada para não atravessar o solo
-        if (SceneManager.GetActiveScene().name == "Menu cena")
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
         {
             return;
         }

@@ -3,28 +3,33 @@ using System.Linq;
 
 public static class ConfiguracaoCenasJogo
 {
-    public const string CenaMenuPrincipalCanonica = "Menu cena";
+    // As cenas editaveis do jogo ficam centralizadas em Assets/_Recovery.
+    // Estes nomes/caminhos sao a fonte oficial usada pelo menu e pelos testes.
+    public const string CenaMenuPrincipalCanonica = "Cena menu P";
     public const string CenaMenuFallback = "MenuPrincipal";
     public const string CenaCampanhaCanonica = "cena19)";
-    // Esta e a cena de trabalho da campanha. Ela e a mesma que o projeto
-    // carrega no Play e na build, evitando que ajustes sejam feitos em uma
-    // copia que nunca entra no jogo.
-    public const string CaminhoCenaCampanhaCanonica = "Assets/Scenes/cena19).unity";
-    // A cena oficial do Tutorial e a cena historica do projeto.
-    // cena19) continua sendo a campanha e permanece disponivel separadamente.
+    public const string CaminhoCenaMenuPrincipalCanonica = "Assets/_Recovery/Cena menu P.unity";
+    public const string CaminhoCenaCampanhaCanonica = "Assets/_Recovery/cena19).unity";
     public const string CenaTutorialCanonica = "Md Historia";
     public const string CaminhoCenaTutorialCanonica = "Assets/_Recovery/Md Historia.unity";
+
+    public const string CenaAno1Oficial = "Ano1";
+    public const string CaminhoCenaAno1Oficial = "Assets/_Recovery/Ano1.unity";
+    public const string CenaDemo1Oficial = "demo1";
+    public const string CaminhoCenaDemo1Oficial = "Assets/_Recovery/demo1.unity";
+    public const string CenaTesteOficial = "teste";
+    public const string CaminhoCenaTesteOficial = "Assets/_Recovery/teste.unity";
 
     private static readonly string[] aliasesMenuPrincipal =
     {
         CenaMenuPrincipalCanonica,
-        "Assets/_Recovery/Menu/Menu cena.unity",
-        CenaMenuFallback,
-        "Assets/Scenes/MenuPrincipal.unity"
+        CaminhoCenaMenuPrincipalCanonica
     };
 
     private static readonly string[] aliasesCampanhaLegada =
     {
+        CenaCampanhaCanonica,
+        CaminhoCenaCampanhaCanonica,
         "Assets/Scenes/cena19).unity",
         "Assets/Scenes/SampleScene.unity"
     };
@@ -32,18 +37,22 @@ public static class ConfiguracaoCenasJogo
     private static readonly string[] aliasesTutorial =
     {
         CenaTutorialCanonica,
+        CaminhoCenaTutorialCanonica
+    };
+
+    private static readonly string[] cenasOficiais =
+    {
+        CaminhoCenaAno1Oficial,
+        CaminhoCenaMenuPrincipalCanonica,
+        CaminhoCenaCampanhaCanonica,
+        CaminhoCenaDemo1Oficial,
         CaminhoCenaTutorialCanonica,
-        "demo1",
-        "Assets/_Recovery/demo1.unity",
-        "Assets/_Recovery/teste.unity",
-        "Assets/Scenes/Tutorial Coast Scene Final.unity",
-        "tutorial",
-        "Assets/_Recovery/Tutorial/tutorial.unity"
+        CaminhoCenaTesteOficial
     };
 
     public static bool EhCenaDeMenu(string nomeCena)
     {
-        return nomeCena == CenaMenuPrincipalCanonica || nomeCena == CenaMenuFallback;
+        return nomeCena == CenaMenuPrincipalCanonica;
     }
 
     public static string ResolverCenaMenuPrincipal()
@@ -88,6 +97,28 @@ public static class ConfiguracaoCenasJogo
     public static string ResolverCenaTutorial()
     {
         return ResolverPrimeiraCenaCarregavel(aliasesTutorial);
+    }
+
+    public static bool EhCenaOficial(string nomeOuCaminho)
+    {
+        if (string.IsNullOrWhiteSpace(nomeOuCaminho))
+        {
+            return false;
+        }
+
+        string valor = nomeOuCaminho.Trim().Replace('\\', '/');
+        for (int i = 0; i < cenasOficiais.Length; i++)
+        {
+            string caminho = cenasOficiais[i];
+            string nome = System.IO.Path.GetFileNameWithoutExtension(caminho);
+            if (string.Equals(valor, caminho, System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(valor, nome, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool CenaExiste(string nomeOuCaminho)

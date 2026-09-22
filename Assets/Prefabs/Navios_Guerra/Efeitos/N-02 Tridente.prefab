@@ -64,7 +64,7 @@ MonoBehaviour:
   multiplicadorRotacaoAerea: 1.65
   multiplicadorVelocidadeAerea: 1.15
   dano: 500
-  raioExplosao: 55
+  raioExplosao: 82.5
   escalaVisualExplosao: 5.83
   volumeSom: 1
   efeitoExplosaoPrefab: {fileID: 100002, guid: 4bf22a1d8d9e7724b9af67921436851d, type: 3}

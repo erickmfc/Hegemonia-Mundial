@@ -5352,8 +5352,6 @@ GameObject:
   - component: {fileID: 497098716}
   - component: {fileID: 497098715}
   - component: {fileID: 497098714}
-  - component: {fileID: 497098719}
-  - component: {fileID: 497098718}
   - component: {fileID: 497098717}
   m_Layer: 0
   m_Name: cameraui
@@ -5514,46 +5512,6 @@ MonoBehaviour:
   currentRotationX: 15
   modoDroneCamera: 0
   alvoTravadoCamera: {fileID: 0}
---- !u!114 &497098718
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 497098712}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 50c2148795f50e34f8701d4346773429, type: 2}
-  m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: a3f8d21bc4e79543a1bc2d4f8e9a0c1b, type: 3}
-  m_SortingOrder: 0
-  m_Position: 0
-  m_WorldSpaceSizeMode: 1
-  m_WorldSpaceWidth: 1920
-  m_WorldSpaceHeight: 1080
-  m_PivotReferenceSize: 0
-  m_Pivot: 0
-  m_WorldSpaceCollider: {fileID: 0}
---- !u!114 &497098719
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 497098712}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 28da1ff22b31f7d44874bd0875c4475c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MenuComandoController
-  flirRenderWidth: 512
-  flirRenderHeight: 360
-  mundoMetade: 5000
-  detectarLimitesReaisDoMapa: 1
-  margemMapa: 250
 --- !u!1 &499541506
 GameObject:
   m_ObjectHideFlags: 0
@@ -6992,7 +6950,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraPrincipal: {fileID: 330585546}
-  clipeDoMar: {fileID: 8300000, guid: 627e0791d8d3f9248820dc5a725885b2, type: 3}
+  clipeDoMar: {fileID: 8300000, guid: cc096e87ba7be084d8014d56f45c040d, type: 3}
   nivelDaAgua: 0
   alturaMinima: 1
   alturaMaxima: 80
@@ -7007,7 +6965,7 @@ AudioSource:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 600254784}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}

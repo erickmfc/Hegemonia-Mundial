@@ -1,0 +1,799 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.0/staging' branch; Version is '6000.0.77f1 (88f89d0d8b31) revision 8976541'; Using compiler version '193933523'; Build Type 'Release'
+[Licensing::IpcConnector] Channel LicenseClient-Mathe doesn't exist
+OS: 'Windows 11  (10.0.26200) Professional' Language: 'pt' Physical Memory: 16315 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+System  architecture: x64
+Process architecture: x64
+Date: 2026-09-13T21:42:19Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.0.77f1\Editor\Unity.exe
+-batchmode
+-nographics
+-projectPath
+C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main
+-runTests
+-testPlatform
+editmode
+-testResults
+C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\flight_editmode_results_20260913.xml
+-logFile
+C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\flight_editmode_run_20260913.log
+Successfully changed project path to: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main
+C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main
+[Licensing::Module] Successfully launched the LicensingClient (PId: 21856)
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [26232]  Target information:
+
+Player connection [26232]  * "[IP] 10.0.10.239 [Port] 55504 [Flags] 2 [Guid] 835601722 [EditorId] 835601722 [Version] 1048832 [Id] WindowsEditor(7,erickpc) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [26232]  * "[IP] 172.28.224.1 [Port] 55504 [Flags] 2 [Guid] 835601722 [EditorId] 835601722 [Version] 1048832 [Id] WindowsEditor(7,erickpc) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [26232] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [26232] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Package Manager] Connected to IPC stream "Upm-5732" after 0.3 seconds.
+Library Redirect Path: Library/
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Artifact Garbage Collection - Removed 4 unused hashed content filesRefreshing native plugins compatible for Editor in 1.46 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 6000.0.77f1 (88f89d0d8b31)
+[Subsystems] Discovering subsystems at path C:/Program Files/Unity/Hub/Editor/6000.0.77f1/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Assets
+Forcing GfxDevice: Null
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+NullGfxDevice:
+    Version:  NULL 1.0 [1.0]
+    Renderer: Null Device
+    Vendor:   Unity Technologies
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe" at "2026-09-13T21:42:22.4816492Z"
+[Licensing::Client] Code 10 while verifying Licensing Client signature (process Id: 21856, path: "C:/Program Files/Unity/Hub/Editor/6000.0.77f1/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe")
+[Licensing::Module] LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.17.4+4293ba1
+  Session Id:              165c3d3413424293b14328b10c5bc98c
+  Correlation Id:          953d988d929e8a65361e3a457fd0398b
+  External correlation Id: 2520765807191754967
+  Machine Id:              CIG9bbgXtP+YsacqL8JoCFrF9kk=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-Mathe" (connect: 2.91s, validation: 0.46s, handshake: 0.07s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe-notifications" at "2026-09-13T21:42:23.0109859Z"
+[Licensing::Module] Connected to LicensingClient (PId: 21856, launch time: 0.14, total connection time: 3.44s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 4673433101100-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.03
+[Licensing::Module] Licensing Background thread has ended after 3.67s
+Shader Hidden/ProbeVolume/VoxelizeScene is not supported: GPU does not support conservative rasterization
+Shader 'WFX/Transparent Diffuse': fallback shader 'Particles/Alpha Blended' not found
+Shader 'WFX/Transparent Specular': fallback shader 'Particles/Alpha Blended' not found
+Initialize mono
+Mono path[0] = 'C:/Program Files/Unity/Hub/Editor/6000.0.77f1/Editor/Data/Managed'
+Mono path[1] = 'C:/Program Files/Unity/Hub/Editor/6000.0.77f1/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-win32'
+Mono config path = 'C:/Program Files/Unity/Hub/Editor/6000.0.77f1/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56732
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: C:/Program Files/Unity/Hub/Editor/6000.0.77f1/Editor/Data/PlaybackEngines/WindowsStandaloneSupport/UnityEditor.WindowsStandalone.Extensions.dll
+Registered in 0.042979 seconds.
+- Loaded All Assemblies, in  1.608 seconds
+Native extension for WindowsStandalone target not found
+Package Manager log level set to [2]
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  1.565 seconds
+Domain Reload Profiling: 3182ms
+	BeginReloadAssembly (1019ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (0ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (1ms)
+	RebuildCommonClasses (74ms)
+	RebuildNativeTypeToScriptingClass (23ms)
+	initialDomainReloadingComplete (138ms)
+	LoadAllAssembliesAndSetupDomain (349ms)
+		LoadAssemblies (1019ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (337ms)
+			TypeCache.Refresh (334ms)
+				TypeCache.ScanAssembly (298ms)
+			BuildScriptInfoCaches (0ms)
+			ResolveRequiredComponents (1ms)
+	FinalizeReload (1581ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (1393ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (52ms)
+			SetLoadedEditorAssemblies (11ms)
+			BeforeProcessingInitializeOnLoad (197ms)
+			ProcessInitializeOnLoadAttributes (549ms)
+			ProcessInitializeOnLoadMethodAttributes (583ms)
+			AfterProcessingInitializeOnLoad (0ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (0ms)
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 68 packages:
+  Packages from [https://packages.unity.com]:
+    com.unity.ai.navigation@2.0.12 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.ai.navigation@734c2c4c5591)
+    com.unity.cinemachine@3.1.5 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.cinemachine@5342685532bb)
+    com.unity.cloud.gltfast@6.19.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.cloud.gltfast@92828f845157)
+    com.unity.collab-proxy@2.12.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.collab-proxy@0b1559bcd34e)
+    com.unity.ide.rider@3.0.39 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.ide.rider@4504839d03f7)
+    com.unity.ide.visualstudio@2.0.27 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.ide.visualstudio@dc1ddd4f09b6)
+    com.unity.inputsystem@1.19.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.inputsystem@21a28c3a6c83)
+    com.unity.postprocessing@3.5.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.postprocessing@141166b789e3)
+    com.unity.settings-manager@2.1.1 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.settings-manager@0b8638c5ce86)
+    com.unity.terrain-tools@5.3.2 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.terrain-tools@bcd5ab3144b8)
+    com.unity.testtools.codecoverage@1.3.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.testtools.codecoverage@19a841221620)
+    com.unity.timeline@1.8.10 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.timeline@7f8b2fb101b6)
+    com.unity.visualscripting@1.9.11 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.visualscripting@8bed5ad90189)
+    com.unity.editorcoroutines@1.1.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.editorcoroutines@87a15ed012c2)
+    com.unity.performance.profile-analyzer@1.3.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.performance.profile-analyzer@418130329099)
+    com.unity.burst@1.8.29 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.burst@6bb9aca3ef38)
+    com.unity.collections@2.6.7 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.collections@31e963071226)
+    com.unity.mathematics@1.3.3 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.mathematics@19a9377c4ffa)
+    com.unity.splines@2.8.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.splines@9b00833aca09)
+    com.unity.searcher@4.9.3 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.searcher@1e17ce91558d)
+    com.unity.nuget.mono-cecil@1.11.6 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.nuget.mono-cecil@ecb9724e46ff)
+    com.unity.test-framework.performance@3.5.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.test-framework.performance@8b56083ec0f0)
+  Built-in packages:
+    com.unity.2d.sprite@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.2d.sprite@0eb6ea2c7181)
+    com.unity.2d.tilemap@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.2d.tilemap@10400206a301)
+    com.unity.ext.nunit@2.0.5 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.ext.nunit@031a54704bff)
+    com.unity.feature.development@1.0.2 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.feature.development@767aadbc6eb7)
+    com.unity.render-pipelines.universal@17.0.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.render-pipelines.universal@f53585c49405)
+    com.unity.test-framework@1.6.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.test-framework@082c24152fd4)
+    com.unity.ugui@2.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.ugui@92256ab62536)
+    com.unity.modules.accessibility@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.accessibility)
+    com.unity.modules.ai@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.director)
+    com.unity.modules.hierarchycore@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.hierarchycore)
+    com.unity.modules.imageconversion@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.screencapture)
+    com.unity.modules.subsystems@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.subsystems)
+    com.unity.modules.terrain@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vehicles@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.modules.xr)
+    com.unity.render-pipelines.core@17.0.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.render-pipelines.core@f127f5fd8324)
+    com.unity.shadergraph@17.0.4 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.shadergraph@fe106b49deb4)
+    com.unity.render-pipelines.universal-config@17.0.3 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.render-pipelines.universal-config@dd206bf35d04)
+    com.unity.rendering.light-transport@1.0.1 (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Library\PackageCache\com.unity.rendering.light-transport@9bd588f963c0)
+  Embedded packages:
+    com.tripo3d.unitybridge@file:C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Packages\com.tripo3d.unitybridge (location: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Packages\com.tripo3d.unitybridge)
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.12 seconds
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Refreshing native plugins compatible for Editor in 63.72 ms, found 4 plugins.
+Starting: C:\Program Files\Unity\Hub\Editor\6000.0.77f1\Editor\Data\bee_backend.exe --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main
+DisplayProgressbar: Compiling Scripts
+ExitCode: 0 Duration: 17s
+[ 848/1115  0s] MovedFromExtractor Library/Bee/artifacts/mvdfrm/Unity.VisualScripting.State.Editor.ref.dll_E03858E727F23F6F.mvfrm
+[ 849/1115  0s] ILPP-Configuration Library/ilpp-configuration.nevergeneratedoutput
+[1096/1115  0s] MovedFromExtractor-Combine Library/Bee/artifacts/1900b0aE.dag/Unity.VisualScripting.Shared.Editor.dll.mvfrm
+[1097/1115  0s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Unity.VisualScripting.State.Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Unity.VisualScripting.State.Editor.dll, with 132 defines and 286 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[1098/1115  0s] CopyFiles Library/ScriptAssemblies/Unity.VisualScripting.State.Editor.pdb
+[1099/1115  0s] CopyFiles Library/ScriptAssemblies/Unity.VisualScripting.State.Editor.dll
+[1100/1115  0s] Csc Library/Bee/artifacts/1900b0aE.dag/Unity.VisualScripting.Shared.Editor.dll (+2 others)
+[           0s] Csc Library/Bee/artifacts/1900b0aE.dag/Unity.VisualScripting.Shared.Editor.dll (+2 others) [CacheWrite 00000000000000000000000000000004]
+[1101/1115  0s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Unity.VisualScripting.Shared.Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Unity.VisualScripting.Shared.Editor.dll, with 132 defines and 287 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[1102/1115  0s] CopyFiles Library/ScriptAssemblies/Unity.VisualScripting.Shared.Editor.pdb
+[1103/1115  0s] CopyFiles Library/ScriptAssemblies/Unity.VisualScripting.Shared.Editor.dll
+[1104/1115  0s] MovedFromExtractor Library/Bee/artifacts/mvdfrm/Unity.VisualScripting.Shared.Editor.ref.dll_9669F6EBFF6DFFB7.mvfrm
+[1105/1115  0s] MovedFromExtractor-Combine Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll.mvfrm
+[1106/1115  0s] MovedFromExtractor-Combine Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll.mvfrm
+[BUSY       6s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll (+2 others)
+[1107/1115  7s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll (+2 others)
+[1108/1115  1s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+Assets\Editor\TutorialCoastSceneBuilder.cs(157,9): warning CS0618: 'Terrain.materialType' is obsolete: 'Property materialType is not used any more. Set materialTemplate directly.'
+
+Assets\Editor\TutorialCoastSceneBuilder.cs(157,32): warning CS0618: 'Terrain.MaterialType' is obsolete: 'Enum type MaterialType is not used any more.'
+
+Assets\Editor\CodexCampaignRecovery.cs(395,17): warning CS0618: 'Terrain.materialType' is obsolete: 'Property materialType is not used any more. Set materialTemplate directly.'
+
+Assets\Editor\CodexCampaignRecovery.cs(395,40): warning CS0618: 'Terrain.MaterialType' is obsolete: 'Enum type MaterialType is not used any more.'
+
+Assets\Editor\CodexCampaignRecovery.cs(400,17): warning CS0618: 'Terrain.materialType' is obsolete: 'Property materialType is not used any more. Set materialTemplate directly.'
+
+Assets\Editor\CodexCampaignRecovery.cs(400,40): warning CS0618: 'Terrain.MaterialType' is obsolete: 'Enum type MaterialType is not used any more.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(81,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(86,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(114,83): warning CS0618: 'PrefabInstanceStatus.Disconnected' is obsolete: 'PrefabInstanceStatus.Disconnected has been deprecated and is not used. Prefabs can not be in a disconnected state.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(400,17): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierVolumeEditor.cs(34,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierVolumeEditor.cs(39,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierVolumeEditor.cs(91,17): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierEditor.cs(21,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierEditor.cs(26,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshLinkEditor.cs(39,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshLinkEditor.cs(44,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshLinkEditor.cs(165,17): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+[1109/1115  1s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Assembly-CSharp-Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll, with 132 defines and 353 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[1110/1115  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.pdb
+[1111/1115  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.dll
+[1112/1115  3s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Assembly-CSharp.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll, with 134 defines and 325 references
+
+processors: Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[1113/1115  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.pdb
+[1114/1115  0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.dll
+*** Tundra build success (17.20 seconds), 21 items updated, 1115 evaluated
+Assets\Editor\TutorialCoastSceneBuilder.cs(157,9): warning CS0618: 'Terrain.materialType' is obsolete: 'Property materialType is not used any more. Set materialTemplate directly.'
+Assets\Editor\TutorialCoastSceneBuilder.cs(157,32): warning CS0618: 'Terrain.MaterialType' is obsolete: 'Enum type MaterialType is not used any more.'
+Assets\Editor\CodexCampaignRecovery.cs(395,17): warning CS0618: 'Terrain.materialType' is obsolete: 'Property materialType is not used any more. Set materialTemplate directly.'
+Assets\Editor\CodexCampaignRecovery.cs(395,40): warning CS0618: 'Terrain.MaterialType' is obsolete: 'Enum type MaterialType is not used any more.'
+Assets\Editor\CodexCampaignRecovery.cs(400,17): warning CS0618: 'Terrain.materialType' is obsolete: 'Property materialType is not used any more. Set materialTemplate directly.'
+Assets\Editor\CodexCampaignRecovery.cs(400,40): warning CS0618: 'Terrain.MaterialType' is obsolete: 'Enum type MaterialType is not used any more.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(81,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(86,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(114,83): warning CS0618: 'PrefabInstanceStatus.Disconnected' is obsolete: 'PrefabInstanceStatus.Disconnected has been deprecated and is not used. Prefabs can not be in a disconnected state.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshSurfaceEditor.cs(400,17): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierVolumeEditor.cs(34,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierVolumeEditor.cs(39,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierVolumeEditor.cs(91,17): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierEditor.cs(21,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshModifierEditor.cs(26,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshLinkEditor.cs(39,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshLinkEditor.cs(44,13): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+Assets\Simple InterceptMissile&TurretBehaviour\NavMeshComponents\Editor\NavMeshLinkEditor.cs(165,17): warning CS0618: 'NavMeshVisualizationSettings.showNavigation' is obsolete: 'showNavigation is no longer supported and will be removed.'
+AssetDatabase: script compilation time: 33.427689s
+Begin MonoManager ReloadAssembly
+- Loaded All Assemblies, in 39.393 seconds
+'Packages/com.unity.cinemachine/Editor/Editors/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+'Packages/com.unity.cinemachine/Editor/Obsolete/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+Start importing Packages/com.unity.rendering.light-transport using Guid(403326b78bbb6c791a9b1ef0cdf1bc58) (DefaultImporter) -> (artifact id: '40e53322dbe332735e6c03005f1cb604') in 0.1603336 seconds
+Start importing Packages/com.unity.ugui using Guid(f15edf20db45f2f654fdd8180f80118f) (DefaultImporter) -> (artifact id: '328e48f6d9df3fdce4aa81d392066a9d') in 0.0216627 seconds
+Start importing Packages/com.unity.2d.tilemap using Guid(725e85bc9997fa45ce3a623d1f865422) (DefaultImporter) -> (artifact id: 'ae3f128a28f69896990de4325c3d38df') in 0.0031072 seconds
+Start importing Packages/com.unity.test-framework using Guid(73916aaaa5830841647310aa3bfbafc8) (DefaultImporter) -> (artifact id: 'f6404d56d32cea877955da84104d85e4') in 0.0018768 seconds
+Start importing Packages/com.unity.test-framework.performance using Guid(93963ca519b768cbd41ce8514a1fa148) (DefaultImporter) -> (artifact id: '40d5c72f8c722b0c922a3be50a2aa72e') in 0.0037617 seconds
+Start importing Packages/com.unity.2d.sprite using Guid(a65d641262b50b1d1660537efa955ce3) (DefaultImporter) -> (artifact id: '4f7bc974bd81ff64afba247ccc24910a') in 0.0032862 seconds
+Start importing Packages/com.unity.render-pipelines.core using Guid(189ef5ceb91c21f85023ffce5350fb29) (DefaultImporter) -> (artifact id: '6d988868e16cf94b2fa323a74f35546c') in 0.0029463 seconds
+Start importing Packages/com.unity.render-pipelines.universal-config using Guid(59546dd06ea1e4d63e788df48d8f66ba) (DefaultImporter) -> (artifact id: '9e2279d32522ec6a10d34d24ef7fe8dc') in 0.004168 seconds
+Start importing Packages/com.unity.shadergraph using Guid(d9d4b91d74660b92ad004a1ed511d907) (DefaultImporter) -> (artifact id: '6594932d7c72385ac4b39acc03c5c5fe') in 0.0025616 seconds
+Start importing Packages/com.unity.render-pipelines.universal using Guid(4b0140ce800e4c8cd05e676a2424f8b4) (DefaultImporter) -> (artifact id: '9877039e6c20fa241202c5fc2693e646') in 0.0029517 seconds
+Start importing Packages/com.unity.editorcoroutines using Guid(cb733a8644e842fff646fcf8fc006cd9) (DefaultImporter) -> (artifact id: '41c711da4508a72cf80bba0a5e581bb9') in 0.0074988 seconds
+Start importing Packages/com.unity.collections using Guid(8c0a07ff4389f606f1f8115d13481528) (DefaultImporter) -> (artifact id: '1e4da5f4a0f7edba59cfc24ac3cbec76') in 0.0088597 seconds
+Start importing Packages/com.unity.performance.profile-analyzer using Guid(0e3e6f00cdde8febd22a05259e1a5db3) (DefaultImporter) -> (artifact id: 'd54c500d3957bb24634a3fb0b28b6281') in 0.0036267 seconds
+Start importing Packages/com.unity.splines using Guid(2f5e2c943e661bf539ebb266ad9a4721) (DefaultImporter) -> (artifact id: '56b697032217d45867d1a3483882d202') in 0.0038436 seconds
+Start importing Packages/com.unity.editorcoroutines/Editor using Guid(4baf9d3a89175c143b9d1bb3e62526e7) (DefaultImporter) -> (artifact id: 'edae277bc950bca8bd0493d34e6c39da') in 0.0238853 seconds
+Start importing Packages/com.unity.ugui/Editor/Analytics using Guid(c52726d811a9f66459355df6b0c3977b) (DefaultImporter) -> (artifact id: '4154f772d9b7cf6fccdb594f4e326893') in 0.0085082 seconds
+Start importing Packages/com.unity.2d.sprite/Editor/SpriteEditor/SpriteEditorHintPopup using Guid(227c337d32ff4443ac4376322977be21) (DefaultImporter) -> (artifact id: 'd954fbac338ae93c24410a65d4a90232') in 0.0062312 seconds
+Start importing Packages/com.unity.ugui/Editor/Analytics/IAnalytic using Guid(77417b0f4cf6d334f916c64448d24133) (DefaultImporter) -> (artifact id: 'a22d0db8c8eb6d464d1b5bd50a6655ab') in 0.0045388 seconds
+Start importing Packages/com.unity.shadergraph/Editor/Drawing/Inspector/TabbedView using Guid(2e38f5e180a291347b3243609946381c) (DefaultImporter) -> (artifact id: '89f392ba4d72862e53301f4acca3a0b4') in 0.0196108 seconds
+Start importing Packages/com.unity.ugui/Editor/Analytics/UnityEditor.UI.Analytics.asmdef using Guid(8394c018a82352f41ae354f7bdad54e3) (AssemblyDefinitionImporter) -> (artifact id: '51a42a6dc598d685998182f7c5c967c4') in 0.0181384 seconds
+Start importing Packages/com.unity.ugui/Editor/UGUI/UnityEditor.UI.asmdef using Guid(343deaaf83e0cee4ca978e7df0b80d21) (AssemblyDefinitionImporter) -> (artifact id: 'af08ec8d4d031bbff740ba61300146c5') in 0.0147515 seconds
+Start importing Packages/com.unity.ugui/Editor/TMP/Unity.TextMeshPro.Editor.asmdef using Guid(6546d7765b4165b40850b3667f981c26) (AssemblyDefinitionImporter) -> (artifact id: '1f9e68e65a89d864e608d8f22b5bd4c4') in 0.0146738 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/Unity.RenderPipelines.Universal.Editor.asmdef using Guid(c579267770062bf448e75eb160330b7f) (AssemblyDefinitionImporter) -> (artifact id: '40ab1d776ce8d04af32323278a1c07b9') in 0.0397672 seconds
+Start importing Packages/com.unity.editorcoroutines/Editor/Unity.EditorCoroutines.Editor.asmdef using Guid(478a2357cc57436488a56e564b08d223) (AssemblyDefinitionImporter) -> (artifact id: '83f7016b4e01821ae3c5aa00151b346f') in 0.0380994 seconds
+Start importing Packages/com.unity.2d.sprite/Editor/Unity.2D.Sprite.Editor.asmdef using Guid(2c573e6b271651846a79655161004c5b) (AssemblyDefinitionImporter) -> (artifact id: 'ad155b58be6d3a256711849c2e0fdcf8') in 0.0404374 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Tests/Runtime/Unity.RenderPipelines.Universal.Runtime.Tests.asmdef using Guid(bc3b0daec27db604caf7fec37e54bf6d) (AssemblyDefinitionImporter) -> (artifact id: 'f6bc330e3c571e70ddcf4aea2ac1d277') in 0.0422833 seconds
+Refreshing native plugins compatible for Editor in 77.31 ms, found 4 plugins.
+Missing types referenced from component UniversalRenderPipelineGlobalSettings on game object UniversalRenderPipelineGlobalSettings:
+	UnityEngine.Rendering.LightmapSamplingSettings, Unity.RenderPipelines.Core.Runtime (1 object)
+	UnityEngine.Rendering.RenderingDebuggerRuntimeResources, Unity.RenderPipelines.Core.Runtime (1 object)
+	UnityEngine.Rendering.VrsRenderPipelineRuntimeResources, Unity.RenderPipelines.Core.Runtime (1 object)
+Native extension for WindowsStandalone target not found
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Refreshing native plugins compatible for Editor in 9.64 ms, found 4 plugins.
+[Licensing::Client] Successfully resolved entitlement details
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in 29.349 seconds
+Domain Reload Profiling: 68711ms
+	BeginReloadAssembly (1413ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (80ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (259ms)
+	RebuildCommonClasses (81ms)
+	RebuildNativeTypeToScriptingClass (35ms)
+	initialDomainReloadingComplete (421ms)
+	LoadAllAssembliesAndSetupDomain (37412ms)
+		LoadAssemblies (35912ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (2359ms)
+			TypeCache.Refresh (1987ms)
+				TypeCache.ScanAssembly (1937ms)
+			BuildScriptInfoCaches (278ms)
+			ResolveRequiredComponents (79ms)
+	FinalizeReload (29349ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (24858ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (30ms)
+			SetLoadedEditorAssemblies (6ms)
+			BeforeProcessingInitializeOnLoad (428ms)
+			ProcessInitializeOnLoadAttributes (21560ms)
+			ProcessInitializeOnLoadMethodAttributes (2808ms)
+			AfterProcessingInitializeOnLoad (25ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (23ms)
+Start importing Assets/_Recovery/demo1.unity using Guid(f36165c5da6157c40b06b520936c452b) (DefaultImporter) -> (artifact id: 'a8e3832f5f98d17601156d1c5dc1ccde') in 0.0385882 seconds
+Start importing Assets/_Recovery/teste.unity using Guid(966573ca074d3c248994d79affd05d0f) (DefaultImporter) -> (artifact id: '7e39d3d55aaea9ae8149ee5b669d2810') in 0.0330954 seconds
+Start importing Assets/Scenes/cena19).unity using Guid(c6af77980c74a5e4eb4991265cc612c9) (DefaultImporter) -> (artifact id: '0191a94887ee95683c7794eac15dab7c') in 0.0480086 seconds
+Start importing Assets/_Recovery/cena19).unity using Guid(5e537796d7585f2429ab8507dabef8df) (DefaultImporter) -> (artifact id: 'f37a5772b5734e7ba234729df4f11fd2') in 0.0346507 seconds
+Start importing Packages/com.unity.collections/Unity.Collections.Tests/NativeSortTests.tt using Guid(175a9e4a17bf01748b02c5c1c653d091) (DefaultImporter) -> (artifact id: '48786ca6fcdf4c10dffeb4bcc9a82c22') in 0.2430628 seconds
+Start importing Packages/com.unity.ugui/Package Resources/TMP Examples & Extras.unitypackage using Guid(bc00e25696e4132499f56528d3fed2e3) (DefaultImporter) -> (artifact id: '1ce1a29a71d1a5e8b09cc972336e5d7e') in 0.2006831 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/Decal/DecalPass.template using Guid(39262bb9f1f65f040aefacd75fbd0e47) (DefaultImporter) -> (artifact id: '0ffe326ad86c97c9db82039dbae99e3e') in 0.0278855 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/VFXLit.template using Guid(b182b2f5194c5574eb1983f8bb8b3d04) (DefaultImporter) -> (artifact id: '3762a5ca7bce3c319b7e8c6c3911cabb') in 0.0141907 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/VFXDecal.template using Guid(d422a258210649e8bf5d57f759d8e5da) (DefaultImporter) -> (artifact id: '6645d0a26b5dc9f19d0e992c3fa8144a') in 0.0231774 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/VFXVertexProbeSampling.template using Guid(89944a86d17a433682835ec4b89dc07f) (DefaultImporter) -> (artifact id: '414063e63148abdec53b0f1586125383') in 0.0205562 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/VFXPasses.template using Guid(3d707c2c34101af48b8dc0b38ea50a1f) (DefaultImporter) -> (artifact id: '7a6e865ccc0bd135bbcb1c2f114316d9') in 0.0133487 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/URPDecal/PassScreenSpace.template using Guid(4059f0b867f24f38b3d2baed5de3cc8c) (DefaultImporter) -> (artifact id: 'cad93386e90a0755973753697319198d') in 0.0307882 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/URPDecal/PassGBuffer.template using Guid(92bae492fd0c48fca15a3c15dc732416) (DefaultImporter) -> (artifact id: 'eade3f0b4064412df67ffe50e3c02e65') in 0.0259774 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/ParticleMeshesLit/PassDepthOrMV.template using Guid(a55128324929eba40884977cd5c1669e) (DefaultImporter) -> (artifact id: '2eb695b663da66b107b5d5760731e35d') in 0.0182908 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/ParticlePlanarPrimitivesLit/PassDepthOrMV.template using Guid(e54411f64dc2beb43998b9727f62fa32) (DefaultImporter) -> (artifact id: 'de9410bec76677b6112c63eab5683e6d') in 0.0184464 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/ParticleMeshesLit/PassGBuffer.template using Guid(268a144f637cfd343e3952cf770998d5) (DefaultImporter) -> (artifact id: 'cb955d89a268a072656bef7e1eb10a02') in 0.0308636 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/ParticleMeshesLit/PassForward.template using Guid(286d87cbf8c19c749b69078915c9be88) (DefaultImporter) -> (artifact id: '1d421acf7881af7417c2a9317aa90a67') in 0.013971 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/ParticlePlanarPrimitivesLit/PassGBuffer.template using Guid(9efeaf56a8f5826418111f0d669150c1) (DefaultImporter) -> (artifact id: 'fc89012f85c6368a9563668f78a2197f') in 0.016019 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/VFXGraph/Shaders/Templates/ParticlePlanarPrimitivesLit/PassForward.template using Guid(5fa54a2ce1bced448b6bd9cfcac6c25d) (DefaultImporter) -> (artifact id: '64217ef1cf6f120f0d753dd149b35139') in 0.0270221 seconds
+Start importing Assets/efeitos/WarFX/Mobile/Textures/Smoke/WFXM_T_SmokeLoopAlpha.tga using Guid(00102373043eef842bee9e986845e68b) (TextureImporter) -> (artifact id: '3ddfc188025d7d67c52bca2bf06379e4') in 0.3089817 seconds
+Start importing Assets/network of paths/Textures/Normal Map.png using Guid(00208948ef49da34993d7bfaf60e077d) (TextureImporter) -> (artifact id: '08494c9ca797d6bb25e8a2a17c4f68fd') in 3.0613799 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/PaintTrees@2x.png using Guid(00805b64dc14242d9a4b0d923374cddd) (TextureImporter) -> (artifact id: '3ba499e3ba24d4fccca291a20e65e4de') in 0.1263695 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Heightmaps/Canyon03_Heightmap.tif using Guid(00e07f21ff32c094ea64f6753fb3b542) (TextureImporter) -> (artifact id: 'b1b1089e8da098a101020d362763539f') in 0.8213405 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_Bridge_On@2x.png using Guid(0031d82c62bcd4659ba9279acd25b5ed) (TextureImporter) -> (artifact id: 'a576af51d2cd0422b591304006741215') in 0.0527107 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/ChevronUp@3x.png using Guid(006305b616daf47409935f3dc8a172e2) (TextureImporter) -> (artifact id: '50d51645dfe73f6a856ff97bc3985270') in 0.0739458 seconds
+Start importing Assets/MarpaStudio/Textures/Well_Height.png using Guid(0086a247544cb744da95b7d2b022b5f2) (TextureImporter) -> (artifact id: 'e32025004244e166f29da38f8631e1a1') in 0.2941736 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/source/CastleTexture 2/CastleTexture/Envoriement_01_occlusionRoughnessMetallic.jpg using Guid(00c643631197c824bb27f32f494b4f12) (TextureImporter) -> (artifact id: '9a35c578d861c4f04be901af2759f7ab') in 0.4791015 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/PostProcessing/LensFlareResource/PolygonFlareThumbnail@2x.png using Guid(0047263fa58f91d49a61936e94358829) (TextureImporter) -> (artifact id: '2a15c632ebe6b540f1e3c1a234b02d3f') in 0.1130658 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Icons/MipLevels/RenderGraphViewer/d_Resources@32.png using Guid(00a734322b2ba1249b58c24b688b3108) (TextureImporter) -> (artifact id: 'a159e29d9a234242e13813aab52c597d') in 0.1689234 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/d_ChevronDown@2x.png using Guid(0068f400a72d84c92a1b8f5889a574b2) (TextureImporter) -> (artifact id: 'ee2cd0dfd96485c9b55706adbc76971c') in 0.1478729 seconds
+Start importing Assets/MarpaStudio/Textures/SidePillarsInside_Height.png using Guid(00c828401060ff34daaffb6b03dba0c5) (TextureImporter) -> (artifact id: 'cc4c7c8b7282920c436f1779e5cf7502') in 0.2878734 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/step2@2x.png using Guid(0029170d14ce6c04c9f45c22cdae5559) (TextureImporter) -> (artifact id: '927c310995ab2f2b40651f4757741047') in 0.1036 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/TEXTURES/_CausticTextures/save.07.psd using Guid(00ea694562398b44dabbb92a11ece7a2) (TextureImporter) -> (artifact id: 'f501edc71ce95f60cdf375b7c2b6e65c') in 0.1514187 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Terrain/Pebbles_A_Normal.tif using Guid(00eadd7ea2cbbf14ca338babf410bdf4) (TextureImporter) -> (artifact id: '409e39a979d888bedeba5e9c67e67eee') in 2.9453411 seconds
+Start importing Assets/Pixel Map Terrain/Texture/dirt.png using Guid(000bb68800d742f49af5cf2c76fa89c5) (TextureImporter) -> (artifact id: 'c32b0bb8fe07f79b24c15c9e1a6e45cb') in 0.0503125 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Factory_Small/Factory_Small_Factory_Normal.png using Guid(008c6149ccafdb3489729b6491ac55fa) (TextureImporter) -> (artifact id: 'bad5e9a5711e0d558aee30003133cfdd') in 0.1273625 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_31_basecolor.jpg using Guid(004da34b08333ca4da8c5a8b45512ecf) (TextureImporter) -> (artifact id: 'b12f6f187d4775ef0231ed4f96c49ee4') in 0.037459 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-34_comp_light.exr using Guid(006d765ad0e56394285fafc6540ed6ee) (TextureImporter) -> (artifact id: 'd143e7c560b559ff088b8504d2d0840f') in 0.6432932 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/source/CastleTexture 2/CastleTexture/Stairs_baseColor.jpg using Guid(10d01483e05ae13499dad5bdc64669cd) (TextureImporter) -> (artifact id: '83bee0a1dbadea7afca902ff9bc7f6f8') in 0.3769955 seconds
+Start importing Assets/CityVoxelPack/Assets/pavements/Textures/pavement1.png using Guid(10b11cb5b128bdc46a10576f851cb474) (TextureImporter) -> (artifact id: '0fdad7d01ccc944c5338ffcc8b7976c5') in 0.03312 seconds
+Start importing Assets/network of paths/Textures/Grass 5.png using Guid(10b292a7aaeb79b418dcf26cfa4503ca) (TextureImporter) -> (artifact id: '4d3a52ede885fa2da278021406194579') in 0.1351585 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/PaintDetails@2x.png using Guid(10630c7ec3f2e44828d30876a993ba2b) (TextureImporter) -> (artifact id: 'c6c386ebbbc1bce1cdb2e2e1e88febe9') in 0.0357178 seconds
+Start importing Assets/Free Island Collection/Environment/Terrain/Textures/Dirt_2/Dirt_2_Normal.png using Guid(10d36c98009eb3740bbcec3a9475db29) (TextureImporter) -> (artifact id: '00026cdd0c321ef01d3cb156b64a01c0') in 0.3124329 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconlockedremoteoverlay.png using Guid(1046ed65e6aaffb4391378f6d08d6c14) (TextureImporter) -> (artifact id: 'caa6cdd28510fb5f04b254a1eb286bd3') in 0.0561669 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/BlueNoise16/L/LDR_LLL1_23.png using Guid(10b6c6d22e73dea46a8ab36b6eebd629) (TextureImporter) -> (artifact id: '6e8b9f2b8f905fde67956a9ac5190833') in 0.0353455 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Advert_Panels/Advert_Panel_Pillar_Symmetry_Normal.png using Guid(10c665062169cfa4182775c43ef67565) (TextureImporter) -> (artifact id: 'b76b5017e2450f422a08016a3b206a9d') in 0.2406258 seconds
+Start importing Assets/Volklight/BTR/BIRP/Textures/Base_Mixed_AO.png using Guid(10476d2ba7df0ed45b0a7944e94a6754) (TextureImporter) -> (artifact id: '533cf5c76a8a74bd4e37bc980d5af97b') in 0.2007367 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/FilmGrain/Medium01.png using Guid(1097e90e1306e26439701489f391a6c0) (TextureImporter) -> (artifact id: '700b7bba393ef563762b5053ca1123f0') in 0.0386076 seconds
+Start importing Assets/MarpaStudio/Textures/horseDivider_Normal.png using Guid(1058f938f6a01c44f87a976a1a97b1b8) (TextureImporter) -> (artifact id: 'f115033bce855bee08ef40b15182610a') in 0.2165364 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Details/BushDry_Thickness.tif using Guid(100a50e8b1d0bc04b95bc2f03cb760db) (TextureImporter) -> (artifact id: '3e8cf1f9173d39268fc64e5c659416a3') in 0.1684517 seconds
+Start importing Assets/MarpaStudio/Textures/WoodPartHorseStableSide_AO.png using Guid(10ddecc992643be43b06288130739450) (TextureImporter) -> (artifact id: 'b5da6b8f672f76d2d127bec2dde99fcf') in 0.1659262 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/2D/Resources/LightCapBottomRight.png using Guid(108e201829ab4214383a5467adbc0086) (TextureImporter) -> (artifact id: 'e1aed673dfb4f866d9eef78a8b57deb3') in 0.0398116 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Heightmaps/Ridge01_Heightmap.tif using Guid(2093015066086b94e9636a0e1f1344ea) (TextureImporter) -> (artifact id: '0f0628583b72f26055c25ed5b2c6455a') in 0.1521953 seconds
+Start importing Assets/Gwangju_3D asset/Scenes/17_Gwangju_Biennale_Inner/Lightmap-6_comp_shadowmask.png using Guid(20934b7b92c17cd42a67391f62b5bd33) (TextureImporter) -> (artifact id: '1407570f384209d36fa061842bb6b79d') in 0.1881846 seconds
+Start importing Assets/network of paths/Textures/paths_Diff.png using Guid(20c3cb2c5d3ba5b4e9884e00c48431bb) (TextureImporter) -> (artifact id: '85bf7ecb0211476ad2038ed2c11d46b8') in 0.0971034 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconlockretained@2x.png using Guid(20647d71003f8e34685b1972b30dbd2b) (TextureImporter) -> (artifact id: '26c59eed2ea30085a7b31d68ab213e8d') in 0.230377 seconds
+Start importing Assets/MarpaStudio/Textures/OldShed_Albedo.png using Guid(20451724512e92b4f9784ccbc2ccd8f0) (TextureImporter) -> (artifact id: '98be9c8a633b9eb490b60ec8d17a8a50') in 0.3596535 seconds
+Start importing Assets/homing missile/Textures/Missiles_Pack_dif.tga using Guid(20759506e01e8fb43a1f626e5b6392c5) (TextureImporter) -> (artifact id: 'a0aff50d4368e0b96566026b52d37f0d') in 0.091512 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Details/Grass_C_MaskMap.tif using Guid(20e5036a7508c01479cdb7338b1c86cc) (TextureImporter) -> (artifact id: '2f6f496328a79a66fdb7f39a6b4b6e8a') in 0.5598803 seconds
+Start importing Assets/EasyRoads3D/textures/roads/dirtRoad_N.tga using Guid(204662711dce8904e8cbca6412eff8e4) (TextureImporter) -> (artifact id: '8e0d04311525c77d3f9f14577b745726') in 0.1017762 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/Interactive Binding@2x.png using Guid(2027b97fd12d842d7a3169c784502a54) (TextureImporter) -> (artifact id: '744eb7d4b759b44844a001702223b210') in 0.0672448 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_27_basecolor.jpg using Guid(20d8fd61e576dbc4bbbb8cb4718852a1) (TextureImporter) -> (artifact id: 'fdaf8bf54a0e74f6a47acde0e2e070fd') in 0.0401111 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/iconprivateoverlay@2x.png using Guid(20894f77802694ca2b9afb02a7388138) (TextureImporter) -> (artifact id: '040d839aef445088a9dcd4bbdf7786ca') in 0.0436847 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Desert_color/Seed_3/Camouflage_DBDU_Pattern_3_1K_DS.png using Guid(20dc9994fb2bd734a84a4236430c43ea) (TextureImporter) -> (artifact id: 'c6855c9da0f9134f45efa160a9523de5') in 0.1490137 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Desert_color/Seed_2/Camouflage_Tiger_Pattern_2_1K_DS.png using Guid(201ef2a78a4eccb4381da2417d0fa699) (TextureImporter) -> (artifact id: 'b4411788300d916a3e0d7352f5e0fe30') in 0.1212875 seconds
+Start importing Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Capsule.png using Guid(207ee8102dd4143d288186ef0be518ee) (TextureImporter) -> (artifact id: '07f545b66d77675795ac596d02138ccd') in 0.1273688 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/CenterLight.png using Guid(3092b2985cafe0b43b1f02ce1d6829d5) (TextureImporter) -> (artifact id: 'bc13d6d5c184f77156bfa17041623dd0') in 0.0397007 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconinviteusers.png using Guid(3094096a150921c409ef35579f2ada0f) (TextureImporter) -> (artifact id: 'ee22c081cd9411919b548639b3b99d80') in 0.0455342 seconds
+Start importing Assets/imagem/Gemini_Generated_Image_gco6f3gco6f3gco6.png using Guid(30e4dda2d63c60b4996bf82929298802) (TextureImporter) -> (artifact id: 'e93f4c38b44a5d1333e4532b922eea3b') in 0.3864846 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Terrain/Rock_MaskMap.tif using Guid(30b51375156b10e4780537d5793a26c9) (TextureImporter) -> (artifact id: '9d2679a0ad710464b58e537b13291775') in 0.5016347 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_WindErosion_On@2x.png using Guid(3066b51c7600b4bff965a15f80daacb5) (TextureImporter) -> (artifact id: '5bbda3ea030bc228c1c4cb8c3e6f7892') in 0.0464328 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_buttonssosigninemail.png using Guid(3086d66a563317b40a20a20da2c64ac0) (TextureImporter) -> (artifact id: 'f46a60e191ea961b49322eb47edbb333') in 0.039372 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Woodlands_Color/Seed_4/Camouflage_DBDU_Pattern_4_1K_WL.png using Guid(30e648e114ae95c46aa521378f4119a3) (TextureImporter) -> (artifact id: '055613f055b6d61d102163c7e09b30b1') in 0.1455632 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/InputSystemUIInputModule@64.png using Guid(3028dc075ba8c584d9bc7d1e0255e038) (TextureImporter) -> (artifact id: '4bcb1159c570e7ecaba6ca647484e490') in 0.0360305 seconds
+Start importing Assets/AllSkyFree/Cartoon Base NightSky/Cartoon Base NightSky_Cam_2_Left+X.png using Guid(30795c4c7d28549fc98ea24071c47626) (TextureImporter) -> (artifact id: '2a83c42fe4e23c33dee3fdbf38f7e91c') in 0.5433641 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/iconconflictresolvedoverlay@2x.png using Guid(309b1d5a294fd6c43ae9cf77656c1852) (TextureImporter) -> (artifact id: 'b13460bd96bcaf23a4e45f1f4d0cd73d') in 0.0559511 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/textures/BaseCastle_02_normal.jpeg using Guid(302e05112f25865438d5843bcbdd0864) (TextureImporter) -> (artifact id: 'e5433b0fb290857a0ea8a197c2daff05') in 0.2760445 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/2D/Resources/SceneViewIcons/ParametricLight.png using Guid(302e68dd45b9b2d4194ff0f7f454436f) (TextureImporter) -> (artifact id: '8bf91b916a8fcf3a671bef6f96887794') in 0.0575752 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/d_LightPlacement_Icon On@64.png using Guid(304e9d79c27b32144a95e43dc6da80a2) (TextureImporter) -> (artifact id: '1ecf486dbbb02033de64d0c212a63f26') in 0.0411885 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/PaintDetails_On@2x.png using Guid(306e03b3c459d4bdf846212bea459a0a) (TextureImporter) -> (artifact id: '247863715fd6c2e23287661c54d0604c') in 0.0293081 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Factory_Old/Factory_Old_Concrete.png using Guid(407045a60c24472499d71368aaee64e3) (TextureImporter) -> (artifact id: '1e122d39ff70e01e39ab7a2c254c8474') in 0.329773 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/iconinviteusers.png using Guid(40e23f4f2fddc724db517c63f4d8990d) (TextureImporter) -> (artifact id: 'b2dde679a03627807b41e6c8b3401c3a') in 0.0610631 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/d_TimelineCollapseMarkerButtonDisabled.png using Guid(40947ddc2dd4f0d499a92d0f3675c4e8) (TextureImporter) -> (artifact id: 'd0ed23f9b24a2cbec176090c15bea2d4') in 0.0687234 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/InputAction.png using Guid(40265a896a0f341bb956e90c59025a29) (TextureImporter) -> (artifact id: 'cd2cc7009d80226989b53c5a518947f6') in 0.0437489 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/2D/ShapeEditor/Resources/Path/pointHovered.png using Guid(40985c36b6cc53f4a949889c3a3e2f90) (TextureImporter) -> (artifact id: 'e98ff7d0ba16a8c45830c89a1a249953') in 0.0452287 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_52_basecolor.jpg using Guid(404bd7c6f5e2a3746afa07b80b28a5bd) (TextureImporter) -> (artifact id: '62eaa46668ac2a51a8944ad8cb9ca4d9') in 0.034778 seconds
+Start importing Assets/VegetationSpawner/_Demo/Materials/Textures/GrassField.png using Guid(409c39177d5ac5545bede68eed1c290b) (TextureImporter) -> (artifact id: 'e145dbea7831962b330ecf6023251fe2') in 0.074107 seconds
+Start importing Assets/AllSkyFree/Space_AnotherPlanet/AllSky_Space_AnotherPlanet_Cam_2_Left+X.png using Guid(40cd83628508d406497f3b21ff220644) (TextureImporter) -> (artifact id: '1bd836a243fc76617465620cb7d1821f') in 1.066977 seconds
+Start importing Packages/com.unity.2d.tilemap/Editor/Icons/Tilemap.ShowTilePalette@4x.png using Guid(401e910567b72dd4abf58be9f7e0518b) (TextureImporter) -> (artifact id: '37bd2b475edcccfcb53070e54de82764') in 0.0601914 seconds
+Start importing Assets/AllSkyFree/Overcast Low/Sky_AllSky_Overcast4_Low_Cam_0_Front+Z.png using Guid(402fe3aa91fba453f92dd3bbe820dbd9) (TextureImporter) -> (artifact id: '6b2471926f3dd6cfba71af83405fa8aa') in 0.6667756 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise64px/LDR_LLL1_60.png using Guid(404fa8def46b1c447817e1ebdaa7144e) (TextureImporter) -> (artifact id: '646bd74715bc2ee9b646276aea80c9d9') in 0.0843144 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/TEXTURES/_CausticTextures/save.31.psd using Guid(501012c1fa8de05479f6fd4731eafc3d) (TextureImporter) -> (artifact id: 'c2082d74a608775c3ae8475126c10dc6') in 0.0736039 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/DarkSkin/TimelineStartPlayback.png using Guid(5060c9f9eb2f7ee4695b638a21d8fe01) (TextureImporter) -> (artifact id: '7b0f191662d41dd5260ee086ad45603a') in 0.0422843 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconhistory@2x.png using Guid(50d1ea51731fa43db9ce0ec4fe5f0b07) (TextureImporter) -> (artifact id: 'fa51f3c1bb78d2e0fac2a8e0639ad422') in 0.0423523 seconds
+Start importing Assets/efeitos/WarFX/Desktop/Textures/Flames/WFX_T_FlamesBig A8.tga using Guid(506236d9deb4c264fa0e4c47cc390fe8) (TextureImporter) -> (artifact id: '46c92204750f5b0047776840ae9cd430') in 0.063239 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Woodlands_color/Seed_3/Camouflage_Tiger_Pattern_3_PSX_WL.png using Guid(50e46de07066d01498dd751db1ebf0c9) (TextureImporter) -> (artifact id: '8e2a16324bc4ee3c644ab59576ebdb28') in 0.0398369 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise64px/LDR_LLL1_0.png using Guid(50b54341495978843a6f85583ed4417d) (TextureImporter) -> (artifact id: '929f8b307c108243ca2bb0fa8c800e28') in 0.0329912 seconds
+Start importing Assets/Prefabs/Aeroporto/Falcon/Gemini_Generated_Image_u89sa0u89sa0u89s.png using Guid(50d7348aae7c0ac4497d212c9cf73b94) (TextureImporter) -> (artifact id: '5252b097d1391dae6fdeb38d08e1f74a') in 0.5126889 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Canal/Canal_Walls_Short.png using Guid(50d73f3770a6dc746a0fb82886bb6111) (TextureImporter) -> (artifact id: 'fb10c76e8ec64936779b6413f34dcb9e') in 0.7381072 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/d_Layout2@2x.png using Guid(50f7a3e9878119a4da02f38cf05d75ba) (TextureImporter) -> (artifact id: '16f063c17f3e2dd05b4bbca52655e45c') in 3.5592592 seconds
+Start importing Assets/Volklight/BTR/HDRP/Textures/BTR_Parts1_Normal.png using Guid(50d8ee83aaa6c594684c96217780d3c2) (TextureImporter) -> (artifact id: 'b017cc4571e622be0902728e28177a79') in 6.5374686 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Factory_Small/Factory_Small_Factory_Metal_Smooth.png using Guid(50a91c0970eb90e4c988591008beb22f) (TextureImporter) -> (artifact id: '4362af0985762478af986dcb65c873ff') in 3.1257436 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/iconconflictedoverlay.png using Guid(503a763cc33a6854c86d736c5dd2515c) (TextureImporter) -> (artifact id: '35c7c247c5db885f5a5f879c0c3c2388') in 2.2453935 seconds
+Start importing Packages/com.unity.splines/Editor/Editor Resources/Icons/Tangent_Linear On@2x.png using Guid(50dad30bbe8922644a0ce1606ef18295) (TextureImporter) -> (artifact id: '47d321f93394e9460570ff770668df36') in 1.1431384 seconds
+Start importing Packages/com.unity.shadergraph/Editor/Resources/GraphView/Nodes/NodeChevronRight@2x.png using Guid(50cbcd05e61c4e54ea797ec88e91f1b0) (TextureImporter) -> (artifact id: '96cf7d89473c6b6d82fb84710a3ef428') in 0.2714513 seconds
+Start importing Assets/Prefabs/Veiculos/Caoc1/Gemini_Generated_Image_fridkbfridkbfrid.png using Guid(60001eb62a892924388651eb6054858d) (TextureImporter) -> (artifact id: 'be19855b18c5bbebed66d31f78f584b0') in 0.2190845 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_11_basecolor.jpg using Guid(60407d3e09c8bc34197740f419efb1bc) (TextureImporter) -> (artifact id: '506c0d778e0d6b19d0d5c9ab013dda5e') in 0.1972939 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/TrackRecordButtonDisabled@2x.png using Guid(6091f9516d23100479c03bca26138bc8) (TextureImporter) -> (artifact id: '1e7f2ad616150fbdfc972669e0579a9f') in 0.0554075 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/LightUnitIcons/BlueSky.png using Guid(60d4d0573fefbf24198d33863004e7f9) (TextureImporter) -> (artifact id: '4b147e037a1cd22e24e3cc50ba641fe7') in 0.0422755 seconds
+Start importing Assets/CartoonMilitaryModelPack/Textures/UAV_Texture/UAV_01_Texture.png using Guid(600506f9f5fcf460a85c060d8ad557af) (TextureImporter) -> (artifact id: 'eefcff74a8a8dfe24083f05cc4212956') in 0.5175166 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_1_basecolor.jpg using Guid(606654e31e090364bbe5615196169030) (TextureImporter) -> (artifact id: '491bf373c7cc02f5e2c81c39e5b5fef7') in 0.0611191 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise256px/LDR_LLL1_0.png using Guid(6017f374382d64245a0a4aab668e6f38) (TextureImporter) -> (artifact id: '4ac9ed4b4bb341bbdba3bc6a547e6f53') in 0.0301912 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/source/CastleTexture 2/CastleTexture/BridgeControl_normal.jpg using Guid(60a76020248cef94b86f37ca3982aa54) (TextureImporter) -> (artifact id: '2924437870db3273693a133a7bb5cb2a') in 0.3837447 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Icons/RenderGraphViewer/d_MultipleUsage.png using Guid(60e80b0fa23ea904b92263803d64319c) (TextureImporter) -> (artifact id: 'd25764c2d2caba231a7111685a37f260') in 0.054904 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/Pinch_On@2x.png using Guid(602a23b95daa642ec900361ca0a01189) (TextureImporter) -> (artifact id: '30eeaf80afa28f1465b5a738ab47b22e') in 0.060617 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_refresh@2x.png using Guid(602b72d4617c3694aa94419fc1b68e04) (TextureImporter) -> (artifact id: '4ebdfb28f41bc1cd5cf4cc670fbd0500') in 0.0395935 seconds
+Start importing Assets/AllSkyFree/Epic_BlueSunset/Epic_BlueSunset_Cam_2_Left+X.png using Guid(604c8e250817f485c97f85e8237f7524) (TextureImporter) -> (artifact id: '880c943d81e148d5ea67547373fb0251') in 0.9008321 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/d_Camera1@2x.png using Guid(603d01d730be24147adda7897e463598) (TextureImporter) -> (artifact id: 'adf1c1a5029fa8531b41d81294a0bb9a') in 0.0823491 seconds
+Start importing Assets/Prefabs/Navios_Guerra/Nav_Abastecimento/ChatGPT Image 21 de jul. de 2026, 09_02_12.png using Guid(60ad4c4b2f8c0f94893593b36e021c80) (TextureImporter) -> (artifact id: 'f95406b150e29b0a0a35d6c7040b4557') in 0.2038463 seconds
+Start importing Assets/Art/IconesGerados/Dados_Heliporto_Icon.png using Guid(60ee878aa0122dd498e0fb947cbc5d71) (TextureImporter) -> (artifact id: 'c08798ff9ce439d805d72483295bbdf4') in 0.1052416 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/Clone@2x.png using Guid(70701ee3673c24e37b795d1605a76fe9) (TextureImporter) -> (artifact id: '187b39ed4d3212579b353ee86ee256e8') in 0.092214 seconds
+Start importing Assets/MarpaStudio/Textures/Railing_AO.png using Guid(70a0fc7d3efbc754a9b928b0cfc8dcae) (TextureImporter) -> (artifact id: '26e88754752aaac9b6e993b0c4b62a99') in 0.2831566 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise256px/LDR_LLL1_7.png using Guid(70d0a1182b29d6347ac70374c3593bba) (TextureImporter) -> (artifact id: '84222979bd4f69d85c7cbdc9833db91e') in 0.0745318 seconds
+Start importing Assets/RPG_FPS_game_assets_industrial/Textures/Transparent/Lattice/Lattice_v1/Lattice_v1.png using Guid(70510350e3d466648831bf5261886975) (TextureImporter) -> (artifact id: '4f2131bf91fdddd021395bf5d4ef6560') in 0.0993508 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Editor/2D/Resources/SceneViewIcons/SpriteLight.png using Guid(70d16a5f04690d74ab9b1ddcbefd47bb) (TextureImporter) -> (artifact id: 'bd83080fc5ee0cedaf7a5648d5f603ef') in 0.0791063 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise64px/LDR_LLL1_56.png using Guid(70f23eaf7d8ae9147aa542d20e93733b) (TextureImporter) -> (artifact id: 'e5d083a8cf57452dfac1edd9a24f73c2') in 0.0681183 seconds
+Start importing Packages/com.unity.2d.sprite/Editor/Assets/SpriteEditor@2x.png using Guid(7013f35dfb10340ecbb956ca7e17de0d) (TextureImporter) -> (artifact id: 'b50567c88f04292f5d7ea1670baed6e8') in 0.0900598 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_SetHeight.png using Guid(7013bae5d1da241ce852a1cff5381a5b) (TextureImporter) -> (artifact id: 'ebafd6f974de303d7be8b606b49392d5') in 0.1099369 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/LightSkin/TimelinePlayRange.png using Guid(70e3f118652b9094885689730ad3a47b) (TextureImporter) -> (artifact id: 'da8974a255e6389d19c9ed25b16cb9be') in 0.1102456 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/icondeletedremote@2x.png using Guid(70e3ce8ad01f39248a3ea97a35bcf238) (TextureImporter) -> (artifact id: '5c8c100b4cfcd4bbd405e5ba1c5e24c4') in 0.1062433 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/RESOURCES/textures/gui_tex_suimonologob_i.png using Guid(7025c4f2f20ea224d9284c6e2c4f45e8) (TextureImporter) -> (artifact id: 'bbbb6f319be9bdf963db96415b497b4f') in 0.0969192 seconds
+Start importing Assets/Gwangju_3D asset/Scenes/17_Gwangju_Biennale_Inner/Lightmap-4_comp_dir.png using Guid(70c5eced357990d4eba45f6965140f94) (TextureImporter) -> (artifact id: 'cf8b2f17c030299cdc8379ff167356ac') in 1.3434926 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Heightmaps/Mountain11_Heightmap.tiff using Guid(70e652ab807bd5c4ca36dc57a1ed6339) (TextureImporter) -> (artifact id: '12f984495623bc740ae8dcc7a8d56d13') in 0.5521272 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Desert_color/Seed_1/Camouflage_Cells_Small_Pattern_1_2K_DS.png using Guid(70295088c992a3243a85546ad01dee1c) (TextureImporter) -> (artifact id: 'eb0dc8d6ea67c1fab0cb7c690b90dca6') in 0.4505566 seconds
+Start importing Assets/network of paths/Textures/mask_path_2.png using Guid(70f9f7013096d99449e9829e13e0da93) (TextureImporter) -> (artifact id: 'de76bd6424c97918bdf04ca7c6f54272') in 0.4912272 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Road_Blockers/Road_Blockers_Metal_Smooth.png using Guid(70ea4222e81919b4a94ba3e3b93305e4) (TextureImporter) -> (artifact id: '4914efbaa72f51b5a0cf7c64916835a0') in 0.2962 seconds
+Start importing Packages/com.unity.splines/Editor/Editor Resources/Icons/ToolHandleParent.png using Guid(70ebf5536475b4f6d837fb3fd1208155) (TextureImporter) -> (artifact id: '0a97330e4ac25f32ec437acccdfd86df') in 0.0392366 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Icons/RenderGraphViewer/Resources@2x.png using Guid(701c4a9737150564681d632d05a7a83e) (TextureImporter) -> (artifact id: '4fe58585d04fefc8b6e77e72d3b00e1d') in 0.044189 seconds
+Start importing Assets/Industrial building/Garage/Materials/Textures/LP_DefaultMaterial_MetallicSmoothness.png using Guid(80e06a0292655b94e9143093a7567c4c) (TextureImporter) -> (artifact id: 'fba224a30364626843b0e8c97f629b11') in 0.1597897 seconds
+Start importing Assets/Volklight/BTR/BIRP/Textures/Wheels_Mixed_AO.png using Guid(8003ff97b776e93479ce57cfd5ddbbdb) (TextureImporter) -> (artifact id: '427a0407015406562effd8ac56785b11') in 0.2101198 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/CenterLight@2x.png using Guid(8063050a249eef441beb8cbbd04c086c) (TextureImporter) -> (artifact id: '1f7bef03ffab9a9d812b2c849e58f648') in 0.1034128 seconds
+Start importing Assets/Gwangju_3D asset/Scenes/17_Gwangju_Biennale_Inner/Lightmap-1_comp_shadowmask.png using Guid(80c31bf8cb91c014a9302fe76e884348) (TextureImporter) -> (artifact id: '966510268063a4d5279bcfe022735175') in 0.2109177 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/LightUnitIcons/d_Overcast.png using Guid(80a48b3afafdc644fb4e3319f6f19fc8) (TextureImporter) -> (artifact id: '6a101116b8a91bd6fb738501a370386d') in 0.0478248 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Canal/Canal_Wall_1.png using Guid(8035ea82705ca504d8048739ad9bf68e) (TextureImporter) -> (artifact id: 'e7a5b54c2a1bb88d6126e5d7c859bd5c') in 0.3419836 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/PostProcessing/LensFlareResource/CircleFlareThumbnail.png using Guid(80b74a073fa3027458f3b3ff5346f10b) (TextureImporter) -> (artifact id: 'c9036f1893841396bf04f8fc1e91dfb2') in 0.0869308 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Woodlands_Color/Seed_3/Camouflage_Polygon_Pattern_3_1K_WL.png using Guid(8048da8982ee1ed4a8d3e4eb1506d157) (TextureImporter) -> (artifact id: 'eaa235a60924cc816338df57c9373895') in 0.1301468 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_43_basecolor.jpg using Guid(809867793d483684aa13c4fd34324086) (TextureImporter) -> (artifact id: '44d5ae028e9adbccba23520c94c720c9') in 0.0842873 seconds
+Start importing Packages/com.unity.ai.navigation/EditorResources/Overlay/d_NavigationOverlay@128.png using Guid(80899a9fbe3d3364eac2c5924c0a28cf) (TextureImporter) -> (artifact id: '260ea401ab0549bc2db4b60022f8121d') in 0.1671664 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Pavement_Tiles/Pavement_Tiles.png using Guid(808cdaa70be26e84ba19d8f4e870b944) (TextureImporter) -> (artifact id: '433716426825d6d16cd8ee6495c41bb7') in 0.1154001 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Desert_color/Seed_1/Camouflage_Dotty_Pattern_1_PSX_DS.png using Guid(80be8821357fc3e488d997ed1a9af415) (TextureImporter) -> (artifact id: '239f362593ddf805eef5909fdcc8b3fe') in 0.0804786 seconds
+Start importing Assets/MarpaStudio/Textures/UpstairsPlanks_Height.png using Guid(80fe43c86b9fc1c41a229a43d045d406) (TextureImporter) -> (artifact id: '13c704b7268a3e73d9ebde86769c98e2') in 0.2501609 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_Twist_On.png using Guid(805f5dd1acaa4a249b48537c04fe177f) (TextureImporter) -> (artifact id: 'bbae14df81c5b84eb82473223a4ba9ef') in 0.1006447 seconds
+Start importing Assets/MarpaStudio/Textures/WoodPlankCeilingBig_Metallic.png using Guid(80ff86b7c40a4b840bb656f34c261153) (TextureImporter) -> (artifact id: '313b5fde2f20b50735b23b3479a0cd79') in 0.3183889 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Metal_Props/Metal_Props_Metal_Smooth.png using Guid(90411adf065daa64e90806826311eb6a) (TextureImporter) -> (artifact id: '4061c75bd450ec2a1eb67f3cc11f9a5f') in 0.3684164 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Heightmaps/Canyon01_Heightmap.tif using Guid(903360ef543b50449ae74931c4fddc2c) (TextureImporter) -> (artifact id: '5fd64e6698907d9a271e2b2bba70bd80') in 0.1008188 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/d_LeftArrow@2x.png using Guid(90335e5423c010749a50f906b965fa54) (TextureImporter) -> (artifact id: 'd6d1ecce85fb21bf65ce4a826b595715') in 0.0474013 seconds
+Start importing Assets/MarpaStudio/Textures/Bucket_Height.png using Guid(9095cc9bf69a21c4f8b7559e47e31f94) (TextureImporter) -> (artifact id: '2ced9c5283f625c58b9f48163c80fcb9') in 0.2081108 seconds
+Start importing Packages/com.unity.visualscripting/Editor/VisualScripting.Core/IconMap/AnimatorMessageListener@32x.png using Guid(9059e055aa673b3469a5c2896c0b8fb5) (TextureImporter) -> (artifact id: '0fdb9aa0eb0a249eae16e23c65079c6f') in 0.0321112 seconds
+Start importing Assets/CartoonMilitaryModelPack/Textures/CustomParts/Turret_07_Texture.png using Guid(9059dafdfbdc04bdca72c86e3b17adf5) (TextureImporter) -> (artifact id: '67d4b746f1f6f69ad26ef62f56c3ea8d') in 0.6029253 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_46_basecolor.jpg using Guid(900a25ee86b989345856219f8e9dcb8a) (TextureImporter) -> (artifact id: '1f0bdcda09d7f50ea9b2be5acd651ce5') in 0.0402145 seconds
+Start importing Assets/MarpaStudio/Textures/BarnDoor_Normal.png using Guid(90aa34b6b9d521f4f8e7c372a51ff253) (TextureImporter) -> (artifact id: 'aa9528ea69ec492f04f02f0907d11cd9') in 0.2685313 seconds
+Start importing Assets/CartoonMilitaryModelPack/Textures/WarShip_Texture/AircraftCarrier_01_Texture.png using Guid(90aa8a74200df4086a6ef99670442b7f) (TextureImporter) -> (artifact id: 'f660d231b798828d35d207691981bb28') in 0.6944579 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Urban_color/Seed_1/Camouflage_Cells_Small_Pattern_1_PSX_UB.png using Guid(903e624623c562845a25badbb3212700) (TextureImporter) -> (artifact id: '6e75350d0b4fa3bea81dd486ac85e263') in 0.0403519 seconds
+Start importing Assets/Volklight/BTR/BIRP/Textures/Base_Normal_DirectX.png using Guid(904e4e1e35e7f4a4eab8d153d9336193) (TextureImporter) -> (artifact id: 'e4f56316c76ee7f51abbccd095a5690b') in 0.3830074 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/iconretainedoverlay@2x.png using Guid(a01087ce1455c7e4c8f2410c26afcfd2) (TextureImporter) -> (artifact id: '28911bcfe9b5d8ba0f23f0381308611f') in 0.0428185 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Woodlands_Color/Seed_5/Camouflage_DBDU_Pattern_5_2K_WL.png using Guid(a0b1c46176d512944be6d19e683512f1) (TextureImporter) -> (artifact id: '45e3523b331bcc4f2fae3f78944e43cf') in 0.3020574 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Desert_color/Seed_1/Camouflage_Net_Pattern_1_PSX_DS.png using Guid(a0522706ce2b64e4a8cc902ad5ad7506) (TextureImporter) -> (artifact id: 'e91d8a9c52e3a799499dcd9e4d017f1c') in 0.0264267 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/FlattenSlope.png using Guid(a0f2fd378cf3e5a47bdabaa01c29bc5d) (TextureImporter) -> (artifact id: '992c4abc3a3cde51f1649b65bdbeb746') in 0.0236289 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Woodlands_Color/Seed_4/Camouflage_Net_Pattern_4_1K_WL.png using Guid(a09537ca12c64694ab182a57fe3f443b) (TextureImporter) -> (artifact id: '3876e93d2b131835fd42471f31bd44c4') in 0.1073715 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-16_comp_light.exr using Guid(a0c5c858a76f0ce41a9c47116e5ba2d7) (TextureImporter) -> (artifact id: '291955a403bc414c39d4bf94e514c039') in 0.500203 seconds
+Start importing Assets/MarpaStudio/Textures/Pillar01_Normal.png using Guid(a046f420ffbab5743a3ad4b5096016dc) (TextureImporter) -> (artifact id: '47c557e31b588f421f95c0ca7cc3ea28') in 0.2576174 seconds
+Start importing Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Textures/PolygonWar_Texture_01_A.png using Guid(a0e6e61468834da4ea64e5e8c2b405ce) (TextureImporter) -> (artifact id: 'ebe9d584ef33738a43df14bb514957c6') in 0.2600501 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/Mouse@4x.png using Guid(a0b78c5ab9d654a9daba91ff774b4931) (TextureImporter) -> (artifact id: 'f8815da0fab4bfe4901c3b6f874be119') in 0.0473774 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Desert_color/Seed_2/Camouflage_Dotty_Pattern_2_2K_DS.png using Guid(a00b2c6a7cfee9c4e8ce47e9fe412e2b) (TextureImporter) -> (artifact id: 'c7b2f7c8655bc4be19f95082f22624c4') in 0.4149135 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise64px/LDR_LLL1_62.png using Guid(a03c400b0e3959f428ee99dfc6cfc263) (TextureImporter) -> (artifact id: '430da34f09379152c8efed6cf5c7189a') in 0.0510353 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/LightUnitIcons/ClearSky@2x.png using Guid(a01d783415aa03a449e3408eb92d8505) (TextureImporter) -> (artifact id: '52c25bea1ad8212aa905c61b8317de80') in 0.0574932 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-16_comp_dir.png using Guid(a00ee1b9b876f584c9ea228ba78a8284) (TextureImporter) -> (artifact id: '1d35fe6d73c818ff621ca56d9520b764') in 0.2614872 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/LayersEyedropper.png using Guid(a01e9405cede59345aae085cba1d3e14) (TextureImporter) -> (artifact id: '6684c1db45a0abe0f8c8b82668c36cf5') in 0.0313258 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Liquid_Container_Horizontal_Small/Liquid_Container_Horizontal_Small.png using Guid(a00f8af7171fcc84da85c67eec55fb51) (TextureImporter) -> (artifact id: 'f5525b064ee9177fb88dbe271700d622') in 0.3634484 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_Pinch@2x.png using Guid(a03fc6b5a990842c68f1897c05b0fbc4) (TextureImporter) -> (artifact id: '14c13631a80122d9e279fe9d3d8c40b4') in 0.0461879 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Shared/TimelineConnector.png using Guid(a04f1625bf500f64e97445265dfbcc93) (TextureImporter) -> (artifact id: '0f377ce289b27177f3675fda63562688') in 0.0604092 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/LightSkin/TimelineHold.png using Guid(a09fd8b5d9396c24a96a6de50cddc3b9) (TextureImporter) -> (artifact id: '31cebe895239160a34a1dba53547a26c') in 0.0482391 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Woodlands_color/Seed_2/Camouflage_Woodlands_Classic_Pattern_2_PSX_WL.png using Guid(b0d1e3e4497441a43b9d1782e797f42b) (TextureImporter) -> (artifact id: '0d624080d465b21ee434fb7d7aea79d9') in 0.0432922 seconds
+Start importing Assets/Polyeler/Simple Aircraft Pack/Materials/Aircraft/Textures/Tex.png using Guid(b07260c74be2bda40a588aa98fa471ae) (TextureImporter) -> (artifact id: 'fead445aa19df73efc79a96e0cad9278') in 0.1182983 seconds
+Start importing Assets/efeitos/WarFX/Mobile/Textures/Flames/WFXM_T_NukeFlames.tga using Guid(b0f27e4f35172fe46aa755afaafdb432) (TextureImporter) -> (artifact id: '2a5432583c99e03d6ec06c3809cb157d') in 0.067777 seconds
+Start importing Assets/Military vehicles (Sea)/Texture/S5 BaseColor.png using Guid(b0c3612ac9c9bdc45841d217fec0b984) (TextureImporter) -> (artifact id: '53405dd26ebd101efdd0d360f9888612') in 0.5633385 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/InputActionAsset.png using Guid(b025a2a0f9e554d1e88a93b5649dfc3f) (TextureImporter) -> (artifact id: '6e4297e72a136da12ea3c97c19696eb7') in 0.0424882 seconds
+Start importing Assets/Volklight/BTR/BIRP/Textures/Parts3_Metallic.png using Guid(b0f53562bebb8a44a875925650274bf2) (TextureImporter) -> (artifact id: '2fb153c81dac7895fd2ae78ddfc8fb3c') in 0.2395601 seconds
+Start importing Assets/Prefabs/Muro_Reto/Gemini_Generated_Image_rwms94rwms94rwms.png using Guid(b0d6eebcd6e9f0a4ea094a478a329638) (TextureImporter) -> (artifact id: '8c15fb4ef868044e43fb8ff2c541a24f') in 0.1502408 seconds
+Start importing Packages/com.unity.ai.navigation/EditorResources/NavigationWindowIcon.png using Guid(b0172c3ab97e219478711e1fbe9630f2) (TextureImporter) -> (artifact id: 'a17e0a9787b83399397c7f172c98631e') in 0.0327667 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconedit.png using Guid(b0e7ed213bccf484e89c4261a7e16f66) (TextureImporter) -> (artifact id: 'f3a8e217e0f53473e71a4420bfc60be0') in 0.034739 seconds
+Start importing Packages/com.unity.rendering.light-transport/Runtime/Sampling/Textures/SobolBlueNoise/SobolOwenScrambled256.png using Guid(b068695e42b4d4c3ba751c10a7189033) (TextureImporter) -> (artifact id: 'e0ab7397b20fa8fca603b450ca9001c2') in 0.0405768 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/BrushSettingIcons/d_Scattering@2x.png using Guid(b08876f972ee440bc9ffe73a37f8a846) (TextureImporter) -> (artifact id: '878675f4b5f9adf640aca08d5e8fee93') in 0.0331338 seconds
+Start importing Assets/Gizmos/gui_icon_buoy.psd using Guid(b059d98f74e159b44b9718940f8fba10) (TextureImporter) -> (artifact id: 'e8e7358908f9e1018f4b541c917f032d') in 0.0441161 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Ramp_Constructtion/Ramp_Construction_Normal.png using Guid(b04ad70fb57661a45b59a417a713b66d) (TextureImporter) -> (artifact id: '5d47e1098d1729141812f9dcd47a8414') in 0.1592981 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/AssetEditor/PackageResources/pro/propertiesBackground.png using Guid(b02e3f0c0798a4f1789a89a7697660be) (TextureImporter) -> (artifact id: 'e7b6f1ea84fdd23d78957dd4a8fd1d4e') in 0.0400475 seconds
+Start importing Assets/MarpaStudio/Textures/FoodTrough_AO.png using Guid(b03eb3ef8a4e33040a8ea0b72fc4f917) (TextureImporter) -> (artifact id: '7529d9d79ae81a7e3572435daee41165') in 0.310412 seconds
+Start importing Packages/com.unity.ai.navigation/EditorResources/Overlay/NavigationOverlay On@256.png using Guid(b05e7d8dc2bdbb14ab5b1da240ac65d5) (TextureImporter) -> (artifact id: '063fa2a574d3339ec696ace6a24809e2') in 0.0884097 seconds
+Start importing Assets/Navios-comerciais/Simple Boats and Tankers/Materials/Textures/color.png using Guid(b0ceb3cc89ace92429cc488a62173803) (TextureImporter) -> (artifact id: 'd2518b5b9c54b8909cc5cbf405cb3e6d') in 0.0991686 seconds
+Start importing Assets/Prefabs/Estaleiro Marinho/aircrafthangar3dmodel_basecolor.JPEG using Guid(b0ce1b8ad28acb8429d934cd163f0579) (TextureImporter) -> (artifact id: 'e278d6c0dc855a3294852dddd7b6f4f7') in 0.0897511 seconds
+Start importing Assets/RPG_FPS_game_assets_industrial/Textures/Asphalt/Seamless_asphalt_v1/Seamless_asphalt_v1.tga using Guid(b0fe82528f70e8947aa0d123fa3194fe) (TextureImporter) -> (artifact id: '10d29dcf49e08d758d94fb753ae5cc49') in 0.1771259 seconds
+Start importing Assets/ModularLowpolyStreetsFree/Materials/Other/Textures/Trash-can-1_AlbedoGloss.png using Guid(b0afdc87d6ad6014f893624098468ae4) (TextureImporter) -> (artifact id: '4574190516a072524157f5bd3b657054') in 0.0408614 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_Terrace@2x.png using Guid(b0ff60270f120492098951ac2577c783) (TextureImporter) -> (artifact id: '1c7f42ffbd47a4a604017fb026ab4ad0') in 0.037641 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-17_comp_light.exr using Guid(c080766be450c8145900b5e1e0d14f3d) (TextureImporter) -> (artifact id: 'aed618799f576301770f0282cd1ff528') in 0.3380181 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Hangar_Concrete/Hangar_Concrete_Support_Arc.png using Guid(c0d005cf43167014298a1360ac9329be) (TextureImporter) -> (artifact id: '4b863d106c989ce739ef006deb9dc6c5') in 0.2998183 seconds
+Start importing Packages/com.unity.2d.tilemap/Editor/Icons/d_Tilemap.DefaultBrush@2x.png using Guid(c06100d8ae6a60d44ab25f318a154ce3) (TextureImporter) -> (artifact id: 'b0ab22f36b12c97c38927afffc01f9d8') in 0.0266453 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise256px/LDR_LLL1_3.png using Guid(c072b653e98a06e40857d76ca8c7eecd) (TextureImporter) -> (artifact id: '678a4de2d9954aaf4a4884c8993ba52e') in 0.0299015 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Factory_Old/Factory_Old_Props_Metal_Smooth.png using Guid(c0d37e80e517be04287c6b47692af9d8) (TextureImporter) -> (artifact id: '2f89e2baf109119aa0a1587759c79994') in 0.1936163 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/LightUnitIcons/Overcast.png using Guid(c0e6cc200fb1dda4388b13d9f5828d06) (TextureImporter) -> (artifact id: 'a378a1c8253232bdbf7a3a17753ef7f4') in 0.1281168 seconds
+Start importing Assets/MarpaStudio/Textures/Log_AO.png using Guid(c0b7f9327eafa594094b25af32e70723) (TextureImporter) -> (artifact id: '4a2e0d231dcf244518c707306c86ce0f') in 0.196456 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/AssetEditor/PackageResources/pro/foldoutBackground.png using Guid(c0996bc290ff74bf4834f4a8b7dc8c3e) (TextureImporter) -> (artifact id: 'ad6347af0492a4c1505495575a52ad63') in 0.032095 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/BrushSettingIcons/d_Spacing.png using Guid(c01afcb38f887441f8a20bd16e148a36) (TextureImporter) -> (artifact id: 'e098f46bab8f7d992ad9d751b6e48b92') in 0.0296445 seconds
+Start importing Assets/efeitos/WarFX/Mobile/Textures/MuzzleFlashes/WFXM_T_MF Sparks RIFLE3 A8.tga using Guid(c07b27fb95623dd4db154ece46390112) (TextureImporter) -> (artifact id: '9d7bb1404a95b5fe6564a0bee1f6f9fb') in 0.0315061 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/BlueNoise256/LDR_LLL1_2.png using Guid(c06cc21c692f94f5fb5206247191eeee) (TextureImporter) -> (artifact id: '23ddfce25daf25f00c3f4e55df7160b2') in 0.0309044 seconds
+Start importing Assets/imagem/Captura de tela 2026-01-24 193223.png using Guid(c03ddace52c1c624da9cab6df2a33b3f) (TextureImporter) -> (artifact id: 'ea77e9e2038dd9d77216531c04adb7d2') in 0.0949178 seconds
+Start importing Assets/ZIL130_MilitaryTruck/Textures/Glass_MR.png using Guid(c04d7b9b1e28ec241b49dbec4abcfc25) (TextureImporter) -> (artifact id: '165cb855894309531c8aa94111624704') in 0.0785991 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/Axis@2x.png using Guid(d0006d51a864248adba0238883f8c71e) (TextureImporter) -> (artifact id: '834f3a1b2b8660bf56d01f8ba4719958') in 0.3883055 seconds
+Start importing Assets/Free Island Collection/Environment/Terrain/Textures/Cliff_2/Cliff_2_Diffuse.tif using Guid(d0111cb4aeac3a243ad5e9a93854f108) (TextureImporter) -> (artifact id: 'effb0f3755ab31d1d2b67a8037fa6214') in 0.5353754 seconds
+Start importing Assets/MarpaStudio/Textures/BarnPillarOutside_Height.png using Guid(d0e15a99bfe37e546a4c181da7bd2c9d) (TextureImporter) -> (artifact id: '2ae697f21e7d7a0f1dc9f287dfa409aa') in 0.1983474 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/PaintTrees.png using Guid(d0e13f6deebc141a2aaff09babb1e408) (TextureImporter) -> (artifact id: '1be2e81ca75bd85eabbb1516595e8fea') in 0.0355493 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/RESOURCES/shoreline_12-02-2019_13-53-33.png using Guid(d06306ac16ce3be4a8b63d8d2d538b50) (TextureImporter) -> (artifact id: 'e8fa2dff4d74000698fa40d06cc40544') in 0.1374077 seconds
+Start importing Assets/CartoonMilitaryModelPack/Textures/Tank_Texture/Tank_01_Texture.png using Guid(d004be9b7e2494bf9983401e85f507b9) (TextureImporter) -> (artifact id: '65d28489fda8d7f6f05158d0ca1217e0') in 0.6515715 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/Noise.png using Guid(d0a5c5b724fe0ed44b7d0f00a4300157) (TextureImporter) -> (artifact id: '4ebabe3c5f190e35a2c962c83d885a9b') in 0.0379103 seconds
+Start importing Assets/textura/Camouflage Texture Pack/128x128 (PSX)/Woodlands_color/Seed_1/Camouflage_Cells_Small_Pattern_1_128_WL.png using Guid(d037940ec4d8b314a938272c99dc9984) (TextureImporter) -> (artifact id: '832162dad3cc76de4515354298b3fedb') in 0.0439327 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Woodlands_Color/Seed_2/Camouflage_Pixel_Pattern_2_2K_WL.png using Guid(d068940d50ce41e4ea9569348c0e25cd) (TextureImporter) -> (artifact id: 'a495cb057b438e7c1ddd925caa4b9386') in 0.3547378 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/textures/RampartStone_occlusionRoughnessMetallic.jpeg using Guid(d0b9ba453ed2d2f4d8115daec7bd65aa) (TextureImporter) -> (artifact id: 'd2b3b6ed4a0e435f18eb15e6c41b9414') in 0.2780538 seconds
+Start importing Assets/MarpaStudio/Textures/BarnPillarOutside_AO.png using Guid(d01a0ab012378a441acc649754343b42) (TextureImporter) -> (artifact id: '7a6a2e6bfa3389844902fff03e31b6f2') in 0.1541062 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Woodlands_color/Seed_1/Camouflage_Dotty_Pattern_1_PSX_WL.png using Guid(d05c9d9498af149498a8c27023735c3e) (TextureImporter) -> (artifact id: '05ac686ccd1a8c663a4c16cba2fcf649') in 0.0329441 seconds
+Start importing Assets/efeitos/WarFX/Mobile/Textures/Misc/WFXM_T_GroundGlow A8.tga using Guid(d06d2f147c474b542a9d215471c93d1a) (TextureImporter) -> (artifact id: '321c6f1261ead1f04a1e061d00b7dc2b') in 0.037779 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/BrushSettingIcons/d_Opacity@2x.png using Guid(d01eb1e4816ba4fbebb7fe655de1e435) (TextureImporter) -> (artifact id: '61269915f764f6388d6f47d681efef6e') in 0.0251455 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Woodlands_color/Seed_2/Camouflage_Pixel_Pattern_2_PSX_WL.png using Guid(e0a5e63566f060142896cc169b6c3799) (TextureImporter) -> (artifact id: '0d3d1b73f5cffe597e0d6eaa4e39e094') in 0.0489143 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/TEXTURES/_CausticTextures/save.23.psd using Guid(e0a6451d3bd675c4ebd32762bf9bddfe) (TextureImporter) -> (artifact id: '34ec45f87cfdbaa5e6fdbac5fef35717') in 0.0478931 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/LightUnitIcons/d_SoftAreaLight@2x.png using Guid(e0171afec971f2343be8d5b4b14ab6eb) (TextureImporter) -> (artifact id: '2350ed3e192530e50a4aa053a8245c91') in 0.0336302 seconds
+Start importing Packages/com.unity.searcher/Editor/Resources/FlatSkin/SearchSmallDownOff.png using Guid(e0f8b9d001b669a43b3c9f7b90891d96) (TextureImporter) -> (artifact id: '323545597d603f2cc500feb30107f434') in 0.0210917 seconds
+Start importing Assets/Prefabs/Soldado_Rifle/50centbots-lloyd-banks/source/LloydBanks/LloydBanks/Lloyd_BanksHead_NORM.png using Guid(e00a62199cfbbe3479e72324bbf7451d) (TextureImporter) -> (artifact id: '1c61643237c0fa6ff54f6b1fbc94a2e9') in 0.0441493 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/d_Axis@4x.png using Guid(e01ab4b854c6d4fa3a8d869b67ecd643) (TextureImporter) -> (artifact id: '960f97e425d4ccc5b694f97143222d0d') in 0.028632 seconds
+Start importing Packages/com.unity.ugui/Editor Resources/Textures/btn_AlignRight_Light.psd using Guid(e05ace3bd15740cda0bad60d89092a5b) (TextureImporter) -> (artifact id: 'aaa573c974bed17bd4f18784d97350f9') in 0.0134003 seconds
+Start importing Assets/Free Island Collection/Environment/Terrain/Textures/Grass_1/Grass_1_Normal.png using Guid(e04faaa5f8d161d4491cd590cee62de9) (TextureImporter) -> (artifact id: 'b107241dfc984a86fb18475fb8c568e6') in 0.2810782 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/LeftArrow@2x.png using Guid(f0106cef986be534181a8582cffd29da) (TextureImporter) -> (artifact id: '7b8f3fa65e9be41b29f4e423ab2faf36') in 0.0240721 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconplasticnotifypendingchanges@2x.png using Guid(f0c047e73e3b41341822a9e31da81877) (TextureImporter) -> (artifact id: '604e1ff8ff3c5d1d8a670a8f5270abdc') in 0.0480358 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Construction_Set/Construction_Parts.png using Guid(f0115a485592b1047a8850498d9084ae) (TextureImporter) -> (artifact id: '63f4ef0183baf45b406c358c62c4a205') in 0.3180367 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/PostProcessing/LensFlareResource/PolygonFlareThumbnail.png using Guid(f0326f07dd50365439f552e7f29218e5) (TextureImporter) -> (artifact id: '6bab54ad239ab8586adf0e42fe3e7335') in 0.055431 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Woodlands_color/Seed_2/Camouflage_Dotty_Pattern_2_PSX_WL.png using Guid(f013a411989cf4948b7613766aebadb0) (TextureImporter) -> (artifact id: '371c6f62ec4e98c12a1cec56fb77666f') in 0.0441707 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/TEXTURES/_CausticTextures/save.19.psd using Guid(f0465079ab4bd81498dd135fb2243525) (TextureImporter) -> (artifact id: 'f9f92e1e753aae0cd5a3a5ca2f26ff4d') in 0.0451182 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/FilmGrain/Medium02.png using Guid(f0b67500f7fad3b4c9f2b13e8f41ba6e) (TextureImporter) -> (artifact id: 'afda6943dddd5a1820a780edb938bde1') in 0.0369361 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Woodlands_color/Seed_1/Camouflage_DBDU_Pattern_1_PSX_WL.png using Guid(f0e64d519cf044e4e8d0017ad427927e) (TextureImporter) -> (artifact id: 'e24757f05967b161266b20f320c92ab6') in 0.0324342 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_Smooth.png using Guid(f077edf8206574f20b0de64b74ce0dec) (TextureImporter) -> (artifact id: '7cc3783468a2352345a55aafba088f98') in 0.0264555 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/TrackCurvesButtonDisabled.png using Guid(f0f8ff8921b22a74a8c79d955ace248d) (TextureImporter) -> (artifact id: 'ae22fe51486d407ffa3e0bfa229c5c50') in 0.0184593 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Icons/MipLevels/d_VolumeProfile@32.png using Guid(f05a6898ed8b6df43be9b7fbb34d0517) (TextureImporter) -> (artifact id: 'cc9695919be4553b995bf2ae988f2816') in 0.0338784 seconds
+Start importing Assets/ModularLowpolyStreetsFree/Materials/Other/Textures/Traffic-light-EU_AlbedoGloss.png using Guid(f09ad06ce36fde64a893e1e8c1814b24) (TextureImporter) -> (artifact id: 'e940dd4a59b9f9b1b6537051a349276e') in 0.0456607 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_SetHeight_On.png using Guid(f09c340efeccf4cba9d5258088fb4d9e) (TextureImporter) -> (artifact id: 'a517483e85244fa471e739e934fd1a3c') in 0.0255266 seconds
+Start importing Packages/com.unity.visualscripting/Editor/VisualScripting.Core/IconMap/State@32x.png using Guid(f02ed452c3e0d1e448429a89e1773fd7) (TextureImporter) -> (artifact id: 'a2146387158f54d3311049e04cf31a6b') in 0.0245548 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/buttonssosigningoogle.png using Guid(f09eae8c0ea04254b90c5386a034a225) (TextureImporter) -> (artifact id: 'd22dbba8b65ebc95025b5c3d6f6632b4') in 0.0300221 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/textures/BaseCastle_02_occlusionRoughnessMetallic.jpeg using Guid(f0be5a2d2ca61cd4bb31ac6441de51eb) (TextureImporter) -> (artifact id: '588c7d59f2680b2183b7cb12cde72f26') in 0.229191 seconds
+Start importing Assets/MarpaStudio/Textures/WoodPartHorseStableSide_Height.png using Guid(f0ce2905e4c7d544ead36497ea54ce8e) (TextureImporter) -> (artifact id: 'b1589b4c89b364f02404d4122ffc113f') in 0.2075684 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-45_comp_dir.png using Guid(f0de60f101ca1fa468252dcba6911de6) (TextureImporter) -> (artifact id: '651ae68c7062f05658d485bf7f9b9bf9') in 0.0836382 seconds
+Start importing Assets/VegetationSpawner/_Demo/Terrain/Textures/TerrainGrass.png using Guid(f00f0bf16d663754e92bc8e8c50cdd60) (TextureImporter) -> (artifact id: '4a86b8abd9ac0a9898a2d21a99ca8207') in 0.036458 seconds
+Start importing Assets/Gwangju_3D asset/17_GwangjuBiennale/Textures/Outter/GbOutterMetal_MaskMap.png using Guid(0133681921e6f9441a36ef78efafef95) (TextureImporter) -> (artifact id: 'ec8581296a6346aefddb58e1e51729d9') in 0.2813334 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/PaintHeight_On.png using Guid(0193496771dc54978ab6bdb2930e3978) (TextureImporter) -> (artifact id: '652e3dcb1a27cb0dba193e048630580e') in 0.036632 seconds
+Start importing Packages/com.unity.collections/Unity.Collections.PerformanceTests/Unity.PerformanceTesting.Benchmark/PerformanceTestFrameworkOutput.png using Guid(0175a7523f9f1754ca406f92afcfcbc6) (TextureImporter) -> (artifact id: '8532e91e2320cdef3116d6c1f0cc0ed4') in 0.0490312 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/TEXTURES/tex_ramp_foam.psd using Guid(01757909dcbf805408fe7867004a31a3) (TextureImporter) -> (artifact id: 'd7519122a1b3e7ceb547d9adc1f8fb5a') in 0.0375115 seconds
+Start importing Assets/MarpaStudio/Textures/BarnBase_Height.png using Guid(0126f87c81672fc4aa34453715cc5903) (TextureImporter) -> (artifact id: '6f2aae520c0c50be4f3d51ff786b601c') in 0.8906822 seconds
+Start importing Assets/SUIMONO - WATER SYSTEM 2/TEXTURES/suimono_cube_ambient.psd using Guid(01c62ce94e46dcf4ea217e771c6da1b2) (TextureImporter) -> (artifact id: 'aa041f0ed27fc9db62be7bdcca4e3754') in 3.7709543 seconds
+Start importing Assets/Mar_Feito/Models/Metal_drum/drum_normal.png using Guid(012763d115f1a974389810917c5279d5) (TextureImporter) -> (artifact id: 'a73169551bb7754a9a103ab001ba0d40') in 2.7559792 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_Terrace.png using Guid(011b5e9511753b544881e381f98a8041) (TextureImporter) -> (artifact id: 'fbaef89326df858956b63208cf179ef4') in 0.8174904 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/textures/WoodDoor_normal.jpeg using Guid(011c0cb14d2fc3f4fb86c9ef155dafed) (TextureImporter) -> (artifact id: 'f1dfdcf2cf99cdab15b3b017c8e328a1') in 0.601896 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/Filter_Options@2x.png using Guid(01cd313ff33db4f07b1a38c53f170de9) (TextureImporter) -> (artifact id: 'df1add96c6ee20a9d1bdda3cd7db6da6') in 0.1916438 seconds
+Start importing Assets/Volklight/BTR/BIRP/Textures/Wheels_Normal_DirectX.png using Guid(01dd0290c2c05754ca440818918e3fb3) (TextureImporter) -> (artifact id: '4f620aebf03df76bcc74b39e9c31e916') in 0.4918439 seconds
+Start importing Assets/Gwangju_3D asset/17_GwangjuBiennale/Textures/Outter/GbConcLine_MaskMap.png using Guid(1152ac58d1df0f54abb0a6124f3b6caa) (TextureImporter) -> (artifact id: '010be4f3b9216ab3a100e2ee15cbf3e9') in 0.3564143 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/BlueNoise16/L/LDR_LLL1_2.png using Guid(1134690bf9216164dbc75050e35b7900) (TextureImporter) -> (artifact id: 'c06c0f47a8ea68d337cd69ec83d7d9e6') in 0.0717808 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconpendingchangesview.png using Guid(11d4f7dd8fc834c8e92cab84d5137828) (TextureImporter) -> (artifact id: '62fbaadd61c49c2bdfbcc9298de03250') in 0.0291227 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise64px/LDR_LLL1_61.png using Guid(119591e0bb084e848835d237546b3882) (TextureImporter) -> (artifact id: 'c86bb7885e8ec30a62d8fdeb1dc21bf5') in 0.0495118 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-4_comp_dir.png using Guid(115609a0f8236ac48b91801941fc925b) (TextureImporter) -> (artifact id: '5a8170a8d22445758a8580633d0ce89e') in 0.1298763 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Ramp_Constructtion/Ramp_Construction.png using Guid(119640dd84d6aca408009bccdc53a196) (TextureImporter) -> (artifact id: '184af1cd04b12f539a3ab265fa1a8f9f') in 0.3257079 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Desert_color/Seed_2/Camouflage_Cells_Small_Pattern_2_1K_DS.png using Guid(11a6d5f7097b61e4fb03c799377cb6a8) (TextureImporter) -> (artifact id: '99c9458c8806fd4b5624e9abdebf3da6') in 0.109816 seconds
+Start importing Assets/ModularLowpolyStreetsFree/Materials/Roads/Textures/Road-1-line-turn-2_AlbedoGloss.png using Guid(11a8cded0aa4e0b44bc9e20ab1064dda) (TextureImporter) -> (artifact id: '506793d8203fa3dc9f7f4d0f71a489e5') in 0.5089825 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-2_comp_dir.png using Guid(1179346c8c8239744b871ad5ea7eb542) (TextureImporter) -> (artifact id: '73b3b7247a3761bd55602a4fd0c8b3e2') in 0.1606751 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Woodlands_Color/Seed_3/Camouflage_Tiger_Vertical_Dotty_Pattern_3_2K_WL.png using Guid(11bae2bfcaf712a4a803502de99dfa3c) (TextureImporter) -> (artifact id: '87b21ebcdd9bd3eca75556d46617293d') in 0.4734212 seconds
+Start importing Assets/Simple InterceptMissile&TurretBehaviour/Missile Model/Textures/particle_smoke.jpg using Guid(11abca838195ee348b83ea4c1ada0747) (TextureImporter) -> (artifact id: '7d48fc00cdb9edde9215cf635a53b99e') in 0.0309542 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Heightmaps/Plateau03_Heightmap.tif using Guid(116d48bc82e4c0a4683cbd79927b4596) (TextureImporter) -> (artifact id: '5b6ba2b24e4aa3c0654dbd562a78183e') in 0.0859777 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_49_basecolor.jpg using Guid(11be97dc64d25d5468a979233e9041cf) (TextureImporter) -> (artifact id: '6b3b285f44b759f25e5838ddd8520383') in 0.0343805 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/SharpenPeaks_On@2x.png using Guid(115f1b5aaa34e4d28a26528c7cd04857) (TextureImporter) -> (artifact id: '27b196163a566839437a680e010a9c31') in 0.0391224 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/2D/Sparkle.png using Guid(119f93d0bcbf1e743bf5fcf237507d39) (TextureImporter) -> (artifact id: '6433da6b8d4d0155a5669437307a1877') in 0.0387995 seconds
+Start importing Assets/MarpaStudio/Textures/Shed_AO.png using Guid(21e0a8030d3575d499b2aeafe6ae2cf4) (TextureImporter) -> (artifact id: 'bbd24b2e73ee3f6b2edd669d319e57cf') in 0.2141769 seconds
+Start importing Assets/CartoonMilitaryModelPack/Textures/Building_Texture/MilitaryBase_Texture.png using Guid(2141474757cea4735af1a29bb08117e4) (TextureImporter) -> (artifact id: 'dc5415c4eec50803d899aeac22b0174b') in 0.5955541 seconds
+Start importing Assets/Prefabs/Veiculos/Leon_c1/Gemini_Generated_Image_wey6v6wey6v6wey6.png using Guid(21227047892b4be4094bfe95dad6fdba) (TextureImporter) -> (artifact id: '1cde0e44e328d732f8fa7634f229af58') in 0.1108459 seconds
+Start importing Packages/com.unity.shadergraph/Editor/Resources/Icons/blackboard_dark.png using Guid(2162b791346804a7792168e6fc526ced) (TextureImporter) -> (artifact id: '6efc24697c4c398b869ec2e6e1ba0618') in 0.0341158 seconds
+Start importing Packages/com.unity.splines/Editor/Editor Resources/Icons/d_ToolHandleElement@2x.png using Guid(21b205c8578d34e648f27dd6e19b5c9c) (TextureImporter) -> (artifact id: '00adabfbd9637ac6c3b91e541aa8da3b') in 0.0316766 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Base_color/Camouflage_Strichtarn_Dark_1K_Base.png using Guid(2163650a829fa6140b00ba1070e02bae) (TextureImporter) -> (artifact id: 'd0f4eee66b40ea1fa6d7dee07ce4ab78') in 0.0972718 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Terrain/Grass_Moss_Normal.tif using Guid(2114e87dbc5872042860b1588217688e) (TextureImporter) -> (artifact id: '8972114fabceb410538e5da96a5d2659') in 2.2642347 seconds
+Start importing Assets/Prefabs/Soldado_Rifle/50centbots-lloyd-banks/source/LloydBanks/LloydBanks/Preview.png using Guid(215457b089193084ab94dbfe44529912) (TextureImporter) -> (artifact id: 'c9be6f0acca6cd3d332f8efceb6aea47') in 0.4095407 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Metal_Props/Metal_Props_Normal.png using Guid(21a44fd1c1631a04ba2a5114d4b92c19) (TextureImporter) -> (artifact id: '5f7561a604f7c279acd4154f3e0eff2a') in 0.273097 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Hangar_Wooden/Hangar_Wooden_Small_Room_Metal_Smooth.png using Guid(2146352e655d2124193508aba6077a34) (TextureImporter) -> (artifact id: 'c2e145d1568efddc55fca2b5e0e4f944') in 0.2788104 seconds
+Start importing Assets/TextMesh Pro/Resources/Sprite Assets/InlineIcons.png using Guid(215687feeab0b7445b4a1cd86c82c2e1) (TextureImporter) -> (artifact id: 'af7a8ddbdcb507cc877276b926196f36') in 1.5232999 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/Interactive Binding.png using Guid(2196c18f03faf4184b1aeb2c61d5571d) (TextureImporter) -> (artifact id: '843d6592f4ed407fe3f4189cea1e09b5') in 0.0330164 seconds
+Start importing Assets/HQ Hangar Free/Textures/Glass/Glass_MaskMap.png using Guid(21573b8d07711334c8d74f9a45581a7d) (TextureImporter) -> (artifact id: '6fe991887755c8b676511a3d01e9da44') in 0.3683216 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Base_color/Camouflage_Desert_Pattern_1K_Base.png using Guid(21e7a185cf2bc374883eacae266bc964) (TextureImporter) -> (artifact id: '46a25503884beb7bd9ae2bdf5d15e37b') in 0.2564688 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Woodlands_Color/Seed_2/Camouflage_Woodlands_Classic_Pattern_2_1K_WL.png using Guid(218819a9d95546c42af3dd211266d285) (TextureImporter) -> (artifact id: '1fb3b7f3a36c711d217e7634bfda7a61') in 0.17188 seconds
+Start importing Assets/AllSkyFree/Epic_GloriousPink/Epic_GloriousPink_Cam_5_Down-Y.png using Guid(213ae241f43b44b3f961dd8739080120) (TextureImporter) -> (artifact id: '5b57f50befdb5f4603ebc0b4337fc643') in 0.7904078 seconds
+Start importing Assets/Art/IconesGerados/Leonc1_Icon.png using Guid(21eed3184741bb948b8e99b1cdaecea0) (TextureImporter) -> (artifact id: 'ab1b083dae52cae9004b976f75d526e0') in 0.1144218 seconds
+Start importing Packages/com.unity.shadergraph/Editor/Resources/Icons/settings_button.png using Guid(3140f217cba5a6f4ca8d41675ac44819) (TextureImporter) -> (artifact id: 'd04335e3fabb77469dab5152abfb9f6a') in 0.038309 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Icons/RenderGraphViewer/d_Global@2x.png using Guid(31d206dcb4d01ca4295149458ec19c38) (TextureImporter) -> (artifact id: 'ca273c3408c3f89270adf48c52adf969') in 0.0508023 seconds
+Start importing Assets/MarpaStudio/Textures/RockingChair_Metallic.png using Guid(319455b116286034bb03be9111881de6) (TextureImporter) -> (artifact id: 'e69047cb56de1a836f8ebde7b7fca148') in 0.3099912 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Electric_Pillar/Electric_Pillar_Metal_Smooth.png using Guid(31f4031550a34564ca371129d8e9add8) (TextureImporter) -> (artifact id: '1a6226bae4938d4eff27bacc00266d11') in 0.0370031 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Advert_Panels/Advert_Panel_Square_1_Normal.png using Guid(313827bce50c89a469a9f604979c1cc2) (TextureImporter) -> (artifact id: 'c26c0a317d1d172ecabbc082bb0789d0') in 0.3724442 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconplasticview@2x.png using Guid(3168140d6f409d0448447f18568d9482) (TextureImporter) -> (artifact id: 'eb4f6902f8a703f1a10bf8da78528558') in 0.0252967 seconds
+Start importing Packages/com.unity.2d.sprite/Editor/ObjectMenuCreation/DefaultAssets/Textures/v2/Square.png using Guid(311925a002f4447b3a28927169b83ea6) (TextureImporter) -> (artifact id: '3783a865be3cc0a785e50f53f365ba0f') in 0.0511327 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Woodlands_Color/Seed_1/Camouflage_Tiger_Pattern_1_1K_WL.png using Guid(311acb9511c2c3a4a9c3b2b7b76a1a5b) (TextureImporter) -> (artifact id: '7404bf2a3d1b0814fd6e1cad71131005') in 0.1104073 seconds
+Start importing Assets/efeitos/WarFX/Desktop/Textures/MuzzleFlashes/WFX_T_MF Sparks RIFLE2 A8.tga using Guid(31da9bc7d3437a946b5613ded8e1ad31) (TextureImporter) -> (artifact id: '35e0b571c5686e40b64fea5be6db04d8') in 0.0423097 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/BlueNoise64px/LDR_LLL1_34.png using Guid(319b8e66db3faa4438cf6982e9c89b2f) (TextureImporter) -> (artifact id: '2b1b119ee395bc0c8c5342331e2ce7b4') in 0.0274733 seconds
+Start importing Assets/teste/b2873473-5f37-4a82-9e30-84446749e49d.png using Guid(31cb5b9befcbe1741bf1a76784856a5b) (TextureImporter) -> (artifact id: '81b02dfafaa177a5ffbc5c840b7e3b9e') in 0.1153607 seconds
+Start importing Assets/imagem/Captura de tela 2026-01-24 193210.png using Guid(317c7a4ed1f6f8a48af5612816edac4c) (TextureImporter) -> (artifact id: '65b2e5e30b11459b1cf0cf8bc4d10a82') in 0.0751843 seconds
+Start importing Packages/com.unity.postprocessing/PostProcessing/Textures/SpectralLUTs/SpectralLut_BlueRed.tga using Guid(318cbcd94840f1d48aca4d86234dc2e7) (TextureImporter) -> (artifact id: 'aec88109c463da0b98fd9aaf21df9536') in 0.0395828 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_HydraulicErosion.png using Guid(317e6c6d7604bd041891fb82582f80a9) (TextureImporter) -> (artifact id: '5066903a305d0a497f8364fe67fe4feb') in 0.0227762 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Terrain/Muddy_BaseColor.tif using Guid(311fa94216ea77342a20e99b01ed6e69) (TextureImporter) -> (artifact id: '654e4bb776d37b8bb968d515a59e2d24') in 0.5197311 seconds
+Start importing Assets/network of paths/Textures/ground_stone_ground_0020_01_Norm.png using Guid(4110a7fa615daa645a7368ae72683f98) (TextureImporter) -> (artifact id: '655428e3e229a44019d267e8f28fb6f3') in 0.163726 seconds
+Start importing Assets/RPG_FPS_game_assets_industrial/Other_props/Pipes/Industrial_pipes/Industrial_pipe_v1/Source/Industrial_pipe_v1.tga using Guid(4170b5df5e761b44e8f7cf7e48faec92) (TextureImporter) -> (artifact id: 'bcf8b12df35481a866f0e33290ccfef1') in 0.1193272 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/LightSkin/TimelineIconClipIn.png using Guid(4171b549947246b4f9579419d5698a7e) (TextureImporter) -> (artifact id: 'e9e8f4f96cdc3ed5f38984d5c3854764') in 0.0277423 seconds
+Start importing Assets/MarpaStudio/Textures/FoodTrough_Normal.png using Guid(410265cb8f9e7ea4c96f1779d1e685fa) (TextureImporter) -> (artifact id: '7275cdfb6f42675d6d756694585be13d') in 0.2750233 seconds
+Start importing Assets/efeitos/WarFX/Desktop/Textures/MuzzleFlashes/WFX_T_MF Side RIFLE1 A8.png using Guid(415240b97a12d2e41815cde5df06f0b1) (TextureImporter) -> (artifact id: 'd03d87e1b1fc392a38e199f3ddab66b0') in 0.0344278 seconds
+Start importing Assets/CartoonMilitaryModelPack/Textures/Building_Texture/Hellipad_Texture.png using Guid(41c379bb4996c47e8a9b75ec79009239) (TextureImporter) -> (artifact id: 'ca9a4f2b2954d03caa68afd0db3eeff5') in 0.6501713 seconds
+Start importing Assets/AllSkyFree/Overcast Low/Sky_AllSky_Overcast4_Low_Cam_5_Down-Y.png using Guid(4164b771c2b784c2da3cbe10847a182e) (TextureImporter) -> (artifact id: 'd37b1b81b5f673051571fe9e35dfbf88') in 0.573242 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/LightUnitIcons/Moonlight.png using Guid(41c40f1973262eb41a56a66faaf2154d) (TextureImporter) -> (artifact id: 'b7ecac26764ebcdfa6886b229e8109cc') in 0.0461255 seconds
+Start importing Assets/MarpaStudio/Textures/BarnBase_Albedo.png using Guid(41479abacbcdfcc47bc032b490a0d2b7) (TextureImporter) -> (artifact id: '921e9d4f9eadbceee9bf330963b3e739') in 0.2987196 seconds
+Start importing Assets/Prefabs/demo_soldier_512.tga using Guid(4139b8e9e4c93234c87193e56c694ab1) (TextureImporter) -> (artifact id: '69bc20420a2cd9aa2671e16b5f613b0b') in 0.0693135 seconds
+Start importing Packages/com.unity.ugui/Editor Resources/Textures/btn_AlignMiddle.psd using Guid(41b96614b2e6494ba995ddcd252d11ae) (TextureImporter) -> (artifact id: '2b6e0ad678f8b3ec6885c87ee86a68e0') in 0.0136513 seconds
+Start importing Assets/RPG_FPS_game_assets_industrial/Other_props/Generators/Generator_v1/Source/Generator_v1.tga using Guid(41aa5d342e81570478a3901e771ca209) (TextureImporter) -> (artifact id: '53ef579ec37445c5da177e26837277bd') in 0.3524623 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/d_Dpad@4x.png using Guid(41edf25d451a744e6ad1172a677603bd) (TextureImporter) -> (artifact id: 'd92ef1ecb6dfb33ff9be43b2a6391943') in 0.496988 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/d_TimelineEditModeRippleOFF.png using Guid(411e6f19c19fa0546af83aeb59c2ed4b) (TextureImporter) -> (artifact id: '7a31aee824a4de6213b0dd93b2975239') in 0.0244714 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/DarkSkin/TimelineDisabledBackground.png using Guid(412f73153f3a3c549b67b2a847741145) (TextureImporter) -> (artifact id: 'd0cba6f78fc538acec5120ff75e1b941') in 0.0244286 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/Lighting/Icons/d_LightPlacement_Icon.png using Guid(518057398db7dd043928f01f4fbad1b9) (TextureImporter) -> (artifact id: '5d8fa791731ab5358229285c5a2efdd5') in 0.0285435 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Desert_color/Seed_3/Camouflage_Noodles_Pattern_3_2K_DS.png using Guid(51807e0bca8c15448ab531fa60639d5a) (TextureImporter) -> (artifact id: 'a3d8294e123756e3af328dc6844e6397') in 0.3656327 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/BrushSettingIcons/d_Rotation@2x.png using Guid(5131bffef602f44c3b72d446fb51ece1) (TextureImporter) -> (artifact id: 'db692e1d5c80bea3487f73359a1a196b') in 0.024247 seconds
+Start importing Assets/textura/Camouflage Texture Pack/128x128 (PSX)/Woodlands_color/Seed_4/Camouflage_Cells_Small_Pattern_4_128_WL.png using Guid(51f1754657a202f4bbb4054770b63bdb) (TextureImporter) -> (artifact id: '8f067497016548057751e6043df90351') in 0.0356759 seconds
+Start importing Assets/Prefabs/Imobiliario/medieval-castle/source/CastleTexture 2/CastleTexture/Stairs_normal.jpg using Guid(514418c8a1014e94f9987945f6eeb21d) (TextureImporter) -> (artifact id: 'cb387df6450d2f6dcc2a035427414712') in 0.2378927 seconds
+Start importing Assets/MarpaStudio/Textures/OutHouseDoor_AO.png using Guid(51b41e0d02c0e894b854581121c284f3) (TextureImporter) -> (artifact id: '37893f7888680ea782db0f155798d85b') in 0.1790417 seconds
+Start importing Assets/russian_buildings/textures/rus_build_LOD_01_s.png using Guid(51f4a202923845e439004bfbc487cfe7) (TextureImporter) -> (artifact id: '4b67855d71195703af1242a537307ca0') in 0.0839839 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconplasticnotifyconflict.png using Guid(51582ae5ea51fa14996791a550f89473) (TextureImporter) -> (artifact id: '0a478b85a44f9beba4db28591ccf513a') in 0.0618299 seconds
+Start importing Packages/com.unity.2d.tilemap/Editor/Icons/Grid.RotateACW@2x.png using Guid(51b8cbcbf34a36243a954f42c5d344fc) (TextureImporter) -> (artifact id: '777888a39060d65c6e262aff291ea3a6') in 0.0271274 seconds
+Start importing Assets/Gwangju_3D asset/Scenes/17_Gwangju_Biennale_Inner/Lightmap-3_comp_shadowmask.png using Guid(51494aedd692c254dbcb863e7aa8e970) (TextureImporter) -> (artifact id: 'dc894d31db524922dbeefaff0157281d') in 0.1608592 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/FilmGrain/Medium05.png using Guid(510a2f57334933e4a8dbabe4c30204e4) (TextureImporter) -> (artifact id: '45596ab861d8d62477adf3cd659f4e0b') in 0.0349253 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/TrackMuteButtonEnabled@2x.png using Guid(512aaee9b220348408a2e518f98d6e14) (TextureImporter) -> (artifact id: 'ef6d93c75972bddda876332010c9dfff') in 0.0322409 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/BrushSettingIcons/Filter_Options_On@2x.png using Guid(513b18491e4f44c10be4b41fbd88a62a) (TextureImporter) -> (artifact id: 'dcb611891276f2bb1adec4cfac6e7906') in 0.0334857 seconds
+Start importing Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/Environment@2x.png using Guid(515b65dc95319f3409d6b0b5f866ac33) (TextureImporter) -> (artifact id: '642f726ed029ef319d6dc0a108c260cd') in 0.0364188 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Desert_color/Seed_3/Camouflage_Cells_Big_Pattern_3_2K_DS.png using Guid(511c52c36f5374e40905cd9d770594f8) (TextureImporter) -> (artifact id: '401e2d24ecd1e3d177f1c250bdb217d0') in 0.3343678 seconds
+Start importing Assets/HQ Hangar Free/Scene/ExampleScene/Lightmap-2_comp_light.exr using Guid(511da33083209bd4e83b48cd3312a77b) (TextureImporter) -> (artifact id: '15474aa938d67b79723617c4d0f4d4a6') in 0.3554226 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconplasticview.png using Guid(519d97e745e55f041b609f3666cbc037) (TextureImporter) -> (artifact id: '120b08b48b6cd545ef24b310b8041184') in 0.0304678 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Silo_Big_1/Silo_Big_1_Ground_AO.png using Guid(512ed9eda7c346e4e9f016989499a005) (TextureImporter) -> (artifact id: '8bddb4d11b96b1b735095922f879f7ba') in 0.217194 seconds
+Start importing Assets/AllSkyFree/Deep Dusk/Deep Dusk__Cam_2_Left+X.png using Guid(519e05b7b3cd14409b4a22d07660cfc8) (TextureImporter) -> (artifact id: '55af1f2b7d99fb26f674f5205fb23e03') in 0.6651763 seconds
+Start importing Packages/com.unity.render-pipelines.universal/Textures/SMAA/SearchTex.tga using Guid(51eee22c2a633ef4aada830eed57c3fd) (TextureImporter) -> (artifact id: 'fa301e5661446fd0b663a7f2814012f9') in 0.0353179 seconds
+Start importing Assets/Prefabs/Soldado_Rifle/militarypilot3dmodel_basecolor.JPEG using Guid(519f7fd0003863c4f807a24d196790f9) (TextureImporter) -> (artifact id: 'dc575f24160367cbb57a8f0bf5a36a66') in 0.0873942 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/TrackAvatarButtonEnabled@2x.png using Guid(51bf5f55a8a01e546bf6092b54fdae20) (TextureImporter) -> (artifact id: '2ce8144f8c9544453141e088bfc49378') in 0.0307151 seconds
+Start importing Assets/textura/Camouflage Texture Pack/1K/Woodlands_Color/Seed_4/Camouflage_Polygon_Pattern_4_1K_WL.png using Guid(51ff1eb1b84600f4d8395aba95b4f4a7) (TextureImporter) -> (artifact id: '53c67f8273bba0dbb51808615aaeccd7') in 0.1156504 seconds
+Start importing Assets/Polyeler/Simple Aircraft Pack/Materials/Aircraft/Textures/Tex1.png using Guid(61c0fb26ff400544ebecbe267a2464f6) (TextureImporter) -> (artifact id: '6b5211a6f7a1e4a325003fbaede3428b') in 0.0832075 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/d_ThermalErosion.png using Guid(6151dd036806ecc4a872929523153bd4) (TextureImporter) -> (artifact id: 'd145af53490ed2c499c6bb37dbc9c042') in 0.0746281 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/Keyboard@3x.png using Guid(6191a40940a3e46899ecf82fa8389d01) (TextureImporter) -> (artifact id: '4073a65af09b4f79bd6eaf2339ff713b') in 0.0348108 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/Icons/d_TrackMarkerButtonEnabled@2x.png using Guid(6192986415256ca47a97a97507406f5e) (TextureImporter) -> (artifact id: '02d1e65f51b8950f338c7717c2ebedeb') in 0.0450562 seconds
+Start importing Packages/com.unity.timeline/Editor/StyleSheets/Images/LightSkin/TimelineContinue.png using Guid(61c21f74972ba8246b3ea400a9231841) (TextureImporter) -> (artifact id: '2f17915889a8e5a3ed2292f48f628b97') in 0.0230615 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Props/Advert_Panels/Advert_Panel_Square_1_AO.png using Guid(61c3961d72e723f4c96f98a414bd25cd) (TextureImporter) -> (artifact id: 'dd264b8380d529a94ef089d8ec37c81a') in 0.1901588 seconds
+Start importing Packages/com.unity.inputsystem/InputSystem/Editor/Icons/d_Mouse@3x.png using Guid(6164e492ad3164525ab8ecd9968c3a64) (TextureImporter) -> (artifact id: 'f7d787edb3759f4fe9d5f2188c1374c3') in 0.0407927 seconds
+Start importing Assets/textura/Camouflage Texture Pack/256x256 (PSX)/Urban_color/Seed_1/Camouflage_Polygon_Pattern_1_PSX_UB.png using Guid(6115e01ba34d2454fa03e3092b8fe53f) (TextureImporter) -> (artifact id: '3c0cf017fbb93c561db5864ca5a6e5fe') in 0.0634161 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Ground_Textures/Ground_Concrete_03/Industrial_Zone_Ground_Concrete_03_Metal_Smooth.png using Guid(6125df8475e8ccc4ca5986b6c20cf35c) (TextureImporter) -> (artifact id: 'af862d3a8a4954ba8d4036d31d1ebc0c') in 0.2169385 seconds
+Start importing Assets/TerrainSampleAssets/Textures/Terrain/Grass_Soil_MaskMap.tif using Guid(61a6ad6be0be2b444addf88107c0fda2) (TextureImporter) -> (artifact id: 'af29fe288db8e9a1a406d20df061992f') in 0.3226194 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Ground_Textures/Ground_Concrete_03/Industrial_Zone_Ground_Concrete_03_Normal.png using Guid(6128d74c18b142c4e8a5f33efbd93e88) (TextureImporter) -> (artifact id: 'cb1624d76c254764fa8b4d02513d99ca') in 0.4191536 seconds
+Start importing Assets/textura/Camouflage Texture Pack/2K/Woodlands_Color/Seed_3/Camouflage_Woodlands_Classic_Pattern_3_2K_WL.png using Guid(61591e21925bb4547ae5d937ce5f8b75) (TextureImporter) -> (artifact id: 'b60acbb98bb312903173854995025fa2') in 0.3662488 seconds
+Start importing Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconbranches.png using Guid(612c5e166a121e3449dad067fbdc37a4) (TextureImporter) -> (artifact id: '2aecc80842746fd563d2134fd7333f06') in 0.0268962 seconds
+Start importing Assets/Volklight/BTR/HDRP/Textures/BTR_Parts3_BaseMap.png using Guid(612daff35bf81a14db75c5f733f02d64) (TextureImporter) -> (artifact id: 'f1be05cd4a62d19f6036152a371e57cd') in 0.309014 seconds
+Start importing Assets/TripoModels/military_helicopter_3d_model/military_helicopter_3d_model.fbm/military_helicopter_3d_model_tripo_part_55_basecolor.jpg using Guid(610e3ca98f3113c40bc309f75a7cb0e8) (TextureImporter) -> (artifact id: '5e3e24a4da4ab9ca8c2ff49c956482c6') in 0.0336311 seconds
+Start importing Packages/com.unity.terrain-tools/Editor/Icons/TerrainOverlays/BrushSettingIcons/d_Opacity_On.png using Guid(71a0961c18be44e52b513cd3d85bb582) (TextureImporter) -> (artifact id: '0cc8cd15c823374d4233dcfa47b9190b') in 0.0337221 seconds
+Start importing Assets/efeitos/WarFX/Mobile/Textures/Flames/WFXM_T_StarFlames A8.tga using Guid(71c03ef0f48f1e849a487c848205d05b) (TextureImporter) -> (artifact id: '4e7594277d685e7416c51b5b58867141') in 0.0455713 seconds
+Start importing Assets/Industrial_Zone_Modular_Pack/Textures/Factory_Old/Factory_Old_Smokestack_Normal.png using Guid(7111465d8de18bf4e808b0bb01cb57e5) (TextureImporter)

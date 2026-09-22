@@ -30,7 +30,7 @@ public class MisselNaval : MonoBehaviour
 
     [Header("Explosao")]
     public float dano = 200f;
-    public float raioExplosao = 20f;
+    public float raioExplosao = 30f;
     public float escalaVisualExplosao = 1.0f;
     [Range(0f, 1f)] public float volumeSom = 1.0f;
     public GameObject efeitoExplosaoPrefab;

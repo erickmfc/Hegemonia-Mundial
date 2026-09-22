@@ -24,7 +24,7 @@ public class Torpedo : MonoBehaviour
     public float danoExplosao = 800f;
     
     [Tooltip("Raio de explosão.")]
-    public float raioExplosao = 8f;
+    public float raioExplosao = 24f;
     
     [Tooltip("Força de repulsão da explosão.")]
     public float forcaRepulsao = 500f;

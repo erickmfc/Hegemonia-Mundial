@@ -156,6 +156,62 @@ public sealed class QuartelMenuCoverageEditModeTests
     }
 
     [Test]
+    public void QuartelMenu_PreservaAbaAoReconstruirLayout()
+    {
+        GameObject objeto = new GameObject("QuartelMenuAbaCoverage");
+        try
+        {
+            objeto.AddComponent<GerenciadorQuartel>();
+            QuartelMenuUIController menu = objeto.AddComponent<QuartelMenuUIController>();
+            Type menuType = typeof(QuartelMenuUIController);
+            MethodInfo awake = menuType.GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo selecionarAba = menuType.GetMethod("SelecionarAba", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo construirLayout = menuType.GetMethod("ConstruirLayout", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo abaAtual = menuType.GetField("abaAtual", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            Assert.IsNotNull(awake);
+            Assert.IsNotNull(selecionarAba);
+            Assert.IsNotNull(construirLayout);
+            Assert.IsNotNull(abaAtual);
+
+            awake.Invoke(menu, null);
+            selecionarAba.Invoke(menu, new object[] { 7 });
+            construirLayout.Invoke(menu, null);
+
+            Assert.AreEqual(7, (int)abaAtual.GetValue(menu),
+                "A reconstrução do layout voltou a selecionar TROPAS.");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(objeto);
+        }
+    }
+
+    [Test]
+    public void CenasDeCampanha_NaoPossuemMenuComandoDuplicado()
+    {
+        string[] cenasDeCampanha = ObterCenasDeCampanhaHabilitadas();
+        Assert.Greater(cenasDeCampanha.Length, 0);
+
+        for (int i = 0; i < cenasDeCampanha.Length; i++)
+        {
+            Scene cena = EditorSceneManager.OpenScene(cenasDeCampanha[i], OpenSceneMode.Additive);
+            try
+            {
+                MenuComandoController[] controladores = cena.GetRootGameObjects()
+                    .SelectMany(root => root.GetComponentsInChildren<MenuComandoController>(true))
+                    .ToArray();
+                Assert.LessOrEqual(controladores.Length, 1,
+                    "A cena possui mais de um MenuComandoController: " + cenasDeCampanha[i]);
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(cena, true);
+            }
+        }
+    }
+
+    [Test]
     public void CenasDeCampanha_ContemQuartelComPainelModerno()
     {
         string[] cenasDeCampanha = ObterCenasDeCampanhaHabilitadas();

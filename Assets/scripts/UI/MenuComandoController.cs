@@ -252,6 +252,22 @@ public class MenuComandoController : MonoBehaviour
     {
         if (Instancia != null && Instancia != this)
         {
+            // O objeto duplicado pode ainda possuir um UIDocument ativo. Se
+            // apenas o controlador for destruído, esse documento continua
+            // desenhando uma segunda camada do Menu Satélite e fica por cima
+            // do Quartel ou captura os cliques do mundo.
+            UIDocument documentoDuplicado = GetComponent<UIDocument>();
+            if (documentoDuplicado != null)
+            {
+                VisualElement raizDuplicada = documentoDuplicado.rootVisualElement;
+                if (raizDuplicada != null)
+                {
+                    raizDuplicada.style.display = DisplayStyle.None;
+                    raizDuplicada.pickingMode = PickingMode.Ignore;
+                }
+                documentoDuplicado.enabled = false;
+            }
+
             Destroy(this);
             return;
         }

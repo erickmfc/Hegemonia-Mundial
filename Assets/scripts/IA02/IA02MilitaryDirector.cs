@@ -866,6 +866,10 @@ namespace Hegemonia.AI.IA02
 
                 int sector = EscolherSetorPatrulha(airPatrolCreatesBuffer, assignedBySector, assigned);
                 Vector3[] route = CriarRotaDosCreates(airPatrolCreatesBuffer, sector, assignedBySector[sector]);
+                if (route == null || route.Length == 0 || !aviao.PodeExecutarMissaoComRetorno(route[0]))
+                {
+                    continue;
+                }
                 if (control.EmitirOrdemPatrulha(route))
                 {
                     assignedBySector[sector]++;

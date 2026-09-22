@@ -49,23 +49,26 @@ namespace Hegemonia.AI.IA01
 
         public Vector3[] CriarRota(int indice)
         {
-            // Cada aeronave recebe uma rota diferente dentro do setor. O Create
-            // representa responsabilidade territorial, nao um waypoint fixo.
+            // Cada aeronave recebe uma órbita elíptica diferente dentro do
+            // setor. Pontos em círculo eliminam os giros de 90° do antigo
+            // retângulo e nunca ultrapassam os limites do Create.
             float larguraEfetiva = largura > 0f ? largura : Mathf.Max(120f, Raio * 2f);
             float profundidadeEfetiva = profundidade > 0f ? profundidade : Mathf.Max(100f, Raio * 1.4f);
             float variacao = ((indice % 5) - 2) * 0.11f;
             float escala = Mathf.Clamp(1f + variacao, 0.62f, 1.28f);
-            larguraEfetiva *= escala;
-            profundidadeEfetiva *= Mathf.Clamp(1f - variacao * 0.5f, 0.72f, 1.2f);
-            Vector3 eixoLateral = transform.right * (larguraEfetiva * (0.5f - variacao));
-            Vector3 eixoFrontal = transform.forward * (profundidadeEfetiva * (0.5f - variacao));
-            return new[]
+            float semiLargura = larguraEfetiva * 0.5f * escala;
+            float semiProfundidade = profundidadeEfetiva * 0.5f * Mathf.Clamp(1f - variacao * 0.5f, 0.72f, 1.2f);
+            const int pontos = 12;
+            Vector3[] rota = new Vector3[pontos];
+            float fase = (indice % pontos) * (Mathf.PI * 2f / pontos);
+            for (int i = 0; i < pontos; i++)
             {
-                Ajustar(transform.position - eixoLateral - eixoFrontal),
-                Ajustar(transform.position + eixoLateral - eixoFrontal),
-                Ajustar(transform.position + eixoLateral + eixoFrontal),
-                Ajustar(transform.position - eixoLateral + eixoFrontal)
-            };
+                float angulo = fase + i * (Mathf.PI * 2f / pontos);
+                rota[i] = Ajustar(transform.position
+                    + transform.right * Mathf.Cos(angulo) * semiLargura
+                    + transform.forward * Mathf.Sin(angulo) * semiProfundidade);
+            }
+            return rota;
         }
 
         public Vector3[] CriarRotaResposta(Vector3 ultimaPosicaoConhecida, float raioInvestigacao, int indice)

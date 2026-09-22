@@ -13,7 +13,10 @@ internal static class EntrarNoMenuAoDarPlay
     // diretamente enquanto a cena de campanha ainda esta aberta.
     // O Play Mode inicia pelo menu, mas a cena original e restaurada ao sair.
     private const bool ForcarMenuAoDarPlay = true;
-    private const string CaminhoMenuPrincipal = "Assets/Scenes/Menu cena.unity";
+    // O menu oficial fica em _Recovery, junto da campanha e do tutorial.
+    // Manter este caminho alinhado com ConfiguracaoCenasJogo evita que o Play
+    // reabra a antiga cena "Menu cena" em um ciclo infinito.
+    private const string CaminhoMenuPrincipal = "Assets/_Recovery/Cena menu P.unity";
     private const string ChaveCenaAntesDoPlay = "Hegemonia.CenaAntesDoPlay";
     private static bool reinicioAgendado;
     private static bool restaurarCenaPendente;

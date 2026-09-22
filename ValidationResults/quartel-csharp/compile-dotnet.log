@@ -1,0 +1,907 @@
+Assets\scripts\UI\QuartelMenuUIController.cs(2,14): error CS0234: O nome de tipo ou namespace "Collections" não existe no namespace "System" (você está sem uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3,14): error CS0234: O nome de tipo ou namespace "Globalization" não existe no namespace "System" (você está sem uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(18,2): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(18,2): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(18,2): error CS0012: O tipo "Attribute" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(18,2): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(19,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(220,12): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(221,12): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(229,19): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(253,19): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(258,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(291,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(309,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(347,44): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(347,44): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(347,44): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(347,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(347,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,42): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,42): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,59): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,59): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,59): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,72): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,85): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,85): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,85): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,109): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,109): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,109): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(373,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(435,44): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(435,59): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(435,74): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(435,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(452,47): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(452,62): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(452,76): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(452,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(482,37): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(482,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(498,30): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(498,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(503,43): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(503,43): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(503,43): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(503,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(525,43): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(525,43): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(525,43): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(525,54): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(525,72): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(525,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(539,50): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(539,50): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(539,50): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(539,61): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(539,76): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(539,90): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(539,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(546,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(546,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(546,41): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(546,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(583,42): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(583,42): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(583,42): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(583,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(602,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(602,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(602,47): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(602,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(639,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(639,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(639,40): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(639,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(653,46): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(653,46): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(653,46): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(653,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(668,42): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(668,42): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(668,42): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(668,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(690,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(690,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(690,47): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(690,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(719,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(719,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(719,40): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(719,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(823,50): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(823,50): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(823,50): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(823,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(903,37): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(903,37): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(903,37): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(903,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(910,43): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(910,43): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(910,43): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(910,54): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(910,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(936,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(936,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(936,47): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(936,58): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(936,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(961,50): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(961,50): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(961,50): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(961,61): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(961,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1069,50): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1069,50): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1069,50): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1069,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,40): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,51): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,60): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,73): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1132,13): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,37): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,37): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,37): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,48): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,48): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,48): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,63): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,63): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,63): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,74): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,85): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,99): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,117): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1141,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,47): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,58): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,58): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,58): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,73): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,73): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1162,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1176,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1176,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1176,47): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1176,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1308,42): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1308,56): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1308,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1314,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,32): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,32): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,32): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,43): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,43): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,43): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,60): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1326,13): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,40): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,56): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,56): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,56): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,69): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,69): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,69): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,80): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1344,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1359,39): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1359,20): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1359,20): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1359,20): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1367,43): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1367,43): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1367,43): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1367,20): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1372,41): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1372,20): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1379,42): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1379,42): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1379,42): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1379,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1395,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1401,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1414,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1455,37): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1455,37): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1455,51): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1455,51): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1455,51): error CS0246: O nome do tipo ou do namespace "Action" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(1455,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1474,36): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1474,36): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1474,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1498,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1515,45): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1515,45): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1515,45): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1515,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1528,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1528,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1528,40): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1528,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1563,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1572,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1580,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1595,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1625,12): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1680,12): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1728,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1744,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1790,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1957,41): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(1957,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(1957,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2025,32): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2025,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2044,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2153,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2233,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2271,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2368,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2392,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2419,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2439,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2493,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2571,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2584,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2762,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(2813,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,49): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,49): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,68): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,82): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,82): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,82): error CS0246: O nome do tipo ou do namespace "Action" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3050,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3074,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3102,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3109,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,39): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,50): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,66): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,66): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,66): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,77): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,92): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,92): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,92): error CS0246: O nome do tipo ou do namespace "Action<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,99): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,99): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3179,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3213,43): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3213,43): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3213,60): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3213,60): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3213,60): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3213,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3229,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3317,9): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3317,9): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3317,9): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3317,20): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3317,28): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3317,28): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3318,9): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3319,9): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3319,9): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3319,9): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3320,9): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3320,9): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3320,9): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3321,9): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3321,9): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3321,9): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3322,9): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3323,9): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3323,9): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3323,9): error CS0246: O nome do tipo ou do namespace "HashSet<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3323,17): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3316,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,56): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,56): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,56): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,67): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,75): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,75): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,97): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,97): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,97): error CS0246: O nome do tipo ou do namespace "HashSet<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,105): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3344,20): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3354,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3651,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3651,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3664,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3678,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3689,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3742,54): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3742,54): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3742,20): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3752,40): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3752,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3785,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3793,56): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3793,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3799,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3819,48): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3819,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3835,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3850,38): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3850,38): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3850,57): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3850,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3871,78): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3871,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3871,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3882,43): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3882,54): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3882,54): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3882,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3887,41): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3887,52): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3887,63): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3887,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3908,42): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3908,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3921,43): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3921,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3932,44): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3932,44): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3932,44): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3932,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3949,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3949,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3949,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3960,38): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3960,38): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3960,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3978,50): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3978,50): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3978,50): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3978,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3998,42): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(3998,42): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(3998,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4024,39): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4024,39): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4024,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4031,36): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4031,36): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4031,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4041,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4041,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4041,47): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4041,65): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4041,76): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4041,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4117,94): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4117,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4117,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4128,78): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4128,78): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4128,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4128,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4140,47): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4140,47): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4140,20): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,46): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,46): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,66): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,82): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,91): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,100): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,100): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,100): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,111): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4148,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4169,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4294,13): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4306,46): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4306,58): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4306,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4306,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4318,13): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,36): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,50): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,66): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,82): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,82): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,82): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,93): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4344,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4363,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4389,37): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4389,50): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4389,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4407,32): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4407,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4407,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4432,34): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4432,47): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4432,61): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4432,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4432,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4444,40): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4444,53): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4444,66): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4444,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4444,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4463,43): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4463,56): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4463,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4463,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,30): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,44): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,44): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,44): error CS0246: O nome do tipo ou do namespace "Action" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,57): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,30): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,44): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,44): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,44): error CS0246: O nome do tipo ou do namespace "Action" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,57): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,70): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,87): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4480,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4492,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4492,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,25): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,39): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,52): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,52): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,52): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,63): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,63): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,63): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4501,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,26): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,40): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,55): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,69): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,69): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,69): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4511,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4558,53): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4558,53): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4558,53): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4558,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4558,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4569,40): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4569,40): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4569,13): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4585,37): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4585,37): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4585,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4597,30): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4597,30): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4597,30): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4597,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4608,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4621,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4621,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(21,19): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(25,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(25,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(25,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(26,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(26,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(26,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(27,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(27,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(27,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(28,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(28,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(28,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(29,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(29,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(29,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(30,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(30,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(30,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(31,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(31,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(31,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(32,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(32,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(32,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(33,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(33,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(33,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(34,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(34,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(34,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(35,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(35,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(35,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(36,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(36,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(36,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(37,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(37,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(37,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(38,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(38,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(38,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(39,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(39,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(39,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(40,29): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(40,29): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(40,29): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(43,20): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(43,20): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(43,20): warning CS0436: O tipo "QuartelMenuUIController" em "C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\scripts\UI\QuartelMenuUIController.cs" está em conflito com o tipo importado "QuartelMenuUIController" em "Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null". Usar o tipo definido em "C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\scripts\UI\QuartelMenuUIController.cs".
+Assets\scripts\UI\QuartelMenuUIController.cs(44,20): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(46,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(46,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(47,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(47,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(48,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(48,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(49,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(49,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(50,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(50,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(51,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(51,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(52,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(52,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(53,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(53,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(54,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(54,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(55,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(55,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(56,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(56,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(57,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(57,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(58,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(59,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(60,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(61,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(62,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(63,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(64,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(64,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(65,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(65,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(66,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(66,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(67,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(67,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(68,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(68,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(69,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(69,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(70,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(70,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(71,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(71,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(72,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(72,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(73,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(73,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(74,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(74,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(75,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(75,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(75,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(75,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(75,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(75,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(76,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(76,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(76,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(76,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(76,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(76,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(77,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(77,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(77,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(77,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(77,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(77,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(78,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(78,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(78,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(78,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(78,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(78,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(79,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(79,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(79,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(79,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(79,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(79,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(80,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(80,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(80,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(80,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(80,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(80,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(81,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(81,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(81,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(81,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(81,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(81,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(82,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(82,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(82,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(82,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(82,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(82,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(83,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(83,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(83,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(83,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(83,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(83,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(84,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(84,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(85,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(85,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(86,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(86,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(87,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(88,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(88,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(89,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(89,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(90,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(90,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(91,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(91,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(92,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(92,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(93,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(93,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(94,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(94,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(95,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(95,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(96,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(96,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(97,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(97,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(98,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(98,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(99,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(100,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(100,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(101,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(101,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(102,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(102,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(103,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(103,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(104,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(104,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(105,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(105,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(106,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(106,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(107,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(107,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(108,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(108,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(108,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(108,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(108,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(108,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(109,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(109,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(110,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(110,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(111,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(111,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(112,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(112,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(113,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(113,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(114,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(114,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(114,22): error CS0246: O nome do tipo ou do namespace "List<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(114,27): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(114,27): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(115,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(115,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(115,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(115,33): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(115,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(115,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(116,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(116,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(117,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(118,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(119,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(120,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(120,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(120,13): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(121,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(122,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(122,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(122,22): error CS0246: O nome do tipo ou do namespace "List<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(122,27): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(123,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(123,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(124,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(124,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(125,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(125,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(126,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(127,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(128,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(129,13): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(130,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(130,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(130,13): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(131,13): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(132,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(133,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(134,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(135,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(136,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(137,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(137,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(137,13): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(138,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(138,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(139,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(139,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(140,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(140,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(141,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(141,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(142,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(142,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(142,22): error CS0246: O nome do tipo ou do namespace "List<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(142,27): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(142,27): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(147,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(147,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(147,22): error CS0246: O nome do tipo ou do namespace "Dictionary<,>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(147,33): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(147,33): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(147,41): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(147,41): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(147,41): error CS0246: O nome do tipo ou do namespace "Action" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(148,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(148,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(149,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(150,22): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(156,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(157,13): error CS0518: O tipo pré-definido "System.Int32" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(158,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(159,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(160,13): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(161,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(161,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(161,22): error CS0246: O nome do tipo ou do namespace "List<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(161,27): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(161,27): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(162,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(162,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(162,22): error CS0246: O nome do tipo ou do namespace "List<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(162,27): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(162,27): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(163,22): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(163,22): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(163,22): error CS0246: O nome do tipo ou do namespace "List<>" não pode ser encontrado (está faltando uma diretiva using ou uma referência de assembly?)
+Assets\scripts\UI\QuartelMenuUIController.cs(163,27): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(163,27): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(165,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(165,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(166,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(166,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(167,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(167,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(168,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(168,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(169,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(169,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(170,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(170,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(171,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(171,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(172,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(172,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(173,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(173,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(174,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(174,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(175,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(175,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(176,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(176,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(177,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(177,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(178,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(178,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(179,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(179,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(180,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(180,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(181,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(181,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(182,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(182,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(183,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(183,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(184,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(184,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(185,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(185,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(186,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(186,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(187,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(187,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(188,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(188,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(189,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(189,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(190,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(190,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(191,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(191,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(192,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(192,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(193,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(193,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(194,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(194,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(195,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(195,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(196,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(196,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(197,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(197,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(198,13): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(198,13): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(199,13): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(201,22): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(207,22): error CS0518: O tipo pré-definido "System.String" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4633,56): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4633,56): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4635,17): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4635,17): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4635,17): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4636,17): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4636,17): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4636,17): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4637,26): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4637,26): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4637,26): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4638,26): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,44): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,44): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,44): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,71): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,71): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,71): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,95): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,95): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,95): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,111): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4640,9): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,31): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,31): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,31): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,51): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,51): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,51): error CS0012: O tipo "ValueType" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4655,16): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4662,31): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(4662,31): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4662,17): error CS0518: O tipo pré-definido "System.Void" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(21,60): error CS0518: O tipo pré-definido "System.Single" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,127): error CS0012: O tipo "Object" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,127): error CS0518: O tipo pré-definido "System.Object" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(355,127): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(355,137): error CS0012: O tipo "Enum" está definido em um assembly que não é referenciado. Você deve adicionar uma referência ao assembly "netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51".
+Assets\scripts\UI\QuartelMenuUIController.cs(539,104): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado
+Assets\scripts\UI\QuartelMenuUIController.cs(4475,71): error CS0518: O tipo pré-definido "System.Boolean" não foi definido ou importado

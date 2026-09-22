@@ -48,9 +48,12 @@ public static class CodexCampaignRecovery
 
         EditorBuildSettings.scenes = new[]
         {
-            new EditorBuildSettingsScene("Assets/Scenes/Menu cena.unity", true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaMenuPrincipalCanonica, true),
             new EditorBuildSettingsScene(CampaignPath, true),
-            new EditorBuildSettingsScene("Assets/_Recovery/teste.unity", true)
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaTutorialCanonica, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaAno1Oficial, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaDemo1Oficial, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaTesteOficial, true)
         };
         AssetDatabase.SaveAssets();
         Debug.Log("[Codex] Cena de campanha limpa criada e configurada.");
@@ -183,9 +186,12 @@ public static class CodexCampaignRecovery
         EditorSceneManager.CloseScene(source, true);
         EditorBuildSettings.scenes = new[]
         {
-            new EditorBuildSettingsScene("Assets/Scenes/Menu cena.unity", true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaMenuPrincipalCanonica, true),
             new EditorBuildSettingsScene(CampaignPath, true),
-            new EditorBuildSettingsScene("Assets/_Recovery/teste.unity", true)
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaTutorialCanonica, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaAno1Oficial, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaDemo1Oficial, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaTesteOficial, true)
         };
         AssetDatabase.SaveAssets();
         Debug.Log("[Codex] Campanha reconstruida: " + copiedRoots + " objetos-raiz; BrainMaster limitado a 1 comando por frame.");

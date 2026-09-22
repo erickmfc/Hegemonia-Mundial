@@ -528,6 +528,27 @@ public class ControleUnidade : MonoBehaviour
             float distanciaAoDestino = (transform.position - ultimoDestinoOrdenado).magnitude;
             float toleranciaChegada = 3f;
 
+            // O executor aéreo considera a missão alcançada dentro da margem
+            // horizontal configurada (não exige que o modelo atravesse o
+            // waypoint exato). Sem esta ponte, a aeronave chegava corretamente
+            // ao setor, mas a ordem central permanecia ativa e o watchdog podia
+            // reenviar o mesmo destino a cada ciclo. Patrulhas continuam fora
+            // desta regra porque seus pontos são deliberadamente cíclicos.
+            bool ordemPatrulha = controleOrdemMovimento != null
+                && controleOrdemMovimento.PossuiOrdemAtiva
+                && controleOrdemMovimento.Atual.Tipo == TipoOrdemMovimento.Patrulha;
+            if (controleAviao != null
+                && !ordemPatrulha
+                && controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+            {
+                Vector3 diferencaAerea = transform.position - ultimoDestinoOrdenado;
+                diferencaAerea.y = 0f;
+                toleranciaChegada = Mathf.Max(
+                    toleranciaChegada,
+                    controleAviao.margemChegadaMissao);
+                distanciaAoDestino = diferencaAerea.magnitude;
+            }
+
             if (agente != null && agente.enabled)
             {
                 toleranciaChegada = Mathf.Max(toleranciaChegada, agente.stoppingDistance + 1.5f);

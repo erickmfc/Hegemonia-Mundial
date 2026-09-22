@@ -2748,7 +2748,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private bool EhCenaDeMenuAtiva()
     {
         string nomeCena = SceneManager.GetActiveScene().name;
-        return nomeCena == ConfiguracaoCenasJogo.CenaMenuPrincipalCanonica
-            || nomeCena == ConfiguracaoCenasJogo.CenaMenuFallback;
+        return ConfiguracaoCenasJogo.EhCenaDeMenu(nomeCena);
     }
 }

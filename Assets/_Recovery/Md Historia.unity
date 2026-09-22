@@ -354,6 +354,7 @@ MonoBehaviour:
   required: 1
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1766120977}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -830,6 +831,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 87167955}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -1081,6 +1083,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 106703711}
   unitSpawnPoint: {fileID: 2086161796}
   exitDirection: {fileID: 1410355875}
@@ -1257,6 +1260,7 @@ MonoBehaviour:
   required: 1
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1464289117}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -2510,6 +2514,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 304073339}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -3286,6 +3291,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 386948349}
   unitSpawnPoint: {fileID: 27461532}
   exitDirection: {fileID: 2069857924}
@@ -3830,6 +3836,7 @@ MonoBehaviour:
   required: 1
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 428371251}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -4687,6 +4694,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 549376361}
   unitSpawnPoint: {fileID: 1922855232}
   exitDirection: {fileID: 1916606634}
@@ -4751,6 +4759,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 551337283}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -4961,6 +4970,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 577382051}
   unitSpawnPoint: {fileID: 1033501195}
   exitDirection: {fileID: 1034260082}
@@ -5327,6 +5337,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 668605990}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -7023,6 +7034,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 847222203}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -7761,6 +7773,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 923760919}
   unitSpawnPoint: {fileID: 1644564187}
   exitDirection: {fileID: 189890072}
@@ -8101,6 +8114,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 943471243}
   unitSpawnPoint: {fileID: 1209949378}
   exitDirection: {fileID: 1708858913}
@@ -8387,6 +8401,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 952315592}
   unitSpawnPoint: {fileID: 434560761}
   exitDirection: {fileID: 1443309416}
@@ -8482,6 +8497,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 960338145}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -8810,6 +8826,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1003061349}
   unitSpawnPoint: {fileID: 845372875}
   exitDirection: {fileID: 2100682392}
@@ -9004,6 +9021,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1004821142}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -10083,6 +10101,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1095049081}
   unitSpawnPoint: {fileID: 1511516886}
   exitDirection: {fileID: 61241410}
@@ -10306,7 +10325,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1113684277
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10748,6 +10767,7 @@ MonoBehaviour:
   required: 1
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1939125008}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -10962,6 +10982,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1235781715}
   unitSpawnPoint: {fileID: 828553845}
   exitDirection: {fileID: 1762628154}
@@ -11215,6 +11236,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1258670628}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -11419,6 +11441,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1310972288}
   unitSpawnPoint: {fileID: 1781718059}
   exitDirection: {fileID: 1675933175}
@@ -11598,6 +11621,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1337123053}
   unitSpawnPoint: {fileID: 804842125}
   exitDirection: {fileID: 2116751214}
@@ -11848,6 +11872,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1352655165}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -12910,6 +12935,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1407983924}
   unitSpawnPoint: {fileID: 1551708817}
   exitDirection: {fileID: 1531390122}
@@ -13101,6 +13127,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1430296669}
   unitSpawnPoint: {fileID: 949072833}
   exitDirection: {fileID: 2053870377}
@@ -13309,6 +13336,7 @@ MonoBehaviour:
   required: 1
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1460985904}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -14930,6 +14958,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1610848548}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -15042,6 +15071,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1611168034}
   unitSpawnPoint: {fileID: 1117757363}
   exitDirection: {fileID: 775937046}
@@ -16028,6 +16058,7 @@ MonoBehaviour:
   required: 1
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1698934798}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -16505,6 +16536,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1741946020}
   unitSpawnPoint: {fileID: 1985445600}
   exitDirection: {fileID: 1815468961}
@@ -17120,7 +17152,7 @@ Transform:
   m_GameObject: {fileID: 1805874780}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 2347, y: -0.00001474121, z: -5948}
+  m_LocalPosition: {x: 2734, y: -0.00001474121, z: -6314}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -17550,6 +17582,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1818007578}
   unitSpawnPoint: {fileID: 1166809232}
   exitDirection: {fileID: 459411971}
@@ -18141,6 +18174,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1857226869}
   unitSpawnPoint: {fileID: 167438665}
   exitDirection: {fileID: 276609796}
@@ -18764,6 +18798,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1894067359}
   unitSpawnPoint: {fileID: 2069994476}
   exitDirection: {fileID: 139326327}
@@ -19088,6 +19123,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 137272905}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -19393,6 +19429,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1955658313}
   unitSpawnPoint: {fileID: 794409408}
   exitDirection: {fileID: 239930280}
@@ -19638,6 +19675,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1973310574}
   unitSpawnPoint: {fileID: 1178111327}
   exitDirection: {fileID: 1056331976}
@@ -19860,6 +19898,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1985991441}
   unitSpawnPoint: {fileID: 574906129}
   exitDirection: {fileID: 1378038361}
@@ -19929,6 +19968,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1992350231}
   unitSpawnPoint: {fileID: 1090432289}
   exitDirection: {fileID: 1750806765}
@@ -19994,6 +20034,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 1
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 1469061800}
   unitSpawnPoint: {fileID: 0}
   exitDirection: {fileID: 0}
@@ -21489,6 +21530,7 @@ MonoBehaviour:
   required: 0
   exactPosition: 1
   allowAlternativeSlot: 0
+  preferredConstructionItemId: 
   buildingPoint: {fileID: 2118833479}
   unitSpawnPoint: {fileID: 1237188490}
   exitDirection: {fileID: 1206733154}

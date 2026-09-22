@@ -139,6 +139,15 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual void Start()
     {
+        // Aeronaves colocadas diretamente dentro de uma base na cena podem
+        // não ter o campo serializado preenchido. Resolva somente pelo pai
+        // imediato/ancestral, evitando uma busca global que poderia ligar o
+        // avião ao aeroporto errado.
+        if (aeroportoOrigem == null)
+        {
+            aeroportoOrigem = GetComponentInParent<GerenciadorAeroporto>();
+        }
+
         GarantirAltitudeMinimaMilitar();
 
         if (modeloMecanicoVisual != null)
@@ -987,6 +996,12 @@ public class ControleAviao : MonoBehaviour
 
         if (estadoAtual == EstadoAviao.ProntoNoPatio)
         {
+            // Uma ordem anterior pode ter deixado a flag de retorno marcada
+            // enquanto a aeronave estava sendo guardada no pátio. Uma nova
+            // missão aceita pelo controlador deve começar limpa; o retorno
+            // volta a ser solicitado somente por combustível, dano ou ordem
+            // explícita.
+            ordemParaRetorno = false;
             ControleUnidade controleUnidade = ObterControleUnidadeAtual();
             bool emPatrulhaSalva = controleUnidade != null
                 && controleUnidade.OrdemAtual == OrdemControleUnidade.Patrulhando
@@ -1328,6 +1343,14 @@ public class ControleAviao : MonoBehaviour
             return false;
         }
 
+        if (!PodeExecutarMissaoComRetorno(destino))
+        {
+            Debug.LogWarning(
+                $"[ControleAviao] Ordem manual recusada para {name}: autonomia insuficiente para ida e retorno seguro.",
+                this);
+            return false;
+        }
+
         destino = NormalizarDestinoDeVoo(destino);
         CancelarRetomadasEExecutoresAposNovaOrdem();
         missaoManualPendente = false;
@@ -1398,6 +1421,33 @@ public class ControleAviao : MonoBehaviour
         {
             Debug.LogWarning(
                 $"[ControleAviao] Patrulha recusada para {name}: base de origem sem rota de pouso válida.",
+                this);
+            return false;
+        }
+
+        // A autonomia precisa cobrir o setor inteiro, não apenas o primeiro
+        // ponto. Uma rota que começava perto da base, mas terminava muito
+        // distante, era aceita e podia deixar a aeronave sem combustível no
+        // retorno. Usamos o ponto mais distante como limite conservador sem
+        // criar um segundo sistema de navegação.
+        Vector3 pontoMaisDistante = rota[0];
+        float distanciaMaisDistante = -1f;
+        for (int i = 0; i < rota.Count; i++)
+        {
+            Vector3 ponto = rota[i];
+            ponto.y = transform.position.y;
+            float distancia = (ponto - transform.position).sqrMagnitude;
+            if (distancia > distanciaMaisDistante)
+            {
+                distanciaMaisDistante = distancia;
+                pontoMaisDistante = rota[i];
+            }
+        }
+
+        if (!PodeExecutarMissaoComRetorno(pontoMaisDistante))
+        {
+            Debug.LogWarning(
+                $"[ControleAviao] Patrulha recusada para {name}: autonomia insuficiente para o setor e retorno seguro.",
                 this);
             return false;
         }
@@ -1491,6 +1541,48 @@ public class ControleAviao : MonoBehaviour
         return BasePodeReceberRetorno(aeroportoOrigem);
     }
 
+    /// <summary>
+    /// Confere a autonomia antes de liberar uma nova missão. A validação é
+    /// usada tanto pelo jogador quanto pelas IAs: uma aeronave não deve sair
+    /// se não houver combustível para ir, entrar no circuito da área e voltar
+    /// à mesma base que a lançou.
+    /// </summary>
+    public bool PodeExecutarMissaoComRetorno(Vector3 destino)
+    {
+        if (!PodeIniciarVooDaBase())
+        {
+            return false;
+        }
+
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel)
+        {
+            return true;
+        }
+
+        GerenciadorAeroporto baseRetorno = EncontrarMelhorBaseRetorno();
+        if (baseRetorno == null)
+        {
+            return false;
+        }
+
+        Vector3 pontoRetorno = ObterPontoAproximacaoDaBase(baseRetorno);
+        destino.y = transform.position.y;
+        pontoRetorno.y = transform.position.y;
+
+        float ida = Vector3.Distance(transform.position, destino);
+        float volta = Vector3.Distance(destino, pontoRetorno);
+        // Uma volta curta dentro do setor absorve desvios de aproximação e
+        // impede que a reserva seja calculada como se a aeronave desse meia
+        // volta no instante em que chega ao alvo.
+        float circuitoMinimo = Mathf.Clamp(raioOrbitaMissao * Mathf.PI * 0.5f, 180f, 900f);
+        float consumoNecessario = combustivel.EstimarConsumoParaDistancia(
+            ida + volta + circuitoMinimo,
+            Mathf.Max(60f, velocidadeMaximaVoo));
+        float reserva = combustivel.Capacidade * Mathf.Clamp(reservaMinimaRetornoPercentual, 0.30f, 0.45f);
+        return combustivel.CombustivelAtual >= consumoNecessario + reserva;
+    }
+
     private Vector3 NormalizarDestinoDeVoo(Vector3 destino)
     {
         destino.y = Mathf.Max(destino.y, Mathf.Max(altitudeVoo, AltitudeMinimaVooMilitar));
@@ -1500,6 +1592,26 @@ public class ControleAviao : MonoBehaviour
     public void ComandoRetornarBase()
     {
         if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
+
+        // Se a aeronave ainda está no hangar ou taxiando, não existe voo para
+        // "retornar". O comando deve cancelar uma decolagem pendente; caso
+        // contrário a ordem de retorno era perdida quando a rotina de voo
+        // começava e o avião ainda decolava contra a ordem do jogador.
+        if (estadoAtual == EstadoAviao.ReservaHangar || estadoAtual == EstadoAviao.Taxiando)
+        {
+            CancelarOrdensPendentes();
+            ControleUnidade controle = ObterControleUnidadeAtual();
+            if (controle != null)
+            {
+                // Mantém o estado exibido pelo menu/IA sincronizado com o
+                // cancelamento local. O aeroporto continua dono do
+                // taxiamento; apenas a missão aérea pendente é interrompida.
+                controle.EmitirOrdemParar();
+            }
+            ordemParaRetorno = false;
+            Debug.Log($"[ControleAviao] Decolagem pendente cancelada para {name}; aeronave permanece na base.", this);
+            return;
+        }
 
         // Aeronaves criadas por sistemas antigos podem não ter recebido a base
         // no mesmo frame do spawn. Resolve uma base aliada válida antes de
@@ -2141,7 +2253,15 @@ public class ControleAviao : MonoBehaviour
     {
         if (aeroportoOrigem == null) 
         {
-            Destroy(gameObject); // Sem aeroporto, explode/se sacrifica
+            // Uma associação de base pode chegar um frame depois do spawn.
+            // Não destruir a aeronave nesse intervalo: preserva a unidade e
+            // permite que o gerenciador a reassocie ou a guarde no hangar.
+            estaEmModoVooFisico = false;
+            ordemParaRetorno = false;
+            DefinirEstado(EstadoAviao.ReservaHangar);
+            Debug.LogWarning(
+                $"[ControleAviao] Voo cancelado com segurança para {name}: aeroporto de origem ainda não associado.",
+                this);
             yield break;
         }
 
@@ -2247,13 +2367,6 @@ public class ControleAviao : MonoBehaviour
         // Loop de patrulha
         KamikazeDrone droneScript = GetComponent<KamikazeDrone>();
         
-        Vector3[] pontosRetangulo = new Vector3[4];
-        Vector3 ultimoCentroPatrulha = Vector3.zero;
-        float ultimoRaio = -1f;
-        
-        float tempoUltimaTrocaCentro = 0f;
-        Vector3 offsetPatrulha = Vector3.zero;
-
         while (!ordemParaRetorno)
         {
             if (droneScript != null)
@@ -2289,46 +2402,36 @@ public class ControleAviao : MonoBehaviour
                     continue;
                 }
 
-                if (Time.time - tempoUltimaTrocaCentro > 45f)
+                // Sem rota explícita, a IA recebe uma órbita contínua e
+                // limitada ao redor da área. A implementação anterior usava
+                // um retângulo de raio multiplicado por sete: além de levar o
+                // avião quilômetros para fora do setor, cada canto exigia uma
+                // inversão brusca de direção.
+                float raio = Mathf.Clamp(raioOrbitaMissao, 180f, 700f);
+                float velocidadeAngular = Mathf.Clamp(velocidadeOrbitaMissao * 0.15f, 0.08f, 0.32f);
+                anguloOrbitaAtual += sentidoOrbita * velocidadeAngular * Time.deltaTime;
+                if (anguloOrbitaAtual > Mathf.PI * 2f || anguloOrbitaAtual < -Mathf.PI * 2f)
                 {
-                    tempoUltimaTrocaCentro = Time.time;
-                    offsetPatrulha = new Vector3(UnityEngine.Random.Range(-100f, 100f), 0, UnityEngine.Random.Range(-100f, 100f));
+                    anguloOrbitaAtual = Mathf.Repeat(anguloOrbitaAtual, Mathf.PI * 2f);
                 }
 
-                Vector3 centroAtualizado = centroDaPatrulha + offsetPatrulha;
-                float raio = Mathf.Max(280f, raioOrbitaMissao * 7f);
-                float baseY = Mathf.Max(centroAtualizado.y, altitudeVoo, AltitudeMinimaVooMilitar);
+                Vector3 centroAtualizado = centroDaPatrulha;
+                Vector3 alvoCurva = centroAtualizado + new Vector3(
+                    Mathf.Cos(anguloOrbitaAtual) * raio,
+                    0f,
+                    Mathf.Sin(anguloOrbitaAtual) * raio);
+                alvoCurva.y = Mathf.Max(centroAtualizado.y, altitudeVoo, AltitudeMinimaVooMilitar);
+                alvoGPSVoo = alvoCurva;
 
-                if (centroAtualizado != ultimoCentroPatrulha || raio != ultimoRaio)
+                Vector3 diffPatrulha = transform.position - centroAtualizado;
+                diffPatrulha.y = 0f;
+                float raioSeguranca = raio * 2.2f;
+                if (diffPatrulha.sqrMagnitude > raioSeguranca * raioSeguranca)
                 {
-                    ultimoCentroPatrulha = centroAtualizado;
-                    ultimoRaio = raio;
-
-                    // Retângulo alongado: 2x maior na frente/trás do que pros lados
-                    pontosRetangulo[0] = centroAtualizado + new Vector3(raio * 2f, 30f, raio);
-                    pontosRetangulo[1] = centroAtualizado + new Vector3(-raio * 2f, -10f, raio);
-                    pontosRetangulo[2] = centroAtualizado + new Vector3(-raio * 2f, 30f, -raio);
-                    pontosRetangulo[3] = centroAtualizado + new Vector3(raio * 2f, -10f, -raio);
-
-                    for (int i = 0; i < 4; i++) {
-                        pontosRetangulo[i].y = Mathf.Max(baseY + ((i % 2 == 0) ? 30f : -15f), altitudeVoo, AltitudeMinimaVooMilitar);
-                    }
+                    // Recupera a aeronave para o centro sem inventar outro
+                    // ponto aleatório nem trocar o sentido da curva.
+                    alvoGPSVoo = new Vector3(centroAtualizado.x, alvoCurva.y, centroAtualizado.z);
                 }
-
-                Vector3 alvoDest = pontosRetangulo[indiceRetanguloPatrulha];
-                // Suaviza muito mais a transição de alvo, gerando curva realista ampla
-                alvoGPSVoo = Vector3.Lerp(alvoGPSVoo, alvoDest, Time.deltaTime * 0.2f);
-
-                // Checa distância em relação ao canto real (alvoDest) em vez do alvo interpolado (alvoGPSVoo)
-                float distSqr = (new Vector3(transform.position.x, 0, transform.position.z) - new Vector3(alvoDest.x, 0, alvoDest.z)).sqrMagnitude;
-                if (distSqr < 40000f) // 200m de distância para trocar de ponto, fazendo a curva bem antes de chegar no vértice
-                {
-                    indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % 4;
-                }
-
-                Vector3 diffPatrulha = new Vector3(transform.position.x - centroAtualizado.x, 0, transform.position.z - centroAtualizado.z);
-                float raioSeguranca = Mathf.Max(raio * 4f, 500f);
-                if (diffPatrulha.sqrMagnitude > raioSeguranca * raioSeguranca) alvoGPSVoo = centroAtualizado;
             }
             yield return null;
         }
@@ -2355,8 +2458,18 @@ public class ControleAviao : MonoBehaviour
                 yield break;
             }
 
-            var dmg = GetComponent<SistemaDeDanos>();
-            if (dmg) dmg.ReceberDano(9999f); else Destroy(gameObject);
+            // Falha de configuração da rota de pouso não deve transformar um
+            // retorno legítimo em destruição artificial. Isso acontecia com
+            // bases criadas/construídas enquanto a pista ainda não estava
+            // pronta, deixando o jogador ou a IA sem a aeronave. Interrompe o
+            // voo físico e conserva o objeto para que o aeroporto possa
+            // reassociá-lo/guardá-lo quando a infraestrutura for corrigida.
+            estaEmModoVooFisico = false;
+            ordemParaRetorno = false;
+            DefinirEstado(EstadoAviao.ReservaHangar);
+            Debug.LogWarning(
+                $"[ControleAviao] Retorno abortado com segurança para {name}: base sem rota de pouso válida; aeronave preservada.",
+                this);
             yield break;
         }
 
