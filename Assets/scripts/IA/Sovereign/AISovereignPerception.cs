@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 using UnityEngine;
 
 namespace Hegemonia.AI.Sovereign
@@ -17,6 +18,7 @@ namespace Hegemonia.AI.Sovereign
             public bool IsStructure;
             public float ThreatScore;
             public float LastSeenTime;
+            public float ForgetAt;
         }
 
         private readonly int _teamId;
@@ -135,12 +137,13 @@ namespace Hegemonia.AI.Sovereign
                     continue;
                 }
 
-                if (id.teamID <= 0 || id.teamID == _teamId || IsAllied(id.teamID))
+                if (id.teamID <= 0 || id.teamID == _teamId || IsAllied(id.teamID)
+                    || !RTSVisibilityService.TeamsAtWar(_teamId, id.teamID))
                 {
                     continue;
                 }
 
-                if (!IsVisible(id.transform.position))
+                if (!IsVisible(id, id.transform.position))
                 {
                     continue;
                 }
@@ -163,7 +166,7 @@ namespace Hegemonia.AI.Sovereign
                 }
             }
 
-            CleanupMemory(now, 150f);
+            CleanupMemory(now);
 
             UnderThreat = false;
             EnemyAcrossOcean = false;
@@ -322,6 +325,13 @@ namespace Hegemonia.AI.Sovereign
         private EnemyContact BuildEnemyContact(IdentidadeUnidade id, float now)
         {
             IA_ConstructionMetadata metadata = id.GetComponent<IA_ConstructionMetadata>();
+            float forgetAt = now + 150f;
+            RTSVisibilityService visibility = RTSVisibilityService.Instancia;
+            if (visibility != null
+                && visibility.TryGetContactForTeam(_teamId, id, out RTSVisibilityContact radarContact)
+                && radarContact != null)
+                forgetAt = Mathf.Max(now, radarContact.lastKnownExpiresAt);
+
             EnemyContact contact = new EnemyContact
             {
                 TeamId = id.teamID,
@@ -332,6 +342,7 @@ namespace Hegemonia.AI.Sovereign
                 Domain = ResolveDomain(id, metadata),
                 IsStructure = id.tipoUnidade == TipoUnidade.Estrutura || (metadata != null && metadata.IsStructure),
                 LastSeenTime = now,
+                ForgetAt = forgetAt,
                 ThreatScore = EstimateThreat(id, metadata)
             };
             return contact;
@@ -406,8 +417,12 @@ namespace Hegemonia.AI.Sovereign
             return threat;
         }
 
-        private bool IsVisible(Vector3 position)
+        private bool IsVisible(IdentidadeUnidade target, Vector3 position)
         {
+            RTSVisibilityService visibility = RTSVisibilityService.Instancia;
+            if (visibility != null)
+                return visibility.IsVisibleToTeam(_teamId, target);
+
             if (_visibilityProviders.Count == 0)
             {
                 return false;
@@ -418,6 +433,14 @@ namespace Hegemonia.AI.Sovereign
             {
                 Transform provider = _visibilityProviders[i];
                 if (provider == null)
+                {
+                    continue;
+                }
+
+                RadarUnidadeTatica radar = provider.GetComponent<RadarUnidadeTatica>();
+                // Os provedores locais são unidades móveis e instalações de
+                // radar. Todos dependem do mesmo estado de emissão do serviço.
+                if (radar == null || !radar.RadarLigado)
                 {
                     continue;
                 }
@@ -453,13 +476,13 @@ namespace Hegemonia.AI.Sovereign
             }
         }
 
-        private void CleanupMemory(float now, float maxAge)
+        private void CleanupMemory(float now)
         {
             _staleMemory.Clear();
             foreach (KeyValuePair<int, EnemyContact> pair in _enemyMemory)
             {
                 EnemyContact contact = pair.Value;
-                if (contact == null || now - contact.LastSeenTime > maxAge)
+                if (contact == null || now > contact.ForgetAt)
                 {
                     _staleMemory.Add(pair.Key);
                 }

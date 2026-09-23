@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Hegemonia.AI.DEUSA;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -421,12 +422,12 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             destination.Clear();
-            float now = Time.time;
+            float now = Time.unscaledTime;
 
             foreach (var pair in _enemyMemoryById)
             {
                 IA_EnemyObservation obs = pair.Value;
-                if (obs != null && now - obs.LastSeenTime <= maxAgeSeconds)
+                if (obs != null && now - obs.LastSeenTime <= maxAgeSeconds && now <= obs.ForgetAt)
                 {
                     destination.Add(obs);
                 }
@@ -477,7 +478,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (snap.TeamId == 0 || snap.TeamId == _teamId)
+                if (!IsHostileVisible(snap.Identity))
                 {
                     continue;
                 }
@@ -550,7 +551,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (snap.TeamId == 0 || snap.TeamId == _teamId)
+                if (!IsHostileVisible(snap.Identity))
                 {
                     continue;
                 }
@@ -967,10 +968,7 @@ namespace Hegemonia.AI.BrainMaster
         private void RefreshVisibleEnemies(float now)
         {
             VisibleEnemies.Clear();
-            if (VisibilityProviders.Count == 0)
-            {
-                return;
-            }
+            RTSVisibilityService visibility = RTSVisibilityService.Instancia;
 
             for (int i = 0; i < _registrySnapshot.Count; i++)
             {
@@ -980,15 +978,10 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (snap.TeamId == 0 || snap.TeamId == _teamId)
-                {
-                    continue;
-                }
-
-                if (!IsVisible(snap.Transform.position))
-                {
-                    continue;
-                }
+                if (!IsHostileVisible(snap.Identity)) continue;
+                if (visibility == null
+                    || !visibility.TryGetContactForTeam(_teamId, snap.Identity, out RTSVisibilityContact visibilityContact)
+                    || visibilityContact == null) continue;
 
                 IA_EnemyObservation obs;
                 if (!_enemyMemoryById.TryGetValue(snap.InstanceId, out obs))
@@ -1006,7 +999,8 @@ namespace Hegemonia.AI.BrainMaster
                 obs.Domain = snap.Cache.Domain;
                 obs.IsStructure = snap.Cache.IsStructure;
                 obs.ThreatScore = EstimateThreat(obs.UnitName, obs.Domain, obs.IsStructure);
-                obs.LastSeenTime = now;
+                obs.LastSeenTime = visibilityContact.lastSeenAt;
+                obs.ForgetAt = visibilityContact.lastKnownExpiresAt;
 
                 VisibleEnemies.Add(obs);
 
@@ -1015,6 +1009,31 @@ namespace Hegemonia.AI.BrainMaster
                     _forceSnapshot.VisibleEnemyStructures++;
                 }
             }
+
+            _staleEnemyIds.Clear();
+            foreach (KeyValuePair<int, IA_EnemyObservation> pair in _enemyMemoryById)
+            {
+                IA_EnemyObservation observation = pair.Value;
+                if (observation == null
+                    || visibility == null
+                    || !visibility.TryGetContactForTeam(_teamId, pair.Key, out RTSVisibilityContact knownContact)
+                    || knownContact == null
+                    || knownContact.lastKnownExpiresAt < Time.unscaledTime
+                    || !RTSVisibilityService.TeamsAtWar(_teamId, knownContact.targetTeamId))
+                {
+                    _staleEnemyIds.Add(pair.Key);
+                    continue;
+                }
+
+                observation.Position = knownContact.lastKnownPosition;
+                observation.LastSeenTime = knownContact.lastSeenAt;
+                observation.ForgetAt = knownContact.lastKnownExpiresAt;
+                if (!knownContact.currentlyVisible)
+                    observation.Transform = null;
+            }
+
+            for (int i = 0; i < _staleEnemyIds.Count; i++)
+                _enemyMemoryById.Remove(_staleEnemyIds[i]);
         }
 
         private void CleanupMemory(float now, float maxAge)
@@ -1024,7 +1043,8 @@ namespace Hegemonia.AI.BrainMaster
             foreach (var pair in _enemyMemoryById)
             {
                 IA_EnemyObservation obs = pair.Value;
-                if (obs == null || obs.Transform == null || now - obs.LastSeenTime > maxAge)
+                float currentTime = Time.unscaledTime;
+                if (obs == null || obs.ForgetAt < currentTime || currentTime - obs.LastSeenTime > maxAge)
                 {
                     _staleEnemyIds.Add(pair.Key);
                 }
@@ -1125,27 +1145,12 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.RecentCombatSeconds = recentCombatSeconds;
         }
 
-        private bool IsVisible(Vector3 position)
+        private bool IsHostileVisible(IdentidadeUnidade target)
         {
-            Vector3 flatTarget = Flatten(position);
-
-            for (int i = 0; i < VisibilityProviders.Count; i++)
-            {
-                IA_VisibilityProvider provider = VisibilityProviders[i];
-                if (provider == null || provider.Source == null)
-                {
-                    continue;
-                }
-
-                float radius = Mathf.Max(20f, provider.Radius);
-                Vector3 delta = Flatten(provider.Source.position) - flatTarget;
-                if (delta.sqrMagnitude <= radius * radius)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            if (target == null || target.teamID <= 0 || target.teamID == _teamId
+                || !RTSVisibilityService.TeamsAtWar(_teamId, target.teamID)) return false;
+            RTSVisibilityService visibility = RTSVisibilityService.Instancia;
+            return visibility != null && visibility.IsVisibleToTeam(_teamId, target);
         }
 
         private bool ShouldRegisterVisibilityProvider(EntityRuntimeCacheEntry entry, bool structure, ref int mobileBudget, ref int structureBudget)

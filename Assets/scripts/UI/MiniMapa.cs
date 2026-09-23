@@ -406,16 +406,18 @@ public class MiniMapa : MonoBehaviour
             }
 
             IdentidadeUnidade identidade = ic.identidade;
-            bool visivel = !ic.ehInimigo || RTSVisibilityService.Instancia == null
-                || RTSVisibilityService.Instancia.IsVisibleToTeam(_teamJogador, identidade);
+            RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+            bool emGuerra = !ic.ehInimigo || RTSVisibilityService.TeamsAtWar(_teamJogador, identidade != null ? identidade.teamID : 0);
+            bool visivel = !ic.ehInimigo || (emGuerra && visibilidade != null
+                && visibilidade.IsVisibleToTeam(_teamJogador, identidade));
             Vector3 posicao = ic.alvo.position;
             if (visivel)
             {
                 ic.ultimaPosicaoConhecida = posicao;
                 ic.possuiUltimaPosicao = true;
             }
-            else if (ic.possuiUltimaPosicao && RTSVisibilityService.Instancia != null
-                && RTSVisibilityService.Instancia.TryGetLastKnownPosition(_teamJogador, identidade, out Vector3 ultimaPosicao))
+            else if (emGuerra && ic.possuiUltimaPosicao && visibilidade != null
+                && visibilidade.TryGetLastKnownPosition(_teamJogador, identidade, out Vector3 ultimaPosicao))
             {
                 posicao = ultimaPosicao;
             }

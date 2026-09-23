@@ -60,8 +60,10 @@ public class MisselNaval : MonoBehaviour
     private bool alvoEhAereo = false;
     private Vector3 ultimaPosicaoGuiagem;
     private bool possuiUltimaPosicaoGuiagem;
+    private const float VelocidadeGiroGuiadoDuranteBoost = 110f;
     private Quaternion rotacaoVisualLocal = Quaternion.identity;
     private Quaternion correcaoOrientacaoVisual = Quaternion.identity;
+    private ParticleSystem[] efeitosVisuaisVoo;
 
     void OnEnable()
     {
@@ -84,10 +86,14 @@ public class MisselNaval : MonoBehaviour
         {
             sistemaFumaca.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
+
+        PararEfeitosVisuaisVoo();
     }
 
     void Awake()
     {
+        efeitosVisuaisVoo = GetComponentsInChildren<ParticleSystem>(true);
+
         rb = GetComponent<Rigidbody>();
         if (rb == null)
         {
@@ -128,7 +134,39 @@ public class MisselNaval : MonoBehaviour
         emNavegacao = false;
         AtualizarPrazoDeVoo(alvo);
         transform.rotation = RotacaoParaDirecao(Vector3.up);
+        ReiniciarEfeitosVisuaisVoo();
         StartCoroutine(SequenciaDeVoo());
+    }
+
+    private void ReiniciarEfeitosVisuaisVoo()
+    {
+        if (efeitosVisuaisVoo == null || efeitosVisuaisVoo.Length == 0)
+        {
+            efeitosVisuaisVoo = GetComponentsInChildren<ParticleSystem>(true);
+        }
+
+        for (int i = 0; i < efeitosVisuaisVoo.Length; i++)
+        {
+            ParticleSystem efeito = efeitosVisuaisVoo[i];
+            if (efeito == null) continue;
+
+            efeito.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+            efeito.Clear(false);
+            efeito.Play(false);
+        }
+    }
+
+    private void PararEfeitosVisuaisVoo()
+    {
+        if (efeitosVisuaisVoo == null) return;
+
+        for (int i = 0; i < efeitosVisuaisVoo.Length; i++)
+        {
+            ParticleSystem efeito = efeitosVisuaisVoo[i];
+            if (efeito == null) continue;
+
+            efeito.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
     }
 
     // A vida máxima do prefab era fixa (24 s). Para um alvo de coordenada
@@ -165,8 +203,30 @@ public class MisselNaval : MonoBehaviour
         while (tempo < tempoBoostVertical)
         {
             velocidadeAtual += aceleracaoBoost * Time.deltaTime;
-            rb.linearVelocity = Vector3.up * velocidadeAtual;
-            transform.rotation = Quaternion.Slerp(transform.rotation, RotacaoParaDirecao(Vector3.up), Time.deltaTime * 5f);
+
+            // Depois de deixar o convés, o míssil não deve continuar subindo
+            // verticalmente durante todo o boost. Começa a curvar em direção
+            // ao alvo enquanto acelera e entrega essa orientação à guiagem de
+            // cruzeiro no fim da fase.
+            Vector3 alvoAtual = alvoTransform != null ? alvoTransform.position : pontoAlvo;
+            Vector3 direcaoHorizontal = alvoAtual - transform.position;
+            direcaoHorizontal.y = 0f;
+            if (direcaoHorizontal.sqrMagnitude > 0.01f)
+            {
+                float progressoBoost = Mathf.Clamp01(tempo / Mathf.Max(0.01f, tempoBoostVertical));
+                progressoBoost = Mathf.SmoothStep(0f, 1f, progressoBoost);
+                Vector3 direcaoBoost = Vector3.Lerp(
+                    Vector3.up,
+                    direcaoHorizontal.normalized,
+                    progressoBoost).normalized;
+                Quaternion rotacaoDesejada = RotacaoParaDirecao(direcaoBoost);
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation,
+                    rotacaoDesejada,
+                    VelocidadeGiroGuiadoDuranteBoost * Time.deltaTime);
+            }
+
+            rb.linearVelocity = transform.forward * velocidadeAtual;
             tempo += Time.deltaTime;
             yield return null;
         }

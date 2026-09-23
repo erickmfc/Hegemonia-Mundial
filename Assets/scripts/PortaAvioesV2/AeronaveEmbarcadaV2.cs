@@ -101,7 +101,8 @@ public sealed class AeronaveEmbarcadaV2 : MonoBehaviour
         if (b == EstadoOperacaoPortaAvioesV2.OperacaoCancelada || b == EstadoOperacaoPortaAvioesV2.FalhaControlada) return true;
         if (a == EstadoOperacaoPortaAvioesV2.EmVoo) return b == EstadoOperacaoPortaAvioesV2.SolicitandoPouso;
         if (a == EstadoOperacaoPortaAvioesV2.SolicitandoPouso) return b == EstadoOperacaoPortaAvioesV2.AguardandoAutorizacao || b == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera;
-        if (a == EstadoOperacaoPortaAvioesV2.AguardandoAutorizacao || a == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera) return b == EstadoOperacaoPortaAvioesV2.AproximacaoLonga;
+        if (a == EstadoOperacaoPortaAvioesV2.AguardandoAutorizacao) return b == EstadoOperacaoPortaAvioesV2.AproximacaoLonga || b == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera;
+        if (a == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera) return b == EstadoOperacaoPortaAvioesV2.AproximacaoLonga;
         if (a == EstadoOperacaoPortaAvioesV2.AproximacaoLonga) return b == EstadoOperacaoPortaAvioesV2.AproximacaoIntermediaria;
         if (a == EstadoOperacaoPortaAvioesV2.AproximacaoIntermediaria) return b == EstadoOperacaoPortaAvioesV2.AproximacaoFinal;
         if (a == EstadoOperacaoPortaAvioesV2.AproximacaoFinal) return b == EstadoOperacaoPortaAvioesV2.ToqueNoConves;

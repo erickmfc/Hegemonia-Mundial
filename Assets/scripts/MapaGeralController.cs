@@ -64,6 +64,7 @@ public class MapaGeralController : MonoBehaviour
 
     // Cache de objetos do mundo para não chamar Find() o tempo todo
     private List<IdentidadeUnidade> _cacheUnidades = new List<IdentidadeUnidade>();
+    private readonly HashSet<int> _imoveisMapa = new HashSet<int>();
     private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
     private readonly List<Projetil> _projeteisAtivos = new List<Projetil>(256);
     private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
@@ -551,9 +552,15 @@ public class MapaGeralController : MonoBehaviour
     void RefreshCache()
     {
         _cacheUnidades.Clear();
+        _imoveisMapa.Clear();
         var todos = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         foreach (var u in todos)
-            if (u != null) _cacheUnidades.Add(u);
+        {
+            if (u == null) continue;
+            _cacheUnidades.Add(u);
+            if (EhImovelMapa(u.gameObject))
+                _imoveisMapa.Add(u.GetInstanceID());
+        }
     }
 
     void ControlarMapa()
@@ -777,24 +784,42 @@ public class MapaGeralController : MonoBehaviour
             if (id == null || id.gameObject == null) continue;
 
             bool ehAliado  = (id.teamID == meuTeamID);
+            bool ehImovel = _imoveisMapa.Contains(id.GetInstanceID());
             bool ehNeutro  = (id.teamID == 0);
             bool ehInimigo = (!ehAliado && !ehNeutro);
 
+            // No mapa satélite, forças neutras/inimigas não aparecem sem
+            // motivo estratégico; imóveis continuam como referências visíveis.
+            if (!ehAliado && !ehImovel && (ehNeutro
+                || !RTSVisibilityService.TeamsAtWar(meuTeamID, id.teamID)))
+                continue;
+
             Vector3 posicaoMapa = id.transform.position;
-            bool contatoAtual = !ehInimigo || RTSVisibilityService.Instancia == null
-                || RTSVisibilityService.Instancia.IsVisibleToTeam(meuTeamID, id);
+            RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+            bool contatoAtual = !ehInimigo || ehImovel || (visibilidade != null
+                && visibilidade.IsVisibleToTeam(meuTeamID, id));
             if (ehInimigo && !contatoAtual)
             {
-                if (RTSVisibilityService.Instancia == null
-                    || !RTSVisibilityService.Instancia.TryGetLastKnownPosition(meuTeamID, id, out posicaoMapa))
+                if (visibilidade == null
+                    || !visibilidade.TryGetLastKnownPosition(meuTeamID, id, out posicaoMapa))
                 {
                     continue;
                 }
             }
 
-            bool ehPredio = (id.GetComponent<UnityEngine.AI.NavMeshAgent>() == null)
-                         && (id.GetComponent<UnityEngine.AI.NavMeshObstacle>() != null
-                          || id.GetComponent<Rigidbody>() == null);
+            // Aeronaves e alguns navios não usam Rigidbody/NavMeshAgent. A
+            // ausência desses componentes não os torna prédios no mapa.
+            bool temControladorDeUnidade = id.GetComponent<ControleUnidade>() != null
+                || id.GetComponent<ControleAviao>() != null
+                || id.GetComponent<ControleAviaoCaca>() != null
+                || id.GetComponent<Helicoptero>() != null
+                || id.GetComponent<VooHelicoptero>() != null
+                || id.GetComponent<ControleNavioRealista>() != null
+                || id.GetComponent<ControleSubmarino>() != null
+                || id.GetComponent<IdentidadeNaval>() != null
+                || id.GetComponent<C700TransporteAereo>() != null;
+            bool ehPredio = id.tipoUnidade == TipoUnidade.Estrutura
+                || (!temControladorDeUnidade && id.GetComponent<UnityEngine.AI.NavMeshObstacle>() != null);
 
             // Converte posição 3D para coordenadas da tela relativa à cameraMapa
             Vector3 screenPos = cameraMapa.WorldToScreenPoint(posicaoMapa);
@@ -820,7 +845,7 @@ public class MapaGeralController : MonoBehaviour
             }
             else if (ehNeutro)
             {
-                // Unidade neutra: círculo cinza
+                // Referência civil/imóvel neutro: círculo cinza discreto
                 DesenharIcone(sx, sy, 7f, 7f, corUnidadeNeutro);
             }
             else if (ehInimigo)
@@ -830,6 +855,32 @@ public class MapaGeralController : MonoBehaviour
                     : new Color(1f, 0.35f, 0.18f, 0.45f));
             }
         }
+    }
+
+    private static bool EhImovelMapa(GameObject objeto)
+    {
+        if (objeto == null) return false;
+        if (objeto.GetComponent<Imovel>() != null
+            || objeto.GetComponentInParent<Imovel>() != null
+            || objeto.GetComponentInChildren<Imovel>(true) != null
+            || objeto.GetComponent<Fazenda>() != null
+            || objeto.GetComponentInParent<Fazenda>() != null
+            || objeto.GetComponentInChildren<Fazenda>(true) != null
+            || TagSafe.Matches(objeto, "Imovel"))
+            return true;
+
+        for (Transform atual = objeto.transform; atual != null; atual = atual.parent)
+        {
+            if (TagSafe.Matches(atual, "Imovel")) return true;
+        }
+
+        Transform[] filhos = objeto.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < filhos.Length; i++)
+        {
+            if (TagSafe.Matches(filhos[i], "Imovel")) return true;
+        }
+
+        return false;
     }
 
     // Desenha um quadrado colorido

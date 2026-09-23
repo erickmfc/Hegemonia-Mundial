@@ -11,14 +11,14 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
     public float velocidadeTaxi = 12f;
     public float velocidadeAproximacao = 30f;
     [Header("Multiplicadores de velocidade do pouso")]
-    [Tooltip("Até Aproximação Média, usa 100% da velocidade máxima do avião.")]
+    [Tooltip("Velocidade progressiva: 100% na longa, 85% na intermediária e 70% na final.")]
     public float velocidadeEspera = 1f;
     public float velocidadeAproximacaoLonga = 1f;
-    public float velocidadeAproximacaoIntermediaria = 1f;
-    [Tooltip("A partir da Aproximação Final, mantém 80% até sair do convés.")]
-    public float velocidadeAproximacaoFinal = .8f;
-    public float velocidadeToque = .8f;
-    public float velocidadeSaidaPista = .8f;
+    public float velocidadeAproximacaoIntermediaria = .85f;
+    [Tooltip("Aproximação final a 70%, reduzindo progressivamente no toque e na saída.")]
+    public float velocidadeAproximacaoFinal = .7f;
+    public float velocidadeToque = .55f;
+    public float velocidadeSaidaPista = .4f;
     [Header("Serviço automático após o pouso")]
     public float duracaoServicoAposPouso = 30f;
     [Header("Decolagem")]
@@ -33,6 +33,8 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
     private readonly Dictionary<Transform, string> elevadoresReservados = new Dictionary<Transform, string>();
     private readonly List<string> filaDecolagemIds = new List<string>();
     private readonly Dictionary<string, int> marcosDecolagem = new Dictionary<string, int>();
+    private string aeronaveNaPistaPouso;
+    private float proximoPousoDisponivel;
     private GerenciadorPortaAvioes legadoSuspenso;
     private bool legadoEstavaAtivo;
     private string autoridade => name + ".OperacoesV2";
@@ -222,7 +224,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
 
         return TrySolicitarDecolagem(controle, destino, true);
     }
-    public bool TryCancelarOperacao(ControleAviao controle) { var a = Registrar(controle); if (a == null || !operacoes.TryGetValue(a.Registro.id, out var rotina)) return false; StopCoroutine(rotina); operacoes.Remove(a.Registro.id); RemoverDaFilaDecolagem(a.Registro.id); LiberarRecursos(a); a.ForcarEstadoSeguro(EstadoOperacaoPortaAvioesV2.OperacaoCancelada, "cancelado pelo menu"); a.LiberarAutoridade(autoridade); return true; }
+    public bool TryCancelarOperacao(ControleAviao controle) { var a = Registrar(controle); if (a == null || !operacoes.TryGetValue(a.Registro.id, out var rotina)) return false; StopCoroutine(rotina); operacoes.Remove(a.Registro.id); RemoverDaFilaDecolagem(a.Registro.id); if (aeronaveNaPistaPouso == a.Registro.id) aeronaveNaPistaPouso = string.Empty; LiberarRecursos(a); a.ForcarEstadoSeguro(EstadoOperacaoPortaAvioesV2.OperacaoCancelada, "cancelado pelo menu"); a.LiberarAutoridade(autoridade); return true; }
 
     private bool Assumir(AeronaveEmbarcadaV2 a, EstadoOperacaoPortaAvioesV2 estado) { if (!a.TentarAssumirAutoridade(autoridade, out _)) return false; return a.TentarTransicionar(estado, Time.time); }
     private void Iniciar(AeronaveEmbarcadaV2 a, IEnumerator rotina) { operacoes[a.Registro.id] = StartCoroutine(Executar(a, rotina)); }
@@ -234,6 +236,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
 
         operacoes.Remove(id);
         RemoverDaFilaDecolagem(id);
+        if (aeronaveNaPistaPouso == id) aeronaveNaPistaPouso = string.Empty;
         if (a != null)
         {
             LiberarElevadorReservado(a);
@@ -269,7 +272,8 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
             int indice = filaDecolagemIds.IndexOf(id);
             if (indice <= 0) yield break;
             string idAnterior = filaDecolagemIds[indice - 1];
-            if (!marcosDecolagem.TryGetValue(idAnterior, out int marcoAtual) || marcoAtual >= marcoNecessario)
+            if (!marcosDecolagem.TryGetValue(idAnterior, out int marcoAtual)
+                || marcoAtual >= marcoNecessario)
                 yield break;
             yield return null;
         }
@@ -286,19 +290,46 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
     private float TamanhoAeronave(AeronaveEmbarcadaV2 aeronave) { return aeronave == null || aeronave.Registro.tipo == TipoAeronavePortaAvioesV2.Caca ? 8f : 18f; }
     private Transform ObterCatapultaLivre(string aeronaveId)
     {
-        if (layout == null || layout.catapultasLista == null) return null;
-        Transform primeiraCatapulta = null;
-        foreach (var cat in layout.catapultasLista)
+        if (layout == null) return null;
+        if (layout.catapultasLista != null)
         {
-            if (cat == null) continue;
-            if (primeiraCatapulta == null) primeiraCatapulta = cat;
-            if (!catapultasReservadas.TryGetValue(cat, out var ocupante) || ocupante == aeronaveId)
-                return cat;
+            foreach (var cat in layout.catapultasLista)
+            {
+                if (cat == null) continue;
+                if (!catapultasReservadas.TryGetValue(cat, out var ocupante) || ocupante == aeronaveId)
+                    return cat;
+            }
         }
 
-        // Ordens adicionais podem usar a mesma catapulta, pois a fila impede
-        // que dois aviões avancem juntos para a liberação.
-        return primeiraCatapulta;
+        // Alguns layouts modelam a segunda pista com marcadores globais
+        // "Alinhamento (1)", em vez de um segundo objeto Catapulta_N.
+        if (layout.decolagem != null)
+        {
+            foreach (Transform ponto in layout.decolagem)
+            {
+                if (ponto == null || !ponto.name.StartsWith("Alinhamento (", StringComparison.Ordinal)) continue;
+                if (!catapultasReservadas.TryGetValue(ponto, out var ocupante) || ocupante == aeronaveId)
+                    return ponto;
+            }
+        }
+        return null;
+    }
+    private Transform ObterPontoDecolagem(Transform catapulta, string nomeGlobal, params string[] nomesLocais)
+    {
+        if (catapulta != null)
+        {
+            for (int i = 0; i < nomesLocais.Length; i++)
+            {
+                Transform local = catapulta.Find(nomesLocais[i]);
+                if (local != null) return local;
+            }
+        }
+        if (layout == null || layout.decolagem == null) return null;
+        string sufixoPista = catapulta != null && catapulta.name.StartsWith("Alinhamento (", StringComparison.Ordinal)
+            ? catapulta.name.Substring("Alinhamento".Length)
+            : string.Empty;
+        Transform pontoGlobal = layout.decolagem.Find(nomeGlobal + sufixoPista);
+        return pontoGlobal != null ? pontoGlobal : layout.decolagem.Find(nomeGlobal);
     }
     private Transform ObterElevadorLivre(string aeronaveId) { if (layout == null || layout.elevadoresLista == null) return null; foreach (var elevador in layout.elevadoresLista) if (elevador != null && (!elevadoresReservados.TryGetValue(elevador, out var ocupante) || ocupante == aeronaveId)) return elevador; return null; }
     private Transform ObterAcessoVaga(VagaPortaAvioesV2 vaga) { if (vaga == null || layout == null || layout.taxi == null) return null; return layout.taxi.Find(layout.VagaEstaNoLadoEsquerdo(vaga) ? "Acesso_Vagas_Esquerda" : "Acesso_Vagas_Direita"); }
@@ -411,6 +442,18 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         ControleAviao controle = a.GetComponent<ControleAviao>();
         a.TentarTransicionar(EstadoOperacaoPortaAvioesV2.AguardandoAutorizacao, Time.time);
 
+        // Uma única aeronave ocupa a pista de pouso. As demais mantêm voo e
+        // aguardam em circuito, com intervalo curto entre autorizações.
+        while (a != null
+            && ((!string.IsNullOrEmpty(aeronaveNaPistaPouso) && aeronaveNaPistaPouso != a.Registro.id)
+                || Time.time < proximoPousoDisponivel))
+        {
+            a.TentarTransicionar(EstadoOperacaoPortaAvioesV2.CircuitoDeEspera, Time.time);
+            yield return null;
+        }
+        if (a == null) yield break;
+        aeronaveNaPistaPouso = a.Registro.id;
+
         for (int i = 0; i < 3; i++)
         {
             Transform ponto = layout.pontosPouso[i];
@@ -471,6 +514,9 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
                 }
             }
         }
+
+        aeronaveNaPistaPouso = string.Empty;
+        proximoPousoDisponivel = Time.time + 5f;
 
         Transform acesso = ObterAcessoVaga(vaga);
         if (acesso != null)
@@ -688,9 +734,9 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
     {
         ControleAviao c = a.GetComponent<ControleAviao>();
         SuspenderLegado(a);
-        // A aeronave seguinte só deixa a vaga quando a anterior atingiu
-        // Liberacao; ela pode alinhar enquanto a anterior sobe.
-        yield return AguardarAeronaveAnterior(a.Registro.id, 3);
+        // Libera o próximo avião para sair da vaga assim que o anterior
+        // chega à fila; a cadência de solicitações limita a saída a 3 s.
+        yield return AguardarAeronaveAnterior(a.Registro.id, 1);
         a.TentarTransicionar(EstadoOperacaoPortaAvioesV2.TaxiandoParaCatapulta, Time.time);
         Transform cat = catapulta;
         if (cat == null)
@@ -699,14 +745,10 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
             yield break;
         }
 
-        Transform fila = (layout.decolagem != null ? layout.decolagem.Find("Fila") : null)
-            ?? cat.Find("Fila") ?? cat;
-        Transform inicio = (layout.decolagem != null ? layout.decolagem.Find("Alinhamento") : null)
-            ?? cat.Find("Inicio") ?? cat;
-        Transform liberacao = (layout.decolagem != null ? layout.decolagem.Find("Liberacao") : null)
-            ?? cat.Find("Liberacao") ?? cat;
-        Transform subida = (layout.decolagem != null ? layout.decolagem.Find("Subida_Inicial") : null)
-            ?? cat.Find("Subida") ?? cat;
+        Transform fila = ObterPontoDecolagem(cat, "Fila", "Fila") ?? cat;
+        Transform inicio = ObterPontoDecolagem(cat, "Alinhamento", "Alinhamento", "Inicio") ?? cat;
+        Transform liberacao = ObterPontoDecolagem(cat, "Liberacao", "Liberacao") ?? cat;
+        Transform subida = ObterPontoDecolagem(cat, "Subida_Inicial", "Subida_Inicial", "Subida") ?? cat;
 
         VagaPortaAvioesV2 vaga = LocalizarVaga(layout.vagasConves, a.Registro.vagaOcupada);
         Transform entrada = EntradaDaVaga(vaga);
@@ -785,8 +827,7 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
 
         // Após Subida_Inicial, a aeronave acelera até a velocidade máxima,
         // cruza Saida_Voo e passa ao ControleAviao. Não percorre o grupo Voo.
-        Transform saidaVoo = (layout.decolagem != null ? layout.decolagem.Find("Saida_Voo") : null)
-            ?? cat.Find("Saida_Voo");
+        Transform saidaVoo = ObterPontoDecolagem(cat, "Saida_Voo", "Saida_Voo");
         if (saidaVoo != null)
         {
             yield return Mover(a, saidaVoo, VelocidadeDecolagem(c, 1f));
@@ -809,11 +850,18 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         if (c != null)
         {
             bool patrulha = string.Equals(a.Registro.missaoAtual, "Patrulha", StringComparison.Ordinal);
-            if (!patrulha && c.GetComponent<LancadorMisselCaca>() != null)
-            {
-                ControleUnidade controleUnidade = c.GetComponent<ControleUnidade>();
-                if (controleUnidade != null) controleUnidade.DefinirModoCombate(true);
-            }
+            ControleUnidade controleUnidade = c.GetComponent<ControleUnidade>()
+                ?? c.GetComponentInParent<ControleUnidade>()
+                ?? c.GetComponentInChildren<ControleUnidade>(true);
+            if (controleUnidade != null) controleUnidade.DefinirModoCombate(true);
+
+            SistemaDeTiro[] sistemasDeTiro = c.GetComponentsInChildren<SistemaDeTiro>(true);
+            for (int i = 0; i < sistemasDeTiro.Length; i++)
+                if (sistemasDeTiro[i] != null) sistemasDeTiro[i].DefinirModoPassivo(false);
+
+            LancadorMisselCaca[] lancadores = c.GetComponentsInChildren<LancadorMisselCaca>(true);
+            for (int i = 0; i < lancadores.Length; i++)
+                if (lancadores[i] != null) lancadores[i].DefinirModoPassivoPeloMenu(false);
             c.AssumirVooAposDecolagem(destino, patrulha);
             LiberarLegado(c);
         }

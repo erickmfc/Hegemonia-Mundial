@@ -191,6 +191,7 @@ namespace Hegemonia.AI.BrainMaster
         public IA_Domain Domain;
         public float ThreatScore;
         public float LastSeenTime;
+        public float ForgetAt;
         public bool IsStructure;
     }
 

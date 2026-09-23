@@ -949,7 +949,10 @@ namespace Hegemonia.AI.IA01
                     ownedStructures.Add(identity);
                     currentOwnStructureSnapshot[identity.GetInstanceID()] = identity.name;
                 }
-                else if (identity.teamID != ownTeam && identity.tipoUnidade != TipoUnidade.Estrutura)
+                else if (identity.teamID != ownTeam && identity.tipoUnidade != TipoUnidade.Estrutura
+                    && RTSVisibilityService.TeamsAtWar(ownTeam, identity.teamID)
+                    && RTSVisibilityService.Instancia != null
+                    && RTSVisibilityService.Instancia.IsVisibleToTeam(ownTeam, identity))
                 {
                     enemyUnits.Add(identity);
                 }
@@ -982,7 +985,10 @@ namespace Hegemonia.AI.IA01
             {
                 MarcadorTerritorio marker = registeredMarkers[i];
                 IdentidadeUnidade identity = marker != null ? marker.GetComponent<IdentidadeUnidade>() : null;
-                if (marker != null && marker.ehPrefeitura && identity != null && identity.teamID > 0 && identity.teamID != ownTeam)
+                if (marker != null && marker.ehPrefeitura && identity != null && identity.teamID > 0 && identity.teamID != ownTeam
+                    && RTSVisibilityService.TeamsAtWar(ownTeam, identity.teamID)
+                    && RTSVisibilityService.Instancia != null
+                    && RTSVisibilityService.Instancia.IsVisibleToTeam(ownTeam, identity))
                 {
                     enemyCapitals.Add(marker);
                 }
@@ -4599,7 +4605,10 @@ namespace Hegemonia.AI.IA01
         private bool IsEnemyNavalUnit(GameObject unit)
         {
             IdentidadeUnidade identity = SistemaDeDanos.ResolverIdentidade(unit.transform);
-            return identity != null && identity.teamID > 0 && identity.teamID != context.TeamId;
+            return identity != null && identity.teamID > 0 && identity.teamID != context.TeamId
+                && RTSVisibilityService.TeamsAtWar(context.TeamId, identity.teamID)
+                && RTSVisibilityService.Instancia != null
+                && RTSVisibilityService.Instancia.IsVisibleToTeam(context.TeamId, identity);
         }
 
         private static bool IsNavalThreateningPosition(Transform navalUnit, Vector3 position)

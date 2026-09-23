@@ -102,8 +102,7 @@ public class CameraController : MonoBehaviour
 
         // O mapa estrategico ja usa F para acompanhar o proprio alvo. Fora
         // dele, F alterna o acompanhamento da camera principal.
-        if (!menusAbertos
-            && !IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto
+        if (!MapaGeralController.EstaAberto
             && RTSInputBindings.GetKeyDown(RTSInputAction.Follow))
         {
             AlternarAcompanhamentoUnidadeSelecionada();

@@ -9,6 +9,54 @@ using UnityEngine.TestTools;
 public sealed class MisseisAlvoMovelPlayModeTests
 {
     [UnityTest]
+    public IEnumerator MisselNavalComecaAVirarParaOAlvoDuranteOBoost()
+    {
+        Type misselType = ResolveType("MisselNaval");
+        GameObject misselObjeto = new GameObject("MisselNavalGuiagemBoostPlayMode");
+
+        try
+        {
+            Component missel = misselObjeto.AddComponent(misselType);
+            SetField(misselType, missel, "velocidadeEjecao", 10f);
+            SetField(misselType, missel, "tempoEjecao", 0.1f);
+            SetField(misselType, missel, "tempoBoostVertical", 0.5f);
+            SetField(misselType, missel, "aceleracaoBoost", 10f);
+            SetField(misselType, missel, "velocidadeCruzeiro", 60f);
+            SetField(misselType, missel, "velocidadeMergulho", 80f);
+
+            yield return null;
+
+            MethodInfo iniciar = misselType.GetMethod(
+                "IniciarAtaque",
+                BindingFlags.Instance | BindingFlags.Public,
+                null,
+                new[] { typeof(Vector3), typeof(Transform), typeof(Transform) },
+                null);
+            Assert.That(iniciar, Is.Not.Null);
+            iniciar.Invoke(missel, new object[] { new Vector3(35f, 0f, 0f), null, null });
+
+            yield return new WaitForSeconds(0.65f);
+
+            Assert.That(misselObjeto.transform.position.x, Is.GreaterThan(0.1f),
+                "O míssil terminou subindo na vertical, sem começar a virar para o destino durante o boost.");
+
+            float limite = Time.realtimeSinceStartup + 5f;
+            while (misselObjeto != null && misselObjeto.activeInHierarchy
+                && Time.realtimeSinceStartup < limite)
+            {
+                yield return null;
+            }
+
+            Assert.That(misselObjeto == null || !misselObjeto.activeInHierarchy, Is.True,
+                "O míssil virou para o destino, mas não chegou ao ponto marcado dentro do prazo.");
+        }
+        finally
+        {
+            UnityEngine.Object.Destroy(misselObjeto);
+        }
+    }
+
+    [UnityTest]
     public IEnumerator MisselCacaAtingeAlvoEAplicaDano()
     {
         Type misselType = ResolveType("MisselCaca");

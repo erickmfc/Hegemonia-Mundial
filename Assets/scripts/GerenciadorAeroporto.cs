@@ -85,6 +85,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     // --- CACHE PARA OnGUI (Evita alocações repetidas) ---
     private readonly HashSet<Transform> _vagasOcupadas = new HashSet<Transform>();
+    private readonly List<Vector3> _posicoesVagaOcupadas = new List<Vector3>(64);
     private readonly List<Vector3> _rotaPatrulhaHelicoptero = new List<Vector3>();
     private readonly List<ControleAviao> _bufferSortidaAereaIA = new List<ControleAviao>(24);
     private Camera cameraPrincipal;
@@ -1740,11 +1741,19 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (waypointsPatio == null || waypointsPatio.Count == 0) return null;
 
         _vagasOcupadas.Clear();
+        _posicoesVagaOcupadas.Clear();
         for (int i = avioesNoPatio.Count - 1; i >= 0; i--)
         {
             ControleAviao av = avioesNoPatio[i];
             if (av == null) { avioesNoPatio.RemoveAt(i); continue; }
-            if (av.vagaRetorno != null) _vagasOcupadas.Add(av.vagaRetorno);
+            bool ocupandoVaga = av.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
+                || av.estadoAtual == ControleAviao.EstadoAviao.Taxiando
+                || av.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga;
+            if (ocupandoVaga && av.vagaRetorno != null)
+            {
+                _vagasOcupadas.Add(av.vagaRetorno);
+                _posicoesVagaOcupadas.Add(av.vagaRetorno.position);
+            }
         }
 
         for (int i = helicopterosDoAeroporto.Count - 1; i >= 0; i--)
@@ -1757,16 +1766,41 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
 
             Transform vagaHeli = heli.ObterVagaAeroporto();
-            if (vagaHeli != null && heli.EstaEstacionadoNoAeroporto())
+            string estadoHeli = heli.ObterEstadoOperacionalAeroporto();
+            bool chegandoParaPouso = heli.estaVoando
+                && heli.EstaSobControleDoAeroporto()
+                && (estadoHeli.IndexOf("aproxim", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || estadoHeli.IndexOf("pousando", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            if (vagaHeli != null && (heli.EstaEstacionadoNoAeroporto() || chegandoParaPouso))
             {
                 _vagasOcupadas.Add(vagaHeli);
+                _posicoesVagaOcupadas.Add(vagaHeli.position);
+            }
+        }
+
+        // O convés V2 e o menu legado podem apontar para transforms distintos
+        // que representam a mesma vaga física. Compartilhe a reserva por
+        // posição para que helicópteros do fluxo legado não ocupem uma vaga
+        // que o V2 já reservou para um avião em aproximação.
+        GerenciadorPortaAvioes carrier = this as GerenciadorPortaAvioes;
+        GerenciadorOperacoesPortaAvioesV2 operacoesV2 = carrier != null
+            ? carrier.GetComponentInChildren<GerenciadorOperacoesPortaAvioesV2>(true)
+            : null;
+        if (operacoesV2 != null && operacoesV2.usarSistemaOperacoesV2 && operacoesV2.layout != null
+            && operacoesV2.layout.vagasConves != null)
+        {
+            for (int i = 0; i < operacoesV2.layout.vagasConves.Count; i++)
+            {
+                VagaPortaAvioesV2 vagaV2 = operacoesV2.layout.vagasConves[i];
+                if (vagaV2 != null && vagaV2.estado != EstadoVagaPortaAvioesV2.Livre)
+                    _posicoesVagaOcupadas.Add(vagaV2.transform.position);
             }
         }
 
         for (int i = 0, count = waypointsPatio.Count; i < count; i++)
         {
             Transform wp = waypointsPatio[i];
-            if (wp == null || _vagasOcupadas.Contains(wp)) continue;
+            if (wp == null || _vagasOcupadas.Contains(wp) || EstaVagaOcupadaPorPosicao(wp.position)) continue;
 
             bool ocupadoPorC700 = false;
             Collider[] hits = Physics.OverlapSphere(wp.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
@@ -1785,6 +1819,17 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (!ocupadoPorC700) return wp;
         }
         return null;
+    }
+
+    private bool EstaVagaOcupadaPorPosicao(Vector3 posicao)
+    {
+        const float distanciaMinima = 10f;
+        float distanciaSqr = distanciaMinima * distanciaMinima;
+        for (int i = 0; i < _posicoesVagaOcupadas.Count; i++)
+        {
+            if ((_posicoesVagaOcupadas[i] - posicao).sqrMagnitude < distanciaSqr) return true;
+        }
+        return false;
     }
 
     public Transform ObterVagaHelicopteroPreferencial(bool aceitarOcupada = false)

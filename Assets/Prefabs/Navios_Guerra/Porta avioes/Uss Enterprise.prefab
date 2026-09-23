@@ -840,10 +840,10 @@ MonoBehaviour:
   velocidadeAproximacao: 30
   velocidadeEspera: 1
   velocidadeAproximacaoLonga: 1
-  velocidadeAproximacaoIntermediaria: 1
-  velocidadeAproximacaoFinal: 0.8
-  velocidadeToque: 0.8
-  velocidadeSaidaPista: 0.8
+  velocidadeAproximacaoIntermediaria: 0.85
+  velocidadeAproximacaoFinal: 0.7
+  velocidadeToque: 0.55
+  velocidadeSaidaPista: 0.4
   duracaoServicoAposPouso: 30
   esperaNaFilaDecolagem: 5
   timeoutPorEstado: 45

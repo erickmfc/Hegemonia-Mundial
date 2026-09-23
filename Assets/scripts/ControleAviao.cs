@@ -27,6 +27,10 @@ public class ControleAviao : MonoBehaviour
         estadoAtual = novoEstado;
         bool motorLigado = novoEstado != EstadoAviao.ReservaHangar && novoEstado != EstadoAviao.ProntoNoPatio;
         AudioRuntime.DefinirMotorAereo(gameObject, motorLigado);
+        if (novoEstado == EstadoAviao.ProntoNoPatio)
+        {
+            AbaixarRodas();
+        }
 
         // O aeroporto pode terminar o taxiamento em um frame diferente do
         // frame em que o menu registrou a ordem. Guarda a ordem manual sem

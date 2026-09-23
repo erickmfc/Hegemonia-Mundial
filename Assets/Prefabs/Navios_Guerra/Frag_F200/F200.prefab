@@ -907,7 +907,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 37af128960c2d574f99598557ad1624e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  etiquetaAlvo: Inimigo
+  etiquetaAlvo: Aereo
   alcance: 750
   velocidadeGiro: 60
   limitarRotacao: 1

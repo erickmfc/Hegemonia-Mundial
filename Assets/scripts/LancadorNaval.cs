@@ -8,7 +8,7 @@ public class LancadorNaval : MonoBehaviour
     public enum ModoOperacao { Passivo, Manual, Automatico }
 
     [Header("Configurações do Lançador")]
-    public ModoOperacao modoAtual = ModoOperacao.Passivo;
+    public ModoOperacao modoAtual = ModoOperacao.Automatico;
     public Transform cabecaRotativa; // Parte que gira (se houver)
     public Transform[] pontosDeSaida; // Onde os mísseis nascem (bocas do VLS)
     public Transform[] pontosDeSaidaTorpedo; // Onde os torpedos nascem (tubos de torpedo)
@@ -77,7 +77,11 @@ public class LancadorNaval : MonoBehaviour
     // Compartilhado estaticamente por TODOS os navios! Impede que 5 navios atirem num barco que já vai morrer.
     private static Dictionary<Transform, float> bancoDanoProjetadoFrotas = new Dictionary<Transform, float>();
     private static readonly Dictionary<Transform, float> expiracaoDanoProjetadoFrotas = new Dictionary<Transform, float>();
-    private static readonly Dictionary<int, float> cooldownAutorizacaoPorAlvo = new Dictionary<int, float>();
+    // O bloqueio de repetição é local ao lançador. Se fosse global, o primeiro
+    // navio atualizado reservaria o alvo e impediria os demais de participarem
+    // da salva; o dano projetado continua compartilhado pela frota para evitar
+    // que todos disparem além do necessário.
+    private readonly Dictionary<int, float> cooldownAutorizacaoPorAlvo = new Dictionary<int, float>();
     private static readonly HashSet<int> prefabsPreaquecidos = new HashSet<int>();
     private static readonly HashSet<int> prefabsEmPreaquecimento = new HashSet<int>();
     private static readonly Collider[] radarBuffer = new Collider[128];
@@ -156,6 +160,13 @@ public class LancadorNaval : MonoBehaviour
         // Cache do ControleUnidade para saber se estou selecionado
         meuControle = GetComponent<ControleUnidade>();
         if (meuControle == null) meuControle = GetComponentInParent<ControleUnidade>();
+        // Prefabs antigos serializam Passivo (valor zero), embora a unidade
+        // esteja oficialmente em combate ativo. Sincroniza esse legado uma
+        // única vez ao iniciar; o modo passivo explícito da unidade prevalece.
+        if (meuControle != null && meuControle.ModoCombateAtivo && modoAtual == ModoOperacao.Passivo)
+        {
+            DefinirModoIA(ModoOperacao.Automatico, false);
+        }
 
         CriarVisualizadorAlcance();
     }
@@ -443,24 +454,25 @@ public class LancadorNaval : MonoBehaviour
         }
     }
 
-    // --- MODO MANUAL (Mouse Direito) ---
+    // --- MODO MANUAL (Clique Direito) ---
     void ComportamentoManual()
     {
         // Só permite atirar manualmente se ESTIVER SELECIONADO
         if (meuControle == null || !meuControle.selecionado) return;
 
-        // Botão direito normal fica reservado para mover. O disparo manual
-        // usa Space ou Shift+botão direito para não competir com a ordem RTS.
         bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-        if (Input.GetKeyDown(KeyCode.Space)
-            || (teclaModificadora && Input.GetMouseButtonDown(1)))
+        bool cliqueDireitoDeDisparo = Input.GetMouseButtonDown(1) && !teclaModificadora;
+        if (Input.GetKeyDown(KeyCode.Space) || cliqueDireitoDeDisparo)
         {
+            if (GestorMenusExclusivos.CliqueBloqueadoPelaUI() || CapturaCliqueOrdensManuais.EstaAtiva()) return;
             if (cameraPrincipal == null) return;
             Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
 
-            // Raio atinge o chão?
-            if (Physics.Raycast(raio, out hit, 1000f))
+            // Usa a distância de renderização da câmera: 1000 unidades não
+            // alcançam o terreno quando o jogador está com bastante zoom-out.
+            float alcanceRaycast = Mathf.Max(1000f, cameraPrincipal.farClipPlane);
+            if (Physics.Raycast(raio, out hit, alcanceRaycast))
             {
                 // Verifica se tem munição e se o tempo de recarga passou
                 if (PodeAtirar())

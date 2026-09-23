@@ -43,6 +43,7 @@ public class SomUnidade : MonoBehaviour
     private AudioSource audioSource;
     private AudioSource audioSourceSecundario; // Para sons adicionais (tiro, explosão)
     private ControleUnidade controleUnidade;
+    private ControleAviao controleAviao;
     private SistemaDeDanos sistemaDanos;
     private float velocidadeAtual = 0f;
     private bool estaMovendo = false;
@@ -82,6 +83,7 @@ public class SomUnidade : MonoBehaviour
         
         // Cachear referências pesadas
         controleUnidade = GetComponent<ControleUnidade>();
+        controleAviao = GetComponent<ControleAviao>();
         sistemaDanos = GetComponent<SistemaDeDanos>();
         agenteCached = GetComponent<UnityEngine.AI.NavMeshAgent>();
         rbCached = GetComponent<Rigidbody>();
@@ -98,6 +100,17 @@ public class SomUnidade : MonoBehaviour
 
     void Update()
     {
+        bool estacionadoEmBase = controleAviao != null
+            && (controleAviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
+                || controleAviao.estadoAtual == ControleAviao.EstadoAviao.ReservaHangar);
+        if (estacionadoEmBase)
+        {
+            if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+            somMotorTocando = false;
+            lastPosition = transform.position;
+            return;
+        }
+
         DetectarVelocidade();
         AjustarSomMotor();
     }

@@ -42,10 +42,15 @@ public static class AudioRuntime
         for (int i = 0; i < fontes.Length; i++)
         {
             AudioSource fonte = fontes[i];
-            if (fonte == null || !EhFonteDeMotor(fonte)) continue;
+            if (fonte == null) continue;
+            bool fonteDeMotor = EhFonteDeMotor(fonte);
+            // Em modo desligado, também encerra loops de motor com nomes
+            // genéricos dos prefabs G15/G18; tiros e efeitos one-shot não são
+            // afetados. Ao religar, só reinicia fontes reconhecidas como motor.
+            if (!fonteDeMotor && (ligado || !fonte.loop)) continue;
 
             fonte.mute = !ligado;
-            if (ligado && fonte.clip != null && fonte.loop && !fonte.isPlaying)
+            if (ligado && fonteDeMotor && fonte.clip != null && fonte.loop && !fonte.isPlaying)
             {
                 fonte.Play();
             }

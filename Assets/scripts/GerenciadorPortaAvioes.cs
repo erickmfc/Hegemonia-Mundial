@@ -89,6 +89,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private readonly Dictionary<int, Coroutine> _rotinasRecebimentoHeliCarrier = new Dictionary<int, Coroutine>();
     private readonly HashSet<int> _helicopterosNoHangarInterno = new HashSet<int>();
     private LineRenderer _linhaPatrulhaAviaoCarrier;
+    [Header("=== OPERAÇÃO AÉREA CONTÍNUA ===")]
+    [Range(0, 100)] public int percentualAlaAereaEmOperacao;
+    private bool _operacaoAereaContinuaAtiva;
+    private readonly List<Vector3> _rotaPatrulhaContinua = new List<Vector3>(8);
+    private readonly HashSet<ControleAviao> _aeronavesAlaContinua = new HashSet<ControleAviao>();
+    private float _proximaReposicaoAerea;
 
     // ======================================================
     // Cache UI (IMGUI): evita queda grande de FPS ao listar muitas unidades por frame
@@ -641,6 +647,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             }
         }
 
+        AtualizarOperacaoAereaContinua();
+
         // O V2 mantém este componente ativo somente para o input da tecla O e
         // para o OnGUI do menu legado. Toda movimentação, taxiamento, elevador
         // e parentesco físico ficam exclusivamente sob a autoridade do V2.
@@ -668,6 +676,14 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             if (_selecionadoCarrier != null && _selecionadoCarrier.aguardandoCliqueRadar && !_menuCarrierAtivo)
             {
                 ProcessarOrdemAviaoCarrier();
+            }
+
+            // O movimento do helicóptero ainda usa o controlador legado; manter
+            // seu leitor de ordens ativo mesmo quando o V2 controla os aviões.
+            if (_modoOrdemHelicopteroCarrier != ModoOrdemHelicopteroCarrier.Nenhum
+                && helicopteroSelecionadoParaMissao != null)
+            {
+                ProcessarOrdemHelicopteroCarrier();
             }
             return;
         }
@@ -926,6 +942,86 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(2);
+
+        GerenciadorOperacoesPortaAvioesV2 operacoesMenu = ObterOperacoesV2();
+        if (!somenteHelicopteros && operacoesMenu != null && operacoesMenu.usarSistemaOperacoesV2)
+        {
+            GUILayout.BeginVertical("box");
+            GUILayout.Label("<b>OPERAÇÃO AÉREA CONTÍNUA</b>");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("−5%", GUILayout.Width(58f))) percentualAlaAereaEmOperacao = Mathf.Max(0, percentualAlaAereaEmOperacao - 5);
+            GUILayout.Label($"Aeronaves em patrulha: {percentualAlaAereaEmOperacao}% (meta {ObterMetaAereaContinua()} no ar)", GUILayout.ExpandWidth(true));
+            if (GUILayout.Button("+5%", GUILayout.Width(58f))) percentualAlaAereaEmOperacao = Mathf.Min(100, percentualAlaAereaEmOperacao + 5);
+            GUILayout.EndHorizontal();
+            percentualAlaAereaEmOperacao = Mathf.Clamp(
+                Mathf.RoundToInt(GUILayout.HorizontalSlider(percentualAlaAereaEmOperacao, 0f, 100f, GUILayout.ExpandWidth(true)) / 5f) * 5,
+                0,
+                100);
+            if (percentualAlaAereaEmOperacao == 0) _operacaoAereaContinuaAtiva = false;
+            bool podeIniciarPatrulhaContinua = _rotaPatrulhaContinua.Count > 0 && percentualAlaAereaEmOperacao > 0;
+            bool possuiAeronavePronta = false;
+            for (int i = 0; i < avioesNoPatio.Count; i++)
+            {
+                ControleAviao disponivel = avioesNoPatio[i];
+                if (disponivel != null && disponivel.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    possuiAeronavePronta = true;
+                    break;
+                }
+            }
+            bool guiAntesDaDefinicao = GUI.enabled;
+            GUI.enabled = possuiAeronavePronta;
+            if (GUILayout.Button(_rotaPatrulhaContinua.Count > 0 ? "Redefinir área da patrulha" : "Definir área da patrulha", GUILayout.Height(24f)))
+            {
+                IniciarDefinicaoPatrulhaContinua();
+            }
+            GUI.enabled = guiAntesDaDefinicao;
+            bool guiEstavaHabilitada = GUI.enabled;
+            GUI.enabled = guiEstavaHabilitada && (podeIniciarPatrulhaContinua || _operacaoAereaContinuaAtiva);
+            if (GUILayout.Button(_operacaoAereaContinuaAtiva ? "Parar operação contínua" : "Iniciar operação contínua", GUILayout.Height(26f)))
+            {
+                _operacaoAereaContinuaAtiva = !_operacaoAereaContinuaAtiva;
+                if (_operacaoAereaContinuaAtiva) _proximaReposicaoAerea = 0f;
+            }
+            GUI.enabled = guiEstavaHabilitada;
+            if (_rotaPatrulhaContinua.Count == 0)
+                GUILayout.Label("Defina a área; ao confirmar, o primeiro avião decola e a rota fica disponível para reposição.", _uiLabelWrap);
+            else if (podeIniciarPatrulhaContinua)
+                GUILayout.Label("A operação repõe aeronaves quando retornarem ao convés.", _uiLabelCompacta);
+            int aeronavesPreparando = 0;
+            foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in operacoesMenu.Aeronaves)
+            {
+                if (par.Value == null || par.Value.Registro == null) continue;
+                EstadoOperacaoPortaAvioesV2 estado = par.Value.Registro.estado;
+                if (estado == EstadoOperacaoPortaAvioesV2.Reabastecendo
+                    || estado == EstadoOperacaoPortaAvioesV2.Rearmando
+                    || estado == EstadoOperacaoPortaAvioesV2.AguardandoServico
+                    || estado == EstadoOperacaoPortaAvioesV2.AguardandoCatapulta
+                    || estado == EstadoOperacaoPortaAvioesV2.TaxiandoParaCatapulta
+                    || estado == EstadoOperacaoPortaAvioesV2.AlinhandoNaCatapulta
+                    || estado == EstadoOperacaoPortaAvioesV2.PreparandoDecolagem)
+                    aeronavesPreparando++;
+            }
+            if (aeronavesPreparando > 0)
+            {
+                string[] animacaoPreparo = { "Preparando", "Preparando ·", "Preparando ··", "Preparando ···" };
+                GUILayout.Label($"{animacaoPreparo[(Time.frameCount / 12) % animacaoPreparo.Length]} e reabastecendo/rearmando: {aeronavesPreparando}", _uiLabelCompacta);
+            }
+            if (_operacaoAereaContinuaAtiva)
+            {
+                string proximoNome = "aguardando aeronave disponível";
+                for (int i = 0; i < avioesNoPatio.Count; i++)
+                {
+                    ControleAviao candidato = avioesNoPatio[i];
+                    if (candidato == null || candidato.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+                    proximoNome = candidato.name;
+                    break;
+                }
+                string[] animacaoFila = { "Fila", "Fila ·", "Fila ··", "Fila ···" };
+                GUILayout.Label($"{animacaoFila[(Time.frameCount / 12) % animacaoFila.Length]} — próximo a voar: {proximoNome}", _uiLabelCompacta);
+            }
+            GUILayout.EndVertical();
+        }
 
         if (somenteHelicopteros)
         {
@@ -1932,6 +2028,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         {
             if (Input.GetMouseButtonDown(0))
             {
+                if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
                 CancelarModoHelicopteroCarrier();
                 return;
             }
@@ -2195,6 +2292,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             : v2.TrySolicitarDecolagem(aviao, destino);
         if (iniciou)
         {
+            if (patrulha)
+            {
+                _rotaPatrulhaContinua.Clear();
+                _rotaPatrulhaContinua.AddRange(_rotaPatrulhaAviaoCarrier);
+            }
             CriarSinalizador(destino, aviao);
             aviao.aguardandoCliqueRadar = false;
             _selecionadoCarrier = null;
@@ -2208,6 +2310,141 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             Debug.LogWarning($"[PortaAvioesV2] Decolagem bloqueada para {aviao.name}: {v2.Registrar(aviao).Registro.motivoFalha}");
         }
         return iniciou;
+    }
+
+    private void AtualizarOperacaoAereaContinua()
+    {
+        if (!_operacaoAereaContinuaAtiva || percentualAlaAereaEmOperacao <= 0 || _rotaPatrulhaContinua.Count == 0 || Time.time < _proximaReposicaoAerea) return;
+        _proximaReposicaoAerea = Time.time + 3f;
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 == null || !v2.usarSistemaOperacoesV2) return;
+
+        _aeronavesAlaContinua.Clear();
+        AdicionarAeronavesAla(avioesNoPatio);
+        AdicionarAeronavesAla(avioesNoHangar);
+        foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in v2.Aeronaves)
+        {
+            AeronaveEmbarcadaV2 registro = par.Value;
+            if (registro == null || registro.Registro == null) continue;
+            ControleAviao aviao = registro.GetComponent<ControleAviao>();
+            if (aviao != null && aviao.GetComponent<Helicoptero>() == null) _aeronavesAlaContinua.Add(aviao);
+        }
+
+        int total = _aeronavesAlaContinua.Count;
+        if (total == 0) return;
+        int alvoNoAr = ObterMetaAereaContinua(total);
+        HashSet<ControleAviao> emOperacao = new HashSet<ControleAviao>();
+        foreach (ControleAviao aviao in _aeronavesAlaContinua)
+        {
+            if (aviao == null) continue;
+            if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.Decolando
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.Pousando
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga)
+                emOperacao.Add(aviao);
+        }
+
+        // O controlador legado pode permanecer em ProntoNoPatio durante a
+        // decolagem V2; a fonte autoritativa nesse intervalo é o registro V2.
+        foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in v2.Aeronaves)
+        {
+            AeronaveEmbarcadaV2 registro = par.Value;
+            if (registro == null || registro.Registro == null) continue;
+            EstadoOperacaoPortaAvioesV2 estado = registro.Registro.estado;
+            bool ocupadaAereaOuFila = estado == EstadoOperacaoPortaAvioesV2.AguardandoCatapulta
+                || estado == EstadoOperacaoPortaAvioesV2.TaxiandoParaCatapulta
+                || estado == EstadoOperacaoPortaAvioesV2.AlinhandoNaCatapulta
+                || estado == EstadoOperacaoPortaAvioesV2.PreparandoDecolagem
+                || estado == EstadoOperacaoPortaAvioesV2.Lancamento
+                || estado == EstadoOperacaoPortaAvioesV2.SubidaInicial
+                || estado == EstadoOperacaoPortaAvioesV2.EmMissao
+                || estado == EstadoOperacaoPortaAvioesV2.SolicitandoPouso
+                || estado == EstadoOperacaoPortaAvioesV2.AguardandoAutorizacao
+                || estado == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera
+                || estado == EstadoOperacaoPortaAvioesV2.AproximacaoLonga
+                || estado == EstadoOperacaoPortaAvioesV2.AproximacaoIntermediaria
+                || estado == EstadoOperacaoPortaAvioesV2.AproximacaoFinal
+                || estado == EstadoOperacaoPortaAvioesV2.ToqueNoConves
+                || estado == EstadoOperacaoPortaAvioesV2.FrenagemOuCaboDeRetencao
+                || estado == EstadoOperacaoPortaAvioesV2.TaxiandoParaSaida
+                || estado == EstadoOperacaoPortaAvioesV2.TaxiandoParaVaga;
+            if (ocupadaAereaOuFila)
+            {
+                ControleAviao controle = registro.GetComponent<ControleAviao>();
+                if (controle != null && controle.GetComponent<Helicoptero>() == null) emOperacao.Add(controle);
+            }
+        }
+        int faltam = alvoNoAr - emOperacao.Count;
+        if (faltam <= 0) return;
+        foreach (ControleAviao aviao in _aeronavesAlaContinua)
+        {
+            if (aviao == null || aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio
+                || aviao.GetComponent<Helicoptero>() != null) continue;
+            PrepararAeronaveNoPatioV2(aviao);
+            if (v2.TrySolicitarPatrulha(aviao, _rotaPatrulhaContinua[_rotaPatrulhaContinua.Count - 1], _rotaPatrulhaContinua))
+            {
+                faltam--;
+                CriarSinalizador(_rotaPatrulhaContinua[_rotaPatrulhaContinua.Count - 1], aviao);
+                break;
+            }
+        }
+    }
+
+    private int ObterMetaAereaContinua()
+    {
+        _aeronavesAlaContinua.Clear();
+        AdicionarAeronavesAla(avioesNoPatio);
+        AdicionarAeronavesAla(avioesNoHangar);
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 != null)
+        {
+            foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in v2.Aeronaves)
+            {
+                if (par.Value == null) continue;
+                ControleAviao aviao = par.Value.GetComponent<ControleAviao>();
+                if (aviao != null && aviao.GetComponent<Helicoptero>() == null) _aeronavesAlaContinua.Add(aviao);
+            }
+        }
+        return ObterMetaAereaContinua(_aeronavesAlaContinua.Count);
+    }
+
+    private int ObterMetaAereaContinua(int total)
+    {
+        if (total <= 0 || percentualAlaAereaEmOperacao <= 0) return 0;
+        if (percentualAlaAereaEmOperacao >= 100) return total;
+        // O V2 permite até uma aeronave por cada 5% selecionados, sem que
+        // 95% arredonde para a frota inteira.
+        return Mathf.Clamp(
+            Mathf.CeilToInt(total * percentualAlaAereaEmOperacao / 100f),
+            1,
+            Mathf.Max(1, total - 1));
+    }
+
+    private void IniciarDefinicaoPatrulhaContinua()
+    {
+        for (int i = 0; i < avioesNoPatio.Count; i++)
+        {
+            ControleAviao disponivel = avioesNoPatio[i];
+            if (disponivel == null || disponivel.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+            _selecionadoCarrier = disponivel;
+            IniciarRadar(1);
+            return;
+        }
+    }
+
+    private void AdicionarAeronavesAla(List<ControleAviao> aeronaves)
+    {
+        if (aeronaves == null) return;
+        foreach (ControleAviao aviao in aeronaves)
+            if (aviao != null && aviao.GetComponent<Helicoptero>() == null) _aeronavesAlaContinua.Add(aviao);
+    }
+
+    private void PrepararAeronaveNoPatioV2(ControleAviao aviao)
+    {
+        if (aviao == null) return;
+        aviao.aeroportoOrigem = this;
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 != null) v2.PrepararAeronaveParaMenu(aviao, avioesNoHangar.Contains(aviao));
     }
 
     public bool SolicitarDecolagemOperacionalV2(ControleAviao aviao, Vector3 destino)

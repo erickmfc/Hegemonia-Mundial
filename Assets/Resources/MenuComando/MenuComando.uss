@@ -290,6 +290,10 @@
     margin-top: -21px;
 }
 
+.mapa-unidade.contato-antigo {
+    opacity: 0.52;
+}
+
 /* Imóveis civis: pontos discretos e sem barra de vida para não dominar o
    satélite. A seleção normal continua reservada às unidades controláveis;
    imóveis só viram alvo quando o modo ATAQUE está ativo. */
@@ -927,12 +931,52 @@
 .ordens-status {
     margin-top: 6px;
     padding-top: 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
     picking-mode: ignore;
     min-height: 34px;
     flex-shrink: 0;
 }
 
+.radar-mini {
+    width: 25px;
+    min-width: 25px;
+    max-width: 25px;
+    height: 30px;
+    min-height: 30px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    padding-left: 0;
+    padding-right: 0;
+    background-color: rgba(205, 93, 0, 0.32);
+    color: rgb(255, 167, 64);
+    border-color: rgba(255, 145, 35, 0.78);
+    border-width: 1px;
+    -unity-font-style: bold;
+}
+
+.radar-mini:hover {
+    background-color: rgba(235, 111, 0, 0.58);
+    border-color: rgb(255, 184, 75);
+}
+
+.radar-mini.radar-ligado {
+    background-color: rgba(255, 116, 0, 0.68);
+    color: rgb(255, 225, 170);
+    border-color: rgb(255, 155, 45);
+    border-width: 2px;
+}
+
+.radar-mini.radar-sem-energia {
+    background-color: rgba(155, 48, 0, 0.6);
+    color: rgb(255, 115, 75);
+    border-color: rgb(235, 75, 35);
+}
+
 .ordem-feedback {
+    flex-grow: 1;
     color: rgb(107, 139, 153);
     font-size: 10px;
     -unity-text-align: middle-center;

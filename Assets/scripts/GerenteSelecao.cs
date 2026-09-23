@@ -250,6 +250,7 @@ public class GerenteSelecao : MonoBehaviour
         // 4. MOVIMENTO EM GRUPO (Botão Direito)
         if (Input.GetMouseButtonDown(1))
         {
+            if (IsMouseOverInteractiveUI()) return;
             if (CapturaCliqueOrdensManuais.EstaAtiva())
             {
                 return;
@@ -268,11 +269,10 @@ public class GerenteSelecao : MonoBehaviour
             }
             // -----------------------------------------------------
 
-            // Shift+RMB e Space ficam reservados para o disparo manual.
-            // RMB sem Shift continua sendo sempre uma ordem de movimento,
-            // inclusive nos modos Manual e Automatico.
+            // No modo Manual, RMB mira/dispara no ponto clicado. Shift+RMB
+            // continua disponivel para emitir uma ordem de movimento.
             bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            if (teclaModificadora && ExisteUnidadeSelecionadaEmModoManualDeDisparo())
+            if (!teclaModificadora && ExisteUnidadeSelecionadaEmModoManualDeDisparo())
             {
                 return;
             }
@@ -520,6 +520,11 @@ public class GerenteSelecao : MonoBehaviour
 
     bool IsMouseOverInteractiveUI()
     {
+        if (GestorMenusExclusivos.CliqueBloqueadoPelaUI())
+        {
+            return true;
+        }
+
         if (Fazenda.CliqueCapturadoPeloMenu())
         {
             return true;
@@ -1276,6 +1281,7 @@ public class GerenteSelecao : MonoBehaviour
         {
             if (unidade == null || !unidade.enabled) continue; // Ignora unidades desativadas (como soldados dentro de caminhões)
             if (unidade.GetComponent<ControleAviaoComercial>() != null) continue; // Ignora civis
+            if (EstaAeronaveEstacionadaEmPortaAvioes(unidade)) continue;
 
             // Onde o tanque está na tela?
             Vector3 posTela = cam.WorldToScreenPoint(unidade.transform.position);
@@ -1302,6 +1308,7 @@ public class GerenteSelecao : MonoBehaviour
             {
                 return null; // Aviões comerciais são automáticos e não selecionáveis
             }
+            if (EstaAeronaveEstacionadaEmPortaAvioes(unidade)) return null;
             return unidade;
         }
 
@@ -1374,6 +1381,26 @@ public class GerenteSelecao : MonoBehaviour
         }
 
         return unidade;
+    }
+
+    private static bool EstaAeronaveEstacionadaEmPortaAvioes(ControleUnidade unidade)
+    {
+        if (unidade == null) return false;
+        ControleAviao aviao = unidade.GetComponent<ControleAviao>();
+        if (aviao != null)
+        {
+            GerenciadorPortaAvioes portaAvioes = aviao.transform.GetComponentInParent<GerenciadorPortaAvioes>();
+            if (portaAvioes != null
+                && aviao.transform.IsChildOf(portaAvioes.transform)
+                && aviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao
+                && aviao.estadoAtual != ControleAviao.EstadoAviao.Decolando) return true;
+        }
+
+        Helicoptero helicoptero = unidade.GetComponent<Helicoptero>();
+        if (helicoptero == null || helicoptero.ObterVagaAeroporto() == null) return false;
+        GerenciadorPortaAvioes baseHeli = helicoptero.transform.GetComponentInParent<GerenciadorPortaAvioes>();
+        return baseHeli != null && helicoptero.transform.IsChildOf(baseHeli.transform)
+            && helicoptero.EstaEstacionadoNoAeroporto();
     }
 
     void CliqueSimples()

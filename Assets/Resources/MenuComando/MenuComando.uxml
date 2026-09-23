@@ -212,6 +212,7 @@
                     <ui:VisualElement class="ordens-row">
                         <ui:Button name="btn-patrulhar" text="🔄 PATRULHAR" class="ordem-btn btn-patrulhar mono" />
                         <ui:Button name="btn-seguir" text="👁 SEGUIR" class="ordem-btn btn-seguir mono" />
+                        <ui:Button name="btn-radar-unidade" text="R" class="radar-mini mono" tooltip="Ligar/desligar radar da unidade" />
                     </ui:VisualElement>
                     <ui:VisualElement class="ordens-row">
                         <ui:Button name="btn-atacar" text="🎯 ATACAR" class="ordem-btn btn-atacar mono" />

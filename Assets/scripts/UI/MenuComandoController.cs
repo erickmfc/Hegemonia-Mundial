@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Hegemonia.RTS;
+using Hegemonia.AI.BrainMaster;
 
 /// <summary>
 /// Menu Comando Tático — controlador principal do UI Toolkit.
@@ -131,6 +132,7 @@ public class MenuComandoController : MonoBehaviour
     private readonly List<Button> botoesOrdem = new List<Button>(8);
     private Button botaoOrdemSelecionado;
     private Button btnPatrulhar;
+    private Button btnRadarUnidade;
     private bool modoLancamentoMissilMapaAtivo = false;
     private bool modoMoverMapaAtivo = false;
 
@@ -182,6 +184,25 @@ public class MenuComandoController : MonoBehaviour
     private bool EhUnidadeDoJogador(IdentidadeUnidade identidade)
     {
         return identidade != null && identidade.teamID == TimeJogadorAtual;
+    }
+
+    private static bool UnidadePodeUsarRadar(ControleUnidade unidade)
+    {
+        if (unidade == null) return false;
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+        if (identidade == null) return false;
+        if (identidade.tipoUnidade != TipoUnidade.Estrutura) return true;
+
+        IA_ConstructionMetadata metadata = unidade.GetComponent<IA_ConstructionMetadata>();
+        return (metadata != null && metadata.IsRadar)
+            || unidade.GetComponent<ControleAviao>() != null
+            || unidade.GetComponent<ControleAviaoCaca>() != null
+            || unidade.GetComponent<Helicoptero>() != null
+            || unidade.GetComponent<VooHelicoptero>() != null
+            || unidade.GetComponent<ControleNavioRealista>() != null
+            || unidade.GetComponent<ControleSubmarino>() != null
+            || unidade.GetComponent<IdentidadeNaval>() != null
+            || unidade.GetComponent<C700TransporteAereo>() != null;
     }
 
     // Tráfego comercial é civil do aeroporto e não deve aparecer nem ser
@@ -702,6 +723,7 @@ public class MenuComandoController : MonoBehaviour
         blink         += Time.deltaTime;
         tickMapa      += Time.deltaTime;
         tickLog       += Time.deltaTime;
+        AtualizarBotaoRadarVisual();
 
         // Animação do radar (rotação simulada por C#)
         radarAngulo = (radarAngulo + Time.deltaTime * 90f) % 360f;
@@ -1136,6 +1158,14 @@ public class MenuComandoController : MonoBehaviour
         var btnMover = root.Q<Button>("btn-mover");
         if (btnMover != null) VincularBotaoOrdem(btnMover, "MOVER");
 
+        btnRadarUnidade = root.Q<Button>("btn-radar-unidade");
+        if (btnRadarUnidade != null)
+        {
+            btnRadarUnidade.clicked += () => ExecutarOrdem("RADAR_ALTERNAR");
+            btnRadarUnidade.pickingMode = PickingMode.Position;
+            btnRadarUnidade.tooltip = "Ligar/desligar o radar emissor das unidades selecionadas";
+        }
+
         var btnLancamento = root.Q<Button>("btn-lancar-missil");
         if (btnLancamento != null) VincularBotaoOrdem(btnLancamento, "LANCAR_MISSIL");
 
@@ -1351,28 +1381,41 @@ public class MenuComandoController : MonoBehaviour
 
             int instId = id.gameObject.GetInstanceID();
             Hegemonia.Cartel.CartelNavalUnidade cartelNaval = id.GetComponent<Hegemonia.Cartel.CartelNavalUnidade>();
-            if (cartelNaval != null && !cartelNaval.RadarVisivel)
-            {
-                // O Cartel Naval mantém o barco no mundo, mas perde o contato
-                // no radar enquanto está em movimento. Reutiliza o marcador
-                // existente e apenas o oculta, sem apagar/recriar a camada.
-                mapaVivos.Add(instId);
-                if (mapaElementos.TryGetValue(instId, out MapaItemUI marcadorOculto)
-                    && marcadorOculto != null && marcadorOculto.Root != null)
-                {
-                    marcadorOculto.Root.style.display = DisplayStyle.None;
-                }
-                continue;
-            }
-
             bool amigo   = EhUnidadeDoJogador(id);
             bool inimigo = id.teamID > 0 && !amigo;
-            if (!amigo && !inimigo) continue;
+            bool ehImovel = EhImovelMapa(id.gameObject);
+            if (!amigo && !inimigo && !ehImovel) continue;
+            bool contatoAtualInimigo = false;
+            bool contatoAntigoInimigo = false;
+            Vector3 ultimaPosicaoConhecidaInimigo = Vector3.zero;
+
+            // Casas/imóveis seguem como referência no satélite. Unidades e
+            // instalações militares inimigas exigem contato de uma força em
+            // guerra, recebido por visão direta ou radar.
+            if (inimigo && !ehImovel)
+            {
+                bool emGuerra = Hegemonia.RTS.RTSVisibilityService.TeamsAtWar(TimeJogadorAtual, id.teamID);
+                Hegemonia.RTS.RTSVisibilityService visibilidade = Hegemonia.RTS.RTSVisibilityService.Instancia;
+                contatoAtualInimigo = visibilidade != null && visibilidade.IsVisibleToTeam(TimeJogadorAtual, id);
+                contatoAntigoInimigo = !contatoAtualInimigo && visibilidade != null
+                    && visibilidade.TryGetLastKnownPosition(TimeJogadorAtual, id, out ultimaPosicaoConhecidaInimigo);
+                bool radarCartelVisivel = cartelNaval == null || cartelNaval.RadarVisivel || contatoAtualInimigo || contatoAntigoInimigo;
+                if (!emGuerra || (!contatoAtualInimigo && !contatoAntigoInimigo) || !radarCartelVisivel)
+                {
+                    mapaVivos.Add(instId);
+                    if (mapaElementos.TryGetValue(instId, out MapaItemUI marcadorOculto)
+                        && marcadorOculto != null && marcadorOculto.Root != null)
+                        marcadorOculto.Root.style.display = DisplayStyle.None;
+                    continue;
+                }
+            }
             mapaVivos.Add(instId);
 
-            Vector3 pos3D = cartelNaval != null
-                ? cartelNaval.PosicaoConhecidaRadar
-                : id.transform.position;
+            Vector3 pos3D = inimigo && contatoAntigoInimigo
+                ? ultimaPosicaoConhecidaInimigo
+                : cartelNaval != null
+                    ? cartelNaval.PosicaoConhecidaRadar
+                    : id.transform.position;
 
             // Converte para % (0-100) usando a janela visível
             float pctX = ((pos3D.x - xMin) / rangeX) * 100f;
@@ -1410,6 +1453,12 @@ public class MenuComandoController : MonoBehaviour
             {
                 item.Root.EnableInClassList("selecionado", estasel);
                 item.Root.EnableInClassList("foco", estaEmFoco);
+                bool contatoAntigo = inimigo && contatoAntigoInimigo && !contatoAtualInimigo;
+                item.Root.EnableInClassList("contato-antigo", contatoAntigo);
+                item.Root.pickingMode = contatoAntigo ? PickingMode.Ignore : PickingMode.Position;
+                item.Root.tooltip = contatoAntigo
+                    ? "Última posição conhecida — o contato de radar expirou"
+                    : ObterNomeExibicao(id.gameObject);
             }
             if (item.Label != null)
             {
@@ -1610,6 +1659,12 @@ public class MenuComandoController : MonoBehaviour
             var capturedCu = cu;
             container.RegisterCallback<ClickEvent>(evt =>
             {
+                if (container.ClassListContains("contato-antigo"))
+                {
+                    evt.StopPropagation();
+                    return;
+                }
+
                 if (desenhadorOrdens == null)
                     desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
@@ -2771,6 +2826,55 @@ public class MenuComandoController : MonoBehaviour
 
         switch (ordem)
         {
+            case "RADAR_ALTERNAR":
+                bool ligarRadar = false;
+                for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+                {
+                    ControleUnidade unidade = unidadesSelecionadasMenu[i];
+                    if (!UnidadePodeUsarRadar(unidade)) continue;
+                    RadarUnidadeTatica radarAtual = unidade.GetComponent<RadarUnidadeTatica>();
+                    if (radarAtual == null || !radarAtual.RadarLigado)
+                    {
+                        ligarRadar = true;
+                        break;
+                    }
+                }
+
+                int radaresAtualizados = 0;
+                int semEnergia = 0;
+                for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+                {
+                    ControleUnidade unidade = unidadesSelecionadasMenu[i];
+                    if (!UnidadePodeUsarRadar(unidade)) continue;
+                    IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+                    if (identidade == null || identidade.teamID != TimeJogadorAtual) continue;
+                    RadarUnidadeTatica radar = unidade.GetComponent<RadarUnidadeTatica>();
+                    if (radar == null) radar = unidade.gameObject.AddComponent<RadarUnidadeTatica>();
+                    radar.AtualizarAlcance(identidade);
+                    radaresAtualizados++;
+                    if (ligarRadar)
+                    {
+                        if (!radar.TentarLigarRadar(TimeJogadorAtual)) semEnergia++;
+                    }
+                    else
+                    {
+                        radar.DefinirRadar(false);
+                    }
+                }
+
+                SetText(ordemFeedback, radaresAtualizados > 0
+                    ? (ligarRadar
+                        ? semEnergia > 0
+                            ? $"⚠ Energia insuficiente: {semEnergia} unidade(s) não ligaram o radar. Custo: 1 energia ao ligar e por minuto."
+                            : $"📡 Radar ligado em {radaresAtualizados} unidade(s). Emissão detectável pelo inimigo."
+                        : $"📡 Radar desligado em {radaresAtualizados} unidade(s).")
+                    : "⚠ Selecione unidade(s) aliada(s) para controlar o radar.");
+                AdicionarLog("OPS", ligarRadar
+                    ? semEnergia > 0 ? $"Energia insuficiente para {semEnergia} unidade(s) ligar(em) radar" : "Radar emissor ligado nas unidades selecionadas"
+                    : "Radar emissor desligado nas unidades selecionadas", ligarRadar ? "alerta" : "normal");
+                AtualizarBotaoRadarVisual();
+                break;
+
             case "ATIVO":
                 foreach (var u in unidadesSelecionadasMenu)
                 {
@@ -3016,6 +3120,39 @@ public class MenuComandoController : MonoBehaviour
         if (bar != null)
             bar.style.width = new StyleLength(
                 new Length(Mathf.Clamp01(pct01) * 100f, LengthUnit.Percent));
+    }
+
+    private void AtualizarBotaoRadarVisual()
+    {
+        if (btnRadarUnidade == null) return;
+
+        bool temUnidadeAliada = false;
+        bool radarLigado = false;
+        bool radarSemEnergia = false;
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (!UnidadePodeUsarRadar(unidade)) continue;
+            IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+            if (identidade == null || identidade.teamID != TimeJogadorAtual) continue;
+            temUnidadeAliada = true;
+            RadarUnidadeTatica radar = unidade.GetComponent<RadarUnidadeTatica>();
+            radarLigado |= radar != null && radar.RadarLigado;
+            radarSemEnergia |= radar != null && radar.BloqueadoPorEnergia;
+        }
+
+        btnRadarUnidade.SetEnabled(temUnidadeAliada);
+        btnRadarUnidade.EnableInClassList("radar-ligado", radarLigado);
+        btnRadarUnidade.EnableInClassList("radar-sem-energia", radarSemEnergia && !radarLigado);
+        btnRadarUnidade.text = radarLigado ? "R •" : radarSemEnergia ? "R !" : "R";
+        btnRadarUnidade.tooltip = radarLigado
+            ? "Radar ligado — emissão detectável pelo inimigo; custo de energia por minuto"
+            : radarSemEnergia
+                ? "Radar sem energia — aguarde a recarga de energia para ligar novamente"
+                : "Radar desligado — clique para detectar unidades inimigas em guerra";
+        btnRadarUnidade.style.opacity = radarLigado
+            ? (Mathf.Sin(Time.unscaledTime * 8f) > 0f ? 1f : 0.58f)
+            : 1f;
     }
 
     private void AtualizarCacheSelecaoIds()

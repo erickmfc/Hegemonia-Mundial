@@ -2,6 +2,7 @@
 // ============================================================================
 using System;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -34,6 +35,7 @@ namespace Hegemonia.AI.Master
             public string Name;
             public Vector3 Position;
             public float LastSeenTime;
+            public float ForgetAt;
             public DomainHint Domain;
             public bool IsStructure;
             public float Threat;
@@ -103,6 +105,7 @@ namespace Hegemonia.AI.Master
         private readonly List<EnemyMemory> _visibleEnemies = new List<EnemyMemory>(128);
         private readonly Dictionary<int, EnemyMemory> _enemyMemory = new Dictionary<int, EnemyMemory>(256);
         private readonly List<int> _staleKeys = new List<int>(64);
+        private readonly List<int> _memoryKeysToRefresh = new List<int>(64);
 
         private WorldSnapshot _snapshot;
         private int _teamId;
@@ -219,8 +222,11 @@ namespace Hegemonia.AI.Master
         public void RefreshVisibleEnemies(float now)
         {
             _visibleEnemies.Clear();
-            if (_visibilityProviders.Count == 0)
+            RTSVisibilityService visibility = RTSVisibilityService.Instancia;
+            if (visibility == null)
             {
+                _enemyMemory.Clear();
+                _snapshot.EnemyVisibleCount = 0;
                 return;
             }
 
@@ -232,12 +238,15 @@ namespace Hegemonia.AI.Master
                     continue;
                 }
 
-                if (entry.teamId == 0 || entry.teamId == _teamId || IsAllied(entry.teamId))
+                if (entry.teamId <= 0 || entry.teamId == _teamId || IsAllied(entry.teamId)
+                    || !RTSVisibilityService.TeamsAtWar(_teamId, entry.teamId))
                 {
                     continue;
                 }
 
-                if (!IsVisible(entry.transform.position))
+                if (!visibility.IsVisibleToTeam(_teamId, entry.identity)
+                    || !visibility.TryGetContactForTeam(_teamId, entry.identity, out RTSVisibilityContact contact)
+                    || contact == null)
                 {
                     continue;
                 }
@@ -247,7 +256,8 @@ namespace Hegemonia.AI.Master
                     InstanceId = entry.identity.GetInstanceID(),
                     Name = entry.gameObject.name,
                     Position = entry.transform.position,
-                    LastSeenTime = now,
+                    LastSeenTime = contact.lastSeenAt,
+                    ForgetAt = contact.lastKnownExpiresAt,
                     Domain = entry.cache.Domain,
                     IsStructure = entry.cache.IsStructure,
                     Threat = EstimateThreat(entry.cache)
@@ -256,6 +266,36 @@ namespace Hegemonia.AI.Master
                 _visibleEnemies.Add(mem);
                 _enemyMemory[mem.InstanceId] = mem;
             }
+
+            _staleKeys.Clear();
+            _memoryKeysToRefresh.Clear();
+            foreach (KeyValuePair<int, EnemyMemory> pair in _enemyMemory)
+            {
+                if (!visibility.TryGetContactForTeam(_teamId, pair.Key, out RTSVisibilityContact contact)
+                    || contact == null
+                    || contact.lastKnownExpiresAt < Time.unscaledTime
+                    || !RTSVisibilityService.TeamsAtWar(_teamId, contact.targetTeamId))
+                {
+                    _staleKeys.Add(pair.Key);
+                    continue;
+                }
+                _memoryKeysToRefresh.Add(pair.Key);
+            }
+
+            for (int i = 0; i < _memoryKeysToRefresh.Count; i++)
+            {
+                int key = _memoryKeysToRefresh[i];
+                if (!_enemyMemory.TryGetValue(key, out EnemyMemory memory)
+                    || !visibility.TryGetContactForTeam(_teamId, key, out RTSVisibilityContact contact)
+                    || contact == null) continue;
+                memory.Position = contact.lastKnownPosition;
+                memory.LastSeenTime = contact.lastSeenAt;
+                memory.ForgetAt = contact.lastKnownExpiresAt;
+                _enemyMemory[key] = memory;
+            }
+
+            for (int i = 0; i < _staleKeys.Count; i++)
+                _enemyMemory.Remove(_staleKeys[i]);
 
             _snapshot.EnemyVisibleCount = _visibleEnemies.Count;
             if (_visibleEnemies.Count > 0)
@@ -294,6 +334,7 @@ namespace Hegemonia.AI.Master
             foreach (var pair in _enemyMemory)
             {
                 EnemyMemory mem = pair.Value;
+                if (Time.unscaledTime > mem.ForgetAt) continue;
                 float score = mem.Threat + (mem.IsStructure ? 25f : 5f);
                 if (score > bestScore)
                 {
@@ -323,6 +364,7 @@ namespace Hegemonia.AI.Master
             foreach (var pair in _enemyMemory)
             {
                 EnemyMemory mem = pair.Value;
+                if (Time.unscaledTime > mem.ForgetAt) continue;
                 string n = Normalize(mem.Name);
                 float score = mem.Threat;
 
@@ -485,9 +527,10 @@ namespace Hegemonia.AI.Master
         private void CleanupMemory(float now, float maxAge)
         {
             _staleKeys.Clear();
+            float currentTime = Time.unscaledTime;
             foreach (var pair in _enemyMemory)
             {
-                if (now - pair.Value.LastSeenTime > maxAge)
+                if (currentTime - pair.Value.LastSeenTime > maxAge || currentTime > pair.Value.ForgetAt)
                 {
                     _staleKeys.Add(pair.Key);
                 }
