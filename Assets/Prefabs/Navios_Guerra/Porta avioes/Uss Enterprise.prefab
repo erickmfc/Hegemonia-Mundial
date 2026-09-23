@@ -838,12 +838,14 @@ MonoBehaviour:
   layout: {fileID: 910000000000000005}
   velocidadeTaxi: 12
   velocidadeAproximacao: 30
-  velocidadeEspera: 36
-  velocidadeAproximacaoLonga: 30
-  velocidadeAproximacaoIntermediaria: 24
-  velocidadeAproximacaoFinal: 18
-  velocidadeToque: 10
-  velocidadeSaidaPista: 8
+  velocidadeEspera: 1
+  velocidadeAproximacaoLonga: 1
+  velocidadeAproximacaoIntermediaria: 1
+  velocidadeAproximacaoFinal: 0.8
+  velocidadeToque: 0.8
+  velocidadeSaidaPista: 0.8
+  duracaoServicoAposPouso: 30
+  esperaNaFilaDecolagem: 5
   timeoutPorEstado: 45
   velocidadeReabastecimento: 40
   interiorHangarModelado: 0

@@ -18,13 +18,15 @@ O prefab `Assets/Prefabs/Navios_Guerra/Porta avioes/Uss Enterprise.prefab` já c
 6. Em cada elevador, configure `Plataforma`, `Posicao_Conves`, `Posicao_Baixa` e `Fila`; `ElevadorPortaAvioesV2` é criado automaticamente pelo layout.
 7. No Inspector, execute **Validar layout**. Os gizmos usam azul para pouso, branco para taxi, verde para vagas externas, vermelho para catapultas, roxo para elevadores, laranja para hangar e ciano para serviços; as setas seguem `Transform.forward`.
 8. No USS Enterprise, `Colisores` possui `BoxCollider_Conves` sólido e volumes trigger para `PistaPouso`, `Taxi`, `Elevador_01` e `Catapulta_01`. Ajuste os tamanhos no Inspector se a escala do modelo for alterada.
-9. `Decolagem` contém `Fila`, `Alinhamento`, `Liberacao`, `Subida_Inicial` e `Saida_Voo`; `Voo` contém `Circuito_01`, `Afastamento_01`, `Subida_Inicial` e `Ponto_Missao`. Esses pontos são locais ao porta-aviões.
+9. `Decolagem` contém `Fila`, `Alinhamento`, `Liberacao`, `Subida_Inicial` e `Saida_Voo`; `Voo` contém `Circuito_01`, `Afastamento_01`, `Subida_Inicial` e `Ponto_Missao`. A saída da catapulta usa apenas os pontos de `Decolagem`; `Circuito_01` e `Afastamento_01` não fazem parte do lançamento. Esses pontos são locais ao porta-aviões.
 
 Todos os pontos são filhos do navio e devem ser posicionados com `localPosition`/`localRotation`, para acompanhar movimento e rotação do porta-aviões.
 
 ## Fluxo V2
 
-`Pouso -> Frenagem -> Taxi -> EstacionadoNoConves -> Reabastecendo -> ProntoNoConves -> ElevadorDescendo -> ArmazenadoNoHangar -> ElevadorSubindo -> Taxi -> Catapulta -> Lancamento -> EmMissao`.
+`Pouso -> Frenagem -> Taxi -> EstacionadoNoConves -> Serviço automático (30 s) -> ProntoNoConves -> ElevadorDescendo -> ArmazenadoNoHangar -> ElevadorSubindo -> Taxi -> Catapulta -> Lancamento -> SubidaInicial -> Saida_Voo -> EmMissao`.
+
+No pouso do USS Enterprise, espera e aproximações longa/média usam a velocidade máxima da aeronave. A partir da aproximação final, toque e saída da pista usam 80%. Após estacionar, a aeronave fica em serviço por 30 segundos e só então é reabastecida e liberada automaticamente. Na decolagem, espera 5 segundos em `Fila`; a aeronave seguinte só sai da vaga quando a anterior alcança `Liberacao`, e só avança de `Alinhamento` para `Liberacao` quando a anterior chega a `Subida_Inicial`. Os trechos até `Liberacao`, `Subida_Inicial` e `Saida_Voo` usam 50%, 70% e 100% da velocidade máxima, respectivamente; depois de `Saida_Voo`, o controle passa ao `ControleAviao`.
 
 O pouso não desativa o avião. O `SetActive(false)` V2 só é executado após a plataforma atingir `Posicao_Baixa`, e apenas quando `interiorHangarModelado` está desmarcado. O retorno ativa a mesma instância no elevador inferior, sobe a plataforma e só depois percorre taxi até uma nova vaga; nunca usa a vaga externa antiga como reaparecimento.
 

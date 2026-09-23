@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -30,12 +31,33 @@ public class CameraController : MonoBehaviour
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao = 0f;
     private Camera cameraPrincipal;
+    private Transform unidadeSeguindo;
+    private Vector3 ultimaPosicaoUnidadeSeguida;
     private Vector3 ultimaAreaNotificada;
     private bool projecaoInicializada;
     private readonly List<Terrain> terrenosVisiveisCache = new List<Terrain>(8);
     private float proximaAtualizacaoTerrenos;
     private const float DistanciaMinimaNotificacaoSqr = 625f;
     private const float AlturaMinimaNotificacao = 5f;
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += AoCarregarCena;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= AoCarregarCena;
+        unidadeSeguindo = null;
+        gerenteSelecaoCache = null;
+    }
+
+    private void AoCarregarCena(Scene cena, LoadSceneMode modo)
+    {
+        unidadeSeguindo = null;
+        gerenteSelecaoCache = null;
+        proximaBuscaGerenteSelecao = 0f;
+    }
 
     void Start()
     {
@@ -60,7 +82,8 @@ public class CameraController : MonoBehaviour
         // Bloqueia movimento se estivermos digitando no menu
         if (UnityEngine.EventSystems.EventSystem.current != null 
             && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null
-            && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null)
+            && (UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null
+                || UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent("TMP_InputField") != null))
         {
             return;
         }
@@ -76,6 +99,15 @@ public class CameraController : MonoBehaviour
             || MenuPier.EstaAberto
             || Fazenda.QualquerFazendaAberta
             || (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto);
+
+        // O mapa estrategico ja usa F para acompanhar o proprio alvo. Fora
+        // dele, F alterna o acompanhamento da camera principal.
+        if (!menusAbertos
+            && !IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto
+            && RTSInputBindings.GetKeyDown(RTSInputAction.Follow))
+        {
+            AlternarAcompanhamentoUnidadeSelecionada();
+        }
 
         long cameraTimingStart = DiagnosticoDesempenhoJogo.CapturaAtiva
             ? System.Diagnostics.Stopwatch.GetTimestamp()
@@ -109,10 +141,11 @@ public class CameraController : MonoBehaviour
 
         // --- 2. Movimento (W, A, S, D) Relativo à Câmera ---
         // Pegamos a direção "frente" e "direita" da câmera, mas zeramos o Y para não voar para o chão/céu
-        bool moverW = !menusAbertos && Input.GetKey(KeyCode.W);
-        bool moverS = !menusAbertos && Input.GetKey(KeyCode.S);
-        bool moverD = !menusAbertos && Input.GetKey(KeyCode.D);
-        bool moverA = !menusAbertos && Input.GetKey(KeyCode.A);
+        bool podeMoverCamera = !menusAbertos && unidadeSeguindo == null;
+        bool moverW = podeMoverCamera && Input.GetKey(KeyCode.W);
+        bool moverS = podeMoverCamera && Input.GetKey(KeyCode.S);
+        bool moverD = podeMoverCamera && Input.GetKey(KeyCode.D);
+        bool moverA = podeMoverCamera && Input.GetKey(KeyCode.A);
         bool moverCamera = moverW || moverS || moverD || moverA;
         if (moverCamera)
         {
@@ -197,7 +230,7 @@ public class CameraController : MonoBehaviour
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
-        bool podeRotacionar = !menusAbertos;
+        bool podeRotacionar = !menusAbertos && unidadeSeguindo == null;
         InteractionModeSnapshot snapshotInteracao = InteractionModeService.CurrentSnapshot();
         if (snapshotInteracao.Policy.bloqueiaRotacaoCamera)
         {
@@ -256,6 +289,73 @@ public class CameraController : MonoBehaviour
             distanciaMinima,
             distanciaMaxima);
         projecaoInicializada = true;
+    }
+
+    private void LateUpdate()
+    {
+        if (unidadeSeguindo == null || !unidadeSeguindo.gameObject.activeInHierarchy)
+        {
+            unidadeSeguindo = null;
+            return;
+        }
+
+        Vector3 posicaoAlvo = unidadeSeguindo.position;
+        Vector3 posicaoAnterior = transform.position;
+        Vector3 posicaoCamera = transform.position;
+        posicaoCamera.x = posicaoAlvo.x;
+        posicaoCamera.y += posicaoAlvo.y - ultimaPosicaoUnidadeSeguida.y;
+        posicaoCamera.z = posicaoAlvo.z;
+        transform.position = posicaoCamera;
+        Vector3 direcaoAlvo = posicaoAlvo - transform.position;
+        if (direcaoAlvo.sqrMagnitude > 0.01f)
+        {
+            OrientarParaAlvo(direcaoAlvo.normalized);
+        }
+
+        ultimaPosicaoUnidadeSeguida = posicaoAlvo;
+        if (transform.position != posicaoAnterior)
+        {
+            NotificarMudancaDeArea(transform.position);
+        }
+
+        if (cameraPrincipal != null && Mathf.Abs(transform.position.y - posicaoAnterior.y) > 0.01f)
+        {
+            AtualizarProjecao(transform.position.y);
+        }
+    }
+
+    private void AlternarAcompanhamentoUnidadeSelecionada()
+    {
+        if (unidadeSeguindo == null || !unidadeSeguindo.gameObject.activeInHierarchy)
+        {
+            unidadeSeguindo = null;
+        }
+
+        if (unidadeSeguindo != null)
+        {
+            unidadeSeguindo = null;
+            return;
+        }
+
+        GerenteSelecao gerente = ObterGerenteSelecao();
+        if (gerente == null || gerente.unidadesSelecionadas == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < gerente.unidadesSelecionadas.Count; i++)
+        {
+            ControleUnidade unidade = gerente.unidadesSelecionadas[i];
+            if (unidade == null || !unidade.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            unidadeSeguindo = unidade.transform;
+            FocarEm(unidadeSeguindo.position);
+            ultimaPosicaoUnidadeSeguida = unidadeSeguindo.position;
+            return;
+        }
     }
 
     private float CalcularRecorteDasSuperficies()
@@ -367,7 +467,7 @@ public class CameraController : MonoBehaviour
             Vector3 direcao = alvo - transform.position;
             if (direcao.sqrMagnitude > 0.01f)
             {
-                transform.rotation = Quaternion.LookRotation(direcao.normalized, Vector3.up);
+                OrientarParaAlvo(direcao.normalized);
             }
         }
 
@@ -376,6 +476,21 @@ public class CameraController : MonoBehaviour
         {
             AtualizarProjecao(transform.position.y);
         }
+    }
+
+    private void OrientarParaAlvo(Vector3 direcao)
+    {
+        Vector3 referenciaVertical = Vector3.ProjectOnPlane(transform.up, direcao);
+        if (referenciaVertical.sqrMagnitude < 0.001f)
+        {
+            referenciaVertical = Vector3.ProjectOnPlane(Vector3.up, direcao);
+        }
+        if (referenciaVertical.sqrMagnitude < 0.001f)
+        {
+            referenciaVertical = Vector3.ProjectOnPlane(Vector3.right, direcao);
+        }
+
+        transform.rotation = Quaternion.LookRotation(direcao, referenciaVertical.normalized);
     }
 
     GerenteSelecao ObterGerenteSelecao()
