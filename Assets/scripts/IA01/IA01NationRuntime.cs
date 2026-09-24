@@ -737,10 +737,25 @@ namespace Hegemonia.AI.IA01
         private void UpdateObjectiveStatus(IA01IntentBoard board, DadosPaisGoverno country, float now)
         {
             IA01PopulationRecord population = context.GetPopulationSnapshot();
-            if (CityPlanner != null && CityPlanner.Capital != null && population.Total > population.HousingCapacity)
+            if (CityPlanner != null && CityPlanner.Capital != null)
             {
-                NextObjectiveStatus = "Objetivo: ampliar moradia.";
-                return;
+                if (country != null && country.energia <= 100)
+                {
+                    NextObjectiveStatus = "Objetivo: recuperar energia critica.";
+                    return;
+                }
+
+                if (country != null && country.comida <= 100)
+                {
+                    NextObjectiveStatus = "Objetivo: recuperar comida critica.";
+                    return;
+                }
+
+                if (population.Total > population.HousingCapacity)
+                {
+                    NextObjectiveStatus = "Objetivo: ampliar moradia.";
+                    return;
+                }
             }
 
             IA01Intent intent = board.GetBestApproved(candidate => BuildDirector == null || BuildDirector.AllowsIntent(candidate, now));
@@ -1527,6 +1542,21 @@ namespace Hegemonia.AI.IA01
             {
                 FoundationSequenceStatus = "Moradia urgente";
                 board.Publish(IA01IntentType.BuildResidentialCapacity, 2200, FoundationSequenceStatus, now);
+
+                // Housing stays urgent, but critical power or food shortages
+                // must be allowed to take priority. Evaluate these helpers here
+                // so recovered reserves also clear the daily shortage gate.
+                bool energyNeedsExpansion = DeveConstruirEnergia(country);
+                bool foodNeedsExpansion = DeveConstruirComida(country);
+                if (energyNeedsExpansion && country != null && country.energia < 350)
+                {
+                    board.Publish(IA01IntentType.BuildEnergy, 2400, "Energia em nivel critico", now);
+                }
+                if (foodNeedsExpansion && country != null && country.comida < 200)
+                {
+                    board.Publish(IA01IntentType.BuildFoodProduction, 2400, "Comida em nivel critico", now);
+                }
+
                 Status = "Sequencia de fundacao: " + FoundationSequenceStatus + ".";
                 return;
             }
@@ -1675,10 +1705,19 @@ namespace Hegemonia.AI.IA01
         {
             IA01Manager manager = controller != null ? controller.Manager : null;
             if (manager == null || manager.WorldRegistry == null || context == null) return false;
+            // The once-per-day throttle applies to one continuous shortage.
+            // If reserves recover and a new shortage starts later that day,
+            // allow the planner to react to the new state instead of keeping
+            // the stale daily block from the previous shortage.
+            if (estoque >= minimo)
+            {
+                ultimoDia = -1;
+                return false;
+            }
+
             int existentes = manager.WorldRegistry.CountStructuresByStrategicRole(context.TeamId, role);
             if (existentes >= limite) return false;
             if (existentes == 0) return true;
-            if (estoque >= minimo) return false;
 
             int dia = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 0;
             if (dia <= 0)

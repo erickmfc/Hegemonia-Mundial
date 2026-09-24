@@ -79,8 +79,11 @@ public sealed class ReformaAircraftPlayModeTests
         Component fuel = aircraft.gameObject.AddComponent(TypeOf("CombustivelUnidade"));
         Component launcher = aircraft.gameObject.AddComponent(TypeOf("LancadorMisselCaca"));
 
-        aircraft.gameObject.SetActive(true);
+        // OnValidate auto-binds a missile prefab in the Editor. Keep this test
+        // on the missing-prefab service path it is meant to exercise.
+        Set(launcher, "missilCacaPrefab", null);
         LogAssert.Expect(LogType.Error, "[LancadorMisselCaca] Regression_ControleAviao está sem missilCacaPrefab; o caça não poderá disparar.");
+        aircraft.gameObject.SetActive(true);
         yield return null;
 
         Set(fuel, "capacidade", 100f);

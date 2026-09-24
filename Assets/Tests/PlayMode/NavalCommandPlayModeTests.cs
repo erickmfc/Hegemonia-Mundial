@@ -151,7 +151,12 @@ public sealed class NavalCommandPlayModeTests
                     "Trecho naval " + index + " atravessou terra.");
                 previous = point;
             }
-            Assert.That(Vector3.Distance(previous, destination), Is.LessThan(0.1f));
+            // TryBuildWaterRoute snaps waypoint Y to the resolved sea level.
+            // The click destination's X/Z must remain exact, while its input Y
+            // is intentionally replaced by that sea-level value.
+            Assert.That(Vector2.Distance(
+                new Vector2(previous.x, previous.z),
+                new Vector2(destination.x, destination.z)), Is.LessThan(0.1f));
         }
         finally
         {
