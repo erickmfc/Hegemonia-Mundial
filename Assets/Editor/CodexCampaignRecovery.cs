@@ -49,6 +49,7 @@ public static class CodexCampaignRecovery
         EditorBuildSettings.scenes = new[]
         {
             new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaMenuPrincipalCanonica, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaMapaGlobal, true),
             new EditorBuildSettingsScene(CampaignPath, true),
             new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaTutorialCanonica, true),
             new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaAno1Oficial, true),
@@ -187,6 +188,7 @@ public static class CodexCampaignRecovery
         EditorBuildSettings.scenes = new[]
         {
             new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaMenuPrincipalCanonica, true),
+            new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaMapaGlobal, true),
             new EditorBuildSettingsScene(CampaignPath, true),
             new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaTutorialCanonica, true),
             new EditorBuildSettingsScene(ConfiguracaoCenasJogo.CaminhoCenaAno1Oficial, true),

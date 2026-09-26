@@ -5415,7 +5415,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 673729057}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 6652660a65de69c48bc4fb5e6393945a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
 --- !u!114 &673729060
@@ -5444,7 +5444,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 673729057}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 6652660a65de69c48bc4fb5e6393945a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
 --- !u!1 &686592548
@@ -7742,7 +7742,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 923760918}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 5cc1ad2cd0aec124b9137d194d9b1e99, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
   buildSlot: {fileID: 923760921}
@@ -11314,9 +11314,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1309340733}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 9d4e86b8a095f7e4f8124d5ff4d520a9, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
 --- !u!114 &1309340736
 MonoBehaviour:
   m_ObjectHideFlags: 0

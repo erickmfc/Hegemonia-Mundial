@@ -59,6 +59,13 @@ public enum PosturaRelacaoPais
     Inimigo
 }
 
+public enum MeioPassagemTerritorial
+{
+    Terrestre,
+    Aereo,
+    Naval
+}
+
 [Serializable]
 public class PesquisaNacionalEstado
 {
@@ -337,6 +344,11 @@ public class RelacaoPaisGoverno
     public bool pedidoPendente;
     public bool sancaoAtiva;
     public bool guerraDeclarada;
+    public bool cessarFogoAtivo;
+    public bool passagemTerrestrePermitida;
+    public bool passagemAereaPermitida;
+    public bool passagemNavalPermitida;
+    public long passagemTemporariaAteUtcTicks;
     public List<RecursoMercado> embargos = new List<RecursoMercado>();
     public PosturaRelacaoPais posturaAParaB = PosturaRelacaoPais.Neutro;
     public PosturaRelacaoPais posturaBParaA = PosturaRelacaoPais.Neutro;

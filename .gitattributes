@@ -11,7 +11,6 @@
 *.cs text eol=lf diff=csharp
 *.json text eol=lf
 *.asmdef text eol=lf
-
 # Binários novos devem ser adicionados ao Git LFS antes do primeiro commit.
 *.fbx binary
 *.blend binary
@@ -26,3 +25,4 @@
 *.mp4 binary
 *.mov binary
 *.pdf binary
+ValidationResults/codex-win64-20260923_163738/** filter=lfs diff=lfs merge=lfs -text

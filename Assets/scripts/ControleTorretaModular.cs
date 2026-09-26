@@ -393,7 +393,7 @@ public class ControleTorretaModular : MonoBehaviour
         if (!NavioExigeGuerraDeclarada()) return true;
 
         return SistemaGovernoMundial.Instancia != null
-            && RTSVisibilityService.TeamsAtWar(meuTime, alvo.teamID);
+            && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
     }
     
     void RotacionarParaAlvo()

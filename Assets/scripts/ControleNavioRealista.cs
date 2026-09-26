@@ -1560,7 +1560,7 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         if (SistemaGovernoMundial.Instancia == null
-            || !RTSVisibilityService.TeamsAtWar(meuTime, idAlvo.teamID))
+            || !ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, idAlvo))
         {
             return;
         }

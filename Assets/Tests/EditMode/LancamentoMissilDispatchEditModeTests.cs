@@ -97,7 +97,8 @@ public sealed class LancamentoMissilDispatchEditModeTests
             lancador,
             dono,
             false,
-            Vector3.zero
+            Vector3.zero,
+            false
         });
         return (bool)resultado;
     }

@@ -20,6 +20,7 @@ namespace Hegemonia.RTS
             if (root.GetComponent<RTSResourceLedgerService>() == null) root.AddComponent<RTSResourceLedgerService>();
             if (root.GetComponent<RTSVisibilityService>() == null) root.AddComponent<RTSVisibilityService>();
             if (root.GetComponent<RTSObjectiveService>() == null) root.AddComponent<RTSObjectiveService>();
+            if (root.GetComponent<GerenteDeTerritorio>() == null) root.AddComponent<GerenteDeTerritorio>();
         }
     }
 }

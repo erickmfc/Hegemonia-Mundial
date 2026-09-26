@@ -13,6 +13,7 @@ public class MapaGeralController : MonoBehaviour
 {
     public static MapaGeralController Instancia { get; private set; }
     public static bool EstaAberto { get { return Instancia != null && Instancia.mapaAtivo; } }
+    public bool MapaCartograficoAtivo { get { return mapaCartograficoAtivo; } }
 
     public static Camera ObterCameraDeInteracao()
     {
@@ -48,7 +49,7 @@ public class MapaGeralController : MonoBehaviour
     [SerializeField] private bool detectarLimitesReaisDoMapa = true;
     [SerializeField] private float margemMapa = 250f;
     [Tooltip("Quando habilitado, a demo abre mostrando toda a cobertura dos Terrains. O jogador ainda pode usar zoom e pan normalmente.")]
-    [SerializeField] private bool enquadrarCoberturaCompletaAoAbrir = false;
+    [SerializeField] private bool enquadrarCoberturaCompletaAoAbrir = true;
     [SerializeField, Min(1f)] private float margemEnquadramentoInicial = 1.08f;
 
     [Header("Configurações de Exibição")]
@@ -65,10 +66,12 @@ public class MapaGeralController : MonoBehaviour
     // Cache de objetos do mundo para não chamar Find() o tempo todo
     private List<IdentidadeUnidade> _cacheUnidades = new List<IdentidadeUnidade>();
     private readonly HashSet<int> _imoveisMapa = new HashSet<int>();
+    private readonly Dictionary<int, int> _categoriasMapa = new Dictionary<int, int>(256);
     private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
     private readonly List<Projetil> _projeteisAtivos = new List<Projetil>(256);
     private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
     private float _tempoRefreshCache = 0f;
+    private DesenharLinhasOrdem _desenharOrdens;
 
     // Estilos IMGUI sao reutilizados enquanto o mapa esta aberto para nao alocar por repaint.
     private GUIStyle _tituloMapaStyle;
@@ -76,6 +79,24 @@ public class MapaGeralController : MonoBehaviour
     private GUIStyle _legendaMapaStyle;
     private GUIStyle _trianguloSombraStyle;
     private GUIStyle _trianguloCorStyle;
+    private GUIStyle _camadaMapaStyle;
+
+    [Header("Mapa cartográfico M")]
+    [SerializeField] private bool mapaCartograficoInicial = true;
+    private bool mapaCartograficoAtivo = true;
+    private bool camadaFronteiras = true;
+    private bool camadaCidades = true;
+    private bool camadaBases = true;
+    private bool camadaPortos = true;
+    private bool camadaAeroportos = true;
+    private bool camadaRadares = true;
+    private bool camadaUnidades = true;
+    private bool camadaAreasPatrulha;
+    private bool camadaRecursos;
+    private bool camadaEconomia;
+    private bool camadaPopulacao;
+    private bool camadaInteligencia;
+    private bool camadaLogistica;
 
     // --- Modo de seguir unidade selecionada ---
     private bool _seguindoAlvo = false;
@@ -95,6 +116,7 @@ public class MapaGeralController : MonoBehaviour
     private void Awake()
     {
         Instancia = this;
+        mapaCartograficoAtivo = mapaCartograficoInicial;
     }
 
     private void OnDestroy()
@@ -250,6 +272,27 @@ public class MapaGeralController : MonoBehaviour
                     maxZ = Mathf.Max(maxZ, posicao.z);
                     encontrouTerrain = true;
                 }
+            }
+        }
+
+        // The streamed global world can start with its coarse Terrain disabled
+        // and no close tiles loaded yet. Use its logical bounds so M opens at
+        // the full map instead of falling back to the legacy 10 km area.
+        if (detectarLimitesReaisDoMapa)
+        {
+            GlobalTerrainStreamer[] streamers = FindObjectsByType<GlobalTerrainStreamer>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < streamers.Length; i++)
+            {
+                GlobalWorldDefinition world = streamers[i] != null ? streamers[i].world : null;
+                if (world == null) continue;
+
+                minX = Mathf.Min(minX, world.MapMinX);
+                maxX = Mathf.Max(maxX, world.MapMaxX);
+                minZ = Mathf.Min(minZ, world.MapMinZ);
+                maxZ = Mathf.Max(maxZ, world.MapMaxZ);
+                encontrouTerrain = true;
             }
         }
 
@@ -540,7 +583,8 @@ public class MapaGeralController : MonoBehaviour
     {
         float yTopo = Screen.height - posicaoMouse.y;
         return yTopo <= 34f
-            || (posicaoMouse.x <= 205f && yTopo >= Screen.height - 108f);
+            || (posicaoMouse.x <= 205f && yTopo >= Screen.height - 108f)
+            || (mapaCartograficoAtivo && posicaoMouse.x >= Screen.width - 210f);
     }
 
     private void OnDisable()
@@ -553,14 +597,61 @@ public class MapaGeralController : MonoBehaviour
     {
         _cacheUnidades.Clear();
         _imoveisMapa.Clear();
+        _categoriasMapa.Clear();
+        if (_desenharOrdens == null) _desenharOrdens = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
         var todos = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         foreach (var u in todos)
         {
             if (u == null) continue;
             _cacheUnidades.Add(u);
             if (EhImovelMapa(u.gameObject))
+            {
                 _imoveisMapa.Add(u.GetInstanceID());
+                _categoriasMapa[u.GetInstanceID()] = ClassificarCategoriaMapa(u);
+            }
+            else _categoriasMapa[u.GetInstanceID()] = 64; // unidade móvel
         }
+    }
+
+    private static int ClassificarCategoriaMapa(IdentidadeUnidade identidade)
+    {
+        int resultado = 0;
+        GameObject raiz = identidade != null && identidade.transform.root != null ? identidade.transform.root.gameObject : identidade.gameObject;
+        Component[] componentes = raiz.GetComponentsInChildren<Component>(true);
+        bool ehQuartelOuBase = false;
+        for (int i = 0; i < componentes.Length; i++)
+        {
+            Component componente = componentes[i];
+            if (componente == null) continue;
+            string tipo = componente.GetType().Name;
+            if (tipo.IndexOf("Radar", System.StringComparison.OrdinalIgnoreCase) >= 0) resultado |= 32;
+            if (tipo.IndexOf("Aeroporto", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || tipo.IndexOf("TorreDeControle", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || tipo.IndexOf("Hangar", System.StringComparison.OrdinalIgnoreCase) >= 0) resultado |= 16;
+            if (tipo.IndexOf("Porto", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || tipo.IndexOf("PierMarinha", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || tipo.IndexOf("Estaleiro", System.StringComparison.OrdinalIgnoreCase) >= 0) resultado |= 8;
+            if (tipo.IndexOf("Quartel", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || tipo.IndexOf("Base", System.StringComparison.OrdinalIgnoreCase) >= 0) ehQuartelOuBase = true;
+        }
+        if (ehQuartelOuBase) resultado |= 4;
+        if (resultado == 0) resultado = 2; // Estruturas restantes: cidades/instalações existentes.
+        return resultado;
+    }
+
+    private bool CamadaMostraEntidade(IdentidadeUnidade identidade, bool ehPredio)
+    {
+        if (!mapaCartograficoAtivo) return true;
+        if (identidade == null) return false;
+        int categoria;
+        if (!_categoriasMapa.TryGetValue(identidade.GetInstanceID(), out categoria))
+            categoria = ehPredio ? ClassificarCategoriaMapa(identidade) : 64;
+        if (!ehPredio) return camadaUnidades && (categoria & 64) != 0;
+        return ((categoria & 2) != 0 && camadaCidades)
+            || ((categoria & 4) != 0 && camadaBases)
+            || ((categoria & 8) != 0 && camadaPortos)
+            || ((categoria & 16) != 0 && camadaAeroportos)
+            || ((categoria & 32) != 0 && camadaRadares);
     }
 
     void ControlarMapa()
@@ -673,6 +764,13 @@ public class MapaGeralController : MonoBehaviour
         if (!mapaAtivo || cameraMapa == null) return;
         GarantirEstilosGui();
 
+        if (mapaCartograficoAtivo)
+        {
+            DesenharFundoCartografico();
+            if (camadaFronteiras) DesenharFronteirasPoliticas();
+            if (camadaAreasPatrulha) DesenharRotasPatrulha();
+        }
+
         // --- Barra superior com info e botão de fechar ---
         float barH = 30f;
         GUI.color = new Color(0, 0, 0, 0.75f);
@@ -683,31 +781,206 @@ public class MapaGeralController : MonoBehaviour
         string modoSeguir = _seguindoAlvo && _alvoSeguir != null
             ? $"[F seguir: {_alvoSeguir.name.ToUpper()}]"
             : "[F seguir unidade]";
-        GUI.Label(new Rect(0, 0, Screen.width, barH),
-            $"MAPA ESTRATEGICO  [WASD mover] [Scroll zoom] [{modoSeguir}] [M fechar]", titleStyle);
+        string titulo = mapaCartograficoAtivo ? "MAPA TÁTICO 2D" : "CÂMERA SUPERIOR (DEBUG)";
+        GUI.Label(new Rect(8, 0, Screen.width - 300f, barH),
+            $"{titulo}  [WASD mover] [Scroll zoom] [{modoSeguir}] [M fechar]", titleStyle);
 
         GUIStyle zoomStyle = _zoomMapaStyle;
+        if (GUI.Button(new Rect(Screen.width - 250f, 3f, 116f, 24f), mapaCartograficoAtivo ? "Câmera 3D" : "Mapa 2D", zoomStyle))
+            mapaCartograficoAtivo = !mapaCartograficoAtivo;
         if (GUI.Button(new Rect(Screen.width - 118f, 3f, 34f, 24f), "+", zoomStyle)) AjustarZoomMapa(-1f);
         if (GUI.Button(new Rect(Screen.width - 78f, 3f, 34f, 24f), "−", zoomStyle)) AjustarZoomMapa(1f);
 
-        // --- Legenda no canto inferior esquerdo ---
-        float legX = 12f, legY = Screen.height - 100f;
-        GUI.color = new Color(0, 0, 0, 0.6f);
-        GUI.DrawTexture(new Rect(legX - 6, legY - 6, 175f, 90f), Texture2D.whiteTexture);
-        GUI.color = Color.white;
-
         GUIStyle legStyle = _legendaMapaStyle;
-        GUI.Label(new Rect(legX, legY,      170, 20), "■  Prédio Aliado",   legStyle);
-        GUI.Label(new Rect(legX, legY + 22, 170, 20), "▲  Unidade Aliada",  legStyle);
-        GUI.Label(new Rect(legX, legY + 44, 170, 20), "●  Unidade Neutra",  legStyle);
-        GUI.Label(new Rect(legX, legY + 66, 170, 20), "🔵  Oceano",          legStyle);
+        if (mapaCartograficoAtivo)
+        {
+            GUI.Label(new Rect(12f, Screen.height - 28f, Screen.width - 250f, 22f),
+                "A base colorida mostra geografia; soberania, dono e neutralidade vêm dos polígonos territoriais.", legStyle);
+        }
+        else
+        {
+            // --- Legenda do modo de câmera superior ---
+            float legX = 12f, legY = Screen.height - 100f;
+            GUI.color = new Color(0, 0, 0, 0.6f);
+            GUI.DrawTexture(new Rect(legX - 6, legY - 6, 175f, 90f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(legX, legY,      170, 20), "■  Prédio Aliado",   legStyle);
+            GUI.Label(new Rect(legX, legY + 22, 170, 20), "▲  Unidade Aliada",  legStyle);
+            GUI.Label(new Rect(legX, legY + 44, 170, 20), "●  Unidade Neutra",  legStyle);
+            GUI.Label(new Rect(legX, legY + 66, 170, 20), "🔵  Oceano",          legStyle);
+            DesenharTerritorioInimigo();
+        }
 
-        // --- Ícones das unidades e prédios no mapa ---
-        DesenharTerritorioInimigo();
+        // Os mesmos registros de entidades e visibilidade alimentam os dois modos.
         DesenharIconesNoMapa();
         DesenharDisparosNoMapa();
         DesenharOrigensMisseisNoMapa();
-        GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
+        if (mapaCartograficoAtivo) DesenharCamadasMapa();
+        if (mapaCartograficoAtivo)
+            GUI.Label(new Rect(12f, barH + 7f, 330f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
+        else
+            GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
+    }
+
+    private void DesenharFundoCartografico()
+    {
+        if (Event.current.type != EventType.Repaint) return;
+        GUI.color = corFundoMar;
+        GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        DadosMapaTerritorial dados = gerente != null ? gerente.MapaPolitico : null;
+        Texture2D mapa = dados != null && dados.ImagemReferencia != null
+            ? dados.ImagemReferencia
+            : Resources.Load<Texture2D>("fase");
+        if (mapa == null || gerente == null || cameraMapa == null) return;
+
+        Vector3 cantoSuperiorEsquerdo = gerente.MapUvToWorld(Vector2.zero);
+        Vector3 cantoInferiorDireito = gerente.MapUvToWorld(Vector2.one);
+        Vector3 telaSuperiorEsquerda = cameraMapa.WorldToScreenPoint(cantoSuperiorEsquerdo);
+        Vector3 telaInferiorDireita = cameraMapa.WorldToScreenPoint(cantoInferiorDireito);
+        if (telaSuperiorEsquerda.z <= 0f || telaInferiorDireita.z <= 0f) return;
+        float x = telaSuperiorEsquerda.x;
+        float y = Screen.height - telaSuperiorEsquerda.y;
+        float largura = telaInferiorDireita.x - telaSuperiorEsquerda.x;
+        float altura = telaSuperiorEsquerda.y - telaInferiorDireita.y;
+        if (largura <= 0f || altura <= 0f) return;
+        GUI.DrawTexture(new Rect(x, y, largura, altura), mapa, ScaleMode.StretchToFill, false);
+    }
+
+    private void DesenharFronteirasPoliticas()
+    {
+        if (Event.current.type != EventType.Repaint || cameraMapa == null) return;
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        DadosMapaTerritorial dados = gerente != null ? gerente.MapaPolitico : null;
+        if (dados == null) return;
+
+        for (int i = 0; i < dados.Regioes.Count; i++)
+        {
+            RegiaoPolitica regiao = dados.Regioes[i];
+            if (regiao == null || !regiao.PossuiPoligono) continue;
+            Color cor = CorPoliticaDaRegiao(gerente, regiao);
+            Vector3 anterior = Vector3.zero;
+            bool anteriorVisivel = false;
+            for (int v = 0; v <= regiao.vertices.Count; v++)
+            {
+                Vector2 uv = regiao.vertices[v % regiao.vertices.Count];
+                Vector3 mundo = gerente.MapUvToWorld(uv);
+                Vector3 tela = cameraMapa.WorldToScreenPoint(mundo);
+                if (tela.z <= 0f)
+                {
+                    anteriorVisivel = false;
+                    continue;
+                }
+                Vector2 atual = new Vector2(tela.x, Screen.height - tela.y);
+                if (anteriorVisivel) DesenharLinhaTela(anterior, atual, cor, regiao.tipo == TipoRegiaoPolitica.Terra ? 2.5f : 1.8f);
+                anterior = atual;
+                anteriorVisivel = true;
+            }
+
+            if (regiao.tipo == TipoRegiaoPolitica.Terra)
+            {
+                Vector2 centro = CentroideRegiao(regiao.vertices);
+                Vector3 telaCentro = cameraMapa.WorldToScreenPoint(gerente.MapUvToWorld(centro));
+                if (telaCentro.z > 0f)
+                {
+                    string dono = TextoDonoTerritorial(gerente, regiao);
+                    Rect rotulo = new Rect(telaCentro.x - 72f, Screen.height - telaCentro.y - 13f, 160f, 24f);
+                    GUI.color = new Color(0.03f, 0.07f, 0.09f, 0.82f);
+                    GUI.DrawTexture(rotulo, Texture2D.whiteTexture);
+                    GUI.color = Color.white;
+                    GUI.Label(rotulo, regiao.nome + "  " + dono, _camadaMapaStyle);
+                }
+            }
+        }
+    }
+
+    private void DesenharCamadasMapa()
+    {
+        Rect painel = new Rect(Screen.width - 204f, 34f, 202f, Screen.height - 67f);
+        GUI.color = new Color(0.025f, 0.045f, 0.07f, 0.94f);
+        GUI.DrawTexture(painel, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUILayout.BeginArea(new Rect(painel.x + 10f, painel.y + 10f, painel.width - 20f, painel.height - 18f));
+        GUILayout.Label("CAMADAS", _camadaMapaStyle);
+        camadaFronteiras = GUILayout.Toggle(camadaFronteiras, "Fronteiras políticas");
+        camadaCidades = GUILayout.Toggle(camadaCidades, "Cidades");
+        camadaBases = GUILayout.Toggle(camadaBases, "Bases");
+        camadaPortos = GUILayout.Toggle(camadaPortos, "Portos");
+        camadaAeroportos = GUILayout.Toggle(camadaAeroportos, "Aeroportos");
+        camadaRadares = GUILayout.Toggle(camadaRadares, "Radares");
+        camadaUnidades = GUILayout.Toggle(camadaUnidades, "Unidades");
+        GUILayout.Space(8f);
+        GUILayout.Label("DADOS NÃO CONECTADOS", EditorStyleMini());
+        camadaRecursos = GUILayout.Toggle(camadaRecursos, "Recursos");
+        camadaEconomia = GUILayout.Toggle(camadaEconomia, "Economia");
+        camadaPopulacao = GUILayout.Toggle(camadaPopulacao, "População");
+        camadaInteligencia = GUILayout.Toggle(camadaInteligencia, "Inteligência");
+        camadaLogistica = GUILayout.Toggle(camadaLogistica, "Logística");
+        camadaAreasPatrulha = GUILayout.Toggle(camadaAreasPatrulha, "Áreas de patrulha");
+        GUILayout.FlexibleSpace();
+        GUILayout.Label("Ícones inimigos respeitam a inteligência disponível.", _legendaMapaStyle);
+        GUILayout.EndArea();
+    }
+
+    private static GUIStyle EditorStyleMini()
+    {
+        return new GUIStyle(GUI.skin.label) { fontSize = 9, normal = { textColor = new Color(0.65f, 0.72f, 0.8f) } };
+    }
+
+    private Color CorPoliticaDaRegiao(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
+    {
+        if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais) return new Color(1f, 0.34f, 0.70f, 0.95f);
+        int dono = gerente.ObterDonoDaRegiao(regiao.territorioId);
+        if (dono <= 0) return regiao.neutral ? corUnidadeNeutro : Color.white;
+        Color[] cores = { new Color(0.2f, 0.9f, 0.5f), new Color(0.2f, 0.75f, 1f), new Color(1f, 0.58f, 0.2f), new Color(1f, 0.3f, 0.35f), new Color(0.76f, 0.55f, 1f) };
+        return cores[(dono - 1) % cores.Length];
+    }
+
+    private string TextoDonoTerritorial(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
+    {
+        int dono = gerente.ObterDonoDaRegiao(regiao.territorioId);
+        if (regiao.neutral && dono <= 0) return "NEUTRO";
+        if (dono <= 0) return "SEM DONO";
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(dono) : null;
+        return pais != null ? pais.nomePais : "PAÍS " + dono;
+    }
+
+    private void DesenharLinhaTela(Vector2 inicio, Vector2 fim, Color cor, float espessura)
+    {
+        Vector2 delta = fim - inicio;
+        float comprimento = delta.magnitude;
+        if (comprimento < 0.1f) return;
+        Matrix4x4 matriz = GUI.matrix;
+        GUIUtility.RotateAroundPivot(Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg, inicio);
+        GUI.color = cor;
+        GUI.DrawTexture(new Rect(inicio.x, inicio.y - espessura * 0.5f, comprimento, espessura), Texture2D.whiteTexture);
+        GUI.matrix = matriz;
+        GUI.color = Color.white;
+    }
+
+    private static Vector2 CentroideRegiao(IList<Vector2> vertices)
+    {
+        Vector2 centro = Vector2.zero;
+        for (int i = 0; i < vertices.Count; i++) centro += vertices[i];
+        return vertices.Count > 0 ? centro / vertices.Count : Vector2.zero;
+    }
+
+    private void DesenharRotasPatrulha()
+    {
+        if (Event.current.type != EventType.Repaint || cameraMapa == null) return;
+        if (_desenharOrdens == null) _desenharOrdens = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
+        if (_desenharOrdens == null || _desenharOrdens.pontosPatrulha == null) return;
+        List<Vector3> pontos = _desenharOrdens.pontosPatrulha;
+        for (int i = 1; i < pontos.Count; i++)
+        {
+            Vector3 a = cameraMapa.WorldToScreenPoint(pontos[i - 1]);
+            Vector3 b = cameraMapa.WorldToScreenPoint(pontos[i]);
+            if (a.z <= 0f || b.z <= 0f) continue;
+            DesenharLinhaTela(new Vector2(a.x, Screen.height - a.y),
+                new Vector2(b.x, Screen.height - b.y), new Color(1f, 0.84f, 0.2f, 0.9f), 2.2f);
+        }
     }
 
     private void GarantirEstilosGui()
@@ -729,6 +1002,7 @@ public class MapaGeralController : MonoBehaviour
             normal = { textColor = Color.black }
         };
         _trianguloCorStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter };
+        _camadaMapaStyle = new GUIStyle(_legendaMapaStyle) { fontStyle = FontStyle.Bold, fontSize = 13 };
     }
 
     private void DesenharTerritorioInimigo()
@@ -821,6 +1095,7 @@ public class MapaGeralController : MonoBehaviour
                 || id.GetComponent<C700TransporteAereo>() != null;
             bool ehPredio = id.tipoUnidade == TipoUnidade.Estrutura
                 || (!temControladorDeUnidade && id.GetComponent<UnityEngine.AI.NavMeshObstacle>() != null);
+            if (!CamadaMostraEntidade(id, ehPredio)) continue;
 
             // Converte posição 3D para coordenadas da tela relativa à cameraMapa
             Vector3 screenPos = cameraMapa.WorldToScreenPoint(posicaoMapa);

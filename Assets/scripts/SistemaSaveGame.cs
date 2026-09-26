@@ -16,7 +16,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 15;
+    public int saveVersion = 16;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -39,6 +39,7 @@ public class DadosDoJogo
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
     // Nulo em saves legados: evita sobrescrever a cena com listas vazias.
     public SaveGovernoMundialData governoMundial;
+    public List<SaveProprietarioTerritorio> territoriosCapturados = new List<SaveProprietarioTerritorio>();
     public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
     public List<SaveIA02NationState> estadosIA02 = new List<SaveIA02NationState>();
     public IAAutoProductionSaveData producaoAutomaticaIA = new IAAutoProductionSaveData();
@@ -520,7 +521,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         GarantirColecoesIA01();
         GarantirColecoesIA02();
-        dadosAtuais.saveVersion = 15;
+        dadosAtuais.saveVersion = 16;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -530,6 +531,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarDificuldade();
         CapturarFilaProducao();
         CapturarEstadoGovernoMundial();
+        CapturarEstadoTerritorial();
         CapturarEstadoIAImperial();
         CapturarEstadoIA01();
         CapturarEstadoIA02();
@@ -558,6 +560,7 @@ public class SistemaSaveGame : MonoBehaviour
         if (string.IsNullOrWhiteSpace(caminhoDoArquivo) || !File.Exists(caminhoDoArquivo))
         {
             dadosAtuais = new DadosDoJogo();
+            GerenteDeTerritorio.Instancia?.RestaurarProprietariosCapturados(null);
             IAAutoProductionRegistry.Clear();
             carregouDeSave = false;
             partidaNovaRecemIniciada = false;
@@ -602,6 +605,7 @@ public class SistemaSaveGame : MonoBehaviour
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
         AplicarRTSState();
+        AplicarEstadoTerritorial();
         if (saveLegadoAntesDaVersao12)
         {
             // JsonUtility converte o numero antigo para long sem arredondamento.
@@ -614,6 +618,7 @@ public class SistemaSaveGame : MonoBehaviour
     public void IniciarNovoJogo(string cenaInicial = null)
     {
         dadosAtuais = new DadosDoJogo();
+        GerenteDeTerritorio.Instancia?.RestaurarProprietariosCapturados(null);
         IAAutoProductionRegistry.Clear();
         saveSelecionadoId = string.Empty;
         caminhoDoArquivo = Path.Combine(Application.persistentDataPath, "save_partida.json");
@@ -695,6 +700,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         dadosAtuais = new DadosDoJogo();
+        GerenteDeTerritorio.Instancia?.RestaurarProprietariosCapturados(null);
         IAAutoProductionRegistry.Clear();
         caminhoDoArquivo = legado;
         saveSelecionadoId = string.Empty;
@@ -784,6 +790,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         RestaurarFilaProducao();
         AplicarEstadoGovernoMundial();
+        AplicarEstadoTerritorial();
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
         RestaurarEstadoIA01();
@@ -1230,6 +1237,15 @@ public class SistemaSaveGame : MonoBehaviour
         };
     }
 
+    private void CapturarEstadoTerritorial()
+    {
+        if (dadosAtuais == null) return;
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        dadosAtuais.territoriosCapturados = gerente != null
+            ? gerente.CopiarProprietariosCapturados()
+            : new List<SaveProprietarioTerritorio>();
+    }
+
     private void CapturarEstadoIA02()
     {
         if (dadosAtuais == null)
@@ -1434,6 +1450,18 @@ public class SistemaSaveGame : MonoBehaviour
             salvo.relacoes,
             salvo.propostas,
             salvo.noticias);
+    }
+
+    private void AplicarEstadoTerritorial()
+    {
+        if (dadosAtuais == null) return;
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        if (gerente == null)
+        {
+            GameObject raiz = new GameObject("GerenteDeTerritorio_SaveRestore");
+            gerente = raiz.AddComponent<GerenteDeTerritorio>();
+        }
+        gerente.RestaurarProprietariosCapturados(dadosAtuais.territoriosCapturados);
     }
 
     private void RestaurarEstadoIA01()

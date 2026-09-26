@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 707bd9f466a34154a830cf3aa06786af, type: 3}
+  m_Name: GlobalWorldDefinition
+  m_EditorClassIdentifier: Assembly-CSharp::GlobalWorldDefinition
+  authorityMap: {fileID: 2800000, guid: 1f5b02323d18cdc43a0ac2f7d1a2bdda, type: 3}
+  appearanceMap: {fileID: 2800000, guid: 41aedb612f1a7d44f88af50367b6f635, type: 3}
+  worldSize: {x: 512000, y: 512000}
+  mapFootprintHeight: 288000
+  terrainTileSize: 8000
+  globalHeightResolution: 2049
+  localHeightResolution: 513
+  alphamapResolution: 512
+  localAlphamapResolution: 256
+  seaLevel: 0
+  minimumLandClearance: 4
+  terrainBaseY: -200
+  terrainVerticalSize: 1800
+  beachWidth: 1600
+  coastalElevationBlendWidth: 26000
+  maximumMountainHeight: 1250
+  terrainLayers:
+  - {fileID: 8574412962073106934, guid: f73b8a931de9ed446add3306ce06dc86, type: 2}
+  - {fileID: 8574412962073106934, guid: 681e4bf7f43733f4fa4c2e49c079166c, type: 2}
+  - {fileID: 8574412962073106934, guid: ccbe1b042e738a84d8d18c9c7c91ae9e, type: 2}
+  - {fileID: 8574412962073106934, guid: 66884fbc67879d2438dac464d9ae56e3, type: 2}
+  - {fileID: 8574412962073106934, guid: 12ed0ded48083684494b2b28046f887f, type: 2}
+  - {fileID: 8574412962073106934, guid: ec1d7ee0598f10e4ba480fe3e70105fb, type: 2}
+  treePrefabs:
+  - {fileID: 1976625863328072, guid: 83783d40b06c4d24a93cf52a7b70fc14, type: 3}
+  - {fileID: 1371951432327878, guid: 5b640edfd493a4e46a726bf98cca0c81, type: 3}
+  - {fileID: 1120059902668366, guid: 3ddd865d3b46be342809a1dc5eda7d48, type: 3}
+  - {fileID: 1862234626290218, guid: cc22510d99ae1e248991db15ef540da0, type: 3}
+  - {fileID: 145966, guid: d295338eb2193c14f9feb82d278c826f, type: 3}
+  - {fileID: 167818, guid: 215ef3b148e692b49a3ac46988ad67ba, type: 3}
+  - {fileID: 131502, guid: 848847ad5d2e9e94b9dd1ed6dead47f2, type: 3}
+  forestClusterPrototypeCount: 4
+  treeCandidateSpacing: 48
+  maximumTreesPerTile: 2600

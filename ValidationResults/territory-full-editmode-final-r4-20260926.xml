@@ -1,0 +1,922 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="130" result="Failed(Child)" total="130" passed="126" failed="4" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-09-26 18:01:17Z" end-time="2026-09-26 18:01:27Z" duration="10,0675873">
+  <test-suite type="TestSuite" id="1000" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="130" result="Failed" site="Child" start-time="2026-09-26 18:01:17Z" end-time="2026-09-26 18:01:27Z" duration="10.067587" total="130" passed="126" failed="4" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1018" name="Assembly-CSharp-Editor.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Assembly-CSharp-Editor.dll" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-09-26 17:57:37Z" end-time="2026-09-26 18:01:01Z" duration="203.994210" total="15" passed="14" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19960" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1001" name="HegemoniaIntegrityTests" fullname="HegemoniaIntegrityTests" classname="HegemoniaIntegrityTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-09-26 17:57:37Z" end-time="2026-09-26 17:57:45Z" duration="7.735858" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1004" name="BuildSettings_EnabledScenesExistOnDisk" fullname="HegemoniaIntegrityTests.BuildSettings_EnabledScenesExistOnDisk" methodname="BuildSettings_EnabledScenesExistOnDisk" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="68633739" result="Passed" start-time="2026-09-26 17:57:37Z" end-time="2026-09-26 17:57:37Z" duration="0.058924" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1006" name="EstaleiroPrefab_ShouldExposeAtracagemSlots" fullname="HegemoniaIntegrityTests.EstaleiroPrefab_ShouldExposeAtracagemSlots" methodname="EstaleiroPrefab_ShouldExposeAtracagemSlots" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="1105617340" result="Passed" start-time="2026-09-26 17:57:37Z" end-time="2026-09-26 17:57:38Z" duration="0.794891" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1008" name="EstaleiroPrefab_ShouldNotContainMissingScripts" fullname="HegemoniaIntegrityTests.EstaleiroPrefab_ShouldNotContainMissingScripts" methodname="EstaleiroPrefab_ShouldNotContainMissingScripts" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="418005982" result="Passed" start-time="2026-09-26 17:57:38Z" end-time="2026-09-26 17:57:44Z" duration="6.153342" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1002" name="InteractionModeService_LastRequestWins_AndReleaseRestoresPrevious" fullname="HegemoniaIntegrityTests.InteractionModeService_LastRequestWins_AndReleaseRestoresPrevious" methodname="InteractionModeService_LastRequestWins_AndReleaseRestoresPrevious" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="526153818" result="Passed" start-time="2026-09-26 17:57:44Z" end-time="2026-09-26 17:57:44Z" duration="0.006456" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1003" name="InteractionModeService_SourceScopedRelease_DoesNotClearAnotherRequester" fullname="HegemoniaIntegrityTests.InteractionModeService_SourceScopedRelease_DoesNotClearAnotherRequester" methodname="InteractionModeService_SourceScopedRelease_DoesNotClearAnotherRequester" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="1335538445" result="Passed" start-time="2026-09-26 17:57:44Z" end-time="2026-09-26 17:57:44Z" duration="0.002848" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1007" name="MainScenes_ShouldNotContainMissingScripts" fullname="HegemoniaIntegrityTests.MainScenes_ShouldNotContainMissingScripts" methodname="MainScenes_ShouldNotContainMissingScripts" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="538611961" result="Passed" start-time="2026-09-26 17:57:44Z" end-time="2026-09-26 17:57:44Z" duration="0.053339" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1005" name="MilitaryAirbasePrefabs_ProvideTheSu11ForPurchase" fullname="HegemoniaIntegrityTests.MilitaryAirbasePrefabs_ProvideTheSu11ForPurchase" methodname="MilitaryAirbasePrefabs_ProvideTheSu11ForPurchase" classname="HegemoniaIntegrityTests" runstate="Runnable" seed="484172419" result="Passed" start-time="2026-09-26 17:57:44Z" end-time="2026-09-26 17:57:45Z" duration="0.640074" asserts="0">
+          <properties />
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1009" name="QuartelMenuCoverageEditModeTests" fullname="QuartelMenuCoverageEditModeTests" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" testcasecount="8" result="Failed" site="Child" start-time="2026-09-26 17:57:45Z" end-time="2026-09-26 18:01:01Z" duration="196.254888" total="8" passed="7" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1016" name="CartaTerrenoRenderer_ReutilizaCameraRenderTextureEEPermiteNavegacao" fullname="QuartelMenuCoverageEditModeTests.CartaTerrenoRenderer_ReutilizaCameraRenderTextureEEPermiteNavegacao" methodname="CartaTerrenoRenderer_ReutilizaCameraRenderTextureEEPermiteNavegacao" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="357501035" result="Passed" start-time="2026-09-26 17:57:45Z" end-time="2026-09-26 17:57:45Z" duration="0.035132" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1015" name="CenasDeCampanha_ContemQuartelComPainelModerno" fullname="QuartelMenuCoverageEditModeTests.CenasDeCampanha_ContemQuartelComPainelModerno" methodname="CenasDeCampanha_ContemQuartelComPainelModerno" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="2057169084" result="Failed" start-time="2026-09-26 17:57:45Z" end-time="2026-09-26 17:59:10Z" duration="84.899891" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[  A cena não possui Quartel: Assets/_Recovery/cena19).unity
+  Expected: greater than 0
+  But was:  0
+]]></message>
+            <stack-trace><![CDATA[at QuartelMenuCoverageEditModeTests.CenasDeCampanha_ContemQuartelComPainelModerno () [0x00079] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Editor\Tests\EditMode\QuartelMenuCoverageTests.cs:229
+]]></stack-trace>
+          </failure>
+        </test-case>
+        <test-case id="1014" name="CenasDeCampanha_NaoPossuemMenuComandoDuplicado" fullname="QuartelMenuCoverageEditModeTests.CenasDeCampanha_NaoPossuemMenuComandoDuplicado" methodname="CenasDeCampanha_NaoPossuemMenuComandoDuplicado" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="1271672594" result="Passed" start-time="2026-09-26 17:59:10Z" end-time="2026-09-26 18:01:01Z" duration="110.942402" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1017" name="LancadorMisseis_ContinuaLigadoAoProtocoloDeLancamentoDoQuartel" fullname="QuartelMenuCoverageEditModeTests.LancadorMisseis_ContinuaLigadoAoProtocoloDeLancamentoDoQuartel" methodname="LancadorMisseis_ContinuaLigadoAoProtocoloDeLancamentoDoQuartel" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="1056872828" result="Passed" start-time="2026-09-26 18:01:01Z" end-time="2026-09-26 18:01:01Z" duration="0.003047" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1013" name="QuartelMenu_PreservaAbaAoReconstruirLayout" fullname="QuartelMenuCoverageEditModeTests.QuartelMenu_PreservaAbaAoReconstruirLayout" methodname="QuartelMenu_PreservaAbaAoReconstruirLayout" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="1087349302" result="Passed" start-time="2026-09-26 18:01:01Z" end-time="2026-09-26 18:01:01Z" duration="0.319931" asserts="0">
+          <properties />
+          <output><![CDATA[[QuartelUI] documento inicializado: objeto=QuartelMenuAbaCoverage, root=True, panelSettings=True, sorting=1200
+]]></output>
+        </test-case>
+        <test-case id="1010" name="QuartelPrefab_ExposeMenuToolkitAndLaunchControl" fullname="QuartelMenuCoverageEditModeTests.QuartelPrefab_ExposeMenuToolkitAndLaunchControl" methodname="QuartelPrefab_ExposeMenuToolkitAndLaunchControl" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="2111608382" result="Passed" start-time="2026-09-26 18:01:01Z" end-time="2026-09-26 18:01:01Z" duration="0.000721" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1012" name="TodasAsAreasDoQuartel_ConstroemPaginaAoSeremSelecionadas" fullname="QuartelMenuCoverageEditModeTests.TodasAsAreasDoQuartel_ConstroemPaginaAoSeremSelecionadas" methodname="TodasAsAreasDoQuartel_ConstroemPaginaAoSeremSelecionadas" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="1529093965" result="Passed" start-time="2026-09-26 18:01:01Z" end-time="2026-09-26 18:01:01Z" duration="0.034124" asserts="0">
+          <properties />
+          <output><![CDATA[[QuartelUI] documento inicializado: objeto=QuartelMenuPagesCoverage, root=True, panelSettings=True, sorting=1200
+]]></output>
+        </test-case>
+        <test-case id="1011" name="TodasAsAreasDoQuartel_PossuemConstrutorEIcone" fullname="QuartelMenuCoverageEditModeTests.TodasAsAreasDoQuartel_PossuemConstrutorEIcone" methodname="TodasAsAreasDoQuartel_PossuemConstrutorEIcone" classname="QuartelMenuCoverageEditModeTests" runstate="Runnable" seed="1133242217" result="Passed" start-time="2026-09-26 18:01:01Z" end-time="2026-09-26 18:01:01Z" duration="0.011900" asserts="0">
+          <properties />
+          <output><![CDATA[[QuartelUI] documento inicializado: objeto=QuartelMenuCoverage, root=True, panelSettings=True, sorting=1200
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+    <test-suite type="Assembly" id="1158" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="115" result="Failed" site="Child" start-time="2026-09-26 18:01:17Z" end-time="2026-09-26 18:01:27Z" duration="9.661137" total="115" passed="112" failed="3" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19960" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1019" name="AISovereignTerritoryTests" fullname="AISovereignTerritoryTests" classname="AISovereignTerritoryTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-26 18:01:01Z" end-time="2026-09-26 18:01:02Z" duration="0.285514" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1022" name="SovereignBuild_IsAllowedAfterTerritoryChangesToAi" fullname="AISovereignTerritoryTests.SovereignBuild_IsAllowedAfterTerritoryChangesToAi" methodname="SovereignBuild_IsAllowedAfterTerritoryChangesToAi" classname="AISovereignTerritoryTests" runstate="Runnable" seed="1105105449" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.046827" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1021" name="SovereignBuild_IsBlockedInNeutralTerritory" fullname="AISovereignTerritoryTests.SovereignBuild_IsBlockedInNeutralTerritory" methodname="SovereignBuild_IsBlockedInNeutralTerritory" classname="AISovereignTerritoryTests" runstate="Runnable" seed="858544203" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.045389" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1020" name="SovereignBuild_IsBlockedInsidePlayerTerritory" fullname="AISovereignTerritoryTests.SovereignBuild_IsBlockedInsidePlayerTerritory" methodname="SovereignBuild_IsBlockedInsidePlayerTerritory" classname="AISovereignTerritoryTests" runstate="Runnable" seed="2051302501" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.028293" asserts="0">
+          <properties />
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1023" name="CartelCreateEditModeTests" fullname="CartelCreateEditModeTests" classname="CartelCreateEditModeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.028684" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1025" name="CartelController_BuildsOnlyOnConfiguredCreates" fullname="CartelCreateEditModeTests.CartelController_BuildsOnlyOnConfiguredCreates" methodname="CartelController_BuildsOnlyOnConfiguredCreates" classname="CartelCreateEditModeTests" runstate="Runnable" seed="306002481" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.015169" asserts="0">
+          <properties />
+          <output><![CDATA[[Cartel Init] Dia liberado; creates=2 basesAntes=0 baseCreates=1 areaCreates=1
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em Pais01_BaseCreate_01 dentro da area manual.
+]]></output>
+        </test-case>
+        <test-case id="1026" name="CartelController_PrefersCandidateFartherFromCityReference" fullname="CartelCreateEditModeTests.CartelController_PrefersCandidateFartherFromCityReference" methodname="CartelController_PrefersCandidateFartherFromCityReference" classname="CartelCreateEditModeTests" runstate="Runnable" seed="1063144542" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.005944" asserts="0">
+          <properties />
+          <output><![CDATA[[Cartel Init] Dia liberado; creates=5 basesAntes=0 baseCreates=2 areaCreates=2
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em Pais02_BaseCreate_02 dentro da area manual.
+]]></output>
+        </test-case>
+        <test-case id="1027" name="CreateType_ExposesAllManualCategories" fullname="CartelCreateEditModeTests.CreateType_ExposesAllManualCategories" methodname="CreateType_ExposesAllManualCategories" classname="CartelCreateEditModeTests" runstate="Runnable" seed="1563148973" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.000846" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1024" name="ManualCreate_ContainsPointAndRespectsOccupancy" fullname="CartelCreateEditModeTests.ManualCreate_ContainsPointAndRespectsOccupancy" methodname="ManualCreate_ContainsPointAndRespectsOccupancy" classname="CartelCreateEditModeTests" runstate="Runnable" seed="655556188" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.002971" asserts="0">
+          <properties />
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1028" name="ControleOrdemMovimentoEditModeTests" fullname="ControleOrdemMovimentoEditModeTests" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" testcasecount="8" result="Failed" site="Child" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.082706" total="8" passed="6" failed="2" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1033" name="BatchOf128UnitsKeepsOneActiveExecutionPerRepeatedOrder" fullname="ControleOrdemMovimentoEditModeTests.BatchOf128UnitsKeepsOneActiveExecutionPerRepeatedOrder" methodname="BatchOf128UnitsKeepsOneActiveExecutionPerRepeatedOrder" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="1279512692" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.014528" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1034" name="CampaignSelectionAcceptsTheControlledCountryInsteadOfOnlyTeamOne" fullname="ControleOrdemMovimentoEditModeTests.CampaignSelectionAcceptsTheControlledCountryInsteadOfOnlyTeamOne" methodname="CampaignSelectionAcceptsTheControlledCountryInsteadOfOnlyTeamOne" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="474310664" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.002567" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1032" name="ConclusaoNaoPodeSerEmitidaDuasVezes" fullname="ControleOrdemMovimentoEditModeTests.ConclusaoNaoPodeSerEmitidaDuasVezes" methodname="ConclusaoNaoPodeSerEmitidaDuasVezes" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="848905361" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.001723" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1031" name="DonoDiferenteNaoPodeExecutarAMesmaOrdem" fullname="ControleOrdemMovimentoEditModeTests.DonoDiferenteNaoPodeExecutarAMesmaOrdem" methodname="DonoDiferenteNaoPodeExecutarAMesmaOrdem" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="851448385" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.003053" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1030" name="OrdemComSemProgressoTemNoMaximoDuasTentativas" fullname="ControleOrdemMovimentoEditModeTests.OrdemComSemProgressoTemNoMaximoDuasTentativas" methodname="OrdemComSemProgressoTemNoMaximoDuasTentativas" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="192429632" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.007501" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1029" name="OrdemDuplicadaComMesmoIdDonoEDestinoEIdempotente" fullname="ControleOrdemMovimentoEditModeTests.OrdemDuplicadaComMesmoIdDonoEDestinoEIdempotente" methodname="OrdemDuplicadaComMesmoIdDonoEDestinoEIdempotente" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="31376962" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.001759" asserts="0">
+          <properties />
+        </test-case>
+        <test-case id="1035" name="PatrulhaAereaEmMissaoAceitaNovoPontoSemReinserirOPrimeiroDestino" fullname="ControleOrdemMovimentoEditModeTests.PatrulhaAereaEmMissaoAceitaNovoPontoSemReinserirOPrimeiroDestino" methodname="PatrulhaAereaEmMissaoAceitaNovoPontoSemReinserirOPrimeiroDestino" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="672075761" result="Failed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.029652" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[  Expected: True
+  But was:  False
+]]></message>
+            <stack-trace><![CDATA[at ControleOrdemMovimentoEditModeTests.PatrulhaAereaEmMissaoAceitaNovoPontoSemReinserirOPrimeiroDestino () [0x00135] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\ControleOrdemMovimentoEditModeTests.cs:213
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[ControleAviao] Patrulha recusada para UnidadeOrdemTeste_ee423966ed12429bb38400ff684a7374: autonomia insuficiente para o setor e retorno seguro.
+[Patrulha][UnidadeOrdemTeste_ee423966ed12429bb38400ff684a7374] rejeitada por executor aereo recusou a patrulha; ordem atual=Patrulhando.
+]]></output>
+        </test-case>
+        <test-case id="1036" name="VooAposDecolagemPreservaRotaDePatrulhaEIgnoraDestinoFinalAntigo" fullname="ControleOrdemMovimentoEditModeTests.VooAposDecolagemPreservaRotaDePatrulhaEIgnoraDestinoFinalAntigo" methodname="VooAposDecolagemPreservaRotaDePatrulhaEIgnoraDestinoFinalAntigo" classname="ControleOrdemMovimentoEditModeTests" runstate="Runnable" seed="1634893986" result="Failed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:02Z" duration="0.013137" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[  Expected: 180.0f +/- 0.00999999978f
+  But was:  72.9124298f
+]]></message>
+            <stack-trace><![CDATA[at ControleOrdemMovimentoEditModeTests.VooAposDecolagemPreservaRotaDePatrulhaEIgnoraDestinoFinalAntigo () [0x0014e] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\ControleOrdemMovimentoEditModeTests.cs:265
+]]></stack-trace>
+          </failure>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1037" name="GlobalWorldRuntimeSmokeTests" fullname="GlobalWorldRuntimeSmokeTests" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-09-26 18:01:17Z" end-time="2026-09-26 18:01:23Z" duration="5.707855" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1038" name="ExistingOceanRulesAndTerrainStreamingRunTogether" fullname="GlobalWorldRuntimeSmokeTests.ExistingOceanRulesAndTerrainStreamingRunTogether" methodname="ExistingOceanRulesAndTerrainStreamingRunTogether" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" seed="1944918682" result="Passed" start-time="2026-09-26 18:01:02Z" end-time="2026-09-26 18:01:23Z" duration="20.735911" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_00 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_01 couldn't be instanced because the prefab contains no valid mesh renderer.
+The tree Environment__CoastalTree_22 couldn't be instanced because the prefab contains no valid mesh renderer.
+[AuditoriaConteudo] DS Liberal: prefab sem SaveableEntity para save completo
+[AuditoriaConteudo] Ministral: unidade de combate sem arma/sistema de tiro detectado
+[AuditoriaConteudo] Navio Guarda Costeira: prefab sem SaveableEntity para save completo
+[AuditoriaConteudo] Navio Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=18 erros=0 avisos=10 cena=GlobalMapRTS avisosConsoleSuprimidos=6
+[GlobalMapPerfSmoke] loadedTiles=9/9 FPS(avg)=104,9 frameMs(avg/p95)=9,53/10,67 CPU-main-peak=29,90 ms Unity/Mono/GPU-memory=829 MB/924 MB/0 MB GameObjects=22
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1039" name="GuidagemAlvoMovelEditModeTests" fullname="GuidagemAlvoMovelEditModeTests" classname="GuidagemAlvoMovelEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.103178" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1040" name="PrevisaoRespeitaVelocidadeDoAlvoEAntecipacaoMaxima" fullname="GuidagemAlvoMovelEditModeTests.PrevisaoRespeitaVelocidadeDoAlvoEAntecipacaoMaxima" methodname="PrevisaoRespeitaVelocidadeDoAlvoEAntecipacaoMaxima" classname="GuidagemAlvoMovelEditModeTests" runstate="Runnable" seed="124750147" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.099339" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1041" name="SegmentoDetectaAlvoMesmoQuandoFimDoFrameJaPassouDoPonto" fullname="GuidagemAlvoMovelEditModeTests.SegmentoDetectaAlvoMesmoQuandoFimDoFrameJaPassouDoPonto" methodname="SegmentoDetectaAlvoMesmoQuandoFimDoFrameJaPassouDoPonto" classname="GuidagemAlvoMovelEditModeTests" runstate="Runnable" seed="682622930" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.001982" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1042" name="IA01BuildPlanRuntimeEditModeTests" fullname="IA01BuildPlanRuntimeEditModeTests" classname="IA01BuildPlanRuntimeEditModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.067129" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1043" name="ExactCapitalStep_UsesPreparedSlot_AndRestoresReservation" fullname="IA01BuildPlanRuntimeEditModeTests.ExactCapitalStep_UsesPreparedSlot_AndRestoresReservation" methodname="ExactCapitalStep_UsesPreparedSlot_AndRestoresReservation" classname="IA01BuildPlanRuntimeEditModeTests" runstate="Runnable" seed="245074702" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.064768" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1044" name="IA01BuildSlotEditModeTests" fullname="IA01BuildSlotEditModeTests" classname="IA01BuildSlotEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.011776" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1045" name="SlotGroup_SelectsOnlyCompatibleAvailableSlot" fullname="IA01BuildSlotEditModeTests.SlotGroup_SelectsOnlyCompatibleAvailableSlot" methodname="SlotGroup_SelectsOnlyCompatibleAvailableSlot" classname="IA01BuildSlotEditModeTests" runstate="Runnable" seed="1827809674" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.006259" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1046" name="SlotState_RoundTripsWithoutReleasingOccupiedSlot" fullname="IA01BuildSlotEditModeTests.SlotState_RoundTripsWithoutReleasingOccupiedSlot" methodname="SlotState_RoundTripsWithoutReleasingOccupiedSlot" classname="IA01BuildSlotEditModeTests" runstate="Runnable" seed="919017728" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.003516" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1047" name="IA01FoundationTests" fullname="IA01FoundationTests" classname="IA01FoundationTests" runstate="Runnable" testcasecount="14" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.647168" total="14" passed="14" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1056" name="BuildReservationRejectsTheSameLotTwice" fullname="IA01FoundationTests.BuildReservationRejectsTheSameLotTwice" methodname="BuildReservationRejectsTheSameLotTwice" classname="IA01FoundationTests" runstate="Runnable" seed="50637975" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.043876" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1058" name="CapitalCatalogResolvesByRoleAndDoesNotUseNames" fullname="IA01FoundationTests.CapitalCatalogResolvesByRoleAndDoesNotUseNames" methodname="CapitalCatalogResolvesByRoleAndDoesNotUseNames" classname="IA01FoundationTests" runstate="Runnable" seed="1333578600" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.054512" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1059" name="CatalogMissingCircuitBreakerWaitsForStateChange" fullname="IA01FoundationTests.CatalogMissingCircuitBreakerWaitsForStateChange" methodname="CatalogMissingCircuitBreakerWaitsForStateChange" classname="IA01FoundationTests" runstate="Runnable" seed="710679683" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.042252" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1054" name="ConstructionGovernorSettingsExistWithSafeDefaults" fullname="IA01FoundationTests.ConstructionGovernorSettingsExistWithSafeDefaults" methodname="ConstructionGovernorSettingsExistWithSafeDefaults" classname="IA01FoundationTests" runstate="Runnable" seed="1423953133" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.042023" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1048" name="ControllersMaintainIndependentRuntimeState" fullname="IA01FoundationTests.ControllersMaintainIndependentRuntimeState" methodname="ControllersMaintainIndependentRuntimeState" classname="IA01FoundationTests" runstate="Runnable" seed="259914748" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.047249" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1051" name="EventBusRoutesEventsToMatchingNationOnly" fullname="IA01FoundationTests.EventBusRoutesEventsToMatchingNationOnly" methodname="EventBusRoutesEventsToMatchingNationOnly" classname="IA01FoundationTests" runstate="Runnable" seed="433545157" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.047941" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1052" name="ManagerCapturesRestoresAndSchedulesTwoControllers" fullname="IA01FoundationTests.ManagerCapturesRestoresAndSchedulesTwoControllers" methodname="ManagerCapturesRestoresAndSchedulesTwoControllers" classname="IA01FoundationTests" runstate="Runnable" seed="1922475998" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.079081" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA01 WorldReady] layout, identidade e governo prontos; execução liberada.
+]]></output>
+        </test-case>
+        <test-case id="1053" name="NationProfileStartsWithOpeningInfrastructureTreasury" fullname="IA01FoundationTests.NationProfileStartsWithOpeningInfrastructureTreasury" methodname="NationProfileStartsWithOpeningInfrastructureTreasury" classname="IA01FoundationTests" runstate="Runnable" seed="1225204929" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.040368" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1055" name="OperationalStageProgressesAfterCapitalAndRecoversFromEconomicCollapse" fullname="IA01FoundationTests.OperationalStageProgressesAfterCapitalAndRecoversFromEconomicCollapse" methodname="OperationalStageProgressesAfterCapitalAndRecoversFromEconomicCollapse" classname="IA01FoundationTests" runstate="Runnable" seed="1673908772" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.039940" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1057" name="RealCapitalAssetHasExplicitFoundationMetadata" fullname="IA01FoundationTests.RealCapitalAssetHasExplicitFoundationMetadata" methodname="RealCapitalAssetHasExplicitFoundationMetadata" classname="IA01FoundationTests" runstate="Runnable" seed="1566340985" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.039399" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1050" name="ReapplyingAnUnchangedResourceSnapshotDoesNotCreateDirtyWork" fullname="IA01FoundationTests.ReapplyingAnUnchangedResourceSnapshotDoesNotCreateDirtyWork" methodname="ReapplyingAnUnchangedResourceSnapshotDoesNotCreateDirtyWork" classname="IA01FoundationTests" runstate="Runnable" seed="505767355" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.040137" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1049" name="ReapplyingTheSameIdentityDoesNotResetRandomOrDirtyState" fullname="IA01FoundationTests.ReapplyingTheSameIdentityDoesNotResetRandomOrDirtyState" methodname="ReapplyingTheSameIdentityDoesNotResetRandomOrDirtyState" classname="IA01FoundationTests" runstate="Runnable" seed="682092584" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.039308" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1062" name="SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty" fullname="IA01FoundationTests.SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty" classname="IA01FoundationTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.084737" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1060" name="SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty(False)" fullname="IA01FoundationTests.SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty(False)" methodname="SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty" classname="IA01FoundationTests" runstate="Runnable" seed="2066041034" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.042746" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1061" name="SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty(True)" fullname="IA01FoundationTests.SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty(True)" methodname="SchedulerWaitsUntilCooldownExpiresEvenWhenAllNationsAreDirty" classname="IA01FoundationTests" runstate="Runnable" seed="1470733453" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.040044" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+      </test-suite>
+      <test-suite type="TestFixture" id="1063" name="IA01MilitaryCatalogPolicyEditModeTests" fullname="IA01MilitaryCatalogPolicyEditModeTests" classname="IA01MilitaryCatalogPolicyEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.008054" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1065" name="ExplicitConfiguredCatalogOverridesFallbackAllowlist" fullname="IA01MilitaryCatalogPolicyEditModeTests.ExplicitConfiguredCatalogOverridesFallbackAllowlist" methodname="ExplicitConfiguredCatalogOverridesFallbackAllowlist" classname="IA01MilitaryCatalogPolicyEditModeTests" runstate="Runnable" seed="490769289" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.004484" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1064" name="SavedIA01RejectsUnknownMilitaryPrefabButPreservesOtherAiTeams" fullname="IA01MilitaryCatalogPolicyEditModeTests.SavedIA01RejectsUnknownMilitaryPrefabButPreservesOtherAiTeams" methodname="SavedIA01RejectsUnknownMilitaryPrefabButPreservesOtherAiTeams" classname="IA01MilitaryCatalogPolicyEditModeTests" runstate="Runnable" seed="1816933991" result="Passed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:23Z" duration="0.001681" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1066" name="IA02ParallelEditModeTests" fullname="IA02ParallelEditModeTests" classname="IA02ParallelEditModeTests" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:25Z" duration="1.010335" total="7" passed="6" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1070" name="CampaignScenesBlockAutomaticMilitaryProductionDuringPeacetime" fullname="IA02ParallelEditModeTests.CampaignScenesBlockAutomaticMilitaryProductionDuringPeacetime" methodname="CampaignScenesBlockAutomaticMilitaryProductionDuringPeacetime" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="45233496" result="Failed" start-time="2026-09-26 18:01:23Z" end-time="2026-09-26 18:01:24Z" duration="0.009807" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A campanha precisa desativar a produção militar automática em paz para IA01 e IA02: Assets/_Recovery/cena19).unity
+  Expected: 2
+  But was:  1
+]]></message>
+            <stack-trace><![CDATA[at IA02ParallelEditModeTests.AssertCampaignBlocksPeacetimeMilitaryProduction (System.String scenePath) [0x00015] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\IA02ParallelEditModeTests.cs:151
+at IA02ParallelEditModeTests.CampaignScenesBlockAutomaticMilitaryProductionDuringPeacetime () [0x00000] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\IA02ParallelEditModeTests.cs:71
+]]></stack-trace>
+          </failure>
+        </test-case>
+        <test-case id="1069" name="IA02PlanAndSceneAssetsAreSeparateFromIA01" fullname="IA02ParallelEditModeTests.IA02PlanAndSceneAssetsAreSeparateFromIA01" methodname="IA02PlanAndSceneAssetsAreSeparateFromIA01" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="1079045372" result="Passed" start-time="2026-09-26 18:01:24Z" end-time="2026-09-26 18:01:24Z" duration="0.474849" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1073" name="IA02SourceDoesNotContainIA01ControllerOrManagerReferences" fullname="IA02ParallelEditModeTests.IA02SourceDoesNotContainIA01ControllerOrManagerReferences" methodname="IA02SourceDoesNotContainIA01ControllerOrManagerReferences" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="1762770865" result="Passed" start-time="2026-09-26 18:01:24Z" end-time="2026-09-26 18:01:24Z" duration="0.510348" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1067" name="IA02TypesAreInTheirOwnNamespaceAndDoNotAliasIA01" fullname="IA02ParallelEditModeTests.IA02TypesAreInTheirOwnNamespaceAndDoNotAliasIA01" methodname="IA02TypesAreInTheirOwnNamespaceAndDoNotAliasIA01" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="577014251" result="Passed" start-time="2026-09-26 18:01:24Z" end-time="2026-09-26 18:01:24Z" duration="0.002005" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1068" name="IA02UsesIndependentIdentifiersAndTeamThree" fullname="IA02ParallelEditModeTests.IA02UsesIndependentIdentifiersAndTeamThree" methodname="IA02UsesIndependentIdentifiersAndTeamThree" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="234310720" result="Passed" start-time="2026-09-26 18:01:24Z" end-time="2026-09-26 18:01:24Z" duration="0.004697" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1071" name="NewAiControllersKeepPeacetimeProductionEnabledUnlessASceneOverridesIt" fullname="IA02ParallelEditModeTests.NewAiControllersKeepPeacetimeProductionEnabledUnlessASceneOverridesIt" methodname="NewAiControllersKeepPeacetimeProductionEnabledUnlessASceneOverridesIt" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="1567932613" result="Passed" start-time="2026-09-26 18:01:24Z" end-time="2026-09-26 18:01:25Z" duration="0.003946" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1072" name="SaveGameDeclaresSeparateIA01AndIA02StateCollections" fullname="IA02ParallelEditModeTests.SaveGameDeclaresSeparateIA01AndIA02StateCollections" methodname="SaveGameDeclaresSeparateIA01AndIA02StateCollections" classname="IA02ParallelEditModeTests" runstate="Runnable" seed="1145350775" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001497" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1074" name="IAAutoProductionRegistryEditModeTests" fullname="IAAutoProductionRegistryEditModeTests" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.013106" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1077" name="CancellationReleasesReservation" fullname="IAAutoProductionRegistryEditModeTests.CancellationReleasesReservation" methodname="CancellationReleasesReservation" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="165907067" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001634" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1078" name="CompletionDoesNotRemainInDemandOrDuplicateCount" fullname="IAAutoProductionRegistryEditModeTests.CompletionDoesNotRemainInDemandOrDuplicateCount" methodname="CompletionDoesNotRemainInDemandOrDuplicateCount" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="311865343" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.000925" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1081" name="RealDemandStillAllowsAutomaticProduction" fullname="IAAutoProductionRegistryEditModeTests.RealDemandStillAllowsAutomaticProduction" methodname="RealDemandStillAllowsAutomaticProduction" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="782134059" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.000359" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1075" name="RepeatedPlannerCyclesCreateOnlyOneEquivalentOrder" fullname="IAAutoProductionRegistryEditModeTests.RepeatedPlannerCyclesCreateOnlyOneEquivalentOrder" methodname="RepeatedPlannerCyclesCreateOnlyOneEquivalentOrder" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="1143540620" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001600" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1076" name="ReservationCountsTowardsNetDemand" fullname="IAAutoProductionRegistryEditModeTests.ReservationCountsTowardsNetDemand" methodname="ReservationCountsTowardsNetDemand" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="1039169175" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.000584" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1079" name="SaveLoadDoesNotRecreateCompletedReservations" fullname="IAAutoProductionRegistryEditModeTests.SaveLoadDoesNotRecreateCompletedReservations" methodname="SaveLoadDoesNotRecreateCompletedReservations" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="1419645488" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003429" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1080" name="TeamsHaveIndependentCounters" fullname="IAAutoProductionRegistryEditModeTests.TeamsHaveIndependentCounters" methodname="TeamsHaveIndependentCounters" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="1774236641" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.000403" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1082" name="IntegridadeERegistroTests" fullname="IntegridadeERegistroTests" classname="IntegridadeERegistroTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.241169" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1085" name="AuditoriaConteudo_AprovaGateQuandoFichaBasicaEstaValida" fullname="IntegridadeERegistroTests.AuditoriaConteudo_AprovaGateQuandoFichaBasicaEstaValida" methodname="AuditoriaConteudo_AprovaGateQuandoFichaBasicaEstaValida" classname="IntegridadeERegistroTests" runstate="Runnable" seed="1811451351" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.006535" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[AuditoriaConteudo] Gate de conteudo aprovado: fichas=1 erros=0 avisos=0 cena=
+]]></output>
+        </test-case>
+        <test-case id="1084" name="AuditoriaConteudo_UsaCatalogoSobrescrito_E_BloqueiaGateQuandoHaErro" fullname="IntegridadeERegistroTests.AuditoriaConteudo_UsaCatalogoSobrescrito_E_BloqueiaGateQuandoHaErro" methodname="AuditoriaConteudo_UsaCatalogoSobrescrito_E_BloqueiaGateQuandoHaErro" classname="IntegridadeERegistroTests" runstate="Runnable" seed="1820446020" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.004629" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[
+IgnoreFailingMessages:true
+[AuditoriaConteudo] Teste Invalido: preco negativo (-25)
+[AuditoriaConteudo] Teste Invalido: prefab ausente ou corrompido
+[AuditoriaConteudo] Gate de conteudo bloqueado: fichas=1 erros=2 avisos=0 cena=
+
+IgnoreFailingMessages:false
+]]></output>
+        </test-case>
+        <test-case id="1083" name="RegistroCentral_PreencheHelicopterosEAvioesRegistrados" fullname="IntegridadeERegistroTests.RegistroCentral_PreencheHelicopterosEAvioesRegistrados" methodname="RegistroCentral_PreencheHelicopterosEAvioesRegistrados" classname="IntegridadeERegistroTests" runstate="Runnable" seed="1181385266" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.228027" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1086" name="LancamentoMissilDispatchEditModeTests" fullname="LancamentoMissilDispatchEditModeTests" classname="LancamentoMissilDispatchEditModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.024921" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1088" name="DespachoComAlvoMovelEntregaOTransformAoControladorTatico" fullname="LancamentoMissilDispatchEditModeTests.DespachoComAlvoMovelEntregaOTransformAoControladorTatico" methodname="DespachoComAlvoMovelEntregaOTransformAoControladorTatico" classname="LancamentoMissilDispatchEditModeTests" runstate="Runnable" seed="682299848" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.014909" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1089" name="DespachoDeTorpedoPorCoordenadaMantemModoFixo" fullname="LancamentoMissilDispatchEditModeTests.DespachoDeTorpedoPorCoordenadaMantemModoFixo" methodname="DespachoDeTorpedoPorCoordenadaMantemModoFixo" classname="LancamentoMissilDispatchEditModeTests" runstate="Runnable" seed="488713575" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003804" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1087" name="DespachoPorCoordenadaNaoDeixaMissilGuiadoSemDestino" fullname="LancamentoMissilDispatchEditModeTests.DespachoPorCoordenadaNaoDeixaMissilGuiadoSemDestino" methodname="DespachoPorCoordenadaNaoDeixaMissilGuiadoSemDestino" classname="LancamentoMissilDispatchEditModeTests" runstate="Runnable" seed="1624705582" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003634" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1090" name="OperacoesPortaAvioesV2EditModeTests" fullname="OperacoesPortaAvioesV2EditModeTests" classname="OperacoesPortaAvioesV2EditModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.008687" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1093" name="EstacionamentoNaoDesativaAeronave" fullname="OperacoesPortaAvioesV2EditModeTests.EstacionamentoNaoDesativaAeronave" methodname="EstacionamentoNaoDesativaAeronave" classname="OperacoesPortaAvioesV2EditModeTests" runstate="Runnable" seed="761430800" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001756" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1091" name="IdentidadePermaneceEstavelETransicaoInvalidaFalha" fullname="OperacoesPortaAvioesV2EditModeTests.IdentidadePermaneceEstavelETransicaoInvalidaFalha" methodname="IdentidadePermaneceEstavelETransicaoInvalidaFalha" classname="OperacoesPortaAvioesV2EditModeTests" runstate="Runnable" seed="1979077174" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003331" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1092" name="ReservaDeVagaEAtomicaELibera" fullname="OperacoesPortaAvioesV2EditModeTests.ReservaDeVagaEAtomicaELibera" methodname="ReservaDeVagaEAtomicaELibera" classname="OperacoesPortaAvioesV2EditModeTests" runstate="Runnable" seed="1589203395" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001536" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1094" name="OrquestradorGlobalOrdensEditModeTests" fullname="OrquestradorGlobalOrdensEditModeTests" classname="OrquestradorGlobalOrdensEditModeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.019979" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1097" name="ConclusaoPublicaEventoUmaUnicaVezMesmoComNotificacaoDuplicada" fullname="OrquestradorGlobalOrdensEditModeTests.ConclusaoPublicaEventoUmaUnicaVezMesmoComNotificacaoDuplicada" methodname="ConclusaoPublicaEventoUmaUnicaVezMesmoComNotificacaoDuplicada" classname="OrquestradorGlobalOrdensEditModeTests" runstate="Runnable" seed="244053954" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.011463" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1096" name="NovaOrdemSubstituiAAnteriorComCancelamentoExplicito" fullname="OrquestradorGlobalOrdensEditModeTests.NovaOrdemSubstituiAAnteriorComCancelamentoExplicito" methodname="NovaOrdemSubstituiAAnteriorComCancelamentoExplicito" classname="OrquestradorGlobalOrdensEditModeTests" runstate="Runnable" seed="2096319699" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003137" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1095" name="ReemissaoIdenticaEhIdempotenteEOutroControladorNaoAssume" fullname="OrquestradorGlobalOrdensEditModeTests.ReemissaoIdenticaEhIdempotenteEOutroControladorNaoAssume" methodname="ReemissaoIdenticaEhIdempotenteEOutroControladorNaoAssume" classname="OrquestradorGlobalOrdensEditModeTests" runstate="Runnable" seed="1693212628" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001434" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1098" name="UnidadeLiberadaCancelaOrdemAtivaSemDeixarRegistroAtivo" fullname="OrquestradorGlobalOrdensEditModeTests.UnidadeLiberadaCancelaOrdemAtivaSemDeixarRegistroAtivo" methodname="UnidadeLiberadaCancelaOrdemAtivaSemDeixarRegistroAtivo" classname="OrquestradorGlobalOrdensEditModeTests" runstate="Runnable" seed="1022742178" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001313" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1099" name="OrquestradorGlobalSimulacaoEditModeTests" fullname="OrquestradorGlobalSimulacaoEditModeTests" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.016189" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1103" name="DespertarImediatoDuplicadoEAgrupado" fullname="OrquestradorGlobalSimulacaoEditModeTests.DespertarImediatoDuplicadoEAgrupado" methodname="DespertarImediatoDuplicadoEAgrupado" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" seed="1848441517" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003451" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1102" name="DistribuicaoRoundRobinExecutaTodosSemDuplicar" fullname="OrquestradorGlobalSimulacaoEditModeTests.DistribuicaoRoundRobinExecutaTodosSemDuplicar" methodname="DistribuicaoRoundRobinExecutaTodosSemDuplicar" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" seed="124549417" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.003095" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1104" name="FrequenciaNaoGeraCatchUpStorm" fullname="OrquestradorGlobalSimulacaoEditModeTests.FrequenciaNaoGeraCatchUpStorm" methodname="FrequenciaNaoGeraCatchUpStorm" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" seed="512528463" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.000977" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1105" name="PausaNaoAcumulaTicksAoRetornar" fullname="OrquestradorGlobalSimulacaoEditModeTests.PausaNaoAcumulaTicksAoRetornar" methodname="PausaNaoAcumulaTicksAoRetornar" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" seed="1644022170" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001375" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1100" name="RegistroDuplicadoMantemUmaTarefa" fullname="OrquestradorGlobalSimulacaoEditModeTests.RegistroDuplicadoMantemUmaTarefa" methodname="RegistroDuplicadoMantemUmaTarefa" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" seed="951870048" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.002458" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1101" name="RemocaoEIdEstavelNaoDependemDoInstanceId" fullname="OrquestradorGlobalSimulacaoEditModeTests.RemocaoEIdEstavelNaoDependemDoInstanceId" methodname="RemocaoEIdEstavelNaoDependemDoInstanceId" classname="OrquestradorGlobalSimulacaoEditModeTests" runstate="Runnable" seed="561817799" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.001731" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1106" name="PoliticoTerritoryEditModeTests" fullname="PoliticoTerritoryEditModeTests" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:26Z" duration="1.083159" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1113" name="CapturingNeutralIsland_UpdatesQueryAndCanBeSavedAndRestored" fullname="PoliticoTerritoryEditModeTests.CapturingNeutralIsland_UpdatesQueryAndCanBeSavedAndRestored" methodname="CapturingNeutralIsland_UpdatesQueryAndCanBeSavedAndRestored" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="597936838" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.151106" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1108" name="DefinedButUnassignedPolygon_StillBlocksLegacyOwnership" fullname="PoliticoTerritoryEditModeTests.DefinedButUnassignedPolygon_StillBlocksLegacyOwnership" methodname="DefinedButUnassignedPolygon_StillBlocksLegacyOwnership" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="282386582" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.093993" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1112" name="InitialTerritoryResource_LoadsScriptAndPreservesEditableOwnership" fullname="PoliticoTerritoryEditModeTests.InitialTerritoryResource_LoadsScriptAndPreservesEditableOwnership" methodname="InitialTerritoryResource_LoadsScriptAndPreservesEditableOwnership" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="606845902" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.108463" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1109" name="LegacySquare_RemainsFallbackOutsidePoliticalPolygons" fullname="PoliticoTerritoryEditModeTests.LegacySquare_RemainsFallbackOutsidePoliticalPolygons" methodname="LegacySquare_RemainsFallbackOutsidePoliticalPolygons" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="2056630893" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.182098" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1111" name="PhaseReference_CentralIslandStartsNeutralAndCapturable" fullname="PoliticoTerritoryEditModeTests.PhaseReference_CentralIslandStartsNeutralAndCapturable" methodname="PhaseReference_CentralIslandStartsNeutralAndCapturable" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="304617366" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:25Z" duration="0.085498" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1107" name="PoliticoPolygon_IsSovereignOverLegacyCitySquares" fullname="PoliticoTerritoryEditModeTests.PoliticoPolygon_IsSovereignOverLegacyCitySquares" methodname="PoliticoPolygon_IsSovereignOverLegacyCitySquares" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="400294143" result="Passed" start-time="2026-09-26 18:01:25Z" end-time="2026-09-26 18:01:26Z" duration="0.088749" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1110" name="SameBiomeColor_DoesNotMergeSeparatePoliticalRegions" fullname="PoliticoTerritoryEditModeTests.SameBiomeColor_DoesNotMergeSeparatePoliticalRegions" methodname="SameBiomeColor_DoesNotMergeSeparatePoliticalRegions" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="1978400199" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.094936" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1114" name="TerritorialSeaAndInternationalWater_AreDifferentQueryResults" fullname="PoliticoTerritoryEditModeTests.TerritorialSeaAndInternationalWater_AreDifferentQueryResults" methodname="TerritorialSeaAndInternationalWater_AreDifferentQueryResults" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="1996271831" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.090507" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1116" name="UnapprovedPassage_IsReportedButDoesNotBecomeAutomaticFireOrder" fullname="PoliticoTerritoryEditModeTests.UnapprovedPassage_IsReportedButDoesNotBecomeAutomaticFireOrder" methodname="UnapprovedPassage_IsReportedButDoesNotBecomeAutomaticFireOrder" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="1835191430" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.092995" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1115" name="UnassignedLand_IsNotMistakenForNeutralTerritory" fullname="PoliticoTerritoryEditModeTests.UnassignedLand_IsNotMistakenForNeutralTerritory" methodname="UnassignedLand_IsNotMistakenForNeutralTerritory" classname="PoliticoTerritoryEditModeTests" runstate="Runnable" seed="332307570" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.089330" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1117" name="ReformaGameplayRegressionTests" fullname="ReformaGameplayRegressionTests" classname="ReformaGameplayRegressionTests" runstate="Runnable" testcasecount="25" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:27Z" duration="0.643129" total="25" passed="25" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1124" name="AircraftDoesNotArmReturnWhenNoBaseHasAValidLandingRunway" fullname="ReformaGameplayRegressionTests.AircraftDoesNotArmReturnWhenNoBaseHasAValidLandingRunway" methodname="AircraftDoesNotArmReturnWhenNoBaseHasAValidLandingRunway" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1486708871" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.005471" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[ControleAviao] Regression_ControleAviao não recebeu retorno: nenhuma base aliada com pista de pouso válida foi encontrada.
+]]></output>
+        </test-case>
+        <test-case id="1137" name="AircraftKeepsItsRouteWhenCarrierResubmitsTheSameList" fullname="ReformaGameplayRegressionTests.AircraftKeepsItsRouteWhenCarrierResubmitsTheSameList" methodname="AircraftKeepsItsRouteWhenCarrierResubmitsTheSameList" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="28377306" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.007292" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1139" name="AircraftManualOrderReplacesAnActivePatrolWithoutLeavingOldWaypoints" fullname="ReformaGameplayRegressionTests.AircraftManualOrderReplacesAnActivePatrolWithoutLeavingOldWaypoints" methodname="AircraftManualOrderReplacesAnActivePatrolWithoutLeavingOldWaypoints" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1481911880" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.003431" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1140" name="AircraftPatrolOrderUpdatesTheExistingFlightInsteadOfStartingASecondOne" fullname="ReformaGameplayRegressionTests.AircraftPatrolOrderUpdatesTheExistingFlightInsteadOfStartingASecondOne" methodname="AircraftPatrolOrderUpdatesTheExistingFlightInsteadOfStartingASecondOne" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1566804544" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.002325" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1125" name="AircraftRejectsAFlightOrderWhenItsOriginBaseHasNoLandingRoute" fullname="ReformaGameplayRegressionTests.AircraftRejectsAFlightOrderWhenItsOriginBaseHasNoLandingRoute" methodname="AircraftRejectsAFlightOrderWhenItsOriginBaseHasNoLandingRoute" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="698777012" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.001760" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[ControleAviao] Ordem manual recusada para Regression_ControleAviao: base de origem sem rota de pouso válida.
+]]></output>
+        </test-case>
+        <test-case id="1123" name="AircraftRequestsReturnAtReserveAndRefillsAtBase" fullname="ReformaGameplayRegressionTests.AircraftRequestsReturnAtReserveAndRefillsAtBase" methodname="AircraftRequestsReturnAtReserveAndRefillsAtBase" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1930374555" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.004075" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1128" name="BuildingClearsNaturalPropsInsideItsFootprintWithoutDeletingTerrain" fullname="ReformaGameplayRegressionTests.BuildingClearsNaturalPropsInsideItsFootprintWithoutDeletingTerrain" methodname="BuildingClearsNaturalPropsInsideItsFootprintWithoutDeletingTerrain" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1860514847" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.114178" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1138" name="CarrierLandingRetriesAfterWaitingAndReleasesReservationIfControlIsBusy" fullname="ReformaGameplayRegressionTests.CarrierLandingRetriesAfterWaitingAndReleasesReservationIfControlIsBusy" methodname="CarrierLandingRetriesAfterWaitingAndReleasesReservationIfControlIsBusy" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="2108408356" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.005250" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1136" name="CarrierMenuDoesNotTurnAnAirborneAircraftIntoAParkedOne" fullname="ReformaGameplayRegressionTests.CarrierMenuDoesNotTurnAnAirborneAircraftIntoAParkedOne" methodname="CarrierMenuDoesNotTurnAnAirborneAircraftIntoAParkedOne" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1950085824" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.001686" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1130" name="CarrierServiceRefuelsAndReloadsAircraftBeforeOperationalResume" fullname="ReformaGameplayRegressionTests.CarrierServiceRefuelsAndReloadsAircraftBeforeOperationalResume" methodname="CarrierServiceRefuelsAndReloadsAircraftBeforeOperationalResume" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1174668116" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.001879" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1127" name="EconomySeparatesTeamsAndStopsAnUnpoweredStructureOnTheNextCycle" fullname="ReformaGameplayRegressionTests.EconomySeparatesTeamsAndStopsAnUnpoweredStructureOnTheNextCycle" methodname="EconomySeparatesTeamsAndStopsAnUnpoweredStructureOnTheNextCycle" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="796018275" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.008330" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1131" name="FarmDoesNotCaptureClicksOrExposeAControlPanel" fullname="ReformaGameplayRegressionTests.FarmDoesNotCaptureClicksOrExposeAControlPanel" methodname="FarmDoesNotCaptureClicksOrExposeAControlPanel" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1317501477" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.002354" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1126" name="FuelConsumptionNeverDropsBelowZeroAndRefuelRestoresTheConfiguredTank" fullname="ReformaGameplayRegressionTests.FuelConsumptionNeverDropsBelowZeroAndRefuelRestoresTheConfiguredTank" methodname="FuelConsumptionNeverDropsBelowZeroAndRefuelRestoresTheConfiguredTank" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1489581377" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.001867" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1142" name="HangarLaunchReservesARealPatioSlotForTheReturnFlight" fullname="ReformaGameplayRegressionTests.HangarLaunchReservesARealPatioSlotForTheReturnFlight" methodname="HangarLaunchReservesARealPatioSlotForTheReturnFlight" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1834439959" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.127872" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1144" name="HelicopterPatrolGatewayRejectsAnEmptyRoute" fullname="ReformaGameplayRegressionTests.HelicopterPatrolGatewayRejectsAnEmptyRoute" methodname="HelicopterPatrolGatewayRejectsAnEmptyRoute" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="2036964699" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.000978" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1143" name="HelicopterPreservesAOnePointPatrolForRefuelResume" fullname="ReformaGameplayRegressionTests.HelicopterPreservesAOnePointPatrolForRefuelResume" methodname="HelicopterPreservesAOnePointPatrolForRefuelResume" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1099994550" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.005617" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Helicoptero] Missao de patrulha salva para reabastecimento: Regression_Helicoptero pontos=1 indice=0
+]]></output>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1135" name="LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle" fullname="ReformaGameplayRegressionTests.LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle" classname="ReformaGameplayRegressionTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.004339" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1133" name="LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle(60.0f,120.0f)" fullname="ReformaGameplayRegressionTests.LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle(60.0f,120.0f)" methodname="LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="777951351" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.001971" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1134" name="LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle(15.0f,80.0f)" fullname="ReformaGameplayRegressionTests.LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle(15.0f,80.0f)" methodname="LandingBrakesOutsideTheTouchdownZoneToAvoidAnUnreachableTurningCircle" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1383145694" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.000489" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1132" name="NavalUnitAcceptsAValidWaterDestinationAndKeepsItActive" fullname="ReformaGameplayRegressionTests.NavalUnitAcceptsAValidWaterDestinationAndKeepsItActive" methodname="NavalUnitAcceptsAValidWaterDestinationAndKeepsItActive" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1070514093" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.141166" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1141" name="RejectedManualOrderDuringLandingPreservesTheCurrentMissionState" fullname="ReformaGameplayRegressionTests.RejectedManualOrderDuringLandingPreservesTheCurrentMissionState" methodname="RejectedManualOrderDuringLandingPreservesTheCurrentMissionState" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="265536049" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.001415" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1129" name="SaveDataPreservesWarRelationsAndCountryStateAcrossSerialization" fullname="ReformaGameplayRegressionTests.SaveDataPreservesWarRelationsAndCountryStateAcrossSerialization" methodname="SaveDataPreservesWarRelationsAndCountryStateAcrossSerialization" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="166273926" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:26Z" duration="0.006783" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1122" name="TankerDoesNotUnloadBeforeTurningOrWithoutABerth" fullname="ReformaGameplayRegressionTests.TankerDoesNotUnloadBeforeTurningOrWithoutABerth" methodname="TankerDoesNotUnloadBeforeTurningOrWithoutABerth" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1885968593" result="Passed" start-time="2026-09-26 18:01:26Z" end-time="2026-09-26 18:01:27Z" duration="0.177029" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Navio] Mudando para: AGUARDANDO_INFRAESTRUTURA
+]]></output>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1121" name="TankerReachesBerthAndFinishesAligned" fullname="ReformaGameplayRegressionTests.TankerReachesBerthAndFinishesAligned" classname="ReformaGameplayRegressionTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.010101" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1118" name="TankerReachesBerthAndFinishesAligned(90.0f,0.01666667f)" fullname="ReformaGameplayRegressionTests.TankerReachesBerthAndFinishesAligned(90.0f,0.01666667f)" methodname="TankerReachesBerthAndFinishesAligned" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="624009238" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.004308" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[[Navio] Mudando para: DESCARREGANDO
+]]></output>
+          </test-case>
+          <test-case id="1119" name="TankerReachesBerthAndFinishesAligned(180.0f,0.05f)" fullname="ReformaGameplayRegressionTests.TankerReachesBerthAndFinishesAligned(180.0f,0.05f)" methodname="TankerReachesBerthAndFinishesAligned" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="1849483621" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.002108" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[[Navio] Mudando para: DESCARREGANDO
+]]></output>
+          </test-case>
+          <test-case id="1120" name="TankerReachesBerthAndFinishesAligned(270.0f,0.1f)" fullname="ReformaGameplayRegressionTests.TankerReachesBerthAndFinishesAligned(270.0f,0.1f)" methodname="TankerReachesBerthAndFinishesAligned" classname="ReformaGameplayRegressionTests" runstate="Runnable" seed="43736686" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.001543" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[[Navio] Mudando para: DESCARREGANDO
+]]></output>
+          </test-case>
+        </test-suite>
+      </test-suite>
+      <test-suite type="TestFixture" id="1145" name="RTSCoreContractsEditModeTests" fullname="RTSCoreContractsEditModeTests" classname="RTSCoreContractsEditModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.016344" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1148" name="ManualVisibilityContactIsQueryable" fullname="RTSCoreContractsEditModeTests.ManualVisibilityContactIsQueryable" methodname="ManualVisibilityContactIsQueryable" classname="RTSCoreContractsEditModeTests" runstate="Runnable" seed="1514974556" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.008259" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1146" name="ResourceCostClampsNegativeValues" fullname="RTSCoreContractsEditModeTests.ResourceCostClampsNegativeValues" methodname="ResourceCostClampsNegativeValues" classname="RTSCoreContractsEditModeTests" runstate="Runnable" seed="1831625476" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.001722" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1147" name="SessionPublishesVictoryOnce" fullname="RTSCoreContractsEditModeTests.SessionPublishesVictoryOnce" methodname="SessionPublishesVictoryOnce" classname="RTSCoreContractsEditModeTests" runstate="Runnable" seed="270308327" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.004318" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1149" name="ValoresDefinitivosEconomiaTests" fullname="ValoresDefinitivosEconomiaTests" classname="ValoresDefinitivosEconomiaTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.007208" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1151" name="Dificuldades_AplicamMultiplicadoresEconomicos" fullname="ValoresDefinitivosEconomiaTests.Dificuldades_AplicamMultiplicadoresEconomicos" methodname="Dificuldades_AplicamMultiplicadoresEconomicos" classname="ValoresDefinitivosEconomiaTests" runstate="Runnable" seed="1723878479" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.000962" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1150" name="Dificuldades_UsamCaixaInicialOficial" fullname="ValoresDefinitivosEconomiaTests.Dificuldades_UsamCaixaInicialOficial" methodname="Dificuldades_UsamCaixaInicialOficial" classname="ValoresDefinitivosEconomiaTests" runstate="Runnable" seed="2100615978" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.000576" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1154" name="Formatador_MantemValorInternoExato" fullname="ValoresDefinitivosEconomiaTests.Formatador_MantemValorInternoExato" methodname="Formatador_MantemValorInternoExato" classname="ValoresDefinitivosEconomiaTests" runstate="Runnable" seed="743855092" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.000899" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1153" name="MercadoEAgricultura_UsamTabelaOficial" fullname="ValoresDefinitivosEconomiaTests.MercadoEAgricultura_UsamTabelaOficial" methodname="MercadoEAgricultura_UsamTabelaOficial" classname="ValoresDefinitivosEconomiaTests" runstate="Runnable" seed="878086100" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.000819" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1152" name="Tabela_ResolveAliasesEValoresAcimaDeInt" fullname="ValoresDefinitivosEconomiaTests.Tabela_ResolveAliasesEValoresAcimaDeInt" methodname="Tabela_ResolveAliasesEValoresAcimaDeInt" classname="ValoresDefinitivosEconomiaTests" runstate="Runnable" seed="1491265776" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.000534" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1155" name="VelocidadeNavalGlobalTests" fullname="VelocidadeNavalGlobalTests" classname="VelocidadeNavalGlobalTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.004272" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1156" name="AplicaMultiplicadorGlobalAoDeslocamentoNaval" fullname="VelocidadeNavalGlobalTests.AplicaMultiplicadorGlobalAoDeslocamentoNaval" methodname="AplicaMultiplicadorGlobalAoDeslocamentoNaval" classname="VelocidadeNavalGlobalTests" runstate="Runnable" seed="1374000883" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.001702" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1157" name="ImpedeVelocidadeNulaOuInvalida" fullname="VelocidadeNavalGlobalTests.ImpedeVelocidadeNulaOuInvalida" methodname="ImpedeVelocidadeNulaOuInvalida" classname="VelocidadeNavalGlobalTests" runstate="Runnable" seed="406303056" result="Passed" start-time="2026-09-26 18:01:27Z" end-time="2026-09-26 18:01:27Z" duration="0.001139" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

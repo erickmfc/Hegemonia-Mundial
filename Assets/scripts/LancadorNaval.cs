@@ -440,7 +440,7 @@ public class LancadorNaval : MonoBehaviour
                 : null;
             if (identidadeAlvo == null
                 || SistemaGovernoMundial.Instancia == null
-                || !RTSVisibilityService.TeamsAtWar(minhaIdentidade != null ? minhaIdentidade.teamID : 0, identidadeAlvo.teamID))
+                || !ContextoTerritorialDiplomatico.PodeDispararEmGuerra(minhaIdentidade != null ? minhaIdentidade.teamID : 0, identidadeAlvo))
             {
                 motivo = "alvo sem guerra declarada com a unidade";
                 return false;
@@ -695,7 +695,7 @@ public class LancadorNaval : MonoBehaviour
         // equipes. Sem o governo/relacao carregado, a regra segura é não
         // interpretar qualquer equipe diferente como inimiga.
         if (SistemaGovernoMundial.Instancia == null
-            || !RTSVisibilityService.TeamsAtWar(meuTime, idAlvo.teamID))
+            || !ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, idAlvo))
         {
             return false;
         }

@@ -33,6 +33,11 @@ public class SistemaGovernoMundial : MonoBehaviour
     public IReadOnlyList<RelacaoPaisGoverno> Relacoes => relacoes;
     public IReadOnlyList<PropostaInternacional> Propostas => propostas;
 
+    public void NotificarGovernoAtualizado()
+    {
+        OnGovernoAtualizado?.Invoke();
+    }
+
     public static void GarantirInstancia()
     {
         if (encerrando) return;

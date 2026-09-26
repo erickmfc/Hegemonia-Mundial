@@ -1,6 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 using UnityEngine.AI;
+using UnityEngine.SceneManagement;
+using Object = UnityEngine.Object;
 
 [ExecuteAlways]
 public class GerenteDeTerritorio : MonoBehaviour
@@ -8,9 +11,27 @@ public class GerenteDeTerritorio : MonoBehaviour
     public static GerenteDeTerritorio Instancia;
 
     private List<MarcadorTerritorio> marcadores = new List<MarcadorTerritorio>();
+    [SerializeField] private DadosMapaTerritorial mapaPolitico;
+    [SerializeField] private float nivelMarPolitico;
+    [SerializeField] private bool usarLimitesDeTerreno = true;
+    [SerializeField] private Bounds limitesMapaExplicitos = new Bounds(Vector3.zero, new Vector3(10000f, 1000f, 10000f));
+    private readonly Dictionary<string, int> proprietariosCapturados = new Dictionary<string, int>(StringComparer.Ordinal);
+    private Bounds limitesTerritoriais;
+    private bool limitesTerritoriaisProntos;
+
+    public event Action<string, int, int> OnTerritoryOwnerChanged;
+
+    public DadosMapaTerritorial MapaPolitico
+    {
+        get { GarantirMapaPolitico(); return mapaPolitico; }
+        set { mapaPolitico = value; mapaPolitico?.InvalidarIndice(); }
+    }
 
     void Awake()
     {
+        GarantirMapaPolitico();
+        AtualizarLimitesTerritoriais();
+        SceneManager.sceneLoaded += AoCarregarCena;
         if (Instancia == null) 
         {
             Instancia = this;
@@ -31,10 +52,201 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     private void OnDestroy()
     {
+        SceneManager.sceneLoaded -= AoCarregarCena;
         if (Instancia == this)
         {
             Instancia = null;
         }
+    }
+
+    private void AoCarregarCena(Scene cena, LoadSceneMode modo)
+    {
+        AtualizarLimitesTerritoriais();
+        MarcadorTerritorio[] todosMarcadores = Object.FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
+        for (int i = 0; i < todosMarcadores.Length; i++) RegistrarMarcador(todosMarcadores[i]);
+    }
+
+    private void GarantirMapaPolitico()
+    {
+        if (mapaPolitico != null) return;
+        mapaPolitico = Resources.Load<DadosMapaTerritorial>(DadosMapaTerritorial.NomeResource);
+        if (mapaPolitico == null)
+        {
+            Texture2D imagem = Resources.Load<Texture2D>("fase");
+            mapaPolitico = DadosMapaTerritorial.CriarModeloFase(imagem);
+        }
+    }
+
+    public void AtualizarLimitesTerritoriais()
+    {
+        limitesTerritoriaisProntos = false;
+        if (!usarLimitesDeTerreno)
+        {
+            limitesTerritoriais = limitesMapaExplicitos;
+            limitesTerritoriaisProntos = limitesTerritoriais.size.x > 0f && limitesTerritoriais.size.z > 0f;
+            return;
+        }
+
+        Terrain[] terrenos = Terrain.activeTerrains;
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            Terrain terreno = terrenos[i];
+            if (terreno == null || terreno.terrainData == null || !terreno.gameObject.scene.IsValid()) continue;
+            Vector3 escala = terreno.transform.lossyScale;
+            Vector3 tamanho = Vector3.Scale(terreno.terrainData.size, new Vector3(
+                Mathf.Abs(escala.x) > 0.001f ? Mathf.Abs(escala.x) : 1f,
+                Mathf.Abs(escala.y) > 0.001f ? Mathf.Abs(escala.y) : 1f,
+                Mathf.Abs(escala.z) > 0.001f ? Mathf.Abs(escala.z) : 1f));
+            Bounds bounds = new Bounds(terreno.GetPosition() + tamanho * 0.5f, tamanho);
+            if (!limitesTerritoriaisProntos)
+            {
+                limitesTerritoriais = bounds;
+                limitesTerritoriaisProntos = true;
+            }
+            else limitesTerritoriais.Encapsulate(bounds);
+        }
+
+        if (!limitesTerritoriaisProntos)
+        {
+            limitesTerritoriais = limitesMapaExplicitos;
+            limitesTerritoriaisProntos = limitesTerritoriais.size.x > 0f && limitesTerritoriais.size.z > 0f;
+        }
+    }
+
+    public bool TryWorldToMapUv(Vector3 worldPosition, out Vector2 uv)
+    {
+        if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
+        Vector3 min = limitesTerritoriais.min;
+        float largura = limitesTerritoriais.size.x;
+        float profundidade = limitesTerritoriais.size.z;
+        if (!limitesTerritoriaisProntos || largura <= 0.001f || profundidade <= 0.001f)
+        {
+            uv = Vector2.zero;
+            return false;
+        }
+        uv = new Vector2((worldPosition.x - min.x) / largura, 1f - (worldPosition.z - min.z) / profundidade);
+        return uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
+    }
+
+    public Vector3 MapUvToWorld(Vector2 uv)
+    {
+        if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
+        Vector3 min = limitesTerritoriais.min;
+        Vector3 ponto = new Vector3(min.x + Mathf.Clamp01(uv.x) * limitesTerritoriais.size.x,
+            nivelMarPolitico, min.z + (1f - Mathf.Clamp01(uv.y)) * limitesTerritoriais.size.z);
+        Terrain terreno = EncontrarTerrain(ponto);
+        if (terreno != null) ponto.y = terreno.SampleHeight(ponto) + terreno.GetPosition().y;
+        return ponto;
+    }
+
+    /// <summary>Consulta primeiro a geometria política e só usa o legado se ela não cobrir o ponto.</summary>
+    public ResultadoConsultaTerritorio ObterTerritorioNaPosicao(Vector3 ponto)
+    {
+        GarantirMapaPolitico();
+        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv))
+        {
+            ResultadoConsultaTerritorio politico = mapaPolitico.ConsultarUv(uv);
+            if (politico.encontrouRegiao)
+            {
+                if (proprietariosCapturados.TryGetValue(politico.territorioId, out int proprietario))
+                {
+                    politico.ownerCountryTeamId = proprietario;
+                    politico.neutral = proprietario <= 0;
+                }
+                return politico;
+            }
+
+            if (EhAguasInternacionais(ponto))
+            {
+                return new ResultadoConsultaTerritorio
+                {
+                    encontrouRegiao = true,
+                    territorioId = "aguas-internacionais",
+                    ownerCountryTeamId = 0,
+                    aguasInternacionais = true,
+                    tipo = TipoRegiaoPolitica.AguasTerritoriais
+                };
+            }
+        }
+
+        // Regiões políticas desenhadas são soberanas. Legado permanece apenas como fallback.
+        int donoLegado = ObterDonoLegadoDoPonto(ponto);
+        if (donoLegado != 0)
+        {
+            return new ResultadoConsultaTerritorio
+            {
+                encontrouRegiao = true,
+                territorioId = "legado-marker-" + donoLegado,
+                ownerCountryTeamId = donoLegado,
+                tipo = TipoRegiaoPolitica.Terra
+            };
+        }
+        return ResultadoConsultaTerritorio.NaoDefinido;
+    }
+
+    public bool TentarCapturarTerritorio(string territorioId, int novoOwnerTeamId)
+    {
+        if (novoOwnerTeamId <= 0) return false;
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        if (regiao == null || !regiao.capturable) return false;
+        int donoAnterior = ObterDonoDaRegiao(territorioId);
+        if (donoAnterior == novoOwnerTeamId && !regiao.neutral) return false;
+        proprietariosCapturados[territorioId] = novoOwnerTeamId;
+        OnTerritoryOwnerChanged?.Invoke(territorioId, donoAnterior, novoOwnerTeamId);
+        return true;
+    }
+
+    public int ObterDonoDaRegiao(string territorioId)
+    {
+        if (string.IsNullOrEmpty(territorioId)) return -1;
+        if (proprietariosCapturados.TryGetValue(territorioId, out int capturado)) return capturado;
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        return regiao != null ? regiao.ownerCountryTeamId : -1;
+    }
+
+    public List<SaveProprietarioTerritorio> CopiarProprietariosCapturados()
+    {
+        List<SaveProprietarioTerritorio> resultado = new List<SaveProprietarioTerritorio>(proprietariosCapturados.Count);
+        foreach (KeyValuePair<string, int> par in proprietariosCapturados)
+            resultado.Add(new SaveProprietarioTerritorio { territorioId = par.Key, ownerCountryTeamId = par.Value });
+        resultado.Sort((a, b) => string.CompareOrdinal(a.territorioId, b.territorioId));
+        return resultado;
+    }
+
+    public void RestaurarProprietariosCapturados(IList<SaveProprietarioTerritorio> estados)
+    {
+        proprietariosCapturados.Clear();
+        if (estados == null) return;
+        for (int i = 0; i < estados.Count; i++)
+        {
+            SaveProprietarioTerritorio estado = estados[i];
+            RegiaoPolitica regiao = estado != null && MapaPolitico != null ? MapaPolitico.EncontrarRegiao(estado.territorioId) : null;
+            if (regiao != null && regiao.capturable && estado.ownerCountryTeamId > 0)
+                proprietariosCapturados[estado.territorioId] = estado.ownerCountryTeamId;
+        }
+    }
+
+    private bool EhAguasInternacionais(Vector3 ponto)
+    {
+        if (ponto.y < nivelMarPolitico - 0.5f) return true;
+        Terrain terreno = EncontrarTerrain(ponto);
+        if (terreno == null) return false;
+        return terreno.SampleHeight(ponto) + terreno.GetPosition().y < nivelMarPolitico - 0.5f;
+    }
+
+    private static Terrain EncontrarTerrain(Vector3 ponto)
+    {
+        Terrain[] terrenos = Terrain.activeTerrains;
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            Terrain terreno = terrenos[i];
+            if (terreno == null || terreno.terrainData == null) continue;
+            Vector3 escala = terreno.transform.lossyScale;
+            Vector3 tamanho = Vector3.Scale(terreno.terrainData.size, new Vector3(Mathf.Abs(escala.x), Mathf.Abs(escala.y), Mathf.Abs(escala.z)));
+            Bounds bounds = new Bounds(terreno.GetPosition() + tamanho * 0.5f, tamanho);
+            if (bounds.Contains(ponto)) return terreno;
+        }
+        return null;
     }
 
     public void RegistrarMarcador(MarcadorTerritorio marcador)
@@ -52,6 +264,25 @@ public class GerenteDeTerritorio : MonoBehaviour
     /// Resolve distributivamente distâncias geométricas em formato de QUADRADO.
     /// </summary>
     public int ObterDonoDoPonto(Vector3 ponto)
+    {
+        GarantirMapaPolitico();
+        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv))
+        {
+            ResultadoConsultaTerritorio politico = mapaPolitico.ConsultarUv(uv);
+            if (politico.encontrouRegiao)
+            {
+                if (proprietariosCapturados.TryGetValue(politico.territorioId, out int novoDono)) return novoDono;
+                return Mathf.Max(0, politico.ownerCountryTeamId);
+            }
+            if (EhAguasInternacionais(ponto)) return 0;
+        }
+
+        // Os polígonos têm precedência absoluta; reservas de expansão e raios
+        // de marcadores só podem responder onde não há região política definida.
+        return ObterDonoLegadoDoPonto(ponto);
+    }
+
+    private int ObterDonoLegadoDoPonto(Vector3 ponto)
     {
         // Uma parcela de fronteira reivindicada representa uma expansão
         // contínua, não apenas o raio visual da bandeira que a fundou. A

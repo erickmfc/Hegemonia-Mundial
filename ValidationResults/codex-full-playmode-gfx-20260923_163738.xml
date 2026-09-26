@@ -1,0 +1,649 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="42" result="Failed(Child)" total="42" passed="31" failed="11" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-09-23 19:52:36Z" end-time="2026-09-23 19:58:22Z" duration="346,6095333">
+  <test-suite type="TestSuite" id="1059" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="42" result="Failed" site="Child" start-time="2026-09-23 19:52:36Z" end-time="2026-09-23 19:58:22Z" duration="346.609533" total="42" passed="31" failed="11" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1055" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="42" result="Failed" site="Child" start-time="2026-09-23 19:52:36Z" end-time="2026-09-23 19:58:22Z" duration="346.581153" total="42" passed="31" failed="11" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="1424" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1001" name="C700TransporteAereoPlayModeTests" fullname="C700TransporteAereoPlayModeTests" classname="C700TransporteAereoPlayModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-09-23 19:52:36Z" end-time="2026-09-23 19:54:45Z" duration="128.915320" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1002" name="C700CompletaPousoCargaDescargaEDecolagemNovamente" fullname="C700TransporteAereoPlayModeTests.C700CompletaPousoCargaDescargaEDecolagemNovamente" methodname="C700CompletaPousoCargaDescargaEDecolagemNovamente" classname="C700TransporteAereoPlayModeTests" runstate="Runnable" seed="1421952164" result="Passed" start-time="2026-09-23 19:52:36Z" end-time="2026-09-23 19:54:45Z" duration="128.880361" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[C700] Tropas aguardando na pista embarcadas: 8
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[C700] Carga desembarcada.
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1003" name="CartelCreatePlayModeTests" fullname="CartelCreatePlayModeTests" classname="CartelCreatePlayModeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:45Z" duration="0.219613" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1005" name="PlayMode_ControllerBuildsBaseInsideConfiguredArea" fullname="CartelCreatePlayModeTests.PlayMode_ControllerBuildsBaseInsideConfiguredArea" methodname="PlayMode_ControllerBuildsBaseInsideConfiguredArea" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="2023455814" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:45Z" duration="0.072067" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Cartel Init] Start cena=Etapa12MinimalPlayModeScene automatico=False dia=5
+[Cartel Init] Dia liberado; creates=2 basesAntes=0 baseCreates=1 areaCreates=1
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em Pais01_BaseCreate_01 dentro da area manual.
+]]></output>
+        </test-case>
+        <test-case id="1006" name="PlayMode_ControllerChoosesCandidateFartherFromCity" fullname="CartelCreatePlayModeTests.PlayMode_ControllerChoosesCandidateFartherFromCity" methodname="PlayMode_ControllerChoosesCandidateFartherFromCity" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="1550171260" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:45Z" duration="0.054873" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Cartel Init] Start cena=Etapa12MinimalPlayModeScene automatico=False dia=5
+[Cartel Init] Dia liberado; creates=5 basesAntes=0 baseCreates=2 areaCreates=2
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em Pais02_BaseCreate_02 dentro da area manual.
+]]></output>
+        </test-case>
+        <test-case id="1004" name="PlayMode_CreateRegistersAndRespectsRadiusAndOccupancy" fullname="CartelCreatePlayModeTests.PlayMode_CreateRegistersAndRespectsRadiusAndOccupancy" methodname="PlayMode_CreateRegistersAndRespectsRadiusAndOccupancy" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="1812760963" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:45Z" duration="0.040067" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1007" name="PlayMode_CreateTypeExposesAllManualCategories" fullname="CartelCreatePlayModeTests.PlayMode_CreateTypeExposesAllManualCategories" methodname="PlayMode_CreateTypeExposesAllManualCategories" classname="CartelCreatePlayModeTests" runstate="Runnable" seed="634801654" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:45Z" duration="0.038482" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1008" name="CombatEndToEndPlayModeTests" fullname="CombatEndToEndPlayModeTests" classname="CombatEndToEndPlayModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:46Z" duration="1.466814" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1009" name="EnemyTurretIdentifiesTargetFiresProjectileAndAppliesDamage" fullname="CombatEndToEndPlayModeTests.EnemyTurretIdentifiesTargetFiresProjectileAndAppliesDamage" methodname="EnemyTurretIdentifiesTargetFiresProjectileAndAppliesDamage" classname="CombatEndToEndPlayModeTests" runstate="Runnable" seed="1907269450" result="Passed" start-time="2026-09-23 19:54:45Z" end-time="2026-09-23 19:54:46Z" duration="0.622247" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[Diplomacia] Agressor identificado como inimigo: vitima=1 agressor=2
+]]></output>
+        </test-case>
+        <test-case id="1010" name="TurretDoesNotIdentifyAUnitFromItsOwnTeamAsEnemy" fullname="CombatEndToEndPlayModeTests.TurretDoesNotIdentifyAUnitFromItsOwnTeamAsEnemy" methodname="TurretDoesNotIdentifyAUnitFromItsOwnTeamAsEnemy" classname="CombatEndToEndPlayModeTests" runstate="Runnable" seed="1368992807" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:46Z" duration="0.836193" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[ControleTorreta] 'TorreAliadaCombate' estava sem locaisDoTiro. Fallback automatico configurado.
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1011" name="Etapa12MinimalPlayModeTests" fullname="Etapa12MinimalPlayModeTests" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:46Z" duration="0.065576" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1013" name="NUnitTestRunsInPlayModeAssembly" fullname="Etapa12MinimalPlayModeTests.NUnitTestRunsInPlayModeAssembly" methodname="NUnitTestRunsInPlayModeAssembly" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" seed="392911267" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:46Z" duration="0.002616" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1014" name="UnityTestCreatesAndDestroysSimpleGameObject" fullname="Etapa12MinimalPlayModeTests.UnityTestCreatesAndDestroysSimpleGameObject" methodname="UnityTestCreatesAndDestroysSimpleGameObject" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" seed="512777393" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:46Z" duration="0.025349" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1012" name="UnityTestStartsAndYieldsOneFrame" fullname="Etapa12MinimalPlayModeTests.UnityTestStartsAndYieldsOneFrame" methodname="UnityTestStartsAndYieldsOneFrame" classname="Etapa12MinimalPlayModeTests" runstate="Runnable" seed="2067503712" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:46Z" duration="0.027606" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Etapa12MinimalPlayModeTests] UnityTest iniciou.
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1015" name="GuardaCosteiraPrefabsPlayModeTests" fullname="GuardaCosteiraPrefabsPlayModeTests" classname="GuardaCosteiraPrefabsPlayModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:47Z" duration="0.530632" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1016" name="FichasDoMenuCarregamOsDoisPrefabsOperacionais" fullname="GuardaCosteiraPrefabsPlayModeTests.FichasDoMenuCarregamOsDoisPrefabsOperacionais" methodname="FichasDoMenuCarregamOsDoisPrefabsOperacionais" classname="GuardaCosteiraPrefabsPlayModeTests" runstate="Runnable" seed="817578375" result="Passed" start-time="2026-09-23 19:54:46Z" end-time="2026-09-23 19:54:47Z" duration="0.520038" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1017" name="IA01ConstructionGovernorPlayModeTests" fullname="IA01ConstructionGovernorPlayModeTests" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" testcasecount="5" result="Failed" site="Child" start-time="2026-09-23 19:54:47Z" end-time="2026-09-23 19:55:28Z" duration="40.886557" total="5" passed="0" failed="5" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1018" name="CampaignFlow_CreatesCapital_Territory_AndPublishesHudMetrics" fullname="IA01ConstructionGovernorPlayModeTests.CampaignFlow_CreatesCapital_Territory_AndPublishesHudMetrics" methodname="CampaignFlow_CreatesCapital_Territory_AndPublishesHudMetrics" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="141591932" result="Failed" start-time="2026-09-23 19:54:47Z" end-time="2026-09-23 19:54:56Z" duration="8.690945" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.SceneManagement.SceneManager:LoadScene (string)
+IA01ConstructionGovernorPlayModeTests/<LoadFreshCampaign>d__26:MoveNext () (at Assets/Tests/PlayMode/IA01ConstructionGovernorPlayModeTests.cs:366)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+]]></output>
+        </test-case>
+        <test-case id="1019" name="ConstructionGovernor_FreezesOnLowTreasury_AndReactsToPopulationFoodAndEnergy" fullname="IA01ConstructionGovernorPlayModeTests.ConstructionGovernor_FreezesOnLowTreasury_AndReactsToPopulationFoodAndEnergy" methodname="ConstructionGovernor_FreezesOnLowTreasury_AndReactsToPopulationFoodAndEnergy" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1025268139" result="Failed" start-time="2026-09-23 19:54:56Z" end-time="2026-09-23 19:55:04Z" duration="8.044968" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.SceneManagement.SceneManager:LoadScene (string)
+IA01ConstructionGovernorPlayModeTests/<LoadFreshCampaign>d__26:MoveNext () (at Assets/Tests/PlayMode/IA01ConstructionGovernorPlayModeTests.cs:366)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles
+]]></output>
+        </test-case>
+        <test-case id="1022" name="DiagnosticOverlay_DoesNotClaimNoIaData_WhenIa01MetricsExist" fullname="IA01ConstructionGovernorPlayModeTests.DiagnosticOverlay_DoesNotClaimNoIaData_WhenIa01MetricsExist" methodname="DiagnosticOverlay_DoesNotClaimNoIaData_WhenIa01MetricsExist" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1320769470" result="Failed" start-time="2026-09-23 19:55:04Z" end-time="2026-09-23 19:55:12Z" duration="8.044818" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.SceneManagement.SceneManager:LoadScene (string)
+IA01ConstructionGovernorPlayModeTests/<LoadFreshCampaign>d__26:MoveNext () (at Assets/Tests/PlayMode/IA01ConstructionGovernorPlayModeTests.cs:366)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles
+]]></output>
+        </test-case>
+        <test-case id="1021" name="EstablishCapital_UsesFoundationFunding_WithoutInitialFundsBlock" fullname="IA01ConstructionGovernorPlayModeTests.EstablishCapital_UsesFoundationFunding_WithoutInitialFundsBlock" methodname="EstablishCapital_UsesFoundationFunding_WithoutInitialFundsBlock" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="300089938" result="Failed" start-time="2026-09-23 19:55:12Z" end-time="2026-09-23 19:55:20Z" duration="8.046833" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.SceneManagement.SceneManager:LoadScene (string)
+IA01ConstructionGovernorPlayModeTests/<LoadFreshCampaign>d__26:MoveNext () (at Assets/Tests/PlayMode/IA01ConstructionGovernorPlayModeTests.cs:366)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+]]></output>
+        </test-case>
+        <test-case id="1020" name="TwoIA01ControllersMaintainIndependentGovernorsQueuesAndTreasuries" fullname="IA01ConstructionGovernorPlayModeTests.TwoIA01ControllersMaintainIndependentGovernorsQueuesAndTreasuries" methodname="TwoIA01ControllersMaintainIndependentGovernorsQueuesAndTreasuries" classname="IA01ConstructionGovernorPlayModeTests" runstate="Runnable" seed="1431258970" result="Failed" start-time="2026-09-23 19:55:20Z" end-time="2026-09-23 19:55:28Z" duration="8.048687" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Unhandled log message: '[Error] Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles'. Use UnityEngine.TestTools.LogAssert.Expect]]></message>
+            <stack-trace><![CDATA[UnityEngine.SceneManagement.SceneManager:LoadScene (string)
+IA01ConstructionGovernorPlayModeTests/<LoadFreshCampaign>d__26:MoveNext () (at Assets/Tests/PlayMode/IA01ConstructionGovernorPlayModeTests.cs:366)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Scene 'Menu cena' couldn't be loaded because it has not been added to the active build profile or shared scene list or the AssetBundle has not been loaded.
+To add a scene to the active build profile or shared scene list use the menu File->Build Profiles
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1023" name="IA02ParallelPlayModeTests" fullname="IA02ParallelPlayModeTests" classname="IA02ParallelPlayModeTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-09-23 19:55:28Z" end-time="2026-09-23 19:56:42Z" duration="74.413478" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1024" name="CampaignStartsIA01AndIA02OnIndependentTeams" fullname="IA02ParallelPlayModeTests.CampaignStartsIA01AndIA02OnIndependentTeams" methodname="CampaignStartsIA01AndIA02OnIndependentTeams" classname="IA02ParallelPlayModeTests" runstate="Runnable" seed="110833841" result="Failed" start-time="2026-09-23 19:55:28Z" end-time="2026-09-23 19:56:42Z" duration="74.405194" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  IA02Manager não foi encontrado na cena de campanha.
+  Expected: not null
+  But was:  null
+]]></message>
+            <stack-trace><![CDATA[at IA02ParallelPlayModeTests+<CampaignStartsIA01AndIA02OnIndependentTeams>d__1.MoveNext () [0x0017a] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\IA02ParallelPlayModeTests.cs:47
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[Gameplay Bootstrap] cena=cena19) IA01Manager=ativo controllers=1 registrados=1 Cartel=ativo
+[Gameplay Bootstrap] controller=IA01Controller team=2 layout=ia01.layout
+[Mapa] Terrain configurado: nome=pais usuario camadas=2 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=pais4 camadas=1 controles=1 fallback=False
+[Mapa] Terrain IA usando material de solo estavel: nome=Ilha 
+[Mapa] Terrain configurado: nome=Pais2 camadas=4 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=Terrain_(-9987.00, 0.00, -5002.97) camadas=1 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=paredao inimigo camadas=1 controles=1 fallback=False
+[Mapa] Terrain configurado: nome=pais3 camadas=1 controles=1 fallback=False
+[Mapa] superfícies corrigidas: terrenos=7, reativados=0, marcadores=2
+[MenuComando] Limites do mapa tático: centro=(3001, -3082) metade=13238.
+[MapaGeral] Limites do mapa: centro=(3001, -3082) metade=13238 zoomMaximo=13238.
+[Cartel Init] Start cena=cena19) automatico=True dia=6
+[Cartel Init] Tentando ativar: dia=6 requerido=5
+[Cartel Init] Dia liberado; creates=184 basesAntes=0 baseCreates=4 areaCreates=4
+[Cartel Init] Base inicial apos EnsureInitialBase: bases=1 estado=BuildingBase status=Base criada em BaseCreate_04 dentro da area manual.
+[IA01 WorldReady] layout, identidade e governo prontos; execução liberada.
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity para save completo
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=88 erros=0 avisos=51 cena=cena19) avisosConsoleSuprimidos=47
+[IA01 Planning] Planejador: prioridade=100 recomendacao=Reforcar defesa e manter a reserva militar. | Execucao protegida: diretores atuais mantidos.
+[IA01 Anchor] EstablishCapital -> PrefeituraSlot (prefeitura_01) pos=(834.72, 0.00, -8833.24)
+[IA01 Build] Prefeitura criada no create oficial: Prefeitura(Clone) pos=(834.72, 0.00, -8833.24)
+[IA01 Anchor] BuildMilitaryAirport -> IA01 Local - Aeroporto Militar (ia01.local.aeroporto_militar) pos=(1418.72, 0.00, -8856.24)
+[IA01 Military] Aeroporto militar criado no create: Aeroporto militar(Clone) pos=(1418.72, 0.00, -8856.24)
+[IA01 Military] Caca estacionado no aeroporto proprio: Aeroporto militar(Clone) -> Su11
+[IA01 Anchor] BuildShipyard -> IA01 Local - Estaleiro Naval (ia01.local.estaleiro) pos=(1344.72, 0.00, -7105.24)
+[IA01 Military] Estaleiro naval criado no create: Estaleiros navais(Clone) pos=(1344.72, 0.00, -7105.24)
+[Estaleiro] Iniciando construção de F200 no Atracagem. Aguardando conclusão...
+[IA01 Military] Navio enfileirado no estaleiro proprio: Estaleiros navais(Clone) -> F200
+[IA01 Anchor] BuildPier -> IA01 Local - Pier Naval (ia01.local.pier) pos=(298.72, 0.00, -7909.24)
+[IA01 Military] BuildPier criado no create: Pier(Clone) pos=(298.72, 0.00, -7909.24)
+[IA01 Military] Navios encontrados sem vínculo com o time 2: identidades navais=2
+[IA01 Military] Reserva militar: soldados=0/6 tanques=0/3 AA=0 cacas=0/2 navios=0/2 escalao=0
+[Aeroporto Militar] Aeroporto militar(Clone): vagas=11, hangar=Preparacao, decolagem=6, pouso=6.
+[Aeroporto Militar] Vaga 1: Parada pos=(1491.9, 2.4, -8660.9) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 2: Parada (1) pos=(1485.3, 2.4, -8712.8) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 3: Parada (2) pos=(1496.1, 2.4, -8740.4) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 4: Parada (3) pos=(1497.0, 2.4, -8762.9) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 5: Parada (4) pos=(1497.0, 2.4, -8812.1) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 6: Parada_grande pos=(1481.6, 2.4, -8445.2) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 7: H pos=(1498.8, 1.5, -8490.2) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 8: j pos=(1500.3, 1.5, -8524.1) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 9: k pos=(1501.2, 2.4, -8561.3) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 10: l pos=(1501.2, 1.7, -8581.1) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Vaga 11: q pos=(1501.2, 2.0, -8610.5) dir=(1.00, 0.00, 0.00)
+[Aeroporto Militar] Decolagem 1: decolagem pos=(1410.9, 1.5, -8771.9) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 2: alinhamento pos=(1411.5, 1.5, -8753.9) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 3: aceleracao pos=(1412.4, 6.0, -8713.1) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 4: aceleracao (1) pos=(1411.8, 1.5, -8551.4) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 5: voo pos=(1420.8, 30.0, -8364.5) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 6: voo (1) pos=(1404.0, 150.0, -7983.2) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Pouso 1: Alinhando pos=(1341.1, 36.0, -7717.4) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 2: Reduzindo pos=(1329.4, 23.1, -8296.1) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 3: Descendo pos=(1336.3, 4.8, -8514.5) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 4: pouso pos=(1332.1, 3.0, -8636.6) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 5: diminuida pos=(1332.1, 3.0, -8780.9) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 6: freiada pos=(1332.9, 4.2, -8811.7) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Aeroporto militar(Clone): Create Patrulha Aerea 01 pos=(798.7, 0.0, -8396.2) setor local=(-620.0, 0.0, 460.0)
+[Aeroporto Militar] Aeroporto militar(Clone): Create Patrulha Aerea 02 pos=(2038.7, 0.0, -8396.2) setor local=(620.0, 0.0, 460.0)
+[Aeroporto Militar] Aeroporto militar(Clone): Create Patrulha Aerea 03 pos=(2038.7, 0.0, -9316.2) setor local=(620.0, 0.0, -460.0)
+[Aeroporto Militar] Aeroporto militar(Clone): Create Patrulha Aerea 04 pos=(798.7, 0.0, -9316.2) setor local=(-620.0, 0.0, -460.0)
+[ENERGIA] Aeroporto Aeroporto militar(Clone) está sem energia! Operações e compras bloqueadas.
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1025" name="MisseisAlvoMovelPlayModeTests" fullname="MisseisAlvoMovelPlayModeTests" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-09-23 19:56:42Z" end-time="2026-09-23 19:56:46Z" duration="3.709924" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1032" name="MisselBombardeiroRastreadoAtivaAlvoMovelMesmoComPrefabDesligado" fullname="MisseisAlvoMovelPlayModeTests.MisselBombardeiroRastreadoAtivaAlvoMovelMesmoComPrefabDesligado" methodname="MisselBombardeiroRastreadoAtivaAlvoMovelMesmoComPrefabDesligado" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="1394715375" result="Passed" start-time="2026-09-23 19:56:42Z" end-time="2026-09-23 19:56:42Z" duration="0.079323" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1027" name="MisselCacaAtingeAlvoEAplicaDano" fullname="MisseisAlvoMovelPlayModeTests.MisselCacaAtingeAlvoEAplicaDano" methodname="MisselCacaAtingeAlvoEAplicaDano" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="2125291537" result="Passed" start-time="2026-09-23 19:56:42Z" end-time="2026-09-23 19:56:44Z" duration="1.141844" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1026" name="MisselNavalComecaAVirarParaOAlvoDuranteOBoost" fullname="MisseisAlvoMovelPlayModeTests.MisselNavalComecaAVirarParaOAlvoDuranteOBoost" methodname="MisselNavalComecaAVirarParaOAlvoDuranteOBoost" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="2027070979" result="Passed" start-time="2026-09-23 19:56:44Z" end-time="2026-09-23 19:56:45Z" duration="1.486158" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA01 Anchor] BuildOffshorePlatform -> IA01 Local - Plataforma de Petróleo A (ia01.local.plataforma.a) pos=(149.72, 0.00, -5921.24)
+[IA01 Military] BuildOffshorePlatform criado no create: Plataforma(Clone) pos=(149.72, 1.00, -5921.24)
+[IA01 Military] Plataforma de petróleo confirmada; petroleiro liberado em 60s.
+]]></output>
+        </test-case>
+        <test-case id="1028" name="MisselTaticoAtualizaAlvoVivoSemTeletransportar" fullname="MisseisAlvoMovelPlayModeTests.MisselTaticoAtualizaAlvoVivoSemTeletransportar" methodname="MisselTaticoAtualizaAlvoVivoSemTeletransportar" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="1707191692" result="Passed" start-time="2026-09-23 19:56:45Z" end-time="2026-09-23 19:56:45Z" duration="0.235789" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1031" name="MissilTeleguiadoPorCoordenadaNaoProcuraAlvoLegado" fullname="MisseisAlvoMovelPlayModeTests.MissilTeleguiadoPorCoordenadaNaoProcuraAlvoLegado" methodname="MissilTeleguiadoPorCoordenadaNaoProcuraAlvoLegado" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="172684283" result="Passed" start-time="2026-09-23 19:56:45Z" end-time="2026-09-23 19:56:45Z" duration="0.239079" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1030" name="TorpedoPorCoordenadaCorrigeRotaAteOPonto" fullname="MisseisAlvoMovelPlayModeTests.TorpedoPorCoordenadaCorrigeRotaAteOPonto" methodname="TorpedoPorCoordenadaCorrigeRotaAteOPonto" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="912037466" result="Passed" start-time="2026-09-23 19:56:45Z" end-time="2026-09-23 19:56:46Z" duration="0.420589" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1029" name="TorpedoPorCoordenadaNaoAdquireOutroAlvo" fullname="MisseisAlvoMovelPlayModeTests.TorpedoPorCoordenadaNaoAdquireOutroAlvo" methodname="TorpedoPorCoordenadaNaoAdquireOutroAlvo" classname="MisseisAlvoMovelPlayModeTests" runstate="Runnable" seed="38153204" result="Passed" start-time="2026-09-23 19:56:46Z" end-time="2026-09-23 19:56:46Z" duration="0.074203" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1033" name="NavalCommandPlayModeTests" fullname="NavalCommandPlayModeTests" classname="NavalCommandPlayModeTests" runstate="Runnable" testcasecount="4" result="Failed" site="Child" start-time="2026-09-23 19:56:46Z" end-time="2026-09-23 19:58:03Z" duration="76.892820" total="4" passed="1" failed="3" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1035" name="SubmarineAcceptsWaterOrderAndFollowsIt" fullname="NavalCommandPlayModeTests.SubmarineAcceptsWaterOrderAndFollowsIt" methodname="SubmarineAcceptsWaterOrderAndFollowsIt" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="2119935350" result="Failed" start-time="2026-09-23 19:56:46Z" end-time="2026-09-23 19:58:03Z" duration="76.638275" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  Expected: True
+  But was:  False
+]]></message>
+            <stack-trace><![CDATA[at NavalCommandPlayModeTests+<SubmarineAcceptsWaterOrderAndFollowsIt>d__2.MoveNext () [0x00186] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\NavalCommandPlayModeTests.cs:73
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (White Heart: OnSpriteRendererBoundsChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (White Heart: OnSpriteTilingPropertyChange)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Heart Inner: OnSpriteRendererBoundsChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Heart Inner: OnSpriteTilingPropertyChange)
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+[AutoMissil] SubmarinoComandoPlayMode: 'prefabTorpedo' configurado com 'missel_sub'.
+[AutoMissil] SubmarinoComandoPlayMode: 'prefabMisselSubmarino' configurado com 'missel_sub'.
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[USS Leviathan] Ordem recusada: destino fora da água (0, 28).
+]]></output>
+        </test-case>
+        <test-case id="1034" name="SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted" fullname="NavalCommandPlayModeTests.SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted" methodname="SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="69237650" result="Failed" start-time="2026-09-23 19:58:03Z" end-time="2026-09-23 19:58:03Z" duration="0.078371" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  Expected: True
+  But was:  False
+]]></message>
+            <stack-trace><![CDATA[at NavalCommandPlayModeTests+<SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted>d__1.MoveNext () [0x00179] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\NavalCommandPlayModeTests.cs:33
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[ControleNavioRealista] Destino recusado para NavioComandoPlayMode: ponto fora da água (0, 8).
+]]></output>
+        </test-case>
+        <test-case id="1036" name="SurfaceShipRejectsAnOrderOutsideTheWater" fullname="NavalCommandPlayModeTests.SurfaceShipRejectsAnOrderOutsideTheWater" methodname="SurfaceShipRejectsAnOrderOutsideTheWater" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="929561137" result="Passed" start-time="2026-09-23 19:58:03Z" end-time="2026-09-23 19:58:03Z" duration="0.076712" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[ControleNavioRealista] Destino recusado para NavioDestinoEmTerra: ponto fora da água (450, 0).
+]]></output>
+        </test-case>
+        <test-case id="1037" name="WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand" fullname="NavalCommandPlayModeTests.WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand" methodname="WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="860603265" result="Failed" start-time="2026-09-23 19:58:03Z" end-time="2026-09-23 19:58:03Z" duration="0.073298" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  Deve existir uma rota de água em volta da ilha.
+  Expected: True
+  But was:  False
+]]></message>
+            <stack-trace><![CDATA[at NavalCommandPlayModeTests+<WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand>d__4.MoveNext () [0x0011e] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\NavalCommandPlayModeTests.cs:138
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1038" name="OperacoesPortaAvioesV2PlayModeTests" fullname="OperacoesPortaAvioesV2PlayModeTests" classname="OperacoesPortaAvioesV2PlayModeTests" runstate="Runnable" testcasecount="2" result="Failed" site="Child" start-time="2026-09-23 19:58:03Z" end-time="2026-09-23 19:58:07Z" duration="4.018007" total="2" passed="1" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1040" name="AeronaveMantemIdentidadeDuranteCicloDeRegistro" fullname="OperacoesPortaAvioesV2PlayModeTests.AeronaveMantemIdentidadeDuranteCicloDeRegistro" methodname="AeronaveMantemIdentidadeDuranteCicloDeRegistro" classname="OperacoesPortaAvioesV2PlayModeTests" runstate="Runnable" seed="679898442" result="Passed" start-time="2026-09-23 19:58:03Z" end-time="2026-09-23 19:58:03Z" duration="0.075627" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1039" name="PortaAvioesRegistraAeronaveEmVooEConcluiPousoNoConves" fullname="OperacoesPortaAvioesV2PlayModeTests.PortaAvioesRegistraAeronaveEmVooEConcluiPousoNoConves" methodname="PortaAvioesRegistraAeronaveEmVooEConcluiPousoNoConves" classname="OperacoesPortaAvioesV2PlayModeTests" runstate="Runnable" seed="878877972" result="Failed" start-time="2026-09-23 19:58:03Z" end-time="2026-09-23 19:58:07Z" duration="3.917393" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  Expected string length 14 but was 13. Strings differ at index 0.
+  Expected: "ProntoNoConves"
+  But was:  "Reabastecendo"
+  -----------^
+]]></message>
+            <stack-trace><![CDATA[at OperacoesPortaAvioesV2PlayModeTests+<PortaAvioesRegistraAeronaveEmVooEConcluiPousoNoConves>d__0.MoveNext () [0x0040b] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\OperacoesPortaAvioesV2PlayModeTests.cs:66
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[IA01 Military] Caca estacionado no aeroporto proprio: Aeroporto militar(Clone) -> Su11
+[Estaleiro] Iniciando construção de Navio Petroleiro no Atracagem_Grande. Aguardando conclusão...
+[IA01 Military] Navio petroleiro iniciado em cadencia segura: Estaleiros navais(Clone) -> Navio Petroleiro
+[IA01 Military] Navios encontrados sem vínculo com o time 2: identidades navais=6
+[IA01 Military] Reserva militar: soldados=0/6 tanques=0/3 AA=0 cacas=1/2 navios=0/2 escalao=0
+[ENERGIA] Aeroporto Aeroporto militar(Clone) está sem energia! Operações e compras bloqueadas.
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1041" name="QuartelModalPlayModeTests" fullname="QuartelModalPlayModeTests" classname="QuartelModalPlayModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-09-23 19:58:07Z" end-time="2026-09-23 19:58:08Z" duration="1.335884" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1042" name="FecharQuartelLiberaEntradaDoMundo" fullname="QuartelModalPlayModeTests.FecharQuartelLiberaEntradaDoMundo" methodname="FecharQuartelLiberaEntradaDoMundo" classname="QuartelModalPlayModeTests" runstate="Runnable" seed="308449927" result="Passed" start-time="2026-09-23 19:58:07Z" end-time="2026-09-23 19:58:08Z" duration="0.724037" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[QuartelUI] documento inicializado: objeto=QuartelModalPlayMode, root=True, panelSettings=True, sorting=1200
+[QuartelUI] Awake: objeto=QuartelModalPlayMode, pronto=True, root=True, documento=True, administracao=False
+[Quartel] Awake: objeto=QuartelModalPlayMode, cena=cena19), testeAuto=False, uiToolkit=True, painel=True
+[QuartelUI] painel aberto: objeto=QuartelModalPlayMode, root=QuartelModalPlayMode-container, documentoAtivo=True, snapshotAeronaves=0, tamanho=NaNxNaN, visibilidade=Visible, opacidade=1,00
+]]></output>
+        </test-case>
+        <test-case id="1043" name="QuartelReabreNaUltimaAbaSelecionada" fullname="QuartelModalPlayModeTests.QuartelReabreNaUltimaAbaSelecionada" methodname="QuartelReabreNaUltimaAbaSelecionada" classname="QuartelModalPlayModeTests" runstate="Runnable" seed="2055861626" result="Passed" start-time="2026-09-23 19:58:08Z" end-time="2026-09-23 19:58:08Z" duration="0.582486" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[QuartelUI] documento inicializado: objeto=QuartelMenuAbaPersistente, root=True, panelSettings=True, sorting=1200
+[QuartelUI] Awake: objeto=QuartelMenuAbaPersistente, pronto=True, root=True, documento=True, administracao=False
+[Quartel] Awake: objeto=QuartelMenuAbaPersistente, cena=cena19), testeAuto=False, uiToolkit=True, painel=True
+[QuartelUI] painel aberto: objeto=QuartelMenuAbaPersistente, root=QuartelMenuAbaPersistente-container, documentoAtivo=True, snapshotAeronaves=0, tamanho=NaNxNaN, visibilidade=Visible, opacidade=1,00
+[QuartelUI] painel aberto: objeto=QuartelMenuAbaPersistente, root=QuartelMenuAbaPersistente-container, documentoAtivo=True, snapshotAeronaves=0, tamanho=NaNxNaN, visibilidade=Visible, opacidade=1,00
+]]></output>
+        </test-case>
+      </test-suite>
+      <test-suite type="TestFixture" id="1044" name="ReformaAircraftPlayModeTests" fullname="ReformaAircraftPlayModeTests" classname="ReformaAircraftPlayModeTests" runstate="Runnable" testcasecount="10" result="Failed" site="Child" start-time="2026-09-23 19:58:08Z" end-time="2026-09-23 19:58:22Z" duration="14.106390" total="10" passed="9" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1051" name="AircraftKeepsPendingOrderWhenTheAirportTemporarilyStoresIt" fullname="ReformaAircraftPlayModeTests.AircraftKeepsPendingOrderWhenTheAirportTemporarilyStoresIt" methodname="AircraftKeepsPendingOrderWhenTheAirportTemporarilyStoresIt" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="2020707321" result="Passed" start-time="2026-09-23 19:58:08Z" end-time="2026-09-23 19:58:08Z" duration="0.129171" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1046" name="AircraftLandingServiceRefuelsRearmsAndResumesPatrol" fullname="ReformaAircraftPlayModeTests.AircraftLandingServiceRefuelsRearmsAndResumesPatrol" methodname="AircraftLandingServiceRefuelsRearmsAndResumesPatrol" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="1664722124" result="Failed" start-time="2026-09-23 19:58:08Z" end-time="2026-09-23 19:58:11Z" duration="2.695135" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[Expected log did not appear: [Error] [LancadorMisselCaca] Regression_ControleAviao está sem missilCacaPrefab; o caça não poderá disparar.]]></message>
+          </failure>
+          <output><![CDATA[[AutoMissil] Regression_ControleAviao: 'missilCacaPrefab' configurado com 'M-01 Falcão'.
+]]></output>
+        </test-case>
+        <test-case id="1053" name="AircraftResumesRefuelledPatrolAfterReturningFromTheHangar" fullname="ReformaAircraftPlayModeTests.AircraftResumesRefuelledPatrolAfterReturningFromTheHangar" methodname="AircraftResumesRefuelledPatrolAfterReturningFromTheHangar" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="1196224426" result="Passed" start-time="2026-09-23 19:58:11Z" end-time="2026-09-23 19:58:14Z" duration="2.980275" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1047" name="AircraftUpdatesPatrolAreaWhileAlreadyFlying" fullname="ReformaAircraftPlayModeTests.AircraftUpdatesPatrolAreaWhileAlreadyFlying" methodname="AircraftUpdatesPatrolAreaWhileAlreadyFlying" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="2062982833" result="Passed" start-time="2026-09-23 19:58:14Z" end-time="2026-09-23 19:58:15Z" duration="1.144271" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Estaleiro] Construção finalizada no Atracagem! Nascendo no ponto de atracagem.
+[Estaleiro] Navio liberado: F200(Clone) | atracagem=Atracagem | spawn=(1317.43, 1.00, -6901.98) | saida=(1344.72, 1.00, -7075.24)
+]]></output>
+        </test-case>
+        <test-case id="1049" name="CompositeHelicopterReusesTheParentMovementController" fullname="ReformaAircraftPlayModeTests.CompositeHelicopterReusesTheParentMovementController" methodname="CompositeHelicopterReusesTheParentMovementController" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="1358458885" result="Passed" start-time="2026-09-23 19:58:15Z" end-time="2026-09-23 19:58:15Z" duration="0.116916" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1048" name="HelicopterManualClickUsesTheCentralMovementGateway" fullname="ReformaAircraftPlayModeTests.HelicopterManualClickUsesTheCentralMovementGateway" methodname="HelicopterManualClickUsesTheCentralMovementGateway" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="750426824" result="Passed" start-time="2026-09-23 19:58:15Z" end-time="2026-09-23 19:58:15Z" duration="0.129259" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1054" name="LandingAircraftEscapesTheTurningCircleAndReachesTouchdown" fullname="ReformaAircraftPlayModeTests.LandingAircraftEscapesTheTurningCircleAndReachesTouchdown" methodname="LandingAircraftEscapesTheTurningCircleAndReachesTouchdown" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="799761704" result="Passed" start-time="2026-09-23 19:58:15Z" end-time="2026-09-23 19:58:20Z" duration="4.514525" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Estaleiro] Navio aguardando o fim do lote: F200 | fila=1/10
+[IA01 Military] Navio enfileirado no estaleiro proprio: Estaleiros navais(Clone) -> F200
+[IA01 Military] Reserva militar: soldados=0/6 tanques=0/3 AA=0 cacas=2/2 navios=1/2 escalao=0
+]]></output>
+        </test-case>
+        <test-case id="1045" name="RefuelledAircraftResumesTheExistingPatrol" fullname="ReformaAircraftPlayModeTests.RefuelledAircraftResumesTheExistingPatrol" methodname="RefuelledAircraftResumesTheExistingPatrol" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="259170570" result="Passed" start-time="2026-09-23 19:58:20Z" end-time="2026-09-23 19:58:22Z" duration="2.164285" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Estaleiro] Construção finalizada no Atracagem_Grande! Nascendo no ponto de atracagem.
+[Estaleiro] Navio liberado: Navio Petroleiro(Clone) | atracagem=Atracagem_Grande | spawn=(1361.22, 1.00, -6907.88) | saida=(1344.72, 1.00, -7075.24)
+[Navio] Mudando para: NASCENDO
+[Navio] Mudando para: AGUARDANDO_INFRAESTRUTURA
+]]></output>
+        </test-case>
+        <test-case id="1050" name="RejectedAircraftOrderDoesNotLeaveTheCentralControllerMoving" fullname="ReformaAircraftPlayModeTests.RejectedAircraftOrderDoesNotLeaveTheCentralControllerMoving" methodname="RejectedAircraftOrderDoesNotLeaveTheCentralControllerMoving" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="1232280887" result="Passed" start-time="2026-09-23 19:58:22Z" end-time="2026-09-23 19:58:22Z" duration="0.101566" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[ControleAviao] Ordem manual recusada para Regression_RejectedAircraftOrder: base de origem sem rota de pouso válida.
+]]></output>
+        </test-case>
+        <test-case id="1052" name="StopCancelsAnAircraftOrderWaitingForTheHangar" fullname="ReformaAircraftPlayModeTests.StopCancelsAnAircraftOrderWaitingForTheHangar" methodname="StopCancelsAnAircraftOrderWaitingForTheHangar" classname="ReformaAircraftPlayModeTests" runstate="Runnable" seed="251505353" result="Passed" start-time="2026-09-23 19:58:22Z" end-time="2026-09-23 19:58:22Z" duration="0.100929" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

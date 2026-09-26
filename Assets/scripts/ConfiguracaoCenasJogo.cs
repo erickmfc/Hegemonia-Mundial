@@ -10,6 +10,8 @@ public static class ConfiguracaoCenasJogo
     public const string CenaCampanhaCanonica = "cena19)";
     public const string CaminhoCenaMenuPrincipalCanonica = "Assets/_Recovery/Cena menu P.unity";
     public const string CaminhoCenaCampanhaCanonica = "Assets/_Recovery/cena19).unity";
+    public const string CenaMapaGlobal = "GlobalMapRTS";
+    public const string CaminhoCenaMapaGlobal = "Assets/Scenes/GlobalMapRTS.unity";
     public const string CenaEscaramucaCanonica = "Md Historia";
     public const string CaminhoCenaEscaramucaCanonica = "Assets/_Recovery/Md Historia.unity";
     public const string CenaTutorialCanonica = "Tutorial";
@@ -53,6 +55,7 @@ public static class ConfiguracaoCenasJogo
         CaminhoCenaAno1Oficial,
         CaminhoCenaMenuPrincipalCanonica,
         CaminhoCenaCampanhaCanonica,
+        CaminhoCenaMapaGlobal,
         CaminhoCenaEscaramucaCanonica,
         CaminhoCenaDemo1Oficial,
         CaminhoCenaTutorialCanonica,

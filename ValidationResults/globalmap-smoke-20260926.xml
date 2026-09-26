@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-09-26 17:48:29Z" end-time="2026-09-26 17:48:32Z" duration="2,7876611">
+  <test-suite type="TestSuite" id="1000" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="129" result="Failed" site="Child" start-time="2026-09-26 17:48:29Z" end-time="2026-09-26 17:48:32Z" duration="2.787661" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1157" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="114" result="Failed" site="Child" start-time="2026-09-26 17:48:30Z" end-time="2026-09-26 17:48:32Z" duration="1.938030" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="11916" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1037" name="GlobalWorldRuntimeSmokeTests" fullname="GlobalWorldRuntimeSmokeTests" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-09-26 17:48:30Z" end-time="2026-09-26 17:48:32Z" duration="1.924347" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1038" name="ExistingOceanRulesAndTerrainStreamingRunTogether" fullname="GlobalWorldRuntimeSmokeTests.ExistingOceanRulesAndTerrainStreamingRunTogether" methodname="ExistingOceanRulesAndTerrainStreamingRunTogether" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" seed="239666778" result="Failed" start-time="2026-09-26 17:47:40Z" end-time="2026-09-26 17:48:32Z" duration="51.633915" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A cena global deve continuar carregada em Play Mode.
+  Expected: True
+  But was:  False
+]]></message>
+            <stack-trace><![CDATA[at GlobalWorldRuntimeSmokeTests+<ExistingOceanRulesAndTerrainStreamingRunTogether>d__4.MoveNext () [0x00060] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\GlobalWorldRuntimeSmokeTests.cs:51
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

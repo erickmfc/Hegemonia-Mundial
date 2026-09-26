@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-09-26 18:13:20Z" end-time="2026-09-26 18:13:22Z" duration="2,2246062">
+  <test-suite type="TestSuite" id="1000" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="130" result="Failed" site="Child" start-time="2026-09-26 18:13:20Z" end-time="2026-09-26 18:13:22Z" duration="2.224606" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1158" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="115" result="Failed" site="Child" start-time="2026-09-26 18:13:20Z" end-time="2026-09-26 18:13:22Z" duration="1.831922" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13416" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1037" name="GlobalWorldRuntimeSmokeTests" fullname="GlobalWorldRuntimeSmokeTests" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" testcasecount="1" result="Failed" site="Child" start-time="2026-09-26 18:13:20Z" end-time="2026-09-26 18:13:22Z" duration="1.810848" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1038" name="ExistingOceanRulesAndTerrainStreamingRunTogether" fullname="GlobalWorldRuntimeSmokeTests.ExistingOceanRulesAndTerrainStreamingRunTogether" methodname="ExistingOceanRulesAndTerrainStreamingRunTogether" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" seed="948871803" result="Failed" start-time="2026-09-26 18:13:07Z" end-time="2026-09-26 18:13:22Z" duration="15.220240" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A referência de biomas deve fornecer ao menos uma região capaz de gerar árvores.
+  Expected: greater than 0.379999995f
+  But was:  0.354491234f
+]]></message>
+            <stack-trace><![CDATA[at GlobalWorldRuntimeSmokeTests+<ExistingOceanRulesAndTerrainStreamingRunTogether>d__4.MoveNext () [0x0051f] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\GlobalWorldRuntimeSmokeTests.cs:123
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

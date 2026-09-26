@@ -217,9 +217,14 @@ public sealed class TacticalHudSpeedPlayModeTests
     {
         Assert.That(button, Is.Not.Null);
         object clickable = typeof(Button).GetProperty("clickable").GetValue(button);
-        MethodInfo simulateClick = clickable.GetType().GetMethod("SimulateSingleClick", BindingFlags.Instance | BindingFlags.Public);
-        Assert.That(simulateClick, Is.Not.Null, "UI Toolkit should expose its normal single-click path in Play Mode.");
-        simulateClick.Invoke(clickable, null);
+        MethodInfo simulateClick = clickable.GetType().GetMethod(
+            "SimulateSingleClick",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            null,
+            new[] { typeof(EventBase), typeof(int) },
+            null);
+        Assert.That(simulateClick, Is.Not.Null, "UI Toolkit should provide its single-click simulation in Play Mode.");
+        simulateClick.Invoke(clickable, new object[] { ClickEvent.GetPooled(), 100 });
     }
 
     private static bool Adjust(Component target, System.Type targetType, float delta)

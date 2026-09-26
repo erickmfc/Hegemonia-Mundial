@@ -13,6 +13,8 @@ public class CameraController : MonoBehaviour
     public float velocidadeZoom = 4000f;
     public float velocidadeRotacao = 100f;
     public float multiplicadorShift = 9.69f; // Velocidade triplicada (Antes 3.23)
+    [Min(8000f)] public float alturaMaximaZoom = 8000f;
+    [Min(0f)] public float alturaReferenciaEscalaControles = 0f;
     [Header("Visão da Câmera")]
     public float campoDeVisaoBase = 75f;
     public float campoDeVisaoMin = 65f;
@@ -28,6 +30,9 @@ public class CameraController : MonoBehaviour
     public float multiplicadorDistanciaRender = 6f;
 
     private float tempoShiftPressionado = 0f;
+    private float tempoCtrlPressionado = 0f;
+    private float tempoEspacoPressionado = 0f;
+    private const float TempoAceleracaoZoomTeclado = 5f;
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao = 0f;
     private Camera cameraPrincipal;
@@ -157,14 +162,25 @@ public class CameraController : MonoBehaviour
             right.y = 0;
             right.Normalize();
 
-            if (moverW) pos += forward * velAtual * Time.deltaTime;
-            if (moverS) pos -= forward * velAtual * Time.deltaTime;
-            if (moverD) pos += right * velAtual * Time.deltaTime;
-            if (moverA) pos -= right * velAtual * Time.deltaTime;
+            float escalaPan = alturaReferenciaEscalaControles > 0f
+                ? Mathf.Sqrt(Mathf.Max(1f, pos.y / alturaReferenciaEscalaControles))
+                : 1f;
+            float velocidadePan = velAtual * escalaPan;
+            if (moverW) pos += forward * velocidadePan * Time.deltaTime;
+            if (moverS) pos -= forward * velocidadePan * Time.deltaTime;
+            if (moverD) pos += right * velocidadePan * Time.deltaTime;
+            if (moverA) pos -= right * velocidadePan * Time.deltaTime;
         }
 
         // --- 3. Zoom (Rodinha do Mouse e Teclado) ---
         float zoomInput = 0f;
+        bool ctrlPressionado = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool espacoPressionado = Input.GetKey(KeyCode.Space);
+
+        tempoCtrlPressionado = ctrlPressionado ? tempoCtrlPressionado + Time.deltaTime : 0f;
+        tempoEspacoPressionado = espacoPressionado ? tempoEspacoPressionado + Time.deltaTime : 0f;
+        float multiplicadorCtrl = tempoCtrlPressionado >= TempoAceleracaoZoomTeclado ? 3f : 1f;
+        float multiplicadorEspaco = tempoEspacoPressionado >= TempoAceleracaoZoomTeclado ? 3f : 1f;
         
         // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
         if (!outrosMenusAbertos)
@@ -184,22 +200,25 @@ public class CameraController : MonoBehaviour
             {
                 zoomInput += 0.03f; // Desce a camera
             }
-            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+            if (ctrlPressionado)
             {
-                zoomInput += 0.15f; // Ctrl desce MUITO mais rápido agora (Antes 0.03)
+                zoomInput += 0.15f * multiplicadorCtrl; // Ctrl ganha 3x após 5 segundos segurado.
             }
             if (Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Minus))
             {
                 zoomInput -= 0.08f; // Sobe a camera mais rápido (Antes 0.03)
             }
-            if (Input.GetKey(KeyCode.Space))
+            if (espacoPressionado)
             {
-                zoomInput -= 0.15f; // Espaço sobe MUITO mais rápido agora (Antes 0.06)
+                zoomInput -= 0.15f * multiplicadorEspaco; // Espaço ganha 3x após 5 segundos segurado.
             }
         }
 
-        pos.y -= zoomInput * velocidadeZoom * Time.deltaTime;
-        pos.y = Mathf.Clamp(pos.y, 2f, 8000f); // Teto aumentado para o atalho do Espaço
+        float escalaZoom = alturaReferenciaEscalaControles > 0f
+            ? Mathf.Max(1f, pos.y / alturaReferenciaEscalaControles)
+            : 1f;
+        pos.y -= zoomInput * velocidadeZoom * escalaZoom * Time.deltaTime;
+        pos.y = Mathf.Clamp(pos.y, 2f, Mathf.Max(8000f, alturaMaximaZoom)); // Mantém o teto antigo salvo nas cenas existentes.
 
         float alturaAnterior = transform.position.y;
         bool posicaoMudou = pos != transform.position;

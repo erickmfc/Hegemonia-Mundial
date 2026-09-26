@@ -326,7 +326,7 @@ public class SistemaDeTiro : MonoBehaviour
                 {
                     if (exigeGuerraDeclarada
                         && (SistemaGovernoMundial.Instancia == null
-                            || !RTSVisibilityService.TeamsAtWar(minhaIdentidade.teamID, idAlvo.teamID)))
+                            || !ContextoTerritorialDiplomatico.PodeDispararEmGuerra(minhaIdentidade.teamID, idAlvo)))
                     {
                         continue;
                     }

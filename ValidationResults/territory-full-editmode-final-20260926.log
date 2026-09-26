@@ -1,0 +1,42 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.2/staging' branch; Version is '6000.2.15f1 (0707b6d1e918) revision 460726'; Using compiler version '194234433'; Build Type 'Release'
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe" at "2026-09-26T17:48:15.4702677Z"
+OS: 'Windows 11  (10.0.26200) 64bit Professional' Language: 'pt' Physical Memory: 16315 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-09-26T17:48:15Z
+[Licensing::Client] Code 10 while verifying Licensing Client signature (process Id: 11760, path: "C:/Program Files/Unity Hub/UnityLicensingClient_V1/Unity.Licensing.Client.exe")
+[Licensing::Module] LicensingClient has failed validation; ignoring
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.18.3+d7ffd15
+  Session Id:              72686c7b159943f19429f0e7a9008dff
+  Correlation Id:          de52f898fd81e9b140f18e312ef4040d
+  External correlation Id: 7935077530893409568
+  Machine Id:              CIG9bbgXtP+YsacqL8JoCFrF9kk=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-Mathe" (connect: 0.00s, validation: 0.01s, handshake: 0.12s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe-notifications" at "2026-09-26T17:48:15.5941319Z"
+[Licensing::Module] Error: Access token is unavailable; failed to update
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Unity.exe
+-batchmode
+-nographics
+-projectPath
+C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main
+-runTests
+-testPlatform
+EditMode
+-testResults
+C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\ValidationResults\territory-full-editmode-final-20260926.xml
+-logFile
+C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\ValidationResults\territory-full-editmode-final-20260926.log
+Successfully changed project path to: C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 4673433101100-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.00
+[Licensing::Module] Licensing Background thread has ended after 0.13s
+C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main
+Exiting without the bug reporter. Application will terminate with return code 1
