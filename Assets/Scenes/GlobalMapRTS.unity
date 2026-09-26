@@ -404,7 +404,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 925739428}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7199e87ba37848959160271a5132677d, type: 3}
   m_Name: 
@@ -694,7 +694,7 @@ MonoBehaviour:
   world: {fileID: 11400000, guid: 6cfec4fe2c71b554990089e64d9973b1, type: 2}
   globalTerrain: {fileID: 205787057}
   cameraOverride: {fileID: 925739432}
-  detailTerrainBelowAltitude: 13000
+  detailTerrainBelowAltitude: 20000
   tileRadius: 1
   refreshInterval: 0.5
   tilesCreatedPerFrame: 1
