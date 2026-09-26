@@ -272,7 +272,7 @@ MonoBehaviour:
   - {fileID: 5011103177500217977}
   - {fileID: 3534796841098160612}
   - {fileID: 4707005403390069081}
-  municaoPrefab: {fileID: 5864298406509392469, guid: 86603804cd9519b49a44cb6206957548, type: 3}
+  municaoPrefab: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
   limitarInclinacao: 1
   elevacaoMinima: -10
   elevacaoMaxima: 80

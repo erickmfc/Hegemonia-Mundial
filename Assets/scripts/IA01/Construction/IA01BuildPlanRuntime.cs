@@ -114,6 +114,22 @@ namespace Hegemonia.AI.IA01
                     reason = "passo ja concluido";
                     continue;
                 }
+                if (IA_AntiAirPurchasePolicy.IsAres(step.constructionData)
+                    && !IA_AntiAirPurchasePolicy.IsAvailable(context.TeamId, IA_AntiAirPurchasePolicy.GetCurrentDay()))
+                {
+                    reason = "Ares disponivel para compra a partir do dia " + IA_AntiAirPurchasePolicy.GetUnlockDay(context.TeamId);
+                    return false;
+                }
+                if (IA_AntiAirPurchasePolicy.IsAres(step.constructionData)
+                    && controller.Manager != null
+                    && controller.Manager.WorldRegistry != null
+                    && controller.Manager.WorldRegistry.CountStructuresByStrategicRole(context.TeamId, IA01StrategicRole.AntiAirDefense)
+                        >= IA_AntiAirPurchasePolicy.MaximumPerTeam)
+                {
+                    completed.Add(step.StepId);
+                    reason = "limite de Ares antiaereo por IA atingido";
+                    continue;
+                }
                 if (blocked.Contains(step.StepId))
                 {
                     reason = "passo bloqueado";
@@ -128,6 +144,12 @@ namespace Hegemonia.AI.IA01
                 {
                     reason = "ficha DadosConstrucao invalida ou nao estrutural";
                     SlotValidationResult = reason;
+                    return false;
+                }
+                if (IA_AntiAirPurchasePolicy.IsAres(definition.Item)
+                    && !IA_AntiAirPurchasePolicy.IsAvailable(context.TeamId, IA_AntiAirPurchasePolicy.GetCurrentDay()))
+                {
+                    reason = "Ares disponivel para compra a partir do dia " + IA_AntiAirPurchasePolicy.GetUnlockDay(context.TeamId);
                     return false;
                 }
                 // Alguns prefabs navais antigos chegam do catalogo como NavalBase
@@ -506,6 +528,7 @@ namespace Hegemonia.AI.IA01
         private static bool MatchesIntent(IA01BuildPlanStep step, IA01Intent intent)
         {
             if (step == null || intent == null) return false;
+            if (IA_AntiAirPurchasePolicy.IsAres(step.constructionData)) return intent.Type == IA01IntentType.BuildDefense;
             IA01StrategicRole role = ResolveStepRole(step);
             switch (intent.Type)
             {

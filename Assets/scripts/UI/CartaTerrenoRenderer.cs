@@ -559,14 +559,11 @@ public sealed class QuartelCartaTopograficaView : MonoBehaviour
             if (identidade == null || !identidade.gameObject.activeInHierarchy) continue;
             if (!identidadesProcessadas.Add(identidade.GetInstanceID())) continue;
 
-            Vector3 posicao = identidade.transform.position;
             bool aliada = identidade.teamID == equipeMapa;
-            if (!aliada)
-            {
-                BoeingE3Reconhecimento.ContatoReconhecimento contato;
-                if (!BoeingE3Reconhecimento.TryObterContato(equipeMapa, identidade.GetInstanceID(), out contato) || contato == null) continue;
-                posicao = contato.ultimaPosicaoConhecida;
-            }
+            // Os inimigos são apresentados a partir da lista compartilhada do
+            // Quartel. Esta vista mantém apenas unidades próprias ao vivo.
+            if (!aliada) continue;
+            Vector3 posicao = identidade.transform.position;
 
             Vector3 local = centroMapa.InverseTransformPoint(posicao);
             if (Mathf.Abs(local.x) > raioMapa || Mathf.Abs(local.z) > raioMapa) continue;
@@ -756,6 +753,41 @@ public sealed class QuartelCartaTopograficaView : MonoBehaviour
                 tempoDesdeLancamento = tracker.TempoDesdeLancamento,
                 estado = "EM VOO",
                 guiagemPerdida = !tracker.PossuiAlvoDinamico
+            });
+        }
+
+        // O rastreador do projétil pode terminar antes da janela de contra-ataque.
+        // Mantém no mapa a origem de lançamentos inimigos por 120 s, usando o
+        // registro real de combate e sem deixar um marcador de unidade vivo.
+        IReadOnlyList<CartaCombateRegistro.EventoCombate> eventos = CartaCombateRegistro.Eventos;
+        float agora = Time.unscaledTime;
+        for (int i = 0; i < eventos.Count; i++)
+        {
+            CartaCombateRegistro.EventoCombate evento = eventos[i];
+            if (evento == null || evento.tipo != "LANÇAMENTO"
+                || evento.equipeAtacante <= 0 || evento.equipeAtacante == equipeMapa)
+                continue;
+
+            float idade = agora - evento.momento;
+            if (idade < 0f || idade > 120f) continue;
+            Vector3 localLancamento = centroMapa.InverseTransformPoint(evento.posicao);
+            if (Mathf.Abs(localLancamento.x) > raioMapa || Mathf.Abs(localLancamento.z) > raioMapa) continue;
+
+            misseis.Add(new MissilTelemetria
+            {
+                id = "origem-" + evento.id,
+                nome = "ORIGEM " + evento.arma,
+                tipo = evento.arma,
+                origem = evento.atacante,
+                equipe = evento.equipeAtacante,
+                aliado = false,
+                posicao = evento.posicao,
+                pontoLancamento = evento.posicao,
+                alvoAtual = evento.posicao,
+                pontoProvavelImpacto = evento.posicao,
+                tempoDesdeLancamento = idade,
+                estado = "ORIGEM REVELADA — CONTRA-ATAQUE DISPONÍVEL",
+                guiagemPerdida = true
             });
         }
     }

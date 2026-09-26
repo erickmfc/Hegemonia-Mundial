@@ -571,6 +571,7 @@ public class Torpedo : MonoBehaviour
 
     public void DefinirAlvo(Transform alvo)
     {
+        PrepararModoTorpedoHibrido();
         alvoFixoPorCoordenada = false;
         alvoAtual = alvo;
         if (alvo != null)
@@ -586,12 +587,36 @@ public class Torpedo : MonoBehaviour
     /// </summary>
     public void DefinirAlvo(Vector3 ponto)
     {
+        PrepararModoTorpedoHibrido();
         alvoAtual = null;
         posicaoAlvoPerdido = ponto;
         alvoFixoPorCoordenada = true;
         rastrearAlvo = true;
         emSubida = false;
         DeterminarProfundidadeAlvo(null);
+    }
+
+    private void PrepararModoTorpedoHibrido()
+    {
+        MisselSubmarino controladorMissil = GetComponent<MisselSubmarino>();
+        if (controladorMissil != null && controladorMissil.enabled)
+        {
+            controladorMissil.enabled = false;
+        }
+
+        if (!enabled)
+        {
+            enabled = true;
+        }
+
+        Rigidbody corpo = GetComponent<Rigidbody>();
+        if (corpo != null)
+        {
+            corpo.linearVelocity = Vector3.zero;
+            corpo.angularVelocity = Vector3.zero;
+            corpo.useGravity = false;
+            corpo.isKinematic = true;
+        }
     }
 
     private void DeterminarProfundidadeAlvo(Transform alvo)

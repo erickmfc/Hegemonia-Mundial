@@ -47,6 +47,7 @@ public sealed class OperacoesPortaAvioesV2PlayModeTests
             SetField(managerType, manager, "usarSistemaOperacoesV2", true);
             SetField(managerType, manager, "velocidadeTaxi", 120f);
             SetField(managerType, manager, "velocidadeAproximacao", 120f);
+            SetField(managerType, manager, "duracaoServicoAposPouso", 0f);
             yield return null;
 
             MethodInfo preparar = managerType.GetMethod("PrepararAeronaveParaMenu", BindingFlags.Instance | BindingFlags.Public);

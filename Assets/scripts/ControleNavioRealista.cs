@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
+using Hegemonia.RTS;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Rigidbody))]
@@ -169,6 +170,7 @@ public class ControleNavioRealista : MonoBehaviour
     private float proximoLancamentoTorpedo = 0f;
     private float proximaBuscaTorpedoAtivo = 0f;
     private bool modoCombateTorpedosAtivo = false;
+    public int MaximoTorpedosConfigurado => Mathf.Max(0, totalTubosValidos * 2);
     private IdentidadeUnidade minhaIdentidade;
     private static readonly Collider[] bufferAlvosTorpedo = new Collider[96];
     private static readonly List<IdentidadeUnidade> unidadesRegistradasTorpedo = new List<IdentidadeUnidade>(256);
@@ -686,7 +688,10 @@ public class ControleNavioRealista : MonoBehaviour
             EstabilizarRigidbodyDaSimulacao();
         }
 
-        float velocidadeMaximaOperacional = VelocidadeNavalGlobal.Aplicar(velocidadeMaxima);
+        float multiplicadorComando = controleUnidadeCache != null
+            ? controleUnidadeCache.MultiplicadorVelocidadeComandoHud
+            : 1f;
+        float velocidadeMaximaOperacional = VelocidadeNavalGlobal.Aplicar(velocidadeMaxima) * multiplicadorComando;
 
         // VELOCIDADE PURA DE TRILHO (1 Eixo): Só existe movimento na mesma linha que a frente do navio aponta
         float velReal = velocidadeVetorial.magnitude;
@@ -1405,11 +1410,19 @@ public class ControleNavioRealista : MonoBehaviour
 
     public void DefinirModoCombateTorpedos(bool ativo)
     {
-        modoCombateTorpedosAtivo = ativo;
+        modoCombateTorpedosAtivo = ativo && UnidadePermiteCombate();
         if (ativo)
         {
             proximaBuscaTorpedoAtivo = 0f;
         }
+    }
+
+    private bool UnidadePermiteCombate()
+    {
+        ControleUnidade controle = GetComponentInParent<ControleUnidade>()
+            ?? GetComponent<ControleUnidade>()
+            ?? GetComponentInChildren<ControleUnidade>(true);
+        return controle == null || controle.ModoCombateAtivo;
     }
 
     public void DefinirModoOperacao(ModoOperacao novoModo, bool logar = true)
@@ -1472,7 +1485,10 @@ public class ControleNavioRealista : MonoBehaviour
 
     private void TentarAtaqueTorpedoModoAtivo()
     {
-        if (!torpedosNoModoAtivo || !modoCombateTorpedosAtivo || Time.time < proximaBuscaTorpedoAtivo)
+        if (!torpedosNoModoAtivo || !modoCombateTorpedosAtivo
+            || modoOperacao != ModoOperacao.Ativo
+            || !UnidadePermiteCombate()
+            || Time.time < proximaBuscaTorpedoAtivo)
         {
             return;
         }
@@ -1539,6 +1555,12 @@ public class ControleNavioRealista : MonoBehaviour
         IdentidadeUnidade idAlvo = candidato.GetComponentInParent<IdentidadeUnidade>();
         if (idAlvo == null) idAlvo = candidato.GetComponentInChildren<IdentidadeUnidade>();
         if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
+        {
+            return;
+        }
+
+        if (SistemaGovernoMundial.Instancia == null
+            || !RTSVisibilityService.TeamsAtWar(meuTime, idAlvo.teamID))
         {
             return;
         }
@@ -1626,6 +1648,12 @@ public class ControleNavioRealista : MonoBehaviour
 
     public void LancarTorpedo(Vector3 alvo, Transform alvoT = null)
     {
+        if (!modoCombateTorpedosAtivo || modoOperacao != ModoOperacao.Ativo || !UnidadePermiteCombate())
+        {
+            Debug.Log($"[{name}] Lancamento de torpedo bloqueado: modo de combate passivo.", this);
+            return;
+        }
+
         if (!PodeLancarTorpedo())
         {
             Debug.Log($"[{name}] Torpedo nao pronto (cooldown ou sem municao).", this);

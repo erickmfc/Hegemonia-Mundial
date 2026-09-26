@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 316442482009284323}
   - component: {fileID: 6503468448039000351}
   - component: {fileID: 9126401837462018357}
+  - component: {fileID: 5979123669720203246}
   m_Layer: 0
   m_Name: Boeing E3
   m_TagString: Untagged
@@ -593,3 +594,29 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6044815912604531480, guid: 143c139da7422b44d997134317981e10, type: 3}
   m_PrefabInstance: {fileID: 1263932995376412063}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &5979123669720203246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 819382474612140520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc23fc57a22fec84a931072cb1213e9d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::SomUnidade
+  tipoUnidade: 1
+  somMotor: {fileID: 8300000, guid: 3375e751a9605ec469a16d6bcba85aaa, type: 3}
+  somParado: {fileID: 8300000, guid: 7784e7ab59ab376458c07be56b1a8d6f, type: 3}
+  somTiro: {fileID: 8300000, guid: bb2e2714f962491428dcb0b38598b251, type: 3}
+  somExplosao: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
+  somDano: {fileID: 8300000, guid: a599c94697eb643838997e923d7e7272, type: 3}
+  volumeMotor: 0.5
+  volumeTiro: 0.8
+  volumeExplosao: 1
+  pitchMin: 0.8
+  pitchMax: 1.5
+  registrarTransicoesDeAudio: 0
+  velocidadeParaMaxPitch: 50
+  loopMotor: 1

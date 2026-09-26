@@ -128,7 +128,7 @@ MonoBehaviour:
       role: 0
     failurePolicy: 0
   - stepId: abertura.residencial.casa
-    constructionData: {fileID: 11400000, guid: e4c3d65f2425e654d955a5e0b0a24467, type: 2}
+    constructionData: {fileID: 11400000, guid: 1be2ba8e5cee470b9f4142bc1effeb65, type: 2}
     requiredRole: 1
     placementMode: 0
     primarySlotId: ia02.local.casa
@@ -262,6 +262,22 @@ MonoBehaviour:
     primarySlotId: ia02.local.quartel
     slotGroupId: infraestrutura_estrategica
     autonomousZoneId: 
+    required: 0
+    minimumStage: 0
+    maximumCount: 1
+    cooldownAfterCompletion: 0
+    condition:
+      type: 0
+      target: 1
+      role: 0
+    failurePolicy: 0
+  - stepId: defesa.aerea.ares_ar
+    constructionData: {fileID: 11400000, guid: 3885dab8c83b4d6394327603fb15555e, type: 2}
+    requiredRole: 7
+    placementMode: 0
+    primarySlotId: ia02.local.ares_ar
+    slotGroupId: defesa_antiaerea
+    autonomousZoneId: ""
     required: 0
     minimumStage: 0
     maximumCount: 1

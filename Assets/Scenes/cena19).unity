@@ -604,6 +604,7 @@ Transform:
   - {fileID: 603375091}
   - {fileID: 1465673617}
   - {fileID: 1180488918}
+  - {fileID: 1700000002}
   m_Father: {fileID: 422517071}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &16361236
@@ -1064,6 +1065,7 @@ Transform:
   - {fileID: 489591738}
   - {fileID: 1920231526}
   - {fileID: 2132690407}
+  - {fileID: 1710000002}
   m_Father: {fileID: 1578271282}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &23064317
@@ -14354,7 +14356,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71303ae0b6f9fa447951fb8acb05aecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  alcanceRadar: 900
+  alcanceRadar: 2200
   tempoDeEscaneamento: 0.3
   velocidadeMinimaAmeaca: 5
   dotMinimoAmeaca: 0.4
@@ -15657,7 +15659,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlot
   slotId: ia02.local.casa
   slotGroupId: abertura_inicial
-  preferredConstructionItemId: urbana.cidade_egito
+  preferredConstructionItemId: urbana.cidade_moderna
   allowedRole: 1
   allowedDomain: 0
   required: 0
@@ -30898,7 +30900,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
   slotId: ia01.local.casa
   slotGroupId: abertura_inicial
-  preferredConstructionItemId: urbana.cidade_egito
+  preferredConstructionItemId: urbana.cidade_moderna
   allowedRole: 1
   allowedDomain: 0
   required: 0
@@ -114354,3 +114356,133 @@ SceneRoots:
   - {fileID: 297104700}
   - {fileID: 2060000001}
   - {fileID: 1300528074}
+--- !u!1 &1700000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1700000002}
+  - component: {fileID: 1700000003}
+  m_Layer: 0
+  m_Name: IA02 Create - Ares Antiaereo (posicione no editor)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1700000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1700000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 100, y: 0, z: -464}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 16361235}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1700000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1700000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5947edb0e22cdd6458c28648b10663d6, type: 3}
+  m_Name: ""
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlot
+  slotId: ia02.local.ares_ar
+  slotGroupId: defesa_antiaerea
+  preferredConstructionItemId: defesa.ares_ar
+  allowedRole: 7
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  buildingPoint: {fileID: 1700000002}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 80, y: 80}
+  safetyMargin: 4
+  ownerTeamId: 3
+  state: 0
+  reservedCommandId: ""
+  ownerNationId: 3
+  constructedItemId: ""
+  reservedAt: 0
+  blockReason: ""
+  layoutVersion: 1
+--- !u!1 &1710000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1710000002}
+  - component: {fileID: 1710000003}
+  m_Layer: 0
+  m_Name: IA01 Create - Ares Antiaereo (posicione no editor)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1710000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1710000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 100, y: 0, z: -464}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 23064316}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1710000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1710000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: ""
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.ares_ar
+  slotGroupId: defesa_antiaerea
+  preferredConstructionItemId: defesa.ares_ar
+  allowedRole: 7
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  buildingPoint: {fileID: 1710000002}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 80, y: 80}
+  safetyMargin: 4
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: ""
+  ownerNationId: 2
+  constructedItemId: ""
+  reservedAt: 0
+  blockReason: ""
+  layoutVersion: 1

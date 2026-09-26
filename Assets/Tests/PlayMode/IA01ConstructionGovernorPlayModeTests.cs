@@ -10,7 +10,15 @@ using UnityEngine.TestTools;
 
 public sealed class IA01ConstructionGovernorPlayModeTests
 {
-    private const string MenuSceneName = "Menu cena";
+    private static string MenuSceneName
+    {
+        get
+        {
+            Type configType = ResolveType("ConfiguracaoCenasJogo");
+            FieldInfo sceneName = configType.GetField("CenaMenuPrincipalCanonica", BindingFlags.Public | BindingFlags.Static);
+            return (string)sceneName.GetRawConstantValue();
+        }
+    }
     private const string SaveFileName = "save_partida.json";
 
     private static readonly Dictionary<string, Type> TypeCache = new Dictionary<string, Type>(StringComparer.Ordinal);

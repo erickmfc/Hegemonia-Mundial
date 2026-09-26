@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Hegemonia.RTS;
 
 public class ControleTorreta : MonoBehaviour
 {
@@ -145,6 +146,9 @@ public class ControleTorreta : MonoBehaviour
     private float contadorTempo = 0f;
     private int balasAtuais;
     private bool estaRecarregando = false;
+
+    public int MunicaoAtual => Mathf.Max(0, balasAtuais);
+    public int MunicaoMaxima => Mathf.Max(0, tamanhoCartucho);
     
     private int misseisAtuais;
     private bool estaRecarregandoMisseis = false;
@@ -187,6 +191,11 @@ public class ControleTorreta : MonoBehaviour
     private float proximaBuscaAlvo;
 
     private bool souAntiAereo;
+    private bool modoManualNave;
+    private bool filtrarAlvosAutorizadosNavais;
+    private readonly List<Transform> alvosAutorizadosNavais = new List<Transform>(8);
+    public bool EhAntiAereo => souAntiAereo;
+    private bool exigeGuerraDeclarada;
     private bool diagnosticoLocaisDoTiroEmitido;
     private bool bloquearRotacaoAutomatica;
 
@@ -233,6 +242,9 @@ public class ControleTorreta : MonoBehaviour
     {
         meuControle = GetComponentInParent<ControleUnidade>();
         if (meuControle == null) meuControle = GetComponent<ControleUnidade>();
+        exigeGuerraDeclarada = (meuControle != null && meuControle.EhUnidadeNaval())
+            || GetComponentInParent<IdentidadeNaval>() != null
+            || GetComponentInParent<ControleNavioRealista>() != null;
 
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1;
@@ -374,6 +386,26 @@ public class ControleTorreta : MonoBehaviour
     }
 
     #region Radar e Busca de Alvos
+    private static Vector3 ObterPontoMaisProximoSeguro(Collider collider, Vector3 referencia)
+    {
+        if (collider == null) return referencia;
+
+        if (collider is BoxCollider || collider is SphereCollider || collider is CapsuleCollider)
+        {
+            return collider.ClosestPoint(referencia);
+        }
+
+        MeshCollider malha = collider as MeshCollider;
+        if (malha != null && malha.convex)
+        {
+            return collider.ClosestPoint(referencia);
+        }
+
+        // ClosestPoint gera erro para malhas nao convexas e alguns colliders
+        // especializados. O bounds e uma aproximacao segura para medir alcance.
+        return collider.bounds.ClosestPoint(referencia);
+    }
+
     void ProcurarAlvo()
     {
         if (modoPassivo || bloquearMovimentoAutomatico)
@@ -387,10 +419,26 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
+        // Em Manual as armas principais aguardam uma ordem do jogador. As
+        // torretas AA mantêm seu próprio radar e continuam operando.
+        if (modoManualNave && !souAntiAereo)
+        {
+            Transform manual = alvoPrioritario;
+            if (manual != null && manual.gameObject.activeInHierarchy
+                && ControleSubmarino.PodeSerAlvoConvencional(manual)
+                && (manual.position - transform.position).sqrMagnitude <= alcance * alcance)
+                SetarAlvo(manual);
+            else
+                SetarAlvo(null);
+            return;
+        }
+
         if (alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPrioritario))
         {
             Collider colPrioritario = alvoPrioritario.GetComponentInChildren<Collider>();
-            Vector3 alvoPosRealPrioritario = (colPrioritario != null) ? colPrioritario.ClosestPoint(transform.position) : alvoPrioritario.position;
+            Vector3 alvoPosRealPrioritario = (colPrioritario != null)
+                ? ObterPontoMaisProximoSeguro(colPrioritario, transform.position)
+                : alvoPrioritario.position;
             float distSqrPrioritario = (transform.position - alvoPosRealPrioritario).sqrMagnitude;
             if (distSqrPrioritario <= alcance * alcance)
             {
@@ -432,6 +480,9 @@ public class ControleTorreta : MonoBehaviour
             {
                 continue;
             }
+
+            if (filtrarAlvosAutorizadosNavais && !souAntiAereo
+                && !EstaNaListaAutorizada(ResolverTransformAlvo(alvoTr))) continue;
 
             if (alvoTr.root == transform.root)
             {
@@ -478,12 +529,13 @@ public class ControleTorreta : MonoBehaviour
                 IdentidadeUnidade idAlvo = ObterIdentidadeUnidadeComCache(alvoTr);
                 if (idAlvo != null)
                 {
-                    if (idAlvo.teamID != meuTime && idAlvo.teamID != 0)
+                    if (PodeAtacarAutomaticamente(idAlvo))
                     {
                         ehInimigo = true;
                     }
                 }
-                else if (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo"))
+                else if (!NavioExigeGuerraDeclarada()
+                    && (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo")))
                 {
                     ehInimigo = true;
                 }
@@ -536,7 +588,7 @@ public class ControleTorreta : MonoBehaviour
             if (ehTorpedo) prioridade = -1000f;
             else if (ehMissil) prioridade = -500f;
 
-            Vector3 pontoMaisProximo = hit.ClosestPoint(transform.position);
+            Vector3 pontoMaisProximo = ObterPontoMaisProximoSeguro(hit, transform.position);
             float dist = (transform.position - pontoMaisProximo).sqrMagnitude + prioridade;
             if (dist < menorDistancia)
             {
@@ -585,6 +637,50 @@ public class ControleTorreta : MonoBehaviour
         SetarAlvo(alvo);
     }
 
+    public void ConfigurarModoCombateNaval(bool ativo, bool manual, bool filtrarAutorizados, IList<Transform> autorizados)
+    {
+        modoPassivo = !ativo;
+        modoManualNave = manual && !souAntiAereo;
+        filtrarAlvosAutorizadosNavais = filtrarAutorizados && !souAntiAereo;
+        alvosAutorizadosNavais.Clear();
+        if (autorizados != null)
+            for (int i = 0; i < autorizados.Count; i++)
+                if (autorizados[i] != null && !alvosAutorizadosNavais.Contains(autorizados[i])) alvosAutorizadosNavais.Add(autorizados[i]);
+        if (!ativo || (modoManualNave && alvoPrioritario == null)) SetarAlvo(null);
+    }
+
+    public void DefinirAlvosAutorizados(IList<Transform> autorizados, bool filtrar)
+    {
+        filtrarAlvosAutorizadosNavais = filtrar && !souAntiAereo;
+        alvosAutorizadosNavais.Clear();
+        if (autorizados != null)
+            for (int i = 0; i < autorizados.Count; i++)
+                if (autorizados[i] != null && !alvosAutorizadosNavais.Contains(autorizados[i])) alvosAutorizadosNavais.Add(autorizados[i]);
+        if (filtrarAlvosAutorizadosNavais && alvoPrioritario != null && !EstaNaListaAutorizada(alvoPrioritario))
+            alvoPrioritario = null;
+    }
+
+    private bool EstaNaListaAutorizada(Transform alvo)
+    {
+        if (alvo == null) return false;
+        Transform raizAlvo = alvo.root;
+        for (int i = 0; i < alvosAutorizadosNavais.Count; i++)
+        {
+            Transform autorizado = alvosAutorizadosNavais[i];
+            if (autorizado != null && (autorizado == alvo || autorizado.root == raizAlvo)) return true;
+        }
+        return false;
+    }
+
+    public bool DefinirAlvoManual(Transform alvo)
+    {
+        if (souAntiAereo || alvo == null || modoPassivo
+            || (alvo.position - transform.position).sqrMagnitude > alcance * alcance) return false;
+        alvoPrioritario = alvo;
+        SetarAlvo(alvo);
+        return true;
+    }
+
     private Transform ProcurarAlvoNoRegistroGlobal()
     {
         RegistroEntidadesJogo.FillUnidades(_unidadesRegistroRadar);
@@ -596,7 +692,7 @@ public class ControleTorreta : MonoBehaviour
         {
             IdentidadeUnidade idAlvo = _unidadesRegistroRadar[i];
             if (idAlvo == null || !idAlvo.gameObject.activeInHierarchy) continue;
-            if (idAlvo.teamID == 0 || idAlvo.teamID == meuTime) continue;
+            if (!PodeAtacarAutomaticamente(idAlvo)) continue;
 
             Transform alvoTr = ResolverTransformAlvo(idAlvo.transform);
             if (alvoTr == null || alvoTr.root == transform.root) continue;
@@ -636,6 +732,20 @@ public class ControleTorreta : MonoBehaviour
 
         _unidadesRegistroRadar.Clear();
         return melhorAlvo;
+    }
+
+    private bool NavioExigeGuerraDeclarada()
+    {
+        return exigeGuerraDeclarada;
+    }
+
+    private bool PodeAtacarAutomaticamente(IdentidadeUnidade alvo)
+    {
+        if (alvo == null || alvo.teamID <= 0 || alvo.teamID == meuTime) return false;
+        if (!NavioExigeGuerraDeclarada()) return true;
+
+        return SistemaGovernoMundial.Instancia != null
+            && RTSVisibilityService.TeamsAtWar(meuTime, alvo.teamID);
     }
 
     private void SetarAlvo(Transform novoAlvo)
@@ -690,6 +800,13 @@ public class ControleTorreta : MonoBehaviour
                 contadorTempo = 0f; 
             }
             return; 
+        }
+
+        if (modoPassivo || (meuControle != null && !meuControle.ModoCombateAtivo))
+        {
+            SetarAlvo(null);
+            ModoOcioso();
+            return;
         }
 
         if (alvoAtual != null)
@@ -1308,14 +1425,48 @@ public class ControleTorreta : MonoBehaviour
 
     bool DeterminarSouAntiAereo()
     {
-        string nomeBase = transform.root.name.ToLower();
-        string nomeObj  = transform.name.ToLower();
-        return etiquetaAlvo.Equals("Aereo", System.StringComparison.OrdinalIgnoreCase) ||
-               etiquetaAlvo.Equals("Areo",  System.StringComparison.OrdinalIgnoreCase) ||
-               nomeBase.Contains("ares")       || nomeBase.Contains("antiaerea") ||
-               nomeBase.Contains("ciws")       || nomeBase.Contains("sam")  ||
-               nomeObj.Contains("ares")        || nomeObj.Contains("antiaerea") ||
-               nomeObj.Contains("ciws")        || nomeObj.Contains("sam");
+        string etiqueta = NormalizarIdentificadorAntiAereo(etiquetaAlvo);
+        string nomeBase = NormalizarIdentificadorAntiAereo(transform.root != null ? transform.root.name : string.Empty);
+        string nomeObj = NormalizarIdentificadorAntiAereo(transform.name);
+
+        return etiqueta == "aereo" || etiqueta == "aerea" || etiqueta == "areo"
+               || NomeIndicaDefesaAerea(nomeBase)
+               || NomeIndicaDefesaAerea(nomeObj);
+    }
+
+    private static bool NomeIndicaDefesaAerea(string nome)
+    {
+        if (string.IsNullOrEmpty(nome)) return false;
+        if (nome.Contains("antiaerea") || nome.Contains("antiaereo")
+            || nome.Contains("ciws") || nome.Contains("sam")) return true;
+
+        string[] partes = nome.Split(new[] { ' ', '_', '-', '(', ')', '[', ']' },
+            System.StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < partes.Length; i++)
+        {
+            if (partes[i] == "aa" || partes[i] == "aerea" || partes[i] == "aereo") return true;
+        }
+
+        return false;
+    }
+
+    private static string NormalizarIdentificadorAntiAereo(string valor)
+    {
+        if (string.IsNullOrEmpty(valor)) return string.Empty;
+
+        string decomposto = valor.Normalize(System.Text.NormalizationForm.FormD);
+        System.Text.StringBuilder resultado = new System.Text.StringBuilder(decomposto.Length);
+        for (int i = 0; i < decomposto.Length; i++)
+        {
+            char caractere = decomposto[i];
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(caractere)
+                != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                resultado.Append(char.ToLowerInvariant(caractere));
+            }
+        }
+
+        return resultado.ToString();
     }
 
     Transform ResolverTransformAlvo(Transform alvo)

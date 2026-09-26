@@ -283,7 +283,7 @@ public class ControleAviaoComercial : ControleAviao
             float dt = Time.deltaTime;
             tempo += dt;
 
-            transform.position -= transform.forward * (velocidadePushback * dt);
+            transform.position -= transform.forward * (velocidadePushback * MultiplicadorVelocidadeComandoHud * dt);
 
             if (modeloMecanicoVisual != null)
                 modeloMecanicoVisual.localRotation = Quaternion.Lerp(modeloMecanicoVisual.localRotation, Quaternion.Euler(0f, giroLateralYInicial, 0f), dt * 3f);
@@ -329,7 +329,10 @@ public class ControleAviaoComercial : ControleAviao
             }
 
             // Move fisicamente para o ponto
-            transform.position = Vector3.MoveTowards(transform.position, destino, vel * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(
+                transform.position,
+                destino,
+                vel * MultiplicadorVelocidadeComandoHud * Time.deltaTime);
             yield return null;
         }
     }
@@ -493,7 +496,7 @@ public class ControleAviaoComercial : ControleAviao
             {
                 aeroportoOrigemComercial.EntrarNaFilaPouso(this);
                 // Mantém o avião voando devagar enquanto aguarda pista
-                transform.position += transform.forward * (velocidadeSolo * Time.deltaTime);
+                transform.position += transform.forward * (velocidadeSolo * MultiplicadorVelocidadeComandoHud * Time.deltaTime);
                 yield return null;
             }
         }
@@ -679,7 +682,8 @@ public class ControleAviaoComercial : ControleAviao
         if (estadoAtual == EstadoAviao.EmMissao) mult = 0.85f;
         else if (estadoAtual == EstadoAviao.Pousando) mult = 0.4f;
 
-        float velFinal = velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * mult * multDano;
+        float velFinal = velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * mult * multDano
+            * MultiplicadorVelocidadeComandoHud;
         Vector3 novaPos = transform.position + transform.forward * (velFinal * dt);
 
         if (novaPos.y < 25f)
@@ -695,7 +699,8 @@ public class ControleAviaoComercial : ControleAviao
             alvoGPSVoo = centro;
             transform.rotation = Quaternion.RotateTowards(transform.rotation,
                 Quaternion.LookRotation((centro - transform.position).normalized), 50f * dt);
-            novaPos = transform.position + transform.forward * (velocidadeMaximaVoo * 0.5f * dt);
+            novaPos = transform.position
+                + transform.forward * (velocidadeMaximaVoo * 0.5f * MultiplicadorVelocidadeComandoHud * dt);
         }
 
         transform.position = novaPos;

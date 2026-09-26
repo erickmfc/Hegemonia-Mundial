@@ -741,24 +741,42 @@ public class Estaleiro : MonoBehaviour
 
         Quaternion rotacaoNaval = Quaternion.LookRotation(-waterForward, Vector3.up);
 
-        // 1. INSTANCIA O PREFAB CRU E INTACTO!
-        // Guardamos a escala antes do Instantiate porque os componentes do
-        // navio executam Awake durante a criação. Prefabs navais antigos ou
-        // scripts adicionados em runtime podem alterar a raiz nesse momento;
-        // a escala configurada no prefab deve ser a autoridade visual final.
+        // 1. Instancia o prefab inativo para desabilitar os NavMeshAgents no
+        // clone antes de ativa-los no mar. Assim o Unity nao tenta registrar
+        // um agente fora da NavMesh, e o asset de origem nao e alterado.
         Vector3 escalaPrefab = slot.prefabAtual != null
             ? slot.prefabAtual.transform.localScale
             : Vector3.one;
         long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
-        GameObject navioPronto = Instantiate(slot.prefabAtual, posFinal, rotacaoNaval);
+        GameObject raizStagingNaval = new GameObject("Estaleiro - Preparacao Naval");
+        raizStagingNaval.SetActive(false);
+        GameObject navioPronto;
+        try
+        {
+            navioPronto = Instantiate(slot.prefabAtual, raizStagingNaval.transform);
+            navioPronto.transform.SetPositionAndRotation(posFinal, rotacaoNaval);
+
+            UnityEngine.AI.NavMeshAgent[] agentesNavio =
+                navioPronto.GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true);
+            for (int i = 0; i < agentesNavio.Length; i++)
+            {
+                if (agentesNavio[i] != null) agentesNavio[i].enabled = false;
+            }
+
+            // A ativacao e o Awake dos componentes acontecem somente depois
+            // que cada agente do clone esta em um estado seguro.
+            navioPronto.transform.SetParent(null, true);
+        }
+        finally
+        {
+            Destroy(raizStagingNaval);
+        }
         RegistrarTempoDiagnostico("naval_instantiate_ms", instantiateStart);
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
         if (slot.prefabAtual != null)
         {
             DiagnosticoDesempenhoJogo.RegistrarEvento("Spawn", "Navio criado: " + slot.prefabAtual.name);
         }
-        navioPronto.transform.SetParent(null);
-
         // Reaplica a escala do asset depois do Awake/OnEnable dos scripts do
         // navio. Isso faz o aumento feito no Inspector aparecer também no
         // navio recém-liberado pelo estaleiro e não altera sua escala durante
@@ -823,7 +841,7 @@ public class Estaleiro : MonoBehaviour
 
         // Remove a movimentação e rotação automáticas em direção ao estaleiro/saída para que fiquem parados na atracagem.
         var agenteNovo = navioPronto.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (agenteNovo != null)
+        if (agenteNovo != null && agenteNovo.enabled)
         {
             UnityEngine.AI.NavMeshHit hit;
             if (UnityEngine.AI.NavMesh.SamplePosition(navioPronto.transform.position, out hit, 20f, UnityEngine.AI.NavMesh.AllAreas))

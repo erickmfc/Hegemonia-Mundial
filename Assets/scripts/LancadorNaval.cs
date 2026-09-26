@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 
 public class LancadorNaval : MonoBehaviour
 {
@@ -50,6 +51,7 @@ public class LancadorNaval : MonoBehaviour
     
     // Estado interno
     private float tempoUltimoDisparo = 0f;
+    private float tempoUltimoDisparoConfirmado = -1f;
     private int indicePontoSaida = 0; // Para alternar entre as bocas do VLS
     private int indicePontoSaidaTorpedo = 0; // Para alternar entre tubos de torpedo
     private AudioSource audioSource;
@@ -61,6 +63,14 @@ public class LancadorNaval : MonoBehaviour
     
     // Timer para atrasar a ativação do modo automático
     private float tempoParaAtivarAutomatico = 0f;
+    private ModoOperacao modoAntesDeCombatePassivo = ModoOperacao.Automatico;
+    private bool modoPassivoForcadoPeloControle;
+
+    public bool ModoPassivo => modoAtual == ModoOperacao.Passivo;
+    public bool EstaRecarregando => salvaEmAndamento || TempoRecargaRestante > 0f;
+    public float TempoRecargaRestante => tempoUltimoDisparoConfirmado < 0f
+        ? 0f
+        : Mathf.Max(0f, tempoUltimoDisparoConfirmado + Mathf.Max(0f, tempoRecargaSalva) - Time.time);
 
     // Visualizador de Alcance
     private LineRenderer linhaDeAlcance;
@@ -92,6 +102,8 @@ public class LancadorNaval : MonoBehaviour
     private static MiniMapa miniMapaCache;
     private static float proximaBuscaMiniMapa;
     private readonly List<Transform> bufferAlvosValidos = new List<Transform>(32);
+    private readonly List<Transform> alvosAutorizadosJogador = new List<Transform>(8);
+    private bool limitarAutomaticoAAlvosAutorizados;
     private float proximaVarreduraAutomatica = 0f;
     private bool salvaEmAndamento;
     private const float AlcanceRadarMinimo = 2000f;
@@ -281,7 +293,34 @@ public class LancadorNaval : MonoBehaviour
 
     public void DefinirModoIA(ModoOperacao novoModo, bool usarDelay = true)
     {
-        if (modoAtual == novoModo) return;
+        if (meuControle != null && !meuControle.ModoCombateAtivo && novoModo != ModoOperacao.Passivo)
+        {
+            return;
+        }
+
+        bool propagarPassividade = novoModo == ModoOperacao.Passivo
+            && meuControle != null
+            && meuControle.ModoCombateAtivo;
+
+        if (modoAtual == novoModo)
+        {
+            if (propagarPassividade)
+            {
+                if (!modoPassivoForcadoPeloControle)
+                {
+                    modoAntesDeCombatePassivo = ModoOperacao.Automatico;
+                    modoPassivoForcadoPeloControle = true;
+                }
+                meuControle.DefinirModoCombate(false);
+            }
+            return;
+        }
+
+        if (propagarPassividade && !modoPassivoForcadoPeloControle)
+        {
+            modoAntesDeCombatePassivo = modoAtual;
+            modoPassivoForcadoPeloControle = true;
+        }
 
         if (novoModo == ModoOperacao.Automatico)
         {
@@ -293,6 +332,42 @@ public class LancadorNaval : MonoBehaviour
         }
 
         modoAtual = novoModo;
+
+        if (propagarPassividade)
+        {
+            // Um pedido de passividade feito diretamente no lançador também
+            // coloca em passivo as demais armas do navio, incluindo o sistema
+            // antiaéreo, para os modos não ficarem divergentes.
+            meuControle.DefinirModoCombate(false);
+        }
+    }
+
+    public void DefinirModoCombate(bool ativo)
+    {
+        if (!ativo)
+        {
+            if (!modoPassivoForcadoPeloControle)
+            {
+                modoAntesDeCombatePassivo = modoAtual == ModoOperacao.Passivo
+                    ? ModoOperacao.Automatico
+                    : modoAtual;
+                modoPassivoForcadoPeloControle = true;
+            }
+
+            DefinirModoIA(ModoOperacao.Passivo, false);
+            alvoAtual = null;
+            return;
+        }
+
+        if (modoPassivoForcadoPeloControle)
+        {
+            modoPassivoForcadoPeloControle = false;
+            DefinirModoIA(modoAntesDeCombatePassivo, true);
+        }
+        else if (modoAtual == ModoOperacao.Passivo)
+        {
+            DefinirModoIA(ModoOperacao.Automatico, true);
+        }
     }
 
     /// <summary>
@@ -302,9 +377,21 @@ public class LancadorNaval : MonoBehaviour
     /// </summary>
     public string AlternarEstadoOperacional()
     {
+        if (meuControle == null)
+            meuControle = GetComponentInParent<ControleUnidade>() ?? GetComponentInChildren<ControleUnidade>(true);
+        if (meuControle != null) return MenuCombateNaval.CiclarModoCombate(meuControle);
         int proximo = ((int)modoAtual + 1) % 3;
         DefinirModoIA((ModoOperacao)proximo, true);
         return modoAtual.ToString().ToUpperInvariant();
+    }
+
+    public void DefinirAlvosAutorizados(IList<Transform> alvos, bool limitarAutomatico)
+    {
+        alvosAutorizadosJogador.Clear();
+        if (alvos != null)
+            for (int i = 0; i < alvos.Count; i++)
+                if (alvos[i] != null && !alvosAutorizadosJogador.Contains(alvos[i])) alvosAutorizadosJogador.Add(alvos[i]);
+        limitarAutomaticoAAlvosAutorizados = limitarAutomatico;
     }
 
     /// <summary>
@@ -319,6 +406,12 @@ public class LancadorNaval : MonoBehaviour
         if (!isActiveAndEnabled || !gameObject.activeInHierarchy)
         {
             motivo = "unidade desativada";
+            return false;
+        }
+
+        if (meuControle != null && !meuControle.ModoCombateAtivo)
+        {
+            motivo = "modo de combate da unidade esta passivo";
             return false;
         }
 
@@ -338,6 +431,20 @@ public class LancadorNaval : MonoBehaviour
         {
             motivo = "aguardando autorizacao do modo automatico";
             return false;
+        }
+
+        if (modoAutomatico)
+        {
+            IdentidadeUnidade identidadeAlvo = alvo != null
+                ? alvo.GetComponentInParent<IdentidadeUnidade>() ?? alvo.GetComponentInChildren<IdentidadeUnidade>()
+                : null;
+            if (identidadeAlvo == null
+                || SistemaGovernoMundial.Instancia == null
+                || !RTSVisibilityService.TeamsAtWar(minhaIdentidade != null ? minhaIdentidade.teamID : 0, identidadeAlvo.teamID))
+            {
+                motivo = "alvo sem guerra declarada com a unidade";
+                return false;
+            }
         }
 
         if (!PodeAtirar())
@@ -383,7 +490,7 @@ public class LancadorNaval : MonoBehaviour
         int torpedosAntes = torpedosTotal;
         tempoUltimoDisparo = Time.time;
         alvoAtual = alvo;
-        DispararUnico(destino, alvo);
+        DispararUnico(destino, alvo, !modoAutomatico && torpedosSomenteNoModoAtivo);
 
         if (municaoAntes == municaoTotal && torpedosAntes == torpedosTotal)
         {
@@ -404,10 +511,8 @@ public class LancadorNaval : MonoBehaviour
         }
         AtualizarVisualizadorAlcance();
 
-        // 1. Controle de Modos (Tecla 'I')
-        ChecarTrocaDeModo();
-
-        // 2. Comportamento baseado no modo
+        // O modo é alterado pelo painel naval ou pelo atalho I na raiz da unidade.
+        // Comportamento baseado no modo:
         switch (modoAtual)
         {
             case ModoOperacao.Manual:
@@ -423,34 +528,6 @@ public class LancadorNaval : MonoBehaviour
             case ModoOperacao.Passivo:
                 // Não faz nada, descansa soldado
                 break;
-        }
-    }
-
-    void ChecarTrocaDeModo()
-    {
-        // VERIFICAÇÃO CRÍTICA: Só permite ação se ESTIVER SELECIONADO
-        if (meuControle == null || !meuControle.selecionado) return;
-
-        if (Input.GetKeyDown(KeyCode.I))
-        {
-            // Avança para o próximo modo na lista (ciclo: 0 -> 1 -> 2 -> 0...)
-            int proximo = (int)modoAtual + 1;
-            if (proximo > 2) proximo = 0;
-            
-            ModoOperacao novoModo = (ModoOperacao)proximo;
-            
-            // Se for entrar em Automático, define o delay de 3 segundos
-            if (novoModo == ModoOperacao.Automatico)
-            {
-                tempoParaAtivarAutomatico = Time.time + 3.0f;
-            }
-            
-            modoAtual = novoModo;
-
-            if (debugLogs)
-            {
-                Debug.Log($"<color=cyan>[LANÇADOR]</color> Modo alterado para: {modoAtual}");
-            }
         }
     }
 
@@ -495,6 +572,7 @@ public class LancadorNaval : MonoBehaviour
         
         for (int i = 0; i < misseisDisponiveisNaSalva; i++)
         {
+            if (modoAtual == ModoOperacao.Passivo || (meuControle != null && !meuControle.ModoCombateAtivo)) break;
             DispararUnico(ponto, null);
             yield return new WaitForSeconds(intervaloEntreTiros);
         }
@@ -503,6 +581,8 @@ public class LancadorNaval : MonoBehaviour
     // --- MODO AUTOMÁTICO (Radar Inteligente) ---
     void ComportamentoAutomatico()
     {
+        if (modoAtual != ModoOperacao.Automatico
+            || (meuControle != null && !meuControle.ModoCombateAtivo)) return;
         if (!PodeAtirar() || Time.time < proximaVarreduraAutomatica) return;
         proximaVarreduraAutomatica = Time.time + Mathf.Max(0.20f, intervaloVarreduraAutomatica);
 
@@ -607,6 +687,15 @@ public class LancadorNaval : MonoBehaviour
         IdentidadeUnidade idAlvo = candidato.GetComponentInParent<IdentidadeUnidade>();
         if (idAlvo == null) idAlvo = candidato.GetComponentInChildren<IdentidadeUnidade>();
         if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
+        {
+            return false;
+        }
+
+        // Lançamento automático naval exige uma guerra declarada entre as
+        // equipes. Sem o governo/relacao carregado, a regra segura é não
+        // interpretar qualquer equipe diferente como inimiga.
+        if (SistemaGovernoMundial.Instancia == null
+            || !RTSVisibilityService.TeamsAtWar(meuTime, idAlvo.teamID))
         {
             return false;
         }
@@ -753,7 +842,24 @@ public class LancadorNaval : MonoBehaviour
             radarBuffer[i] = null;
         }
 
+        if (limitarAutomaticoAAlvosAutorizados)
+            bufferAlvosValidos.RemoveAll(alvo => !AlvoEstaAutorizado(alvo));
+
         return bufferAlvosValidos;
+    }
+
+    private bool AlvoEstaAutorizado(Transform alvo)
+    {
+        if (alvo == null || !alvo.gameObject.activeInHierarchy) return false;
+        SistemaDeDanos vida = alvo.GetComponent<SistemaDeDanos>() ?? alvo.GetComponentInParent<SistemaDeDanos>();
+        if (vida != null && vida.vidaAtual <= 0f) return false;
+        if (Vector3.Distance(transform.position, alvo.position) > alcanceRadar) return false;
+        for (int i = 0; i < alvosAutorizadosJogador.Count; i++)
+        {
+            Transform autorizado = alvosAutorizadosJogador[i];
+            if (autorizado != null && (autorizado == alvo || autorizado.root == alvo.root)) return true;
+        }
+        return false;
     }
 
     void LimparDanoProjetadoExpirado()
@@ -854,6 +960,9 @@ public class LancadorNaval : MonoBehaviour
 
         for (int i = 0; i < misseisDisponiveisNaSalva; i++)
         {
+            if (modoAtual != ModoOperacao.Automatico
+                || (meuControle != null && !meuControle.ModoCombateAtivo)) break;
+
             Transform alvoDaVez = null;
 
             // PROCURA O MELHOR ALVO: Um que esteja vivo e não tenha mísseis suficientes indo para matá-lo
@@ -975,8 +1084,14 @@ public class LancadorNaval : MonoBehaviour
         }
     }
 
-    void DispararUnico(Vector3 destino, Transform alvoFixo)
+    void DispararUnico(Vector3 destino, Transform alvoFixo, bool comandoAtivo = false)
     {
+        if (modoAtual == ModoOperacao.Passivo
+            || (meuControle != null && !meuControle.ModoCombateAtivo))
+        {
+            return;
+        }
+
         // Vai checar limites depois de decidir qual disparar
 
 
@@ -994,11 +1109,19 @@ public class LancadorNaval : MonoBehaviour
 
         GameObject prefabASpawnar = prefabMissel;
         bool usarMunicaoSecundaria = false;
-        bool podeUsarTorpedoNesteLancador = !torpedosSomenteNoModoAtivo;
+        bool torpedoPrioritario = comandoAtivo && torpedosSomenteNoModoAtivo;
+        bool podeUsarTorpedoNesteLancador = torpedoPrioritario || !torpedosSomenteNoModoAtivo;
         // No automatico, use primeiro o missil guiado. O torpedo fica como
         // fallback quando a carga de misseis acabou; assim navios de combate
         // realmente engajam alvos navais com a arma esperada.
-        if (alvoNavalOuSubmarino && prefabMissel != null && municaoTotal > 0)
+        // Quando o prefab reserva torpedos para o comando ativo, uma ordem
+        // manual contra alvo naval usa essa arma antes dos misseis.
+        if (alvoNavalOuSubmarino && torpedoPrioritario && prefabTorpedo != null && torpedosTotal > 0)
+        {
+            prefabASpawnar = prefabTorpedo;
+            usarMunicaoSecundaria = true;
+        }
+        else if (alvoNavalOuSubmarino && prefabMissel != null && municaoTotal > 0)
         {
             prefabASpawnar = prefabMissel;
         }
@@ -1080,7 +1203,8 @@ public class LancadorNaval : MonoBehaviour
                 this,
                 pontoDeSaida,
                 gameObject,
-                lancamentoSubmerso))
+                lancamentoSubmerso,
+                usarTorpedo: usarMunicaoSecundaria))
         {
             if (usarMunicaoSecundaria) torpedosTotal++;
             else municaoTotal++;
@@ -1088,6 +1212,8 @@ public class LancadorNaval : MonoBehaviour
             Debug.LogError("[LancadorNaval] Prefab sem controlador de voo válido.", this);
             return;
         }
+
+        tempoUltimoDisparoConfirmado = Time.time;
 
         // Som
         if (somDisparo != null && audioSource != null)

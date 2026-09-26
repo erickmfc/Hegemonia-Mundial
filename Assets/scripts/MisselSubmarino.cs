@@ -87,6 +87,17 @@ public class MisselSubmarino : MonoBehaviour
     
     public void IniciarLancamento(Vector3 alvo, bool submarinSubmerso, Transform alvoT = null)
     {
+        Torpedo controladorTorpedo = GetComponent<Torpedo>();
+        if (controladorTorpedo != null && controladorTorpedo.enabled)
+        {
+            controladorTorpedo.enabled = false;
+        }
+
+        if (!enabled)
+        {
+            enabled = true;
+        }
+
         GarantirComponentes();
         StopAllCoroutines();
         ResetarEstado();

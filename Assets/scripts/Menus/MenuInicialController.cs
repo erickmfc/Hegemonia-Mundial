@@ -335,6 +335,14 @@ public class MenuInicialController : MonoBehaviour
         CarregarCena(cenaTutorial, LoadingRequestKind.Tutorial);
     }
 
+    public void Btn_Escaramuca()
+    {
+        string cenaEscaramuca = ConfiguracaoCenasJogo.ResolverCenaEscaramuca();
+        sistemaSave.IniciarNovoJogo(cenaEscaramuca);
+        DefinirStatus("Iniciando escaramuça...", false);
+        CarregarCena(cenaEscaramuca, LoadingRequestKind.Campanha);
+    }
+
     public void Btn_CarregarJogo()
     {
         if (!sistemaSave.PossuiSave())
@@ -1204,7 +1212,7 @@ public class MenuInicialController : MonoBehaviour
         float posicaoY = 0f;
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.new", "Nova Campanha"), "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
         CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.tutorial", "Tutorial"), "TR", corBotao, true, Btn_Tutorial, ref posicaoY);
-        CriarBotao(grupoBotoes, "Escaramuça", "SK", corBotao, false, () => Btn_ModoIndisponivel("Escaramuça"), ref posicaoY);
+        CriarBotao(grupoBotoes, "Escaramuça", "SK", corBotao, true, Btn_Escaramuca, ref posicaoY);
         CriarBotao(grupoBotoes, "Multijogador", "MP", corBotao, false, () => Btn_ModoIndisponivel("Multijogador"), ref posicaoY);
         botaoCarregar = CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
         CriarBotao(grupoBotoes, "Audio", "AU", corBotao, true, AbrirConfiguracoesAudio, ref posicaoY);

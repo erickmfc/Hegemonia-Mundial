@@ -2777,7 +2777,7 @@ PrefabInstance:
     - target: {fileID: 3096068962966928352, guid: 68bea833d17395d44b0667a026463265, type: 3}
       propertyPath: municaoPrefab
       value: 
-      objectReference: {fileID: 5864298406509392469, guid: 86603804cd9519b49a44cb6206957548, type: 3}
+      objectReference: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
     - target: {fileID: 3096068962966928352, guid: 68bea833d17395d44b0667a026463265, type: 3}
       propertyPath: tamanhoCartucho
       value: 40
@@ -2863,7 +2863,7 @@ PrefabInstance:
     - target: {fileID: 3096068962966928352, guid: 68bea833d17395d44b0667a026463265, type: 3}
       propertyPath: municaoPrefab
       value: 
-      objectReference: {fileID: 5864298406509392469, guid: 86603804cd9519b49a44cb6206957548, type: 3}
+      objectReference: {fileID: 5864298406509392469, guid: ed8f0d5525bd8b045bdb2ffb83514f53, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

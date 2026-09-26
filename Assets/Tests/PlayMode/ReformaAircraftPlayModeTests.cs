@@ -324,4 +324,31 @@ public sealed class ReformaAircraftPlayModeTests
         Assert.LessOrEqual(Vector3.Distance(aircraft.transform.position, marker.transform.position), 30f,
             "The old approach circled outside the 100 m braking zone until fuel ran out.");
     }
+
+    [UnityTest]
+    public IEnumerator HiddenNaturalPropIsRestoredWhenItsBuildingIsDestroyed()
+    {
+        Vector3 center = new Vector3(1000000f, 0f, 1000000f);
+        GameObject building = new GameObject("Regression_BuildingForDemolition");
+        objects.Add(building);
+        building.transform.position = center;
+        building.AddComponent<BoxCollider>().size = new Vector3(12f, 6f, 12f);
+
+        GameObject rock = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        objects.Add(rock);
+        rock.name = "Regression_RockForDemolition";
+        rock.transform.position = center;
+
+        Type cleanupType = TypeOf("LimpezaVegetacaoConstrucao");
+        MethodInfo apply = cleanupType.GetMethod("Aplicar", BindingFlags.Public | BindingFlags.Static);
+        Assert.IsNotNull(apply);
+        apply.Invoke(null, new object[] { building });
+        Assert.IsFalse(rock.activeSelf, "A pedra dentro da obra deve desaparecer enquanto ela existe.");
+
+        UnityEngine.Object.Destroy(building);
+        objects.Remove(building);
+        yield return null;
+
+        Assert.IsTrue(rock.activeSelf, "A pedra deve voltar quando a obra for demolida em runtime.");
+    }
 }

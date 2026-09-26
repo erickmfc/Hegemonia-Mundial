@@ -160,6 +160,7 @@ GameObject:
   - component: {fileID: 6231840710929535403}
   - component: {fileID: 7179879167464136693}
   - component: {fileID: 7642978235071116871}
+  - component: {fileID: 849275613042681307}
   m_Layer: 0
   m_Name: missel_sub
   m_TagString: Missel
@@ -10183,3 +10184,36 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &849275613042681307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6391626991186985227}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27c81fb591cd34541ad14ab6c03660ac, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Torpedo
+  velocidade: 25
+  profundidadeNavegacao: -8
+  distanciaSubida: 15
+  velocidadeSubida: 15
+  danoExplosao: 800
+  raioExplosao: 24
+  forcaRepulsao: 500
+  tagAlvo: Navio
+  layersDetectaveis:
+    serializedVersion: 2
+    m_Bits: -1
+  prefabExplosao: {fileID: 100002, guid: 4bf22a1d8d9e7724b9af67921436851d, type: 3}
+  rastroBolas: {fileID: 0}
+  somLancamento: {fileID: 0}
+  somExplosao: {fileID: 8300000, guid: 986d6b30567e30e428f3f21373fe45ca, type: 3}
+  criarVisualFallback: 1
+  corVisualFallback: {r: 0.1, g: 0.9, b: 1, a: 1}
+  rastrearAlvo: 1
+  taxaCurva: 0.15
+  lancador: {fileID: 0}
+  timeLancador: -1

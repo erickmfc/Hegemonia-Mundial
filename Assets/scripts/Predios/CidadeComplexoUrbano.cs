@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -25,6 +26,9 @@ public enum TemaCidade
 [SelectionBase]
 public class CidadeComplexoUrbano : MonoBehaviour
 {
+    private static readonly HashSet<CidadeComplexoUrbano> CidadesAtivas = new HashSet<CidadeComplexoUrbano>();
+    private static readonly List<CidadeComplexoUrbano> BufferCidades = new List<CidadeComplexoUrbano>(16);
+
     [Header("🏛️ Identidade e Tema")]
     [Tooltip("Tema visual e cultural da cidade")]
     public TemaCidade tema = TemaCidade.Moderna;
@@ -40,12 +44,12 @@ public class CidadeComplexoUrbano : MonoBehaviour
     public bool possuiRedeSaudeBasica = true;
 
     [Header("🏠 Imobiliária (Moradia)")]
-    [Tooltip("Capacidade habitacional total suportada pela cidade (500.000 a 1.500.000 moradores)")]
-    [Range(500000, 1500000)]
-    public int capacidadeHabitacional = 1000000;
+    [Tooltip("Capacidade habitacional total suportada pela cidade (500.000 a 2.000.000 moradores)")]
+    [Range(500000, 2000000)]
+    public int capacidadeHabitacional = 2000000;
 
     [Tooltip("População atualmente residente na cidade")]
-    public int populacaoResidente = 500000;
+    public int populacaoResidente = 100000;
 
     [Tooltip("Índice de qualidade de vida e atratividade residencial (0 a 100)")]
     [Range(0, 100)]
@@ -84,8 +88,8 @@ public class CidadeComplexoUrbano : MonoBehaviour
 
     // Componentes internos de ponte econômica
     private EstruturaEconomica estrutura;
-    private int populacaoAdicionadaRecursos = 0;
-    private int limitePopulacaoAdicionado = 0;
+    private int limitePopulacaoAdicionadoRecursos;
+    private bool populacaoRegistrada;
     private float timerSincronizacao = 0f;
     private float timerBlackout = 0f;
     private bool mouseHover = false;
@@ -102,28 +106,151 @@ public class CidadeComplexoUrbano : MonoBehaviour
     {
         ValidarLimites();
         SincronizarEstruturaEconomica();
-
-        // Integração com o GerenciadorRecursos se pertencer ao time do jogador
-        bool eJogador = SistemaGovernoMundial.Instancia == null || teamId == SistemaGovernoMundial.Instancia.teamJogador;
-        if (eJogador && GerenciadorRecursos.Instancia != null)
-        {
-            GerenciadorRecursos.Instancia.AumentarLimitePopulacao(capacidadeHabitacional);
-            limitePopulacaoAdicionado = capacidadeHabitacional;
-
-            int adicionar = Mathf.Min(populacaoResidente, capacidadeHabitacional);
-            if (adicionar > 0)
-            {
-                GerenciadorRecursos.Instancia.AdicionarPopulacao(adicionar);
-                populacaoAdicionadaRecursos = adicionar;
-            }
-        }
+        RegistrarPopulacaoInicialNaNacao();
+        populacaoRegistrada = true;
     }
 
     private void OnEnable()
     {
+        CidadesAtivas.Add(this);
         GarantirEstrutura();
         GarantirSaude();
         SincronizarEstruturaEconomica();
+    }
+
+    private void OnDisable()
+    {
+        CidadesAtivas.Remove(this);
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void LimparRegistroRuntime()
+    {
+        CidadesAtivas.Clear();
+        BufferCidades.Clear();
+    }
+
+    /// <summary>
+    /// Distribui a população civil nacional pelas cidades do time, segundo a
+    /// capacidade de cada uma. O crescimento populacional nacional continua
+    /// sendo calculado uma única vez por SistemaPopulacao.
+    /// </summary>
+    public static void SincronizarPopulacaoNacional(int timeId, int populacaoCivil)
+    {
+        PrepararBufferCidades(timeId);
+        if (BufferCidades.Count == 0) return;
+
+        long capacidadeTotal = 0;
+        for (int i = 0; i < BufferCidades.Count; i++)
+            capacidadeTotal += Mathf.Max(0, BufferCidades[i].capacidadeHabitacional);
+        if (capacidadeTotal <= 0) return;
+
+        int residentesParaDistribuir = (int)Math.Min(Mathf.Max(0, populacaoCivil), capacidadeTotal);
+        int distribuidos = 0;
+        for (int i = 0; i < BufferCidades.Count; i++)
+        {
+            CidadeComplexoUrbano cidade = BufferCidades[i];
+            int alvo = i == BufferCidades.Count - 1
+                ? residentesParaDistribuir - distribuidos
+                : (int)((long)residentesParaDistribuir * Mathf.Max(0, cidade.capacidadeHabitacional) / capacidadeTotal);
+            alvo = Mathf.Clamp(alvo, 0, Mathf.Max(0, cidade.capacidadeHabitacional));
+            distribuidos += alvo;
+            if (cidade.populacaoResidente == alvo) continue;
+            cidade.populacaoResidente = alvo;
+            cidade.SincronizarEstruturaEconomica();
+        }
+    }
+
+    private static void PrepararBufferCidades(int timeId)
+    {
+        CidadesAtivas.RemoveWhere(cidade => cidade == null || !cidade.isActiveAndEnabled);
+        BufferCidades.Clear();
+        foreach (CidadeComplexoUrbano cidade in CidadesAtivas)
+        {
+            if (cidade != null && cidade.isActiveAndEnabled && cidade.teamId == timeId)
+                BufferCidades.Add(cidade);
+        }
+        BufferCidades.Sort((a, b) => a.GetInstanceID().CompareTo(b.GetInstanceID()));
+    }
+
+    private static void ObterTotaisCidades(int timeId, out int capacidade, out int moradores)
+    {
+        PrepararBufferCidades(timeId);
+        long capacidadeTotal = 0;
+        long moradoresTotal = 0;
+        for (int i = 0; i < BufferCidades.Count; i++)
+        {
+            capacidadeTotal += Mathf.Max(0, BufferCidades[i].capacidadeHabitacional);
+            moradoresTotal += Mathf.Clamp(BufferCidades[i].populacaoResidente, 0, BufferCidades[i].capacidadeHabitacional);
+        }
+        capacidade = (int)Math.Min(int.MaxValue, capacidadeTotal);
+        moradores = (int)Math.Min(int.MaxValue, moradoresTotal);
+    }
+
+    private void RegistrarPopulacaoInicialNaNacao()
+    {
+        ObterTotaisCidades(teamId, out int capacidadeCidades, out int moradoresConfigurados);
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        if (pais != null)
+        {
+            pais.populacaoMaxima = Mathf.Max(pais.populacaoMaxima, capacidadeCidades);
+            int naoCivil = Mathf.Max(0, pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis);
+            int maximoCivil = Mathf.Max(0, pais.populacaoMaxima - naoCivil);
+            pais.populacaoCivil = Mathf.Clamp(Mathf.Max(pais.populacaoCivil, moradoresConfigurados), 0, maximoCivil);
+            pais.populacao = pais.populacaoCivil + naoCivil;
+            SincronizarRecursosDoJogador(pais);
+            SincronizarPopulacaoNacional(teamId, pais.populacaoCivil);
+            return;
+        }
+
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        bool eJogador = governo == null || teamId == governo.teamJogador;
+        if (!eJogador || recursos == null) return;
+
+        recursos.AumentarLimitePopulacao(capacidadeHabitacional);
+        limitePopulacaoAdicionadoRecursos = capacidadeHabitacional;
+        recursos.populacaoAtual = Mathf.Clamp(Mathf.Max(recursos.populacaoAtual, moradoresConfigurados), 0, recursos.populacaoMaxima);
+        SincronizarPopulacaoNacional(teamId, recursos.populacaoAtual);
+    }
+
+    private static void SincronizarRecursosDoJogador(DadosPaisGoverno pais)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if (governo == null || recursos == null || pais == null || pais.teamId != governo.teamJogador) return;
+        recursos.populacaoAtual = pais.populacao;
+        recursos.populacaoMaxima = pais.populacaoMaxima;
+        recursos.NotificarAtualizacao();
+    }
+
+    private int AplicarVariacaoPopulacionalNacional(int delta)
+    {
+        if (delta == 0) return 0;
+        ObterTotaisCidades(teamId, out int capacidadeCidades, out _);
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        if (pais != null)
+        {
+            pais.populacaoMaxima = Mathf.Max(pais.populacaoMaxima, capacidadeCidades);
+            int naoCivil = Mathf.Max(0, pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis);
+            int antes = Mathf.Max(0, pais.populacaoCivil);
+            pais.populacaoCivil = Mathf.Clamp(antes + delta, 0, Mathf.Max(0, pais.populacaoMaxima - naoCivil));
+            pais.populacao = pais.populacaoCivil + naoCivil;
+            SincronizarRecursosDoJogador(pais);
+            return pais.populacaoCivil - antes;
+        }
+
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        bool eJogador = governo == null || teamId == governo.teamJogador;
+        if (eJogador && recursos != null)
+        {
+            int antes = recursos.populacaoAtual;
+            recursos.populacaoAtual = Mathf.Clamp(antes + delta, 0, recursos.populacaoMaxima);
+            recursos.NotificarAtualizacao();
+            return recursos.populacaoAtual - antes;
+        }
+        return delta;
     }
 
     private void GarantirSaude()
@@ -168,7 +295,7 @@ public class CidadeComplexoUrbano : MonoBehaviour
 
     private void ValidarLimites()
     {
-        capacidadeHabitacional = Mathf.Clamp(capacidadeHabitacional, 500000, 1500000);
+        capacidadeHabitacional = Mathf.Clamp(capacidadeHabitacional, 500000, 2000000);
         populacaoResidente = Mathf.Clamp(populacaoResidente, 0, capacidadeHabitacional);
         qualidadeVida = Mathf.Clamp(qualidadeVida, 0, 100);
         proporcaoComercio = 0.5f;
@@ -227,22 +354,11 @@ public class CidadeComplexoUrbano : MonoBehaviour
     public void AlterarPopulacaoResidente(int delta)
     {
         int antes = populacaoResidente;
-        populacaoResidente = Mathf.Clamp(populacaoResidente + delta, 0, capacidadeHabitacional);
-        int variacao = populacaoResidente - antes;
-
-        bool eJogador = SistemaGovernoMundial.Instancia == null || teamId == SistemaGovernoMundial.Instancia.teamJogador;
-        if (eJogador && GerenciadorRecursos.Instancia != null && variacao != 0)
+        int solicitada = Mathf.Clamp(populacaoResidente + delta, 0, capacidadeHabitacional) - antes;
+        if (solicitada != 0)
         {
-            if (variacao > 0)
-            {
-                GerenciadorRecursos.Instancia.AdicionarPopulacao(variacao);
-                populacaoAdicionadaRecursos += variacao;
-            }
-            else
-            {
-                GerenciadorRecursos.Instancia.RemoverPopulacao(-variacao);
-                populacaoAdicionadaRecursos = Mathf.Max(0, populacaoAdicionadaRecursos + variacao);
-            }
+            int variacaoAplicada = AplicarVariacaoPopulacionalNacional(solicitada);
+            populacaoResidente = Mathf.Clamp(antes + variacaoAplicada, 0, capacidadeHabitacional);
         }
 
         SincronizarEstruturaEconomica();
@@ -319,17 +435,15 @@ public class CidadeComplexoUrbano : MonoBehaviour
 
     private void OnDestroy()
     {
-        bool eJogador = SistemaGovernoMundial.Instancia == null || teamId == SistemaGovernoMundial.Instancia.teamJogador;
-        if (eJogador && GerenciadorRecursos.Instancia != null)
+        CidadesAtivas.Remove(this);
+        if (populacaoRegistrada && populacaoResidente > 0)
         {
-            if (limitePopulacaoAdicionado > 0)
-            {
-                GerenciadorRecursos.Instancia.AumentarLimitePopulacao(-limitePopulacaoAdicionado);
-            }
-            if (populacaoAdicionadaRecursos > 0)
-            {
-                GerenciadorRecursos.Instancia.RemoverPopulacao(populacaoAdicionadaRecursos);
-            }
+            AplicarVariacaoPopulacionalNacional(-populacaoResidente);
+            populacaoRegistrada = false;
         }
+
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if (limitePopulacaoAdicionadoRecursos > 0 && recursos != null)
+            recursos.AumentarLimitePopulacao(-limitePopulacaoAdicionadoRecursos);
     }
 }

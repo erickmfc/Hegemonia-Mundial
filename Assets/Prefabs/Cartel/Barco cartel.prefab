@@ -494,6 +494,7 @@ MonoBehaviour:
   antenaRadar: {fileID: 0}
   velocidadeAntena: 60
   modoOperacao: 0
+  modoNavegacao: 0
   somMotorParado: {fileID: 0}
   somMotorMovimento: {fileID: 0}
   possuiTorpedos: 0
@@ -568,6 +569,8 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  pontoRetornoInicial: {x: 0, y: 0, z: 0}
+  possuiPontoRetornoInicial: 0
   dominioControleAtual: 1
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1
@@ -575,7 +578,7 @@ MonoBehaviour:
   bloqueioControleAtivo: 0
   motivoBloqueioControle: 
   bloqueioAdministrativoQuartel: 0
-  motivoBloqueioAdministrativoQuartel:
+  motivoBloqueioAdministrativoQuartel: 
   intervaloEntreTentativasOrdem: 2
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}

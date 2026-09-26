@@ -111,7 +111,10 @@ public sealed class HUDAjudaRTS : MonoBehaviour
             if (painel != null) painel.gameObject.SetActive(false);
             AtualizarVisibilidadePainel(false);
         }
-        else if (usarPainelAjudaLegado && (Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(teclaAlternar) || Input.GetKeyDown(KeyCode.N)))
+        else if (usarPainelAjudaLegado
+            && ((Input.GetKeyDown(KeyCode.F1) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.BarraContextualDisponivel))
+                || Input.GetKeyDown(teclaAlternar)
+                || Input.GetKeyDown(KeyCode.N)))
         {
             if (painel != null && !painel.gameObject.activeSelf)
             {

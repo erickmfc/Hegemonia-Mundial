@@ -46,6 +46,7 @@ namespace Hegemonia.Aeronaves.C17
 
         public EstadoAviaoTransporte EstadoAtual => estadoAtual;
         public Vector3 PontoDestinoNavegacao => destino;
+        public float VelocidadeAtual => Mathf.Max(0f, velocidadeAtual);
         public bool PossuiDestinoValido { get; private set; }
 
         private void Awake()
@@ -202,7 +203,7 @@ namespace Hegemonia.Aeronaves.C17
                 if (minhaOperacao != operacao) yield break;
                 float dt = Mathf.Clamp(Time.deltaTime, 0.001f, 0.05f);
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, alinhado, taxaCurvaSolo * dt);
-                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadePista, aceleracaoPista * dt);
+                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadePista * ObterMultiplicadorVelocidadeComando(), aceleracaoPista * dt);
                 float passo = velocidadeAtual * dt;
                 Vector3 proxima = transform.position + eixoPista * passo;
                 proxima.y = AlturaSoloEm(proxima) + alturaDoSolo;
@@ -270,7 +271,7 @@ namespace Hegemonia.Aeronaves.C17
                 if (direcao.sqrMagnitude < 0.001f) break;
                 Quaternion alvo = Quaternion.LookRotation(direcao.normalized, Vector3.up);
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, alvo, taxaCurvaSolo * dt);
-                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo, aceleracaoPista * dt);
+                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo * ObterMultiplicadorVelocidadeComando(), aceleracaoPista * dt);
                 Vector3 proxima = transform.position + transform.forward * velocidadeAtual * dt;
                 proxima.y = AlturaSoloEm(proxima) + alturaDoSolo;
                 transform.position = proxima;
@@ -289,13 +290,19 @@ namespace Hegemonia.Aeronaves.C17
                 if (horizontal.sqrMagnitude < 0.001f) horizontal = Plano(transform.forward);
                 Quaternion alvo = Quaternion.LookRotation(horizontal.normalized, Vector3.up);
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, alvo, taxaCurvaVoo * dt);
-                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo, aceleracaoPista * dt);
+                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo * ObterMultiplicadorVelocidadeComando(), aceleracaoPista * dt);
                 float vertical = Mathf.Clamp(ponto.y - transform.position.y, -taxaDescida, subindo ? taxaSubida : taxaDescida);
                 Vector3 proxima = transform.position + transform.forward * velocidadeAtual * dt + Vector3.up * vertical * dt;
                 transform.position = proxima;
                 voo.AtualizarVisual(Vector3.SignedAngle(transform.forward, horizontal, Vector3.up), vertical, dt);
                 yield return null;
             }
+        }
+
+        private float ObterMultiplicadorVelocidadeComando()
+        {
+            if (controleUnidade == null) controleUnidade = GetComponent<ControleUnidade>();
+            return controleUnidade != null ? controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
         }
 
         private bool CarregarRotaDecolagem()

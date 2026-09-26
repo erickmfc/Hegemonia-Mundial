@@ -53,7 +53,7 @@ public class MovimentoRealTerrestre : MonoBehaviour
         agente.updatePosition = false;
         
         // Configurações do Agente
-        agente.speed = velocidadeMaxima;
+        agente.speed = ObterVelocidadeMaximaComandoHud();
         agente.acceleration = aceleracao * 2; 
         agente.angularSpeed = 0; // Importante: Desliga giro do agente
 
@@ -67,6 +67,13 @@ public class MovimentoRealTerrestre : MonoBehaviour
         if (agente == null) return;
         AtualizarEstadoOtimizacao();
         AtualizarCacheNavMeshSeNecessario();
+
+        // O agente só calcula o trajeto; este componente move o veículo no
+        // transform. Mantém a velocidade de navegação sincronizada com a
+        // mesma ordem aplicada ao deslocamento físico.
+        float velocidadeMaximaComando = ObterVelocidadeMaximaComandoHud();
+        if (agente.enabled && Mathf.Abs(agente.speed - velocidadeMaximaComando) > 0.01f)
+            agente.speed = velocidadeMaximaComando;
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
@@ -145,7 +152,7 @@ public class MovimentoRealTerrestre : MonoBehaviour
             // --- LÓGICA DE FREIO EM CURVA ---
             // Se o ângulo for agudo (> 10 graus), reduz a velocidade alvo para fazer a curva mais fechada
             float fatorCurva = Mathf.Clamp01(Mathf.Abs(anguloParaAlvo) / 45.0f); // 0 = Reto, 1 = Curva Fechada (>45)
-            float velocidadeAlvo = Mathf.Lerp(velocidadeMaxima, velocidadeMaxima * 0.2f, fatorCurva);
+            float velocidadeAlvo = Mathf.Lerp(velocidadeMaximaComando, velocidadeMaximaComando * 0.2f, fatorCurva);
 
             // A. Acelera / Freia para atingir a velocidade ideal da curva
             velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo, aceleracao * Time.deltaTime);
@@ -156,10 +163,10 @@ public class MovimentoRealTerrestre : MonoBehaviour
             // ou simplesmente impomos um giro mínimo.
             
             // CORREÇÃO: Fator mínimo de 0.8f para garantir giro rápido mesmo parado
-            float fatorGiro = Mathf.Clamp(velocidadeAtual / velocidadeMaxima, 0.8f, 1.2f);
+            float fatorGiro = Mathf.Clamp(velocidadeAtual / Mathf.Max(0.1f, velocidadeMaximaComando), 0.8f, 1.2f);
             
             // Em ângulos extremos e baixa velocidade, aumentamos a potência para evitar o "loop da morte" (Rodinha)
-            if (Mathf.Abs(anguloParaAlvo) > 45f && velocidadeAtual < velocidadeMaxima * 0.5f)
+            if (Mathf.Abs(anguloParaAlvo) > 45f && velocidadeAtual < velocidadeMaximaComando * 0.5f)
             {
                 fatorGiro = 2.0f; // Força giro x2 se estiver lento e precisando virar muito (Pivot Turn)
             }
@@ -186,6 +193,14 @@ public class MovimentoRealTerrestre : MonoBehaviour
         // --- ANIMAÇÃO DAS RODAS ---
         AnimarRodas(velocidadeAtual);
         InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Terra, inicioUpdate);
+    }
+
+    private float ObterVelocidadeMaximaComandoHud()
+    {
+        float multiplicador = controleUnidadeCache != null
+            ? controleUnidadeCache.MultiplicadorVelocidadeComandoHud
+            : 1f;
+        return Mathf.Max(0.1f, velocidadeMaxima * multiplicador);
     }
 
     private void AtualizarEstadoOtimizacao()

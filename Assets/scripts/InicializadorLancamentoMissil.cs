@@ -19,7 +19,8 @@ public static class InicializadorLancamentoMissil
         Transform lancador,
         GameObject dono,
         bool lancamentoSubmerso = false,
-        Vector3 velocidadeInicial = default)
+        Vector3 velocidadeInicial = default,
+        bool usarTorpedo = false)
     {
         if (missil == null)
         {
@@ -28,6 +29,28 @@ public static class InicializadorLancamentoMissil
 
         Vector3 alvoFinal = alvoMovel != null ? alvoMovel.position : destino;
         GameObject donoFinal = dono != null ? dono : (origem != null ? origem.gameObject : null);
+
+        // O missel_sub combina o controlador de míssil submarino com o de
+        // torpedo. O tipo de munição escolhido pelo lançador decide qual
+        // componente assume o projétil antes do primeiro Update.
+        if (usarTorpedo)
+        {
+            Torpedo torpedoHibrido = missil.GetComponent<Torpedo>();
+            if (torpedoHibrido == null)
+            {
+                return false;
+            }
+
+            if (alvoMovel != null) torpedoHibrido.DefinirAlvo(alvoMovel);
+            else torpedoHibrido.DefinirAlvo(destino);
+
+            IdentidadeUnidade identidadeTorpedo = origem != null
+                ? origem.GetComponentInParent<IdentidadeUnidade>()
+                : null;
+            torpedoHibrido.DefinirLancador(lancador, identidadeTorpedo != null ? identidadeTorpedo.teamID : -1);
+            Registrar(missil, origem, alvoFinal, alvoMovel);
+            return true;
+        }
 
         // O componente estratégico configura o próprio tracker durante o
         // lançamento; os demais são registrados no final deste método.
@@ -46,6 +69,14 @@ public static class InicializadorLancamentoMissil
             return true;
         }
 
+        MisselSubmarino submarino = missil.GetComponent<MisselSubmarino>();
+        if (submarino != null)
+        {
+            submarino.IniciarLancamento(alvoFinal, lancamentoSubmerso, alvoMovel);
+            Registrar(missil, origem, alvoFinal, alvoMovel);
+            return true;
+        }
+
         Torpedo torpedo = missil.GetComponent<Torpedo>();
         if (torpedo != null)
         {
@@ -56,14 +87,6 @@ public static class InicializadorLancamentoMissil
                 ? origem.GetComponentInParent<IdentidadeUnidade>()
                 : null;
             torpedo.DefinirLancador(lancador, identidade != null ? identidade.teamID : -1);
-            Registrar(missil, origem, alvoFinal, alvoMovel);
-            return true;
-        }
-
-        MisselSubmarino submarino = missil.GetComponent<MisselSubmarino>();
-        if (submarino != null)
-        {
-            submarino.IniciarLancamento(alvoFinal, lancamentoSubmerso, alvoMovel);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;
         }

@@ -187,7 +187,7 @@ MonoBehaviour:
   altitudeDeVoo: 50
   alturaPouso: 1.33
   velocidadeHelice: 1200
-  velocidadeNavegacao: 45
+  velocidadeNavegacao: 67.5
   velocidadePouso: 4
   velocidadeSubidaVertical: 6.5
   velocidadeDescidaVertical: 5

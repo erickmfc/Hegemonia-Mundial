@@ -227,7 +227,8 @@ public sealed class ControleAviaoAC130 : ControleAviao
             velocidadeOrbita,
             Mathf.Max(35f, velocidadeMaximaVoo * 0.62f),
             Mathf.Max(velocidadeMaximaVoo, 60f));
-        float velocidadeFinal = velocidadeCruzeiro * multiplicadorVelocidadeTurbo * multiplicadorDanos;
+        float velocidadeFinal = velocidadeCruzeiro * multiplicadorVelocidadeTurbo
+            * multiplicadorDanos * MultiplicadorVelocidadeComandoHud;
         float taxaVelocidade = velocidadeFinal >= velocidadeVooAtual ? aceleracaoVoo : desaceleracaoVoo;
         velocidadeVooAtual = Mathf.MoveTowards(velocidadeVooAtual, velocidadeFinal, Mathf.Max(1f, taxaVelocidade) * dt);
 

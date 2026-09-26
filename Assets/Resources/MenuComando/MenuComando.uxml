@@ -6,6 +6,8 @@
 
     <Style src="project://database/Assets/Resources/MenuComando/MenuComando.uss" />
 
+    <ui:VisualElement name="menu-command-host" class="menu-command-host" picking-mode="Ignore">
+
     <ui:VisualElement name="menu-comando-root" class="menu-root" picking-mode="Ignore">
 
         <!-- OVERLAY CRT scanlines -->
@@ -117,7 +119,7 @@
                     </ui:VisualElement>
                     <ui:VisualElement class="stat-row">
                         <ui:Label text="STATUS:" class="stat-lbl" />
-                        <ui:Label name="stat-status" text="—" class="stat-val stat-ok" />
+                        <ui:Label name="stat-status" text="—" class="stat-val stat-ok stat-armas-live" />
                     </ui:VisualElement>
                     <ui:VisualElement class="stat-row">
                         <ui:Label text="POSIÇÃO:" class="stat-lbl" />
@@ -220,12 +222,46 @@
                     </ui:VisualElement>
                 </ui:VisualElement>
 
-                <ui:VisualElement class="ordens-status">
+                <ui:VisualElement class="ordens-status" picking-mode="Ignore">
                     <ui:Label name="ordem-feedback" text="Selecione uma unidade no mapa" class="ordem-feedback mono" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
         </ui:VisualElement>
 
+    </ui:VisualElement>
+
+    <!-- Barra contextual persistente. O menu tático continua sendo aberto pela tecla 1. -->
+    <ui:VisualElement name="barra-comando-contextual" class="barra-comando-contextual" picking-mode="Position">
+        <ui:VisualElement class="contexto-modulos">
+            <ui:VisualElement class="tactical-card identity-card"><ui:VisualElement class="identity-heading"><ui:VisualElement name="hud-country" class="country-flag" tooltip="Bandeira do país da unidade"><ui:VisualElement name="hud-flag-top" class="flag-stripe"/><ui:VisualElement name="hud-flag-middle" class="flag-stripe"/><ui:VisualElement name="hud-flag-bottom" class="flag-stripe"/></ui:VisualElement><ui:VisualElement class="identity-titles"><ui:Label name="contexto-tipo" text="UNIDADE / AGUARDANDO" class="card-title mono"/><ui:Label name="contexto-unidade" text="NENHUMA UNIDADE" class="identity-name mono"/></ui:VisualElement></ui:VisualElement><ui:VisualElement class="identity-info"><ui:VisualElement name="hud-preview" class="unit-preview"/><ui:VisualElement class="identity-meters"><ui:Label name="hud-status" text="SELECT A UNIT" class="status-green mono"/><ui:VisualElement class="vital-row"><ui:Label name="hud-integrity" text="HP  —" class="card-copy mono"/><ui:VisualElement class="meter"><ui:VisualElement name="hud-integrity-fill" class="meter-fill green-fill"/></ui:VisualElement></ui:VisualElement><ui:VisualElement class="vital-row"><ui:Label name="hud-readiness" text="FUEL  —" class="card-copy mono"/><ui:VisualElement class="meter"><ui:VisualElement name="hud-readiness-fill" class="meter-fill cyan-fill"/></ui:VisualElement></ui:VisualElement></ui:VisualElement></ui:VisualElement></ui:VisualElement>
+            <ui:VisualElement class="tactical-card speed-card"><ui:Label name="hud-card-speed" text="VELOCIDADE / RUMO" class="card-title mono"/><ui:Label name="hud-speed" text="VEL  —" class="card-value mono"/><ui:Label name="hud-heading" text="PROA  —" class="card-copy mono"/><ui:VisualElement name="hud-speed-controls" class="hud-speed-controls"><ui:Button name="hud-speed-down" text="− 10%" class="hud-speed-adjust mono"/><ui:Label name="hud-speed-order" text="GRUPO 100%" class="hud-speed-order mono"/><ui:Button name="hud-speed-up" text="+ 10%" class="hud-speed-adjust mono"/></ui:VisualElement><ui:VisualElement name="hud-compass" class="compass"><ui:Label name="hud-compass-n" text="N" class="compass-n mono"/><ui:Label name="hud-compass-arrow" text="▲" class="compass-arrow mono"/><ui:Label name="hud-compass-s" text="S" class="compass-s mono"/></ui:VisualElement></ui:VisualElement>
+            <ui:VisualElement class="tactical-card condition-card"><ui:Label name="hud-card-condition" text="CONDIÇÃO DA UNIDADE" class="card-title mono"/><ui:Label name="hud-condition-label" text="ESTADO" class="card-copy mono"/><ui:Label name="hud-condition" text="—" class="card-value status-green mono"/><ui:Label name="hud-condition-detail" text="SEM DADOS" class="card-copy mono"/><ui:Button name="hud-context-rtb" text="BASE  ↗" class="mini-action mono" tooltip="Retornar aeronave à base."/></ui:VisualElement>
+            <ui:VisualElement name="formation-card" class="tactical-card formation-card"><ui:Label name="hud-card-formation" text="FORMAÇÃO" class="card-title mono"/><ui:Label name="hud-formation-label" text="SELEÇÃO TÁTICA" class="card-copy mono"/><ui:VisualElement class="formation-widget"><ui:Button name="formation-slot-2" text="2" class="formation-slot" tooltip="Membro 2 — clique para torná-lo líder."/><ui:Button name="formation-slot-3" text="3" class="formation-slot" tooltip="Membro 3 — clique para torná-lo líder."/><ui:Button name="formation-slot-1" text="1" class="formation-slot formation-leader" tooltip="Líder da formação."/><ui:Button name="formation-slot-4" text="4" class="formation-slot" tooltip="Membro 4 — clique para torná-lo líder."/><ui:Button name="formation-slot-5" text="5" class="formation-slot" tooltip="Membro 5 — clique para torná-lo líder."/></ui:VisualElement><ui:Label name="hud-formation-hint" text="F3 EDITAR FORMAÇÃO" class="card-copy mono"/></ui:VisualElement>
+            <ui:VisualElement class="tactical-card roe-card"><ui:Label name="hud-card-roe" text="POSTURA / REGRAS DE FOGO" class="card-title mono"/><ui:Button name="hud-roe-hold" text="○  CESSAR FOGO" class="roe-option mono"/><ui:Button name="hud-roe-defensive" text="○  DEFENSIVA" class="roe-option mono"/><ui:Button name="hud-roe-tight" text="○  FOGO RESTRITO" class="roe-option mono"/><ui:Button name="hud-roe-free" text="○  FOGO LIVRE" class="roe-option mono"/></ui:VisualElement>
+            <ui:VisualElement class="tactical-card sensors-card"><ui:Label name="hud-card-sensors" text="SENSORES / EMCON" class="card-title mono"/><ui:Button name="hud-radar" text="◉ RADAR          —" class="system-row mono"/><ui:Label name="hud-sonar" text="◎ SONAR          N/D" class="system-row unavailable mono"/><ui:Label name="hud-esm" text="▥ ESM             N/D" class="system-row unavailable mono"/><ui:Label name="hud-datalink" text="⊕ LINK DE DADOS   N/D" class="system-row unavailable mono"/></ui:VisualElement>
+            <ui:VisualElement class="tactical-card weapons-card"><ui:Label name="hud-card-weapons" text="ARMAMENTO" class="card-title mono"/><ui:Label name="hud-weapon-1" text="—" class="system-row mono"/><ui:Label name="hud-weapon-2" text="—" class="system-row mono"/><ui:Label name="hud-weapon-3" text="—" class="system-row mono"/><ui:Label name="hud-weapon-4" text="—" class="system-row mono"/><ui:Label name="hud-weapon-5" text="—" class="system-row mono"/></ui:VisualElement>
+            <ui:VisualElement class="tactical-card counter-card"><ui:Label name="hud-card-countermeasures" text="CONTRAMEDIDAS" class="card-title mono"/><ui:Label name="hud-counter-1" text="CHAFF            N/D" class="system-row unavailable mono"/><ui:Label name="hud-counter-2" text="ISCA ACÚSTICA    N/D" class="system-row unavailable mono"/><ui:Label name="hud-counter-state" text="SISTEMAS NÃO DETECTADOS" class="card-copy mono"/></ui:VisualElement>
+            <ui:VisualElement class="tactical-card waypoint-card"><ui:Label name="hud-card-waypoints" text="PATRULHA / PONTOS DE ROTA" class="card-title mono"/><ui:Label name="hud-waypoints" text="ROTA NÃO DEFINIDA" class="waypoint-graphic mono"/><ui:Label name="hud-waypoint-detail" text="SEM DESTINO ORDENADO" class="card-value mono"/><ui:Button name="btn-contexto-patrulhar" text="F4  PATRULHA" class="mini-action mono" tooltip="Criar rota no mapa tático."/></ui:VisualElement>
+            <ui:VisualElement class="tactical-card automation-card"><ui:Label name="hud-card-automation" text="IA / AUTOMAÇÃO" class="card-title mono"/><ui:Button name="hud-ai-manual" text="○  MANUAL" class="roe-option mono"/><ui:Button name="hud-ai-assist" text="○  ASSISTÊNCIA" class="roe-option mono"/><ui:Button name="hud-ai-auto" text="○  AUTOMÁTICO" class="roe-option mono"/><ui:Label name="hud-ai-status" text="MODO N/D" class="card-copy mono"/></ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="contexto-quick-row">
+            <ui:Button name="btn-contexto-seguir" text="⌘  SEGUIR   F1" class="quick-action mono" tooltip="Escolher unidade para acompanhar."/>
+            <ui:Button name="quick-escort" text="♟  ESCOLTAR   F2" class="quick-action mono" tooltip="Escolha uma unidade para escoltar a selecionada."/>
+            <ui:Button name="quick-formation" text="✥  EDITAR FORMAÇÃO   F3" class="quick-action mono" tooltip="Ativar ou concluir a edição dos slots da formação."/>
+            <ui:Button name="quick-patrol" text="⌖  PATRULHA   F4" class="quick-action mono" tooltip="Criar rota de patrulha."/>
+            <ui:Button name="quick-intercept" text="◎  INTERCEPTAR   F5" class="quick-action mono" tooltip="Selecionar alvo para interceptar."/>
+            <ui:Button name="quick-damage" text="⚒  CONTROLE DE DANOS   F6" class="quick-action mono" tooltip="Exibir o diagnóstico de integridade da unidade em foco."/>
+            <ui:Button name="quick-camera" text="▣  CÂMERA   F7" class="quick-action mono" tooltip="Centralizar câmera na seleção."/>
+            <ui:Button name="btn-contexto-centro" text="☰" class="utility-action mono" tooltip="Abrir centro tático."/>
+            <ui:Button name="quick-grid" text="▦" class="utility-action mono" tooltip="Aplicar formação em grade às unidades selecionadas."/>
+            <ui:Button name="quick-camera-options" text="▣" class="utility-action mono" tooltip="Alternar câmera de acompanhamento."/>
+            <ui:Button name="btn-hud-fechar" text="×" class="utility-action hud-close-button mono" tooltip="Recolher a barra tática."/>
+        </ui:VisualElement>
+        <ui:Label name="contexto-feedback" text="" class="contexto-feedback mono" />
+    </ui:VisualElement>
+    <ui:VisualElement name="hud-dock-reabrir" class="hud-dock-reabrir" picking-mode="Position">
+        <ui:Button name="btn-hud-reabrir" text="☰  REABRIR HUD TÁTICO" class="hud-restore-button mono" tooltip="Reabrir a barra tática."/>
+    </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

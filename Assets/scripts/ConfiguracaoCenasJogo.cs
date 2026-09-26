@@ -10,8 +10,10 @@ public static class ConfiguracaoCenasJogo
     public const string CenaCampanhaCanonica = "cena19)";
     public const string CaminhoCenaMenuPrincipalCanonica = "Assets/_Recovery/Cena menu P.unity";
     public const string CaminhoCenaCampanhaCanonica = "Assets/_Recovery/cena19).unity";
-    public const string CenaTutorialCanonica = "Md Historia";
-    public const string CaminhoCenaTutorialCanonica = "Assets/_Recovery/Md Historia.unity";
+    public const string CenaEscaramucaCanonica = "Md Historia";
+    public const string CaminhoCenaEscaramucaCanonica = "Assets/_Recovery/Md Historia.unity";
+    public const string CenaTutorialCanonica = "Tutorial";
+    public const string CaminhoCenaTutorialCanonica = "Assets/_Recovery/Tutorial.unity";
 
     public const string CenaAno1Oficial = "Ano1";
     public const string CaminhoCenaAno1Oficial = "Assets/_Recovery/Ano1.unity";
@@ -40,11 +42,18 @@ public static class ConfiguracaoCenasJogo
         CaminhoCenaTutorialCanonica
     };
 
+    private static readonly string[] aliasesEscaramuca =
+    {
+        CenaEscaramucaCanonica,
+        CaminhoCenaEscaramucaCanonica
+    };
+
     private static readonly string[] cenasOficiais =
     {
         CaminhoCenaAno1Oficial,
         CaminhoCenaMenuPrincipalCanonica,
         CaminhoCenaCampanhaCanonica,
+        CaminhoCenaEscaramucaCanonica,
         CaminhoCenaDemo1Oficial,
         CaminhoCenaTutorialCanonica,
         CaminhoCenaTesteOficial
@@ -97,6 +106,11 @@ public static class ConfiguracaoCenasJogo
     public static string ResolverCenaTutorial()
     {
         return ResolverPrimeiraCenaCarregavel(aliasesTutorial);
+    }
+
+    public static string ResolverCenaEscaramuca()
+    {
+        return ResolverPrimeiraCenaCarregavel(aliasesEscaramuca);
     }
 
     public static bool EhCenaOficial(string nomeOuCaminho)

@@ -48,6 +48,7 @@ public class HovercraftTransporte : MonoBehaviour
 
     // ESTADO
     private Rigidbody rb;
+    private ControleUnidade controleUnidade;
     private Vector3 destinoAtual;
     private bool temDestino = false;
     private bool processoEmbarqueAtivo = false;
@@ -77,6 +78,7 @@ public class HovercraftTransporte : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        controleUnidade = GetComponent<ControleUnidade>();
         rb.useGravity = false; rb.isKinematic = false; 
         rb.linearDamping = 1f; 
         rb.angularDamping = 2f; 
@@ -228,6 +230,11 @@ public class HovercraftTransporte : MonoBehaviour
             float velocidadeTravessia = velocidadeMinimaNaCosta * Mathf.Max(impulsoTravessiaAguaTerra, 1f);
             velocidadeAlvo = Mathf.Max(velocidadeAlvo, velocidadeTravessia);
         }
+
+        float multiplicadorComando = controleUnidade != null
+            ? controleUnidade.MultiplicadorVelocidadeComandoHud
+            : 1f;
+        velocidadeAlvo = Mathf.Max(0.1f, velocidadeAlvo * multiplicadorComando);
 
         float taxaAceleracao = Mathf.Clamp(velocidade * 0.08f, 18f, 85f);
         if (subindoPraia)

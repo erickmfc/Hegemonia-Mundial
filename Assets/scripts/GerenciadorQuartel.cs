@@ -23,10 +23,12 @@ public class GerenciadorQuartel : MonoBehaviour
         public Vector3 direcao;
         public float velocidade;
         public string transmissor;
+        public string fonte;
         public Vector3 posicaoTransmissor;
         public string horario;
         public float ultimaAtualizacao;
         public float validadeAte;
+        public float retencaoAte;
         public string estado;
         public bool inimigo;
 
@@ -85,6 +87,7 @@ public class GerenciadorQuartel : MonoBehaviour
         public Vector3 posicao;
         public float idadeSegundos;
         public string origem;
+        public string fonte;
         public bool inimigo;
         public string pais;
         public string horario;
@@ -469,10 +472,12 @@ public class GerenciadorQuartel : MonoBehaviour
         contato.direcao = origem.direcao;
         contato.velocidade = origem.velocidade;
         contato.transmissor = string.IsNullOrWhiteSpace(origem.origemAeronave) ? origem.fonte : origem.origemAeronave;
+        contato.fonte = string.IsNullOrWhiteSpace(origem.fonte) ? "Boeing E-3" : origem.fonte;
         contato.posicaoTransmissor = origem.origemAeronavePosicao;
         contato.horario = string.IsNullOrWhiteSpace(origem.horarioDeteccao) ? DateTime.UtcNow.ToString("O") : origem.horarioDeteccao;
         contato.ultimaAtualizacao = origem.ultimaAtualizacao;
         contato.validadeAte = origem.validadeAte;
+        contato.retencaoAte = origem.retencaoAte;
         contato.estado = string.IsNullOrWhiteSpace(origem.estado) ? "ATIVO" : origem.estado;
         contato.inimigo = origem.inimigo;
         contato.origemE3 = origem;
@@ -482,7 +487,7 @@ public class GerenciadorQuartel : MonoBehaviour
     private void AtualizarCacheContatosMilitares()
     {
         contatosE3Lancamento.Clear();
-        BoeingE3Reconhecimento.CopiarContatosAtivos(teamID, contatosE3Lancamento);
+        BoeingE3Reconhecimento.CopiarContatosMemorizados(teamID, contatosE3Lancamento);
         for (int i = 0; i < contatosE3Lancamento.Count; i++)
         {
             BoeingE3Reconhecimento.ContatoReconhecimento contato = contatosE3Lancamento[i];
@@ -494,7 +499,10 @@ public class GerenciadorQuartel : MonoBehaviour
         for (int i = contatosMilitares.Count - 1; i >= 0; i--)
         {
             ContatoMilitarQuartelV2 contato = contatosMilitares[i];
-            if (contato == null || (contato.validadeAte > 0f && agora > contato.validadeAte))
+            float retencaoAte = contato != null && contato.retencaoAte > 0f
+                ? contato.retencaoAte
+                : contato != null ? contato.validadeAte + 60f : 0f;
+            if (contato == null || (retencaoAte > 0f && agora > retencaoAte))
             {
                 if (contato != null) contatosPorId.Remove(contato.id);
                 contatosMilitares.RemoveAt(i);
@@ -1502,6 +1510,52 @@ public class GerenciadorQuartel : MonoBehaviour
         return true;
     }
 
+    public bool SelecionarLancadorEContato(ControleUnidade controle, string contatoId)
+    {
+        if (controle == null || string.IsNullOrWhiteSpace(contatoId)) return false;
+        AtualizarDadosLancamento(true);
+        UnidadeLancamentoCoordenadoV2 unidade = EncontrarUnidadeDoControle(controle);
+        if (unidade == null || EncontrarContatoMilitar(contatoId) == null) return false;
+
+        LimparSelecaoLancamento();
+        if (!SelecionarUnidadeLancamento(unidade.id, true)) return false;
+        return SelecionarAlvoLancamento(contatoId);
+    }
+
+    public bool TentarLancamentoRemoto(ControleUnidade controle, string contatoId, bool automatico, out string motivo)
+    {
+        motivo = string.Empty;
+        AtualizarDadosLancamento(true);
+        ContatoMilitarQuartelV2 contato = EncontrarContatoMilitar(contatoId);
+        if (controle == null || contato == null || !contato.inimigo)
+        {
+            motivo = "contato E-3 inimigo não encontrado na lista do Quartel";
+            return false;
+        }
+
+        if (automatico && !ContatoE3ValidoParaAutomatico(contato.estado, contato.validadeAte, Time.unscaledTime))
+        {
+            motivo = "disparo automático bloqueado: contato E-3 desatualizado ou perdido";
+            ultimoMotivoLancamento = motivo;
+            return false;
+        }
+
+        if (!SelecionarLancadorEContato(controle, contatoId))
+        {
+            motivo = "navio/submarino não está registrado como lançador compatível no Quartel";
+            return false;
+        }
+
+        ModoLancamentoCoordenadoV2 modoAnterior = modoLancamentoCoordenado;
+        modoLancamentoCoordenado = automatico
+            ? ModoLancamentoCoordenadoV2.Automatico
+            : ModoLancamentoCoordenadoV2.Manual;
+        bool lancou = TryExecutarLancamentoCoordenado(out motivo);
+        modoLancamentoCoordenado = modoAnterior;
+        AtualizarValidacaoLancamentoCoordenado();
+        return lancou;
+    }
+
     public bool DefinirPontoAlvoManual(Vector3 ponto, string origem = "COORDENADAS MANUAIS")
     {
         const string idManual = "quartel-ponto-manual";
@@ -1603,6 +1657,12 @@ public class GerenciadorQuartel : MonoBehaviour
         AtualizarValidacaoLancamentoCoordenado();
     }
 
+    public static bool ContatoE3ValidoParaAutomatico(string estado, float validadeAte, float agora)
+    {
+        return string.Equals(estado, "VALIDO", StringComparison.OrdinalIgnoreCase)
+            && (validadeAte <= 0f || agora <= validadeAte);
+    }
+
     public void AtualizarValidacaoLancamentoCoordenado()
     {
         avaliacoesLancamento.Clear();
@@ -1684,7 +1744,9 @@ public class GerenciadorQuartel : MonoBehaviour
                 continue;
             }
 
-            Transform alvoDinamico = alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy
+            bool contatoE3Valido = string.Equals(alvo.estadoContato, "VALIDO", StringComparison.OrdinalIgnoreCase)
+                && (alvo.validadeAte <= 0f || Time.unscaledTime <= alvo.validadeAte);
+            Transform alvoDinamico = contatoE3Valido && alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy
                 ? alvo.transformAlvo
                 : null;
             string falha;
@@ -1793,6 +1855,7 @@ public class GerenciadorQuartel : MonoBehaviour
             alvo.posicao = contato.posicao;
             alvo.idadeSegundos = Mathf.Max(0f, Time.unscaledTime - contato.ultimaAtualizacao);
             alvo.origem = contato.transmissor;
+            alvo.fonte = contato.fonte;
             alvo.inimigo = contato.inimigo;
             alvo.pais = contato.pais;
             alvo.horario = contato.horario;
@@ -1801,6 +1864,7 @@ public class GerenciadorQuartel : MonoBehaviour
             alvo.velocidade = contato.velocidade;
             alvo.validadeAte = contato.validadeAte;
             alvo.transformAlvo = identidadeAlvo != null ? identidadeAlvo.transform : null;
+            contato.transformAlvo = alvo.transformAlvo;
         }
 
         if (possuiPontoAlvoManual)
@@ -1840,23 +1904,24 @@ public class GerenciadorQuartel : MonoBehaviour
         }
 
         if (modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico
-            && alvo.validadeAte > 0f && Time.unscaledTime > alvo.validadeAte)
+            && !ContatoE3ValidoParaAutomatico(alvo.estadoContato, alvo.validadeAte, Time.unscaledTime))
         {
             motivo = "contato transmitido expirado";
             return false;
         }
 
         if (modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico
-            && (string.IsNullOrWhiteSpace(alvo.origem)
-                || string.Equals(alvo.estadoContato, "EXPIRADO", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(alvo.estadoContato, "PERDIDO", StringComparison.OrdinalIgnoreCase)))
+            && (!ContatoE3ValidoParaAutomatico(alvo.estadoContato, alvo.validadeAte, Time.unscaledTime)
+                || string.IsNullOrWhiteSpace(alvo.fonte)))
         {
-            motivo = "contato sem comunicacao valida";
+            motivo = "contato E-3 não está válido para emprego automático";
             return false;
         }
 
         bool automatico = modoLancamentoCoordenado == ModoLancamentoCoordenadoV2.Automatico;
-        Transform alvoDinamico = alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy ? alvo.transformAlvo : null;
+        bool contatoE3Valido = ContatoE3ValidoParaAutomatico(alvo.estadoContato, alvo.validadeAte, Time.unscaledTime);
+        Transform alvoDinamico = contatoE3Valido && alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy
+            ? alvo.transformAlvo : null;
         if (unidade.submarino != null)
             return unidade.submarino.PodeLancarCoordenado(pontoAlvo, alvoDinamico, automatico, out motivo);
         if (unidade.lancadorNaval != null)
@@ -1902,9 +1967,39 @@ public class GerenciadorQuartel : MonoBehaviour
         return null;
     }
 
+    private ContatoMilitarQuartelV2 EncontrarContatoMilitar(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        for (int i = 0; i < contatosMilitares.Count; i++)
+        {
+            ContatoMilitarQuartelV2 contato = contatosMilitares[i];
+            if (contato != null && string.Equals(contato.id, id, StringComparison.Ordinal)) return contato;
+        }
+        return null;
+    }
+
+    private UnidadeLancamentoCoordenadoV2 EncontrarUnidadeDoControle(ControleUnidade controle)
+    {
+        if (controle == null) return null;
+        for (int i = 0; i < unidadesLancamento.Count; i++)
+        {
+            UnidadeLancamentoCoordenadoV2 unidade = unidadesLancamento[i];
+            if (unidade == null) continue;
+            if (unidade.controle == controle || (unidade.identidade != null
+                && (unidade.identidade.gameObject == controle.gameObject
+                    || unidade.identidade.GetComponentInParent<ControleUnidade>() == controle
+                    || unidade.identidade.GetComponentInChildren<ControleUnidade>(true) == controle)))
+                return unidade;
+        }
+        return null;
+    }
+
     private static Vector3 ObterPontoAlvoLancamento(AlvoLancamentoCoordenadoV2 alvo)
     {
-        if (alvo != null && alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy)
+        if (alvo != null
+            && string.Equals(alvo.estadoContato, "VALIDO", StringComparison.OrdinalIgnoreCase)
+            && (alvo.validadeAte <= 0f || Time.unscaledTime <= alvo.validadeAte)
+            && alvo.transformAlvo != null && alvo.transformAlvo.gameObject.activeInHierarchy)
             return alvo.transformAlvo.position;
         return alvo != null ? alvo.posicao : Vector3.zero;
     }

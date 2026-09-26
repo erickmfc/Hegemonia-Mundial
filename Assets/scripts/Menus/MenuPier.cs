@@ -6,6 +6,7 @@ using Hegemonia.RTS;
 public class MenuPier : MonoBehaviour
 {
     private static int ultimoFrameAtalho = -1;
+    private static MenuPier menuAbertoAtual;
 
     // --- REFERÊNCIAS ---
     [Header("Conexão")]
@@ -22,7 +23,7 @@ public class MenuPier : MonoBehaviour
     // --- VARIÁVEIS INTERNAS ---
     private GameObject painelMestre;
     private bool menuAberto = false;
-    public static bool EstaAberto; // 🔹 STATICO PARA OCULTAR HUD
+    public static bool EstaAberto => menuAbertoAtual != null && menuAbertoAtual.menuAberto;
     
     // Containers para listas dinâmicas
     private Transform listaDocasContainer;
@@ -45,18 +46,11 @@ public class MenuPier : MonoBehaviour
         // de botões acessando transform/vagas de um objeto já destruído.
         if (menuAberto && pierAlvo == null)
         {
-            menuAberto = false;
-            EstaAberto = false;
-            if (painelMestre != null) painelMestre.SetActive(false);
-            tituloContexto = null;
-            listaDocasContainer = null;
-            listaContextoContainer = null;
+            FecharEstadoLocal();
             return;
         }
 
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null &&
-            UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null)
+        if (CampoDeTextoEmEdicao())
         {
             return;
         }
@@ -69,9 +63,48 @@ public class MenuPier : MonoBehaviour
         }
     }
 
+    private void OnDisable()
+    {
+        FecharEstadoLocal();
+    }
+
+    private void OnDestroy()
+    {
+        FecharEstadoLocal();
+        if (painelMestre != null)
+        {
+            Destroy(painelMestre);
+            painelMestre = null;
+        }
+    }
+
+    private void FecharEstadoLocal()
+    {
+        menuAberto = false;
+        if (menuAbertoAtual == this) menuAbertoAtual = null;
+        if (painelMestre != null) painelMestre.SetActive(false);
+        tituloContexto = null;
+        listaDocasContainer = null;
+        listaContextoContainer = null;
+    }
+
+    private static MenuPier EncontrarMenuAtivo()
+    {
+        MenuPier[] menus = Object.FindObjectsByType<MenuPier>(FindObjectsSortMode.None);
+        for (int i = 0; i < menus.Length; i++)
+        {
+            if (menus[i] != null && menus[i].isActiveAndEnabled)
+            {
+                return menus[i];
+            }
+        }
+
+        return null;
+    }
+
     public static bool AlternarPorAtalho(PierMarinha pierPreferido = null)
     {
-        if (QuartelMenuUIController.EntradaGlobalBloqueada)
+        if (QuartelMenuUIController.EntradaGlobalBloqueada || CampoDeTextoEmEdicao())
         {
             return false;
         }
@@ -83,14 +116,21 @@ public class MenuPier : MonoBehaviour
 
         ultimoFrameAtalho = Time.frameCount;
 
-        MenuPier menu = Object.FindFirstObjectByType<MenuPier>();
+        MenuPier menu = menuAbertoAtual;
+        bool jaEstavaAberto = menu != null && menu.menuAberto;
+        if (menu == null || !menu.isActiveAndEnabled)
+        {
+            menu = EncontrarMenuAtivo();
+            jaEstavaAberto = menu != null && menu.menuAberto;
+        }
+
         if (menu == null)
         {
             GameObject go = new GameObject("MenuPier_Auto");
             menu = go.AddComponent<MenuPier>();
         }
 
-        if (pierPreferido != null)
+        if (!jaEstavaAberto && pierPreferido != null)
         {
             menu.pierAlvo = pierPreferido;
         }
@@ -107,10 +147,24 @@ public class MenuPier : MonoBehaviour
         return true;
     }
 
+    private static bool CampoDeTextoEmEdicao()
+    {
+        UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
+        GameObject selecionado = eventSystem != null ? eventSystem.currentSelectedGameObject : null;
+        return selecionado != null
+            && (selecionado.GetComponent<InputField>() != null
+                || selecionado.GetComponent("TMP_InputField") != null);
+    }
+
     // Método chamado por outros scripts (como MenuConstrucao) para fechar este menu
     public void FecharMenu()
     {
-        if (menuAberto)
+        MenuPier menu = menuAbertoAtual;
+        if (menu != null && menu.menuAberto)
+        {
+            menu.AlternarMenu();
+        }
+        else if (menuAberto)
         {
             AlternarMenu();
         }
@@ -139,9 +193,15 @@ public class MenuPier : MonoBehaviour
         // 2. Garante que a UI existe
         if (painelMestre == null) CriarInterfaceDoZero();
 
+        if (!menuAberto && menuAbertoAtual != null && menuAbertoAtual != this)
+        {
+            menuAbertoAtual.AlternarMenu();
+        }
+
         // 3. Alterna visibilidade
         menuAberto = !menuAberto;
-        EstaAberto = menuAberto; // 🔹 Atualiza global
+        if (menuAberto) menuAbertoAtual = this;
+        else if (menuAbertoAtual == this) menuAbertoAtual = null;
         painelMestre.SetActive(menuAberto);
         
         if (debugLogs)
@@ -323,18 +383,20 @@ public class MenuPier : MonoBehaviour
             // Debug para entender o que está acontecendo
             if (debugLogs) Debug.Log($"[MenuPier] Checando navio: '{navio.nomeDoNavio}' ({navio.name}) | Cat: {navio.categoriaNavio} | Atracado: {navio.EstaAtracado} | Dist: {distancia:F1}m");
 
-            // Filtros: Categoria certa + Não está atracado
+            // O raio também limita as opções do menu. Antes ele aparecia no
+            // cabeçalho, mas navios a qualquer distância continuavam listados.
             bool catCheck = (navio.categoriaNavio == categoria);
-            
-            // CORREÇÃO: Aceita qualquer navio compatível, com ou sem NavMeshAgent
-            if (catCheck && !navio.EstaAtracado)
+            bool dentroDoRaio = distancia <= Mathf.Max(0f, pierAlvo.raioDeBusca);
+            if (catCheck && dentroDoRaio && !navio.EstaAtracado)
             {
                 lista.Add(navio);
                 if (debugLogs) Debug.Log($"[MenuPier] --> Navio '{navio.nomeDoNavio}' ACEITO!");
             }
             else
             {
-                string motivo = !catCheck ? "Categoria diferente" : "Já está atracado";
+                string motivo = !catCheck ? "Categoria diferente"
+                    : !dentroDoRaio ? "Fora do raio de busca"
+                    : "Já está atracado";
                 if (debugLogs) Debug.Log($"[MenuPier] --> Navio '{navio.nomeDoNavio}' REJEITADO. Motivo: {motivo}");
             }
         }

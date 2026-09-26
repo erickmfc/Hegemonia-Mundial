@@ -375,6 +375,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             
             AplicarEconomiaImoveis(pais, economia, comercio);
             SistemaPopulacao.Processar(pais, economia);
+            CidadeComplexoUrbano.SincronizarPopulacaoNacional(pais.teamId, pais.populacaoCivil);
             if (cultura.totalEstruturas > 0)
             {
                 float atracaoCultural = Mathf.Clamp01(cultura.atratividadeTuristica / 20f);

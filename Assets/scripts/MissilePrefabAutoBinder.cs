@@ -9,6 +9,8 @@ public static class MissilePrefabAutoBinder
 {
 #if UNITY_EDITOR
     private const string LogPrefix = "[AutoMissil]";
+    private const string PrefabMisselNavalPadrao = "Assets/Prefabs/Navios_Guerra/Efeitos/N-02 Tridente.prefab";
+    private const string PrefabTorpedoNavalPadrao = "Assets/Prefabs/Navios_Guerra/Leviathan/missel_sub.prefab";
 
     public static bool BindLancadorMisseis(LancadorMisseis alvo, bool forcar = false)
     {
@@ -20,12 +22,8 @@ public static class MissilePrefabAutoBinder
     public static bool BindLancadorNaval(LancadorNaval alvo, bool forcar = false)
     {
         bool alterado = false;
-        alterado |= BindIfMissing(alvo, nameof(LancadorNaval.prefabMissel), forcar,
-            typeof(MisselNaval),
-            "naval", "missil", "missile", "navalmissile");
-        alterado |= BindIfMissing(alvo, nameof(LancadorNaval.prefabTorpedo), forcar,
-            typeof(Torpedo),
-            "torpedo", "sub", "underwater");
+        alterado |= BindIfMissingFromPath(alvo, nameof(LancadorNaval.prefabMissel), forcar, PrefabMisselNavalPadrao);
+        alterado |= BindIfMissingFromPath(alvo, nameof(LancadorNaval.prefabTorpedo), forcar, PrefabTorpedoNavalPadrao);
         return alterado;
     }
 
@@ -139,6 +137,73 @@ public static class MissilePrefabAutoBinder
         }
 
         return BindIfMissingImediato(alvo, nomeCampo, forcar, candidatos);
+    }
+
+    private static bool BindIfMissingFromPath(UnityEngine.Object alvo, string nomeCampo, bool forcar, string caminhoPrefab)
+    {
+        if (alvo == null) return false;
+
+        SerializedObject serializedObject = new SerializedObject(alvo);
+        SerializedProperty propriedade = serializedObject.FindProperty(nomeCampo);
+        if (propriedade == null || propriedade.propertyType != SerializedPropertyType.ObjectReference)
+        {
+            return false;
+        }
+
+        if (!forcar && propriedade.objectReferenceValue != null)
+        {
+            return false;
+        }
+
+        // No editor, OnValidate pode chamar esse método durante a importação
+        // do prefab. Adia o carregamento para evitar reentrância do AssetDatabase.
+        if (!Application.isPlaying)
+        {
+            UnityEngine.Object alvoCopia = alvo;
+            string nomeCampoCopia = nomeCampo;
+            string caminhoPrefabCopia = caminhoPrefab;
+            bool forcarCopia = forcar;
+            EditorApplication.delayCall += () =>
+                BindIfMissingFromPathImediato(alvoCopia, nomeCampoCopia, forcarCopia, caminhoPrefabCopia);
+            return false;
+        }
+
+        return BindIfMissingFromPathImediato(alvo, nomeCampo, forcar, caminhoPrefab);
+    }
+
+    private static bool BindIfMissingFromPathImediato(UnityEngine.Object alvo, string nomeCampo, bool forcar, string caminhoPrefab)
+    {
+        if (alvo == null) return false;
+
+        SerializedObject serializedObject = new SerializedObject(alvo);
+        SerializedProperty propriedade = serializedObject.FindProperty(nomeCampo);
+        if (propriedade == null || propriedade.propertyType != SerializedPropertyType.ObjectReference)
+        {
+            return false;
+        }
+
+        if (!forcar && propriedade.objectReferenceValue != null)
+        {
+            return false;
+        }
+
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(caminhoPrefab);
+        if (prefab == null)
+        {
+            Debug.LogWarning($"{LogPrefix} Prefab naval padrão não encontrado: {caminhoPrefab}", alvo);
+            return false;
+        }
+
+        if (propriedade.objectReferenceValue == prefab)
+        {
+            return false;
+        }
+
+        propriedade.objectReferenceValue = prefab;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(alvo);
+        Debug.Log($"{LogPrefix} {alvo.name}: '{nomeCampo}' configurado com '{prefab.name}'.", alvo);
+        return true;
     }
 
     private static bool BindIfMissingImediato(UnityEngine.Object alvo, string nomeCampo, bool forcar, params object[] candidatos)

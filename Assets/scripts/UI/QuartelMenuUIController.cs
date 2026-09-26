@@ -78,6 +78,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
     private readonly Dictionary<string, VisualElement> trajetoriasEstimadasCarta = new Dictionary<string, VisualElement>(StringComparer.Ordinal);
     private readonly Dictionary<string, Button> marcadoresTrajetoriaCarta = new Dictionary<string, Button>(StringComparer.Ordinal);
     private readonly Dictionary<string, Button> botoesContatosLancamento = new Dictionary<string, Button>(StringComparer.Ordinal);
+    private readonly Dictionary<string, Button> botoesAtirarContatoLancamento = new Dictionary<string, Button>(StringComparer.Ordinal);
     private readonly Dictionary<string, VisualElement> linhasUnidadesLancamento = new Dictionary<string, VisualElement>(StringComparer.Ordinal);
     private readonly Dictionary<string, Button> botoesUnidadesLancamento = new Dictionary<string, Button>(StringComparer.Ordinal);
     private readonly Dictionary<string, Button> botoesModoUnidadesLancamento = new Dictionary<string, Button>(StringComparer.Ordinal);
@@ -1000,6 +1001,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             y += 44f;
             y = LinhaTelemetriaCarta(area, y, "ID", contato.id);
             y = LinhaTelemetriaCarta(area, y, "PAIS / TIME", contato.pais);
+            y = LinhaTelemetriaCarta(area, y, "FONTE", contato.fonte + " | " + contato.transmissor);
             y = LinhaTelemetriaCarta(area, y, "TRANSMISSOR", contato.transmissor);
             y = LinhaTelemetriaCarta(area, y, "POSICAO", FormatarPosicao(contato.posicao));
             y = LinhaTelemetriaCarta(area, y, "HORARIO", contato.horario);
@@ -1007,7 +1009,10 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                 ? Mathf.Max(0f, Time.unscaledTime - contato.ultimaAtualizacao)
                 : 0f;
             y = LinhaTelemetriaCarta(area, y, "IDADE", idadeContato.ToString("0.0") + " s");
-            y = LinhaTelemetriaCarta(area, y, "VALIDADE", contato.estado);
+            y = LinhaTelemetriaCarta(area, y, "VALIDADE", contato.estado == "PERDIDO"
+                ? "PERDIDO — posição lembrada para seleção manual"
+                : contato.estado + " | " + Mathf.Max(0f, contato.validadeAte - Time.unscaledTime).ToString("0.0") + " s restantes");
+            y = LinhaTelemetriaCarta(area, y, "DISTÂNCIA AO LANÇADOR", ObterDistanciaLancadorSelecionado(contato.posicao));
         }
         else if (missil != null)
         {
@@ -1677,6 +1682,25 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         Debug.Log($"[QuartelUI] painel aberto: objeto={name}, root={root.name}, documentoAtivo={documento.enabled}, snapshotAeronaves={(snapshot != null ? snapshot.aeronavesNoRaio : 0)}, tamanho={root.resolvedStyle.width:0}x{root.resolvedStyle.height:0}, visibilidade={root.resolvedStyle.visibility}, opacidade={root.resolvedStyle.opacity:0.00}", this);
     }
 
+    public bool LocalizarContatoNaCarta(string contatoId, Vector3 ultimaPosicaoConhecida)
+    {
+        if (quartel == null) quartel = GetComponent<GerenciadorQuartel>();
+        if (quartel == null || EncontrarContatoCarta(contatoId) == null) return false;
+
+        AoSelecionarContatoCarta(contatoId);
+        if (!aberto) Abrir();
+        if (!aberto) return false;
+
+        SelecionarAba(7);
+        GarantirCartaTerrenoRenderer();
+        if (cartaTerrenoRenderer != null)
+        {
+            cartaTerrenoRenderer.SolicitarCentralizacao(ultimaPosicaoConhecida);
+            cartaTerrenoRenderer.MarcarRenderNecessario();
+        }
+        return true;
+    }
+
     public void FecharInterno()
     {
         if (aberto)
@@ -2050,6 +2074,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
         administracao = quartel.ObterAdministracao();
         snapshot = administracao != null ? administracao.ObterSnapshot() : null;
+        if (abaAtual == 7) quartel.AtualizarDadosLancamento();
         GarantirCartaTopograficaView();
         if (cartaTopograficaView != null)
         {
@@ -2059,11 +2084,6 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                 : QuartelCartaTopograficaView.ModoVisualizacao.Topografico2D;
             cartaTopograficaView.Atualizar(quartel.transform, quartel.teamID, raioCarta, abaAtual == 7);
         }
-        if (abaAtual == 7)
-        {
-            quartel.AtualizarDadosLancamento();
-        }
-
         int soldados = quartel.soldadosNoDormitorio != null ? quartel.soldadosNoDormitorio.Count : 0;
         int veiculos = quartel.veiculosNoQuartel != null ? quartel.veiculosNoQuartel.Count : 0;
         metricas.text = $"RESERVA: {soldados} soldados  |  {veiculos} veiculos  |  ATIVOS NACIONAIS: {snapshot?.militaresAtivos ?? 0}  |  UNIDADES NA COBERTURA: {snapshot?.unidadesNoRaio ?? 0}  |  AERONAVES CONECTADAS: {snapshot?.aeronavesNoRaio ?? 0}  |  ARSENAL: {quartel.misseisArmazenados} misseis / {quartel.municaoArmazenada} pacotes  |  COBERTURA: {quartel.raioDeCobertura:0} m";
@@ -2601,6 +2621,10 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
             if (possuiContatos && contatosLancamentoListaPersistente != null)
             {
+                bool possuiLancadorSelecionado = false;
+                for (int j = 0; j < quartel.UnidadesLancamento.Count; j++)
+                    possuiLancadorSelecionado |= quartel.UnidadesLancamento[j] != null && quartel.UnidadesLancamento[j].selecionada;
+
                 for (int i = 0; i < quartel.AlvosLancamento.Count; i++)
                 {
                     GerenciadorQuartel.AlvoLancamentoCoordenadoV2 alvo = quartel.AlvosLancamento[i];
@@ -2619,15 +2643,52 @@ public sealed class QuartelMenuUIController : MonoBehaviour
                         contatosLancamentoListaPersistente.Add(botao);
                     }
                     botao.text = (ativo ? "● " : "○ ") + EncurtarTextoDesigner(alvo.nome, 24) + " | "
-                        + EncurtarTextoDesigner(alvo.tipo, 14) + " | " + EncurtarTextoDesigner(alvo.origem, 14);
+                        + EncurtarTextoDesigner(alvo.tipo, 14) + " | " + EncurtarTextoDesigner(alvo.fonte, 12)
+                        + " | " + alvo.estadoContato + " | " + alvo.idadeSegundos.ToString("0") + " s";
                     botao.style.backgroundColor = ativo ? CorNavegacaoAtivaQuartel : corInativo;
                     botao.style.whiteSpace = WhiteSpace.Normal;
-                    botao.tooltip = "ID " + alvo.id + " | posicao " + FormatarPosicao(alvo.posicao) + " | idade " + alvo.idadeSegundos.ToString("0.0") + " s";
+                    float validadeRestante = Mathf.Max(0f, alvo.validadeAte - Time.unscaledTime);
+                    botao.tooltip = "ID " + alvo.id + " | X/Y/Z " + FormatarPosicao(alvo.posicao)
+                        + " | distancia ao lancador selecionado " + ObterDistanciaLancadorSelecionado(alvo.posicao)
+                        + " | fonte " + alvo.fonte + " / " + alvo.origem
+                        + " | idade " + alvo.idadeSegundos.ToString("0.0") + " s"
+                        + " | validade " + alvo.estadoContato + " (" + validadeRestante.ToString("0.0") + " s)";
                     botao.style.display = DisplayStyle.Flex;
+
+                    Button botaoAtirar;
+                    if (!botoesAtirarContatoLancamento.TryGetValue(idAlvo, out botaoAtirar) || botaoAtirar == null)
+                    {
+                        string idAlvoPersistente = idAlvo;
+                        botaoAtirar = BotaoAcao("▶ ATIRAR COM SELECIONADOS", () =>
+                        {
+                            AoSelecionarContatoCarta(idAlvoPersistente);
+                            ExecutarAtaqueCarta(quartel.ModoLancamentoCoordenado);
+                        });
+                        botaoAtirar.style.minHeight = 28;
+                        botaoAtirar.style.marginBottom = 3;
+                        botoesAtirarContatoLancamento[idAlvo] = botaoAtirar;
+                        contatosLancamentoListaPersistente.Add(botaoAtirar);
+                    }
+                    bool contatoPodeSerDisparado = quartel.ModoLancamentoCoordenado == GerenciadorQuartel.ModoLancamentoCoordenadoV2.Manual
+                        || (alvo.estadoContato == "VALIDO" && Time.unscaledTime <= alvo.validadeAte);
+                    botaoAtirar.SetEnabled(possuiLancadorSelecionado && alvo.inimigo && contatoPodeSerDisparado);
+                    botaoAtirar.text = alvo.estadoContato == "PERDIDO"
+                        ? "▶ ATIRAR NA ÚLTIMA POSIÇÃO"
+                        : "▶ ATIRAR COM LANÇADORES SELECIONADOS";
+                    botaoAtirar.tooltip = !possuiLancadorSelecionado
+                        ? "Selecione pelo menos um lançador antes de disparar."
+                        : !contatoPodeSerDisparado
+                            ? "O automático só autoriza contato E-3 válido."
+                            : "Seleciona este contato e autoriza o disparo sem sair do Quartel.";
                 }
             }
 
             foreach (KeyValuePair<string, Button> par in botoesContatosLancamento)
+            {
+                if (!contatosPresentes.Contains(par.Key) && par.Value != null)
+                    par.Value.style.display = DisplayStyle.None;
+            }
+            foreach (KeyValuePair<string, Button> par in botoesAtirarContatoLancamento)
             {
                 if (!contatosPresentes.Contains(par.Key) && par.Value != null)
                     par.Value.style.display = DisplayStyle.None;
@@ -3879,6 +3940,21 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         return null;
     }
 
+    private string ObterDistanciaLancadorSelecionado(Vector3 posicaoAlvo)
+    {
+        if (quartel == null) return "N/D";
+        float menorDistancia = float.PositiveInfinity;
+        for (int i = 0; i < quartel.UnidadesLancamento.Count; i++)
+        {
+            GerenciadorQuartel.UnidadeLancamentoCoordenadoV2 unidade = quartel.UnidadesLancamento[i];
+            if (unidade == null || !unidade.selecionada) continue;
+            menorDistancia = Mathf.Min(menorDistancia, Vector3.Distance(unidade.posicao, posicaoAlvo));
+        }
+        return float.IsPositiveInfinity(menorDistancia)
+            ? "SEM LANÇADOR SELECIONADO"
+            : menorDistancia.ToString("0") + " m";
+    }
+
     private void AoSelecionarUnidadeCarta(string id, PointerDownEvent evt)
     {
         SelecionarUnidadeCarta(id, evt != null && evt.ctrlKey, evt != null && evt.shiftKey);
@@ -4251,12 +4327,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
             float x = Mathf.Clamp01(local.x / (raio * 2f) + 0.5f) * 100f;
             float y = (1f - Mathf.Clamp01(local.z / (raio * 2f) + 0.5f)) * 100f;
-            BoeingE3Reconhecimento.ContatoReconhecimento contato;
-            bool contatoInimigo = BoeingE3Reconhecimento.TryObterContato(quartel.teamID, identidade.GetInstanceID(), out contato)
-                && contato != null && contato.inimigo;
-            Color cor = contatoInimigo
-                ? new Color(1f, 0.25f, 0.20f)
-                : identidade.tipoUnidade == TipoUnidade.Naval
+            Color cor = identidade.tipoUnidade == TipoUnidade.Naval
                 ? new Color(0.20f, 0.90f, 0.95f)
                 : identidade.tipoUnidade == TipoUnidade.Aereo
                     ? new Color(0.35f, 0.62f, 1f)
@@ -4267,20 +4338,18 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             if (total >= 80) break;
         }
 
-        // Contatos inimigos recebidos pelo E-3 também fazem parte da carta,
-        // mesmo que a unidade ainda não esteja dentro do registro administrativo.
-        for (int i = 0; i < unidadesRegistradas.Count && total < 100; i++)
+        // A Carta consome a mesma lista consolidada pelo Quartel. Assim,
+        // contatos sem alvo visível continuam mostrando a última posição.
+        for (int i = 0; quartel != null && i < quartel.ContatosMilitares.Count && total < 100; i++)
         {
-            IdentidadeUnidade identidade = unidadesRegistradas[i];
-            if (identidade == null || identidade.teamID == quartel.teamID || identidade.teamID <= 0) continue;
-            BoeingE3Reconhecimento.ContatoReconhecimento contato;
-            if (!BoeingE3Reconhecimento.TryObterContato(quartel.teamID, identidade.GetInstanceID(), out contato) || contato == null) continue;
+            GerenciadorQuartel.ContatoMilitarQuartelV2 contato = quartel.ContatosMilitares[i];
+            if (contato == null || !contato.inimigo) continue;
 
-            Vector3 local = transform.InverseTransformPoint(contato.ultimaPosicaoConhecida);
+            Vector3 local = transform.InverseTransformPoint(contato.posicao);
             if (Mathf.Abs(local.x) > raio || Mathf.Abs(local.z) > raio) continue;
             float x = Mathf.Clamp01(local.x / (raio * 2f) + 0.5f) * 100f;
             float y = (1f - Mathf.Clamp01(local.z / (raio * 2f) + 0.5f)) * 100f;
-            carta.Add(Marcador("CONTATO: " + contato.nomeAlvo + " | " + contato.tipo, x, y, new Color(1f, 0.25f, 0.20f), 10));
+            carta.Add(Marcador("CONTATO E-3: " + contato.nome + " | " + contato.estado, x, y, new Color(1f, 0.25f, 0.20f), 10));
             total++;
         }
 

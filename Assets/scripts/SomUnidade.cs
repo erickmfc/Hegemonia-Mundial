@@ -172,6 +172,14 @@ public class SomUnidade : MonoBehaviour
             IniciarSomMotor(true);
         }
         // Se parou e está no modo de som parado
+        else if (!estaMovendo && somMotorTocando
+            && (tipoUnidade == TipoSomUnidade.Aviao || controleAviao != null))
+        {
+            // O clip de parada do aviao representa o desligamento no patio,
+            // nao um som ambiente repetido cada vez que a aeronave reduz.
+            audioSource.Stop();
+            somMotorTocando = false;
+        }
         else if (!estaMovendo && somMotorTocando && somParado != null)
         {
             IniciarSomMotor(false);
@@ -231,6 +239,17 @@ public class SomUnidade : MonoBehaviour
         {
             Debug.Log($"[SomUnidade] 🔊 SOM TOCANDO: {clipParaTocar.name} | Volume: {volumeMotor} | Loop: {loopMotor} | isPlaying: {audioSource.isPlaying}");
         }
+    }
+
+    public void TocarSomDesligamentoNaVaga()
+    {
+        if (somParado == null || audioSourceSecundario == null)
+        {
+            return;
+        }
+
+        audioSourceSecundario.loop = false;
+        audioSourceSecundario.PlayOneShot(somParado, volumeMotor);
     }
 
     void ConfigurarSonsPadrao()

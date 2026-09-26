@@ -18,11 +18,17 @@ MonoBehaviour:
   itemId: 
   aliases: 
   capacidades: 0
-  prefabDaUnidade: {fileID: 8368706832941796259, guid: 3d99a07b6b3f71641982d666684d12c0, type: 3}
+  prefabDaUnidade: {fileID: 8368706832941796259, guid: 703981aae856c3d418d85a89906e2a0a, type: 3}
   preco: 100
   precoDefinitivo: 0
   categoria: 2
   escalaPoder: 3
   strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

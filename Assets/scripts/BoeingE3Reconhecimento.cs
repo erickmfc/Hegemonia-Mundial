@@ -39,6 +39,7 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         public string horarioDeteccao;
         public string estado;
         public float validadeAte;
+        public float retencaoAte;
         public Vector3 direcao;
         public float velocidade;
         public bool inimigo;
@@ -545,7 +546,8 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         contato.ultimaPosicaoConhecida = posicao;
         contato.ultimaAtualizacao = momentoAtual;
         contato.validadeAte = momentoAtual + Mathf.Max(1f, memoriaContato);
-        contato.estado = "ATIVO";
+        contato.retencaoAte = contato.validadeAte + Mathf.Max(60f, memoriaContato * 4f);
+        contato.estado = "VALIDO";
         contato.inimigo = inimigo;
         contato.fonte = fonte;
         contato.origemAeronave = name;
@@ -598,10 +600,19 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         foreach (KeyValuePair<long, ContatoReconhecimento> par in contatosAtivos)
         {
             ContatoReconhecimento contato = par.Value;
-            if (contato == null || (contato.validadeAte > 0f && agora > contato.validadeAte)
-                || (contato.validadeAte <= 0f && agora - contato.ultimaAtualizacao > memoriaContato))
+            if (contato == null)
             {
-                if (contato != null) contato.estado = "EXPIRADO";
+                if (expirados == null) expirados = new List<long>();
+                expirados.Add(par.Key);
+                continue;
+            }
+
+            contato.estado = ObterEstadoContato(contato, agora);
+            float retencaoAte = contato.retencaoAte > 0f
+                ? contato.retencaoAte
+                : contato.validadeAte + Mathf.Max(60f, memoriaContato * 4f);
+            if (contato.estado == "PERDIDO" && agora > retencaoAte)
+            {
                 if (expirados == null) expirados = new List<long>();
                 expirados.Add(par.Key);
             }
@@ -623,6 +634,50 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
 
         contato = null;
         return false;
+    }
+
+    /// <summary>
+    /// Copia os últimos contatos recebidos para as telas de inteligência.
+    /// Um contato perdido permanece disponível como última posição conhecida
+    /// por um período curto para permitir seleção manual, mas não é válido para
+    /// disparo automático.
+    /// </summary>
+    public static void CopiarContatosMemorizados(int equipeObservadora, List<ContatoReconhecimento> destino)
+    {
+        if (destino == null) return;
+        destino.Clear();
+        float agora = Time.unscaledTime;
+        List<long> expirados = null;
+        foreach (KeyValuePair<long, ContatoReconhecimento> par in contatosAtivos)
+        {
+            ContatoReconhecimento contato = par.Value;
+            if (contato == null || contato.equipeObservadora != equipeObservadora) continue;
+            contato.estado = ObterEstadoContato(contato, agora);
+            float retencaoAte = contato.retencaoAte > 0f ? contato.retencaoAte : contato.validadeAte + 60f;
+            if (contato.estado == "PERDIDO" && agora > retencaoAte)
+            {
+                if (expirados == null) expirados = new List<long>();
+                expirados.Add(par.Key);
+                continue;
+            }
+            destino.Add(contato);
+        }
+        if (expirados != null)
+        {
+            for (int i = 0; i < expirados.Count; i++) contatosAtivos.Remove(expirados[i]);
+        }
+    }
+
+    public static string ObterEstadoContato(ContatoReconhecimento contato, float agora)
+    {
+        if (contato == null) return "PERDIDO";
+        if (contato.validadeAte > 0f && agora > contato.validadeAte) return "PERDIDO";
+        if (contato.ultimaAtualizacao > 0f && contato.validadeAte > contato.ultimaAtualizacao)
+        {
+            float vidaContato = contato.validadeAte - contato.ultimaAtualizacao;
+            if (agora - contato.ultimaAtualizacao >= vidaContato * 0.5f) return "DESATUALIZADO";
+        }
+        return "VALIDO";
     }
 
     /// <summary>

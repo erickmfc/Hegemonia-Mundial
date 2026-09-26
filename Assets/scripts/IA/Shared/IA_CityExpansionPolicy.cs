@@ -62,7 +62,8 @@ public static class IA_CityExpansionPolicy
     public static bool IsCityConstruction(DadosConstrucao data)
     {
         if (data == null) return false;
-        if (string.Equals(data.GetStableId(), "urbana.cidade_egito", StringComparison.OrdinalIgnoreCase)) return true;
+        if (string.Equals(data.GetStableId(), "urbana.cidade_egito", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(data.GetStableId(), "urbana.cidade_moderna", StringComparison.OrdinalIgnoreCase)) return true;
         return IsCityPrefab(data.PrefabDaUnidade);
     }
 

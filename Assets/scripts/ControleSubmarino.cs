@@ -111,6 +111,14 @@ public class ControleSubmarino : MonoBehaviour
     private NavMeshAgent agente;
     private float velocidadeOriginal;
     private float velocidadeAtualSimulada = 0f;
+    public float VelocidadeAtual => Mathf.Max(0f, velocidadeAtualSimulada);
+    public float VelocidadeMaxima => Mathf.Max(0.1f, velocidadeOriginal);
+    public void DefinirVelocidadeMaxima(float velocidade)
+    {
+        if (float.IsNaN(velocidade) || float.IsInfinity(velocidade)) return;
+        velocidadeOriginal = Mathf.Max(0.1f, velocidade);
+        if (agente != null) agente.speed = velocidadeOriginal;
+    }
     private float lemeAtual = 0f;
     private Camera cameraPrincipal;
     private float proximoAtaqueIA = 0f;
@@ -135,6 +143,8 @@ public class ControleSubmarino : MonoBehaviour
     private Renderer cristalRenderer;
     private readonly Collider[] bufferAlvos = new Collider[128];
     private readonly List<Transform> alvosAutomaticos = new List<Transform>(32);
+    private readonly List<Transform> alvosAutorizadosJogador = new List<Transform>(8);
+    private bool limitarAutomaticoAAlvosAutorizados;
     private static readonly List<IdentidadeUnidade> unidadesRegistradasRadar = new List<IdentidadeUnidade>(256);
     private static MiniMapa miniMapaCache;
     private static float proximaBuscaMiniMapa;
@@ -310,15 +320,8 @@ public class ControleSubmarino : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.O))
-        {
-            MostrarStatusSubmarino();
-        }
-
-        if (Input.GetKeyDown(KeyCode.I))
-        {
-            CiclarModoOperacao();
-        }
+        // I controla o lançador naval pela raiz da unidade. O abre o painel
+        // comum de combate; o submarino não cria um segundo atalho/status.
     }
 
     private void AtualizarMovimento()
@@ -472,7 +475,7 @@ public class ControleSubmarino : MonoBehaviour
         lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 2f);
         transform.Rotate(Vector3.up, lemeAtual * velocidadeGiroMax * Time.deltaTime);
 
-        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, aceleracao * Time.deltaTime);
+        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, ObterVelocidadeAlvoComando(), aceleracao * Time.deltaTime);
         Vector3 proximaPosicao = transform.position + transform.forward * (velocidadeAtualSimulada * Time.deltaTime);
         proximaPosicao.y = transform.position.y;
         if (NavalPlacementResolver.IsWaterSegment(transform.position, proximaPosicao, 18f))
@@ -623,9 +626,19 @@ public class ControleSubmarino : MonoBehaviour
         }
     }
 
+    public void DefinirAlvosAutorizados(IList<Transform> alvos, bool limitarAutomatico)
+    {
+        alvosAutorizadosJogador.Clear();
+        if (alvos != null)
+            for (int i = 0; i < alvos.Count; i++)
+                if (alvos[i] != null && !alvosAutorizadosJogador.Contains(alvos[i])) alvosAutorizadosJogador.Add(alvos[i]);
+        limitarAutomaticoAAlvosAutorizados = limitarAutomatico;
+    }
+
     /// <summary>Alterna o mesmo ciclo usado pela tecla I e pelo menu tático.</summary>
     public string AlternarEstadoOperacional()
     {
+        if (meuControle != null) return MenuCombateNaval.CiclarModoCombate(meuControle);
         CiclarModoOperacao();
         return modoAtual.ToString().ToUpperInvariant();
     }
@@ -633,7 +646,7 @@ public class ControleSubmarino : MonoBehaviour
     private void MostrarStatusSubmarino()
     {
         Debug.Log(
-            $"[USS Leviathan] STATUS | Modo={modoAtual} | Profundidade={(estaSubmerso ? "SUBMERSO" : "SUPERFICIE")} | Misseis={misseisDisponiveis}/{totalLocaisValidos} | Comandos: I=Modo, O=Status, U=Subir, P=Descer",
+            $"[USS Leviathan] STATUS | Modo={modoAtual} | Profundidade={(estaSubmerso ? "SUBMERSO" : "SUPERFICIE")} | Misseis={misseisDisponiveis}/{totalLocaisValidos} | Combate: O, Subir: U, Descer: P",
             this);
     }
 
@@ -788,7 +801,8 @@ public class ControleSubmarino : MonoBehaviour
 
     private void TentarAtaqueAutomatico()
     {
-        if (Time.time < proximaBuscaAutomatica || !PodeAtacarIA())
+        if ((meuControle != null && !meuControle.ModoCombateAtivo)
+            || Time.time < proximaBuscaAutomatica || !PodeAtacarIA())
         {
             return;
         }
@@ -803,6 +817,7 @@ public class ControleSubmarino : MonoBehaviour
 
     private Transform EncontrarMelhorAlvoAutomatico()
     {
+        if (limitarAutomaticoAAlvosAutorizados && alvosAutorizadosJogador.Count == 0) return null;
         int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 1;
         alvosAutomaticos.Clear();
 
@@ -832,6 +847,7 @@ public class ControleSubmarino : MonoBehaviour
             {
                 continue;
             }
+            if (limitarAutomaticoAAlvosAutorizados && !AlvoEstaAutorizado(alvo)) continue;
 
             int prioridade = ObterPrioridadeAlvo(alvo);
             float distanciaSqr = (alvo.position - transform.position).sqrMagnitude;
@@ -844,6 +860,20 @@ public class ControleSubmarino : MonoBehaviour
         }
 
         return melhorAlvo;
+    }
+
+    private bool AlvoEstaAutorizado(Transform alvo)
+    {
+        if (alvo == null || !alvo.gameObject.activeInHierarchy) return false;
+        SistemaDeDanos vida = ObterSistemaDeDanos(alvo);
+        if (vida != null && vida.vidaAtual <= 0f) return false;
+        if (Vector3.Distance(transform.position, alvo.position) > alcanceMisseis) return false;
+        for (int i = 0; i < alvosAutorizadosJogador.Count; i++)
+        {
+            Transform autorizado = alvosAutorizadosJogador[i];
+            if (autorizado != null && (autorizado == alvo || autorizado.root == alvo.root)) return true;
+        }
+        return false;
     }
 
     private bool TentarRegistrarAlvoAutomatico(Transform candidato, int meuTime)
@@ -1438,7 +1468,9 @@ public class ControleSubmarino : MonoBehaviour
 
     public bool PodeAtacarIA()
     {
-        return misseisDisponiveis > 0 && Time.time >= proximoAtaqueIA;
+        return (meuControle == null || meuControle.ModoCombateAtivo)
+            && modoAtual == ModoOperacao.Automatico
+            && misseisDisponiveis > 0 && Time.time >= proximoAtaqueIA;
     }
 
     public bool EmModoManualDisparo()
@@ -1618,7 +1650,7 @@ public class ControleSubmarino : MonoBehaviour
         float lemeAlvo = Mathf.Clamp(angulo / 30.0f, -1f, 1f);
         lemeAtual = Mathf.MoveTowards(lemeAtual, lemeAlvo, Time.deltaTime * 2.0f);
 
-        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, velocidadeOriginal, Time.deltaTime * aceleracao);
+        velocidadeAtualSimulada = Mathf.MoveTowards(velocidadeAtualSimulada, ObterVelocidadeAlvoComando(), Time.deltaTime * aceleracao);
 
         float fluxoAgua = Mathf.Abs(velocidadeAtualSimulada) + 2f;
         float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f);
@@ -1627,6 +1659,12 @@ public class ControleSubmarino : MonoBehaviour
         transform.Rotate(0f, giroReal, 0f);
 
         agente.velocity = transform.forward * velocidadeAtualSimulada;
+    }
+
+    private float ObterVelocidadeAlvoComando()
+    {
+        float multiplicador = meuControle != null ? meuControle.MultiplicadorVelocidadeComandoHud : 1f;
+        return Mathf.Max(0.1f, velocidadeOriginal * multiplicador);
     }
 
     private void AtualizarInclinacaoNavio()

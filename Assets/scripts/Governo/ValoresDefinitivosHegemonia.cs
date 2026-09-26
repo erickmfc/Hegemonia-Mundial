@@ -205,6 +205,7 @@ public static class ValoresDefinitivosHegemonia
             { "plataforma de petroleo", 2000000000L }, { "usina nuclear", 9000000000L },
             { "usina termica pequena", 300000000L }, { "usina termica grande", 1200000000L },
             { "usina hidreletrica", 4000000000L }, { "usina solar", 180000000L },
+            { "cidade moderna nova metropole", 6000000000L }, { "urbana cidade moderna", 6000000000L },
             { "casa", 250000L }, { "predio medio", 180000000L }, { "predio medio residencial", 180000000L }, { "vilage medio", 400000000L },
             { "predio hard", 1200000000L }, { "fronteira", 120000000L }, { "prefeitura", 300000000L },
             { "base militar pequena", 450000000L }, { "base militar media", 1200000000L },

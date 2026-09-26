@@ -256,7 +256,7 @@ MonoBehaviour:
   helicopterosDoAeroporto: []
   prefabDroneKamikaze: {fileID: 0}
   precoDroneKamikaze: 1500
-  prefabSu11: {fileID: 0}
+  prefabSu11: {fileID: 2470324322742162747, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
   precoSu11: 2500
   prefabMarcadorPatrulhaAviao: {fileID: 100100000, guid: 34dfcaa6bb3c3cd4da2080dc3fac234b, type: 3}
   prefabMarcadorBombardeiro: {fileID: 100100000, guid: 8df1e45cda2d3fe408e1644747052e0e, type: 3}

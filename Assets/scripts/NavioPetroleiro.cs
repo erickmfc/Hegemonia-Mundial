@@ -54,6 +54,11 @@ public class NavioPetroleiro : ControleUnidade
     private bool fallbackAquaticoAtivo;
     private bool avisoFallbackAquaticoEmitido;
 
+    private float AplicarMultiplicadorComandoHud(float velocidadeBase)
+    {
+        return Mathf.Max(0f, velocidadeBase) * MultiplicadorVelocidadeComandoHud;
+    }
+
     // Alvos
     public PlataformaOffshore plataformaAlvo;
     public PierMarinha pierAlvo;
@@ -325,7 +330,7 @@ public class NavioPetroleiro : ControleUnidade
              Vector3 destino = pontoDeSaidaEstaleiro.Value;
              destino.y = transform.position.y;
              
-             transform.position = Vector3.MoveTowards(transform.position, destino, velocidade * Time.deltaTime);
+             transform.position = Vector3.MoveTowards(transform.position, destino, AplicarMultiplicadorComandoHud(velocidade) * Time.deltaTime);
              
              Vector3 dir = pontoDeSaidaEstaleiro.Value - transform.position;
              dir.y = 0; 
@@ -333,7 +338,7 @@ public class NavioPetroleiro : ControleUnidade
         }
         else
         {
-            transform.Translate(Vector3.back * velocidade * Time.deltaTime);
+            transform.Translate(Vector3.back * AplicarMultiplicadorComandoHud(velocidade) * Time.deltaTime);
         }
 
         Vector3 euler = transform.rotation.eulerAngles;
@@ -358,7 +363,7 @@ public class NavioPetroleiro : ControleUnidade
         Vector3 destino = pierAlvo.saida_petro.position;
         destino.y = transform.position.y;
 
-        transform.position = Vector3.MoveTowards(transform.position, destino, velocidadeManobra * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(transform.position, destino, AplicarMultiplicadorComandoHud(velocidadeManobra) * Time.deltaTime);
         transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
 
         Debug.DrawLine(transform.position, destino, Color.yellow);
@@ -427,7 +432,7 @@ public class NavioPetroleiro : ControleUnidade
         }
 
         float velocidade = Mathf.Max(velocidadeManobra, 8f);
-        transform.position = Vector3.MoveTowards(transform.position, destino, velocidade * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(transform.position, destino, AplicarMultiplicadorComandoHud(velocidade) * Time.deltaTime);
         if (delta.sqrMagnitude > 0.01f)
         {
             Quaternion rotacao = Quaternion.LookRotation(delta.normalized, Vector3.up);
@@ -470,7 +475,7 @@ public class NavioPetroleiro : ControleUnidade
             float velocidade = distancia < 8f
                 ? Mathf.Lerp(2f, velocidadeAcoplagem, distancia / 8f)
                 : velocidadeAcoplagem;
-            transform.position = Vector3.MoveTowards(transform.position, destino, Mathf.Max(1f, velocidade) * deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, destino, AplicarMultiplicadorComandoHud(Mathf.Max(1f, velocidade)) * deltaTime);
         }
 
         // Do not snap the hull through its final turn or start unloading while
@@ -501,7 +506,7 @@ public class NavioPetroleiro : ControleUnidade
         if (distancia > 3.5f)
         {
             float velocidade = Mathf.Max(1f, velocidadeManobra);
-            transform.position = Vector3.MoveTowards(transform.position, destino, velocidade * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, destino, AplicarMultiplicadorComandoHud(velocidade) * Time.deltaTime);
             if (delta.sqrMagnitude > 0.01f)
             {
                 Quaternion rotacao = Quaternion.LookRotation(delta.normalized, Vector3.up);
@@ -521,7 +526,7 @@ public class NavioPetroleiro : ControleUnidade
          destino.y = transform.position.y;
          
          // Usa a mesma velocidade rápida para sair
-         transform.position = Vector3.MoveTowards(transform.position, destino, velocidadeAcoplagem * Time.deltaTime);
+         transform.position = Vector3.MoveTowards(transform.position, destino, AplicarMultiplicadorComandoHud(velocidadeAcoplagem) * Time.deltaTime);
          
          Vector3 dir = alvoSaida.position - transform.position;
          dir.y = 0; 

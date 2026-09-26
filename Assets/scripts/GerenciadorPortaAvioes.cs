@@ -619,6 +619,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
         }
 
+        if (_menuCarrierAtivo && _controleUnidade != null)
+            MenuCombateNaval.ProcessarInputIntegrado(_controleUnidade);
+
         // ==========================================
         // 3. SISTEMA DE CLIQUE NO NAVIO (OPCIONAL)
         // ==========================================
@@ -942,6 +945,11 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         }
         GUILayout.EndHorizontal();
         GUILayout.Space(2);
+
+        // O menu de combate naval compartilha este painel existente. Assim,
+        // o O do porta-aviões abre uma única interface operacional.
+        MenuCombateNaval.DesenharPainelIntegrado(_controleUnidade);
+        GUILayout.Space(4);
 
         GerenciadorOperacoesPortaAvioesV2 operacoesMenu = ObterOperacoesV2();
         if (!somenteHelicopteros && operacoesMenu != null && operacoesMenu.usarSistemaOperacoesV2)

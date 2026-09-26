@@ -17,6 +17,17 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual bool EhAviaoMilitar => true;
 
+    public float AltitudeMinimaVooEfetiva
+    {
+        get
+        {
+            ControleDroneHasaf drone = GetComponent<ControleDroneHasaf>();
+            return drone != null
+                ? Mathf.Clamp(drone.altitudeMinimaVoo, 0f, AltitudeMinimaVooMilitar)
+                : AltitudeMinimaVooMilitar;
+        }
+    }
+
     public enum EstadoAviao { ReservaHangar, Taxiando, ProntoNoPatio, Decolando, EmMissao, Pousando, RetornandoPraVaga }
     
     [Header("=== ESTADO ATUAL ===")]
@@ -24,12 +35,23 @@ public class ControleAviao : MonoBehaviour
 
     public void DefinirEstado(EstadoAviao novoEstado)
     {
+        EstadoAviao estadoAnterior = estadoAtual;
         estadoAtual = novoEstado;
         bool motorLigado = novoEstado != EstadoAviao.ReservaHangar && novoEstado != EstadoAviao.ProntoNoPatio;
         AudioRuntime.DefinirMotorAereo(gameObject, motorLigado);
         if (novoEstado == EstadoAviao.ProntoNoPatio)
         {
-            AbaixarRodas();
+            AbaixarRodas(true);
+            if (vagaRetorno != null
+                && (estadoAnterior == EstadoAviao.Pousando || estadoAnterior == EstadoAviao.RetornandoPraVaga))
+            {
+                SomUnidade som = GetComponentInChildren<SomUnidade>(true);
+                if (som != null) som.TocarSomDesligamentoNaVaga();
+            }
+        }
+        else if (novoEstado == EstadoAviao.Pousando && aeroportoOrigem is GerenciadorPortaAvioes)
+        {
+            PrepararRodasParaPousoNoPortaAvioes();
         }
 
         // O aeroporto pode terminar o taxiamento em um frame diferente do
@@ -82,6 +104,7 @@ public class ControleAviao : MonoBehaviour
     public List<Transform> rodas;
     private List<Quaternion> rotacoesOriginaisRodas = new List<Quaternion>();
     private bool rodasRecolhidas = false;
+    private Coroutine rotinaRecolherRodas;
 
     // Cache por tipo de aeronave: evita varrer toda a hierarquia em TODO spawn.
     private static readonly Dictionary<string, string[]> CacheCaminhosRodasPorPrefab = new Dictionary<string, string[]>();
@@ -139,6 +162,15 @@ public class ControleAviao : MonoBehaviour
         }
 
         return _controleUnidade;
+    }
+
+    protected float MultiplicadorVelocidadeComandoHud
+    {
+        get
+        {
+            ControleUnidade controle = ObterControleUnidadeAtual();
+            return controle != null ? controle.MultiplicadorVelocidadeComandoHud : 1f;
+        }
     }
 
     protected virtual void Start()
@@ -238,7 +270,7 @@ public class ControleAviao : MonoBehaviour
     {
         if (EhAviaoMilitar)
         {
-            altitudeVoo = Mathf.Max(AltitudeMinimaVooMilitar, altitudeVoo);
+            altitudeVoo = Mathf.Max(AltitudeMinimaVooEfetiva, altitudeVoo);
         }
     }
 
@@ -489,7 +521,8 @@ public class ControleAviao : MonoBehaviour
             }
         }
 
-        float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * multiplicadorPatrulha) * multDano;
+        float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * multiplicadorPatrulha)
+            * multDano * MultiplicadorVelocidadeComandoHud;
         if (estadoAtual == EstadoAviao.Pousando)
         {
             velFinal = LimitarVelocidadeAproximacao(velFinal);
@@ -1095,7 +1128,7 @@ public class ControleAviao : MonoBehaviour
             destino = rotaPatrulhaSalva[0];
         }
 
-        float altitudeSegura = Mathf.Max(altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+        float altitudeSegura = Mathf.Max(altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
         destino.y = Mathf.Max(destino.y, altitudeSegura);
         alvoGPSVoo = destino;
         centroDaPatrulha = destino;
@@ -1113,7 +1146,7 @@ public class ControleAviao : MonoBehaviour
 
     private IEnumerator RotinaMissaoAposLancamentoCarrier(bool emPatrulha)
     {
-        StartCoroutine(RecolherRodas(0.75f));
+        rotinaRecolherRodas = StartCoroutine(RecolherRodas(0.75f));
         float instanteChegadaMissaoDireta = -1f;
 
         while (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno)
@@ -1125,7 +1158,7 @@ public class ControleAviao : MonoBehaviour
             if (patrulhaAtiva && rotaPatrulhaSalva.Count > 0)
             {
                 Vector3 proximoPonto = rotaPatrulhaSalva[indiceRetanguloPatrulha % rotaPatrulhaSalva.Count];
-                proximoPonto.y = Mathf.Max(proximoPonto.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+                proximoPonto.y = Mathf.Max(proximoPonto.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
                 alvoGPSVoo = proximoPonto;
                 centroDaPatrulha = proximoPonto;
 
@@ -1140,7 +1173,7 @@ public class ControleAviao : MonoBehaviour
             else
             {
                 Vector3 objetivo = centroDaPatrulha;
-                objetivo.y = Mathf.Max(objetivo.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+                objetivo.y = Mathf.Max(objetivo.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
                 alvoGPSVoo = objetivo;
 
                 Vector3 diferenca = transform.position - objetivo;
@@ -1189,7 +1222,7 @@ public class ControleAviao : MonoBehaviour
             if (radial.sqrMagnitude < 1f) radial = carrier.transform.forward;
             radial = Quaternion.AngleAxis(30f, Vector3.up) * radial.normalized;
             alvoGPSVoo = centro + radial * Mathf.Max(600f, raioOrbitaMissao);
-            alvoGPSVoo.y = Mathf.Max(centro.y + altitudeVoo, AltitudeMinimaVooMilitar);
+            alvoGPSVoo.y = Mathf.Max(centro.y + altitudeVoo, AltitudeMinimaVooEfetiva);
             yield return intervaloFila;
             if (carrier != null && carrier.SolicitarPousoOperacionalV2(this)) yield break;
         }
@@ -1200,7 +1233,7 @@ public class ControleAviao : MonoBehaviour
         if (carrier != null)
         {
             Vector3 aproximacao = ObterPontoAproximacaoDaBase(carrier);
-            aproximacao.y = Mathf.Max(transform.position.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+            aproximacao.y = Mathf.Max(transform.position.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
             alvoGPSVoo = aproximacao;
 
             while (estadoAtual == EstadoAviao.EmMissao)
@@ -1589,7 +1622,7 @@ public class ControleAviao : MonoBehaviour
 
     private Vector3 NormalizarDestinoDeVoo(Vector3 destino)
     {
-        destino.y = Mathf.Max(destino.y, Mathf.Max(altitudeVoo, AltitudeMinimaVooMilitar));
+        destino.y = Mathf.Max(destino.y, Mathf.Max(altitudeVoo, AltitudeMinimaVooEfetiva));
         return destino;
     }
 
@@ -1633,6 +1666,11 @@ public class ControleAviao : MonoBehaviour
         if (aeroportoOrigem == null || !BasePodeReceberRetorno(aeroportoOrigem))
         {
             aeroportoOrigem = baseRetorno;
+        }
+
+        if (aeroportoOrigem is GerenciadorPortaAvioes)
+        {
+            PrepararRodasParaPousoNoPortaAvioes();
         }
 
         if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando)
@@ -1842,7 +1880,7 @@ public class ControleAviao : MonoBehaviour
         for (int i = 0; i < rotaNormalizada.Count; i++)
         {
             Vector3 ponto = rotaNormalizada[i];
-            ponto.y = Mathf.Max(ponto.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+            ponto.y = Mathf.Max(ponto.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
             rotaPatrulhaSalva.Add(ponto);
         }
 
@@ -1868,7 +1906,7 @@ public class ControleAviao : MonoBehaviour
         }
 
         Vector3 primeiro = rota[0];
-        primeiro.y = Mathf.Max(primeiro.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+        primeiro.y = Mathf.Max(primeiro.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
         Vector3 longitudinal;
         if (rota.Count >= 2)
         {
@@ -1903,7 +1941,7 @@ public class ControleAviao : MonoBehaviour
         if (rota.Count == 2)
         {
             Vector3 segundo = rota[1];
-            segundo.y = Mathf.Max(segundo.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+            segundo.y = Mathf.Max(segundo.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
             float meioLargura = Mathf.Clamp(Vector3.Distance(primeiro, segundo) * 0.28f, 140f, 500f);
             resultado.Add(primeiro - lateral * meioLargura);
             resultado.Add(segundo - lateral * meioLargura);
@@ -1933,7 +1971,7 @@ public class ControleAviao : MonoBehaviour
 
     public virtual void AtualizarDestinoPatrulha(Vector3 destino)
     {
-        destino.y = Mathf.Max(destino.y, altitudeVoo, AltitudeMinimaVooMilitar, 60f);
+        destino.y = Mathf.Max(destino.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
 
         centroDaPatrulha = destino;
         alvoGPSVoo = destino;
@@ -2250,6 +2288,12 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual List<Transform> ObterWaypointsTaxiEntrada()
     {
+        if (aeroportoOrigem != null)
+        {
+            List<Transform> rotaBaseMilitar = aeroportoOrigem.ObterWaypointsTaxiDecolagem();
+            if (rotaBaseMilitar != null) return rotaBaseMilitar;
+        }
+
         return new List<Transform>();
     }
 
@@ -2347,9 +2391,9 @@ public class ControleAviao : MonoBehaviour
         transform.SetParent(null, true);
         estaEmModoVooFisico = true;
         DefinirEstado(EstadoAviao.EmMissao);
-        alvoGPSVoo.y = Mathf.Max(alvoGPSVoo.y, altitudeVoo, AltitudeMinimaVooMilitar);
+        alvoGPSVoo.y = Mathf.Max(alvoGPSVoo.y, altitudeVoo, AltitudeMinimaVooEfetiva);
         centroDaPatrulha = alvoGPSVoo;
-        StartCoroutine(RecolherRodas(1f));
+        rotinaRecolherRodas = StartCoroutine(RecolherRodas(1f));
 
         // Voa até o centro da patrulha
         float margemChegadaSqr = Mathf.Max(20f, margemChegadaMissao) * Mathf.Max(20f, margemChegadaMissao);
@@ -2400,7 +2444,7 @@ public class ControleAviao : MonoBehaviour
                 if (rotaPatrulhaSalva.Count > 0)
                 {
                     Vector3 pontoRota = rotaPatrulhaSalva[indiceRetanguloPatrulha % rotaPatrulhaSalva.Count];
-                    pontoRota.y = Mathf.Max(pontoRota.y, altitudeVoo, AltitudeMinimaVooMilitar);
+                    pontoRota.y = Mathf.Max(pontoRota.y, altitudeVoo, AltitudeMinimaVooEfetiva);
                     alvoGPSVoo = pontoRota;
 
                     Vector3 diferencaRota = transform.position - pontoRota;
@@ -2429,7 +2473,7 @@ public class ControleAviao : MonoBehaviour
 
                 Vector3 centroAtualizado = centroDaPatrulha + offsetPatrulha;
                 float raio = Mathf.Max(280f, raioOrbitaMissao * 7f);
-                float baseY = Mathf.Max(centroAtualizado.y, altitudeVoo, AltitudeMinimaVooMilitar);
+                float baseY = Mathf.Max(centroAtualizado.y, altitudeVoo, AltitudeMinimaVooEfetiva);
 
                 if (centroAtualizado != ultimoCentroPatrulha || raio != ultimoRaio)
                 {
@@ -2446,7 +2490,7 @@ public class ControleAviao : MonoBehaviour
                         pontosRetangulo[i].y = Mathf.Max(
                             baseY + ((i % 2 == 0) ? 30f : -15f),
                             altitudeVoo,
-                            AltitudeMinimaVooMilitar);
+                            AltitudeMinimaVooEfetiva);
                     }
                 }
 
@@ -2778,7 +2822,11 @@ public class ControleAviao : MonoBehaviour
     protected IEnumerator RecolherRodas(float delay)
     {
         yield return new WaitForSeconds(delay);
-        if (rodasRecolhidas) yield break;
+        if (estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.RetornandoPraVaga || rodasRecolhidas)
+        {
+            rotinaRecolherRodas = null;
+            yield break;
+        }
         rodasRecolhidas = true;
         float t = 0;
         while (t < 1f)
@@ -2793,11 +2841,12 @@ public class ControleAviao : MonoBehaviour
         }
         for (int i = 0, count = rodas.Count; i < count; i++)
             if (rodas[i] != null) rodas[i].gameObject.SetActive(false);
+        rotinaRecolherRodas = null;
     }
 
-    protected void AbaixarRodas()
+    protected void AbaixarRodas(bool forcar = false)
     {
-        if (!rodasRecolhidas) return;
+        if (!forcar && !rodasRecolhidas) return;
         rodasRecolhidas = false;
         for (int i = 0, count = rodas.Count; i < count; i++)
         {
@@ -2807,6 +2856,18 @@ public class ControleAviao : MonoBehaviour
                 rodas[i].localRotation = rotacoesOriginaisRodas[i]; 
             }
         }
+    }
+
+    private void PrepararRodasParaPousoNoPortaAvioes()
+    {
+        if (rotinaRecolherRodas != null)
+        {
+            StopCoroutine(rotinaRecolherRodas);
+            rotinaRecolherRodas = null;
+        }
+
+        // Corrige tambem o caso em que o recolhimento ainda estava animando.
+        AbaixarRodas(true);
     }
 
     public void ForcarAtaqueMergulho(Vector3 direcaoRetoAtaque)

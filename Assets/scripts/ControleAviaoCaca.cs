@@ -287,7 +287,7 @@ public class ControleAviaoCaca : MonoBehaviour
                 break;
                 
             case EstadoVoo.Pousando:
-                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeTaxi, dt * 0.2f);
+                velocidadeAtual = Mathf.Lerp(velocidadeAtual, velocidadeTaxi * ObterMultiplicadorVelocidadeComando(), dt * 0.2f);
                 ControlarEfeitosMotor(false);
                 if (alturaDoChao < 2f)
                 {
@@ -300,15 +300,17 @@ public class ControleAviaoCaca : MonoBehaviour
 
     private float ObterVelocidadeAlvoVoo()
     {
+        float multiplicadorComando = ObterMultiplicadorVelocidadeComando();
+        float velocidadeMinimaSegura = Mathf.Max(velocidadeTaxi * 2.5f, 0.1f);
         if (Time.time < _tempoBoostDefensivoAte)
         {
-            return velocidadeAtaque;
+            return Mathf.Max(velocidadeMinimaSegura, velocidadeAtaque * multiplicadorComando);
         }
 
         bool emCombate = (_sistemaTiro != null && !_sistemaTiro.modoPassivo);
         if (emCombate)
         {
-            return velocidadeAtaque;
+            return Mathf.Max(velocidadeMinimaSegura, velocidadeAtaque * multiplicadorComando);
         }
 
         if (temDestino)
@@ -316,11 +318,17 @@ public class ControleAviaoCaca : MonoBehaviour
             float distDestino = Vector3.Distance(transform.position, destinoAtual);
             if (distDestino > distanciaTransicaoCruzeiro)
             {
-                return velocidadeAtaque;
+                return Mathf.Max(velocidadeMinimaSegura, velocidadeAtaque * multiplicadorComando);
             }
         }
 
-        return velocidadeCruzeiro;
+        return Mathf.Max(velocidadeMinimaSegura, velocidadeCruzeiro * multiplicadorComando);
+    }
+
+    private float ObterMultiplicadorVelocidadeComando()
+    {
+        if (_controleUnidade == null) _controleUnidade = GetComponent<ControleUnidade>();
+        return _controleUnidade != null ? _controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
     }
 
     private void RegistrarDanoRecebido()

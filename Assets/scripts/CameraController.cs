@@ -94,9 +94,8 @@ public class CameraController : MonoBehaviour
             return;
         }
         
-        bool menusAbertos = QuartelMenuUIController.EntradaGlobalBloqueada
+        bool outrosMenusAbertos = QuartelMenuUIController.EntradaGlobalBloqueada
             || MenuConstrucao.EstaAberto
-            || MenuPier.EstaAberto
             || Fazenda.QualquerFazendaAberta
             || (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto);
 
@@ -140,7 +139,10 @@ public class CameraController : MonoBehaviour
 
         // --- 2. Movimento (W, A, S, D) Relativo à Câmera ---
         // Pegamos a direção "frente" e "direita" da câmera, mas zeramos o Y para não voar para o chão/céu
-        bool podeMoverCamera = !menusAbertos && unidadeSeguindo == null;
+        // O menu do Pier e uma janela operacional, nao deve congelar a
+        // navegacao do mapa. Mantem a camera em pan/zoom, respeitando o mouse
+        // sobre a UI; os outros menus continuam modais.
+        bool podeMoverCamera = !outrosMenusAbertos && unidadeSeguindo == null;
         bool moverW = podeMoverCamera && Input.GetKey(KeyCode.W);
         bool moverS = podeMoverCamera && Input.GetKey(KeyCode.S);
         bool moverD = podeMoverCamera && Input.GetKey(KeyCode.D);
@@ -165,7 +167,7 @@ public class CameraController : MonoBehaviour
         float zoomInput = 0f;
         
         // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
-        if (!menusAbertos)
+        if (!outrosMenusAbertos)
         {
             UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
             bool mouseEmCimaDeUI = eventSystem != null && eventSystem.IsPointerOverGameObject();
@@ -175,7 +177,7 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        if (!menusAbertos)
+        if (!outrosMenusAbertos)
         {
             // Teclas + e - (Teclado) com atalhos espelhados em Espaço/Ctrl.
             if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals))
@@ -229,7 +231,7 @@ public class CameraController : MonoBehaviour
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
-        bool podeRotacionar = !menusAbertos && unidadeSeguindo == null;
+        bool podeRotacionar = !outrosMenusAbertos && unidadeSeguindo == null;
         InteractionModeSnapshot snapshotInteracao = InteractionModeService.CurrentSnapshot();
         if (snapshotInteracao.Policy.bloqueiaRotacaoCamera)
         {
@@ -238,7 +240,9 @@ public class CameraController : MonoBehaviour
 
         if (podeRotacionar)
         {
-            if (!BloquearRotacaoPorMiraManual() && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
+            UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
+            bool mouseEmCimaDeUI = eventSystem != null && eventSystem.IsPointerOverGameObject();
+            if (!mouseEmCimaDeUI && !BloquearRotacaoPorMiraManual() && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
             {
                 // Mouse X gira a câmera no eixo Y global (olhar para lados)
                 float rotX = Input.GetAxis("Mouse X") * velocidadeRotacao * Time.deltaTime * 2f; // *2f para sensibilidade
@@ -300,16 +304,10 @@ public class CameraController : MonoBehaviour
 
         Vector3 posicaoAlvo = unidadeSeguindo.position;
         Vector3 posicaoAnterior = transform.position;
-        Vector3 posicaoCamera = transform.position;
-        posicaoCamera.x = posicaoAlvo.x;
-        posicaoCamera.y += posicaoAlvo.y - ultimaPosicaoUnidadeSeguida.y;
-        posicaoCamera.z = posicaoAlvo.z;
-        transform.position = posicaoCamera;
-        Vector3 direcaoAlvo = posicaoAlvo - transform.position;
-        if (direcaoAlvo.sqrMagnitude > 0.01f)
-        {
-            OrientarParaAlvo(direcaoAlvo.normalized);
-        }
+        // Acompanha pelo deslocamento da unidade, mantendo o offset e a
+        // rotação atuais da câmera. Centralizar X/Z no alvo colocava a câmera
+        // diretamente sobre ele e mirar de novo criava a vista de cima.
+        transform.position += posicaoAlvo - ultimaPosicaoUnidadeSeguida;
 
         ultimaPosicaoUnidadeSeguida = posicaoAlvo;
         if (transform.position != posicaoAnterior)
@@ -351,7 +349,6 @@ public class CameraController : MonoBehaviour
             }
 
             unidadeSeguindo = unidade.transform;
-            FocarEm(unidadeSeguindo.position);
             ultimaPosicaoUnidadeSeguida = unidadeSeguindo.position;
             return;
         }

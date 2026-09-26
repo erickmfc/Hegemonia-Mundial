@@ -143,7 +143,7 @@ MonoBehaviour:
   altitudeDeVoo: 25
   alturaPouso: 1.33
   velocidadeHelice: 1200
-  velocidadeNavegacao: 130
+  velocidadeNavegacao: 195
   velocidadePouso: 5
   velocidadeSubidaVertical: 6.5
   velocidadeDescidaVertical: 5
@@ -164,7 +164,7 @@ MonoBehaviour:
   flares: []
   helicePrincipal: {fileID: 1877185062494023285}
   heliceTraseira: {fileID: 0}
-  eixoRotacaoHeliceTraseira: 0
+  eixoRotacaoHeliceTraseira: 1
   usarRotacaoHorizontalNaHeliceTraseira: 0
   audioMotor: {fileID: 0}
   pitchMinimo: 0.5
@@ -452,7 +452,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4891509878042841652}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.012587418, y: 0.7588332, z: 0.014672474, w: 0.650998}
+  m_LocalRotation: {x: -0.00036688242, y: -0.9996331, z: -0.019328479, w: -0.018974394}
   m_LocalPosition: {x: 0, y: 5.6, z: 0}
   m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
   m_ConstrainProportionsScale: 0
@@ -484,7 +484,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 10100, guid: 0000000000000000e000000000000000, type: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

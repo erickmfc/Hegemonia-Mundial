@@ -323,7 +323,9 @@ public class MenuConstrucao : MonoBehaviour
         GarantirComerciosNoCatalogo();
         GarantirPrefeituraNoCatalogo();
         GarantirNaviosNovosNoCatalogo();
+        GarantirF16BNoCatalogo();
         GarantirCidadeEgitoNoCatalogo();
+        GarantirCidadeModernaNoCatalogo();
         GarantirEconomiaAvancadaNoCatalogo();
 
         List<DadosConstrucao> catalogoDaCena = new List<DadosConstrucao>();
@@ -482,6 +484,54 @@ public class MenuConstrucao : MonoBehaviour
     }
 
     /// <summary>
+    /// Mantem a metropole moderna disponivel no menu do jogador nas cenas
+    /// antigas, usando a mesma ficha que os fluxos de expansao das IAs.
+    /// </summary>
+    private void GarantirCidadeModernaNoCatalogo()
+    {
+        DadosConstrucao cidade = Resources.Load<DadosConstrucao>("Construcoes/CidadeModerna");
+        if (cidade == null || catalogo.Contains(cidade))
+        {
+            return;
+        }
+
+        GameObject prefabCidade;
+        bool temPrefabCidade = cidade.TryGetPrefabBasico(out prefabCidade);
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao existente = catalogo[i];
+            if (existente == null)
+            {
+                continue;
+            }
+
+            if (string.Equals(existente.GetStableId(), cidade.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            GameObject prefabExistente;
+            if (temPrefabCidade
+                && existente.TryGetPrefabBasico(out prefabExistente)
+                && prefabExistente == prefabCidade)
+            {
+                return;
+            }
+        }
+
+        if (!temPrefabCidade || prefabCidade == null)
+        {
+            return;
+        }
+
+        catalogo.Add(cidade);
+        if (!quantidadesPorItem.ContainsKey(cidade.NomeItem))
+        {
+            quantidadesPorItem.Add(cidade.NomeItem, 1);
+        }
+    }
+
+    /// <summary>
     /// Food Industry e a usina nuclear são fichas comuns às duas IAs e ao
     /// jogador. Os prefabs continuam sendo os existentes; a ficha acrescenta
     /// apenas o perfil de produção/manutenção.
@@ -556,6 +606,7 @@ public class MenuConstrucao : MonoBehaviour
         {
             "Construcoes/F200",
             "Construcoes/F201",
+            "Construcoes/DS_Liberal",
             "Construcoes/Ministral",
             "Construcoes/C700",
             "Construcoes/UH60GuardaCosteira",
@@ -608,6 +659,50 @@ public class MenuConstrucao : MonoBehaviour
             {
                 quantidadesPorItem.Add(ficha.NomeItem, 1);
             }
+        }
+    }
+
+    /// <summary>
+    /// Mantem o F16B disponivel nos menus de construcao de todas as cenas,
+    /// inclusive aquelas com catalogos serializados mais antigos.
+    /// </summary>
+    private void GarantirF16BNoCatalogo()
+    {
+        DadosConstrucao ficha = Resources.Load<DadosConstrucao>("Construcoes/F16B");
+        if (ficha == null)
+        {
+            return;
+        }
+
+        GameObject prefabFicha;
+        bool temPrefabFicha = ficha.TryGetPrefabBasico(out prefabFicha);
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao existente = catalogo[i];
+            if (existente == null)
+            {
+                continue;
+            }
+
+            if (existente == ficha
+                || string.Equals(existente.GetStableId(), ficha.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            GameObject prefabExistente;
+            if (temPrefabFicha
+                && existente.TryGetPrefabBasico(out prefabExistente)
+                && prefabExistente == prefabFicha)
+            {
+                return;
+            }
+        }
+
+        catalogo.Add(ficha);
+        if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+        {
+            quantidadesPorItem.Add(ficha.NomeItem, 1);
         }
     }
 
@@ -2611,6 +2706,51 @@ public class MenuConstrucao : MonoBehaviour
     Font ObterFontePadrao()
     {
         return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+    }
+
+    public Sprite ObterIconeCatalogoUnidade(GameObject unidade)
+    {
+        if (unidade == null) return null;
+
+        List<DadosConstrucao> itens = catalogo != null && catalogo.Count > 0
+            ? catalogo
+            : catalogoGlobal;
+        if (itens == null) return null;
+
+        string nomeUnidade = unidade.name.Replace("(Clone)", string.Empty).Trim();
+        int indiceCloneNumerico = nomeUnidade.LastIndexOf(" (", System.StringComparison.Ordinal);
+        if (indiceCloneNumerico >= 0 && nomeUnidade.EndsWith(")", System.StringComparison.Ordinal))
+            nomeUnidade = nomeUnidade.Substring(0, indiceCloneNumerico).Trim();
+        string nomeUnidadeNormalizado = NormalizarTextoBuscaIcone(nomeUnidade);
+        if (string.IsNullOrEmpty(nomeUnidadeNormalizado)) return null;
+
+        for (int i = 0; i < itens.Count; i++)
+        {
+            DadosConstrucao item = itens[i];
+            if (item == null || item.PrefabDaUnidade == null) continue;
+
+            string nomePrefab = NormalizarTextoBuscaIcone(item.PrefabDaUnidade.name);
+            string nomeItem = NormalizarTextoBuscaIcone(item.GetDisplayName());
+            if (nomeUnidadeNormalizado == nomePrefab || nomeUnidadeNormalizado == nomeItem)
+                return ObterIconeItem(item);
+        }
+
+        for (int i = 0; i < itens.Count; i++)
+        {
+            DadosConstrucao item = itens[i];
+            if (item == null || item.PrefabDaUnidade == null) continue;
+
+            string nomePrefab = NormalizarTextoBuscaIcone(item.PrefabDaUnidade.name);
+            string nomeItem = NormalizarTextoBuscaIcone(item.GetDisplayName());
+            bool mesmoPrefab = nomePrefab.Length >= 6 && nomeUnidadeNormalizado.Length >= 6
+                && (nomeUnidadeNormalizado.Contains(nomePrefab) || nomePrefab.Contains(nomeUnidadeNormalizado));
+            bool mesmoNome = nomeItem.Length >= 6 && nomeUnidadeNormalizado.Length >= 6
+                && (nomeUnidadeNormalizado.Contains(nomeItem) || nomeItem.Contains(nomeUnidadeNormalizado));
+            if (mesmoPrefab || mesmoNome)
+                return ObterIconeItem(item);
+        }
+
+        return null;
     }
 
     Sprite ObterIconeItem(DadosConstrucao item)

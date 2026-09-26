@@ -77,7 +77,12 @@ public sealed class NavalCommandPlayModeTests
                 yield return null;
 
             Assert.Greater(submarino.transform.position.z, 15f, "O submarino recebeu a ordem, mas não a seguiu pela água.");
-            Assert.IsTrue((bool)ReadProperty(controle, "TemDestinoAtivo"));
+            Vector3 destino = new Vector3(0f, 0f, 28f);
+            Assert.That(
+                (bool)ReadProperty(controle, "TemDestinoAtivo")
+                || Vector3.Distance(submarino.transform.position, destino) <= 4.5f,
+                Is.True,
+                "O submarino deve continuar seguindo a rota ou já ter chegado ao destino.");
         }
         finally
         {
@@ -118,6 +123,7 @@ public sealed class NavalCommandPlayModeTests
         GameObject island = new GameObject("IlhaSolida");
         BoxCollider islandCollider = island.AddComponent<BoxCollider>();
         islandCollider.size = new Vector3(130f, 8f, 230f);
+        island.transform.position = new Vector3(0f, water.transform.position.y + 5f, 0f);
         try
         {
             yield return new WaitForFixedUpdate();
@@ -168,6 +174,10 @@ public sealed class NavalCommandPlayModeTests
     private static GameObject CriarAgua()
     {
         GameObject agua = new GameObject("Agua");
+        // As PlayMode suites carregam cena19 antes destes testes. Eleva o mar
+        // sintético acima do terreno dessa cena para que as coordenadas do
+        // teste representem água, mantendo a ilha acima da superfície.
+        agua.transform.position = new Vector3(0f, 500f, 0f);
         BoxCollider colisor = agua.AddComponent<BoxCollider>();
         colisor.center = new Vector3(0f, -0.5f, 0f);
         colisor.size = new Vector3(600f, 1f, 600f);

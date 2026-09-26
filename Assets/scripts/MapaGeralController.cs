@@ -706,6 +706,7 @@ public class MapaGeralController : MonoBehaviour
         DesenharTerritorioInimigo();
         DesenharIconesNoMapa();
         DesenharDisparosNoMapa();
+        DesenharOrigensMisseisNoMapa();
         GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
     }
 
@@ -905,6 +906,37 @@ public class MapaGeralController : MonoBehaviour
             Projetil projetil = _projeteisAtivos[i];
             if (projetil == null || projetil.GetComponent<MissileThreatTracker>() != null) continue;
             DesenharRastroCombate(projetil.transform.position, projetil.transform.forward, CorDoDisparo(projetil.TeamDono), false);
+        }
+    }
+
+    private void DesenharOrigensMisseisNoMapa()
+    {
+        if (cameraMapa == null || Event.current.type != EventType.Repaint) return;
+
+        IReadOnlyList<CartaCombateRegistro.EventoCombate> eventos = CartaCombateRegistro.Eventos;
+        float agora = Time.unscaledTime;
+        for (int i = 0; i < eventos.Count; i++)
+        {
+            CartaCombateRegistro.EventoCombate evento = eventos[i];
+            if (evento == null || evento.tipo != "LANÇAMENTO"
+                || evento.equipeAtacante <= 0 || evento.equipeAtacante == meuTeamID)
+                continue;
+
+            float idade = agora - evento.momento;
+            if (idade < 0f || idade > 120f) continue;
+
+            Vector3 tela = cameraMapa.WorldToScreenPoint(evento.posicao);
+            if (tela.z <= 0f) continue;
+            float sx = tela.x;
+            float sy = Screen.height - tela.y;
+            if (sx < -90f || sx > Screen.width + 20f || sy < -20f || sy > Screen.height + 20f) continue;
+
+            DesenharIcone(sx, sy, 12f, 12f, new Color(1f, 0.05f, 0.02f, 1f));
+            GUI.color = new Color(1f, 0.45f, 0.25f, 1f);
+            GUI.Label(new Rect(sx + 9f, sy - 9f, 160f, 20f),
+                "ORIGEM MÍSSIL  " + evento.posicao.x.ToString("0") + ", " + evento.posicao.z.ToString("0"),
+                _legendaMapaStyle);
+            GUI.color = Color.white;
         }
     }
 

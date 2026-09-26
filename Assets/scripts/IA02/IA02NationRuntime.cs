@@ -1584,7 +1584,12 @@ namespace Hegemonia.AI.IA02
             PublishBuildNeed(board, now, profile, IA02IntentType.BuildStorage, stage, posture, structures, threatened, atWar, DeveConstruirArmazenamento(), "Reserva e armazenamento");
             PublishBuildNeed(board, now, profile, IA02IntentType.BuildLogistics, stage, posture, structures, threatened, atWar, structures < 6 || stage >= IA02NationStage.UrbanDevelopment, "Acesso e logistica");
             PublishBuildNeed(board, now, profile, IA02IntentType.BuildIndustry, stage, posture, structures, threatened, atWar, structures >= 5 && stage >= IA02NationStage.Industrialization, "Base industrial");
-            bool shouldPublishDefense = threatened
+            bool aresUnlockDue = IA_AntiAirPurchasePolicy.IsAvailable(context.TeamId, IA_AntiAirPurchasePolicy.GetCurrentDay())
+                && (controller == null || controller.Manager == null || controller.Manager.WorldRegistry == null
+                    || controller.Manager.WorldRegistry.CountStructuresByStrategicRole(context.TeamId, IA02StrategicRole.AntiAirDefense)
+                        < IA_AntiAirPurchasePolicy.MaximumPerTeam);
+            bool shouldPublishDefense = aresUnlockDue
+                || threatened
                 || atWar
                 || (stage != IA02NationStage.Recovering
                     && posture != IA02NationPosture.Recovery
@@ -1870,6 +1875,7 @@ namespace Hegemonia.AI.IA02
     public sealed class IA02BuildCatalogAdapter
     {
         private static readonly List<DadosConstrucao> EmptyCatalog = new List<DadosConstrucao>(0);
+        private static readonly int[] AresUnlockedDaysByTeam = new int[8];
         private readonly DadosConstrucao explicitCapital;
         private readonly IA02BuildPlan buildPlan;
         private readonly List<DadosConstrucao> cachedCatalog = new List<DadosConstrucao>(128);
@@ -2024,6 +2030,22 @@ namespace Hegemonia.AI.IA02
             intentQueryCount++;
             ResetDiagnostic();
             EnsureIndex();
+            if (intent == IA02IntentType.BuildDefense)
+            {
+                int teamId = country != null ? country.teamId : 1;
+                int slot = Mathf.Clamp(teamId, 1, AresUnlockedDaysByTeam.Length) - 1;
+                int currentDay = IA_AntiAirPurchasePolicy.GetCurrentDay();
+                if (IA_AntiAirPurchasePolicy.IsAvailable(teamId, currentDay)
+                    && currentDay > AresUnlockedDaysByTeam[slot])
+                {
+                    AresUnlockedDaysByTeam[slot] = currentDay;
+                    if (TryGetAresDefinition(out definition))
+                    {
+                        MarkExact("Ares antiaereo liberado por data", definition);
+                        return true;
+                    }
+                }
+            }
             if (IsForcedOpeningIntent(intent) && TryGetForcedOpeningDefinition(intent, out definition))
             {
                 MarkExact("BuildPlan abertura", definition);
@@ -2032,7 +2054,7 @@ namespace Hegemonia.AI.IA02
 
             if (IsEgyptCityResidentialIntent(intent) && TryGetEgyptCityDefinition(out definition))
             {
-                MarkExact("cidade Egito residencial", definition);
+                MarkExact("CidadeModerna residencial (Egito mantido como fallback)", definition);
                 return true;
             }
 
@@ -2047,6 +2069,11 @@ namespace Hegemonia.AI.IA02
                     continue;
                 }
 
+                if (IA_AntiAirPurchasePolicy.IsAres(candidate.Item)
+                    && !IA_AntiAirPurchasePolicy.IsAvailable(country != null ? country.teamId : 1, IA_AntiAirPurchasePolicy.GetCurrentDay()))
+                {
+                    continue;
+                }
                 if (!allowFoundationBudgetOverride && country != null && candidate.Cost > country.saldo)
                 {
                     continue;
@@ -2075,6 +2102,25 @@ namespace Hegemonia.AI.IA02
             LastDiagnostic = cachedCatalog.Count == 0
                 ? "NoValidCatalogItem: catalogo vazio para " + intent + "."
                 : "NoValidCatalogItem: catalogo sem item compatível para " + intent + ".";
+            return false;
+        }
+
+        private bool TryGetAresDefinition(out IA02BuildDefinition definition)
+        {
+            EnsureIndex();
+            for (int i = 0; i < cachedDefinitions.Count; i++)
+            {
+                IA02BuildDefinition candidate = cachedDefinitions[i];
+                if (candidate == null || !IA_AntiAirPurchasePolicy.IsAres(candidate.Item)) continue;
+                candidate.StrategicRole = IA02StrategicRole.AntiAirDefense;
+                candidate.IsFixedDefense = true;
+                candidate.MinimumStage = IA02NationStage.Initialization;
+                candidate.MaximumRecommendedCount = IA_AntiAirPurchasePolicy.MaximumPerTeam;
+                definition = candidate;
+                return true;
+            }
+
+            definition = null;
             return false;
         }
 
@@ -2216,19 +2262,27 @@ namespace Hegemonia.AI.IA02
 
         private bool TryGetEgyptCityDefinition(out IA02BuildDefinition definition)
         {
+            if (TryGetCityDefinition("urbana.cidade_moderna", out definition)) return true;
+            return TryGetCityDefinition("urbana.cidade_egito", out definition);
+        }
+
+        private bool TryGetCityDefinition(string itemId, out IA02BuildDefinition definition)
+        {
             definition = null;
             for (int i = 0; i < cachedDefinitions.Count; i++)
             {
                 IA02BuildDefinition candidate = cachedDefinitions[i];
                 if (candidate == null || candidate.Item == null) continue;
-                if (!string.Equals(candidate.ItemId, "urbana.cidade_egito", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!string.Equals(candidate.ItemId, itemId, StringComparison.OrdinalIgnoreCase)) continue;
                 candidate.Archetype = IA02BuildArchetype.Residential;
                 candidate.Domain = IA02BuildDomain.Land;
                 candidate.StrategicRole = IA02StrategicRole.Residential;
                 candidate.MinimumStage = IA02NationStage.Initialization;
                 candidate.MinimumTreasury = 0;
                 candidate.MaximumRecommendedCount = 1;
-                candidate.CatalogResolution = "Cidade Egito pré-definida no create";
+                candidate.CatalogResolution = string.Equals(itemId, "urbana.cidade_moderna", StringComparison.OrdinalIgnoreCase)
+                    ? "CidadeModerna pre-definida no Create"
+                    : "Cidade Egito legada usada como fallback";
                 definition = candidate;
                 return true;
             }
@@ -2313,6 +2367,13 @@ namespace Hegemonia.AI.IA02
                 || definition.StrategicRole == IA02StrategicRole.AntiAirDefense
                 || definition.StrategicRole == IA02StrategicRole.CoastalDefense;
             definition.MaximumRecommendedCount = ResolveMaximumRecommendedCount(definition.StrategicRole);
+            if (IA_AntiAirPurchasePolicy.IsAres(item))
+            {
+                definition.MinimumStage = IA02NationStage.Initialization;
+                definition.MaximumRecommendedCount = IA_AntiAirPurchasePolicy.MaximumPerTeam;
+                definition.StrategicRole = IA02StrategicRole.AntiAirDefense;
+                definition.IsFixedDefense = true;
+            }
             return definition.StrategicRole != IA02StrategicRole.None || definition.IsStructure;
         }
 
@@ -2449,6 +2510,12 @@ namespace Hegemonia.AI.IA02
             }
 
             definition.StrategicRole = ResolveStrategicRole(definition, item);
+            if (IA_AntiAirPurchasePolicy.IsAres(item))
+            {
+                definition.StrategicRole = IA02StrategicRole.AntiAirDefense;
+                definition.MinimumStage = IA02NationStage.Initialization;
+                definition.MaximumRecommendedCount = IA_AntiAirPurchasePolicy.MaximumPerTeam;
+            }
             definition.MinimumStage = ResolveMinimumStage(definition.StrategicRole);
             definition.MinimumTreasury = Mathf.Max(0, definition.Cost);
             definition.RequiresPower = definition.StrategicRole == IA02StrategicRole.EnergyProduction;
@@ -2694,7 +2761,7 @@ namespace Hegemonia.AI.IA02
             switch (intent)
             {
                 case IA02IntentType.BuildDefense:
-                    return definition.IsFixedDefense;
+                    return definition.IsFixedDefense || definition.StrategicRole == IA02StrategicRole.AntiAirDefense;
                 case IA02IntentType.BuildEnergy:
                     return definition.StrategicRole == IA02StrategicRole.EnergyProduction;
                 case IA02IntentType.BuildFoodProduction:
@@ -2799,6 +2866,7 @@ namespace Hegemonia.AI.IA02
             if (MenuConstrucao.catalogoGlobal != null && MenuConstrucao.catalogoGlobal.Count > 0)
             {
                 GarantirCidadeEgitoNoCatalogo(MenuConstrucao.catalogoGlobal);
+                GarantirAresNoCatalogo(MenuConstrucao.catalogoGlobal);
                 GarantirEconomiaAvancadaNoCatalogo(MenuConstrucao.catalogoGlobal);
                 return MenuConstrucao.catalogoGlobal;
             }
@@ -2806,6 +2874,7 @@ namespace Hegemonia.AI.IA02
             if (menu != null && menu.catalogo != null && menu.catalogo.Count > 0)
             {
                 GarantirCidadeEgitoNoCatalogo(menu.catalogo);
+                GarantirAresNoCatalogo(menu.catalogo);
                 GarantirEconomiaAvancadaNoCatalogo(menu.catalogo);
                 return menu.catalogo;
             }
@@ -2814,13 +2883,17 @@ namespace Hegemonia.AI.IA02
             if (MenuConstrucao.catalogoGlobal != null && MenuConstrucao.catalogoGlobal.Count > 0)
             {
                 GarantirCidadeEgitoNoCatalogo(MenuConstrucao.catalogoGlobal);
+                GarantirAresNoCatalogo(MenuConstrucao.catalogoGlobal);
                 GarantirEconomiaAvancadaNoCatalogo(MenuConstrucao.catalogoGlobal);
                 return MenuConstrucao.catalogoGlobal;
             }
 
+            DadosConstrucao cidadeModerna = Resources.Load<DadosConstrucao>("Construcoes/CidadeModerna");
             DadosConstrucao cidade = Resources.Load<DadosConstrucao>("Construcoes/Egito");
             List<DadosConstrucao> fallback = new List<DadosConstrucao>();
+            if (cidadeModerna != null && cidadeModerna.TryGetPrefabBasico(out GameObject prefabModerna) && prefabModerna != null) fallback.Add(cidadeModerna);
             if (cidade != null && cidade.TryGetPrefabBasico(out GameObject prefab) && prefab != null) fallback.Add(cidade);
+            GarantirAresNoCatalogo(fallback);
             GarantirEconomiaAvancadaNoCatalogo(fallback);
             if (fallback.Count > 0)
             {
@@ -2833,6 +2906,21 @@ namespace Hegemonia.AI.IA02
         private static void GarantirCidadeEgitoNoCatalogo(List<DadosConstrucao> catalogo)
         {
             if (catalogo == null) return;
+            DadosConstrucao cidadeModerna = Resources.Load<DadosConstrucao>("Construcoes/CidadeModerna");
+            if (cidadeModerna != null && cidadeModerna.TryGetPrefabBasico(out GameObject prefabModerna) && prefabModerna != null)
+            {
+                bool modernaJaExiste = false;
+                for (int i = 0; i < catalogo.Count; i++)
+                {
+                    DadosConstrucao item = catalogo[i];
+                    if (item == cidadeModerna || (item != null && string.Equals(item.GetStableId(), cidadeModerna.GetStableId(), StringComparison.OrdinalIgnoreCase)))
+                    {
+                        modernaJaExiste = true;
+                        break;
+                    }
+                }
+                if (!modernaJaExiste) catalogo.Add(cidadeModerna);
+            }
             DadosConstrucao cidade = Resources.Load<DadosConstrucao>("Construcoes/Egito");
             if (cidade == null || !cidade.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return;
             for (int i = 0; i < catalogo.Count; i++)
@@ -2841,6 +2929,19 @@ namespace Hegemonia.AI.IA02
                 if (item == cidade || (item != null && string.Equals(item.GetStableId(), cidade.GetStableId(), StringComparison.OrdinalIgnoreCase))) return;
             }
             catalogo.Add(cidade);
+        }
+
+        private static void GarantirAresNoCatalogo(List<DadosConstrucao> catalogo)
+        {
+            if (catalogo == null) return;
+            DadosConstrucao ares = Resources.Load<DadosConstrucao>("Construcoes/Ares_Ar");
+            if (ares == null || !ares.TryGetPrefabBasico(out GameObject prefab) || prefab == null) return;
+            for (int i = 0; i < catalogo.Count; i++)
+            {
+                DadosConstrucao item = catalogo[i];
+                if (item == ares || (item != null && string.Equals(item.GetStableId(), ares.GetStableId(), StringComparison.OrdinalIgnoreCase))) return;
+            }
+            catalogo.Add(ares);
         }
 
         private static void GarantirEconomiaAvancadaNoCatalogo(List<DadosConstrucao> catalogo)
@@ -3862,7 +3963,9 @@ namespace Hegemonia.AI.IA02
 
                 if (intent.Type == IA02IntentType.BuildDefense
                     && governor != null
-                    && governor.FixedDefenseCount >= governor.MaxFixedDefenses)
+                    && governor.FixedDefenseCount >= governor.MaxFixedDefenses
+                    && !(IA_AntiAirPurchasePolicy.IsAvailable(context.TeamId, IA_AntiAirPurchasePolicy.GetCurrentDay())
+                        && governor.FixedDefenseCount < IA_AntiAirPurchasePolicy.MaximumPerTeam))
                 {
                     currentConstructionState = IA02ConstructionState.Idle;
                     Status = "Defesa fixa no limite da fase (" + governor.FixedDefenseCount + "/" + governor.MaxFixedDefenses + "). Usando unidades e patrulha.";
@@ -4907,7 +5010,8 @@ namespace Hegemonia.AI.IA02
         private static bool IsOpeningPreparedDefinition(IA02BuildDefinition definition)
         {
             return definition != null
-                && (definition.StrategicRole == IA02StrategicRole.Shipyard
+                && (IA_AntiAirPurchasePolicy.IsAres(definition.Item)
+                    || definition.StrategicRole == IA02StrategicRole.Shipyard
                     || definition.StrategicRole == IA02StrategicRole.Port
                     || definition.StrategicRole == IA02StrategicRole.Pier
                     || (definition.MinimumStage == IA02NationStage.Initialization

@@ -54,6 +54,8 @@ public class MenuFixadoController : MonoBehaviour
     private IVisualElementScheduledItem statusPulseSchedule;
     private const string TutorialInicialFechadoKey = "hegemonia.tutorial.menus.v2.fechado";
     private const string BarraAcoesFechadaKey = "hegemonia.barra-acoes.v1.fechada";
+    // Desligamento temporario da barra rapida; altere para false para reexibi-la.
+    private const bool BarraAcoesDesativadaTemporariamente = true;
     private const string NotificacaoFechadaPrefix = "hegemonia.notificacao.fechada.";
 
     private bool _activeInScene = true;
@@ -890,7 +892,7 @@ public class MenuFixadoController : MonoBehaviour
     {
         if (quickActions == null) return;
 
-        bool fechada = PlayerPrefs.GetInt(BarraAcoesFechadaKey, 0) == 1;
+        bool fechada = BarraAcoesDesativadaTemporariamente || PlayerPrefs.GetInt(BarraAcoesFechadaKey, 0) == 1;
         quickActions.EnableInClassList("is-hidden", fechada);
     }
 

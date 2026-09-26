@@ -57,6 +57,8 @@ public class ControleUnidade : MonoBehaviour
     private Vector3 destinoAereo;
     private bool voando = false;
     public float velocidadeVoo = 8.0f; // Velocidade base para helicópteros
+    private float multiplicadorVelocidadeComandoHud = 1f;
+    public float MultiplicadorVelocidadeComandoHud => multiplicadorVelocidadeComandoHud;
 
     // --- DETECÇÃO DE CONFLITO ---
     private Helicoptero helicopteroExterno;
@@ -68,6 +70,8 @@ public class ControleUnidade : MonoBehaviour
     private ControleNavioRealista controleNavioRealista;
     private NavegacaoInteligenteNaval navegacaoInteligenteNaval;
     private ControleSubmarino controleSubmarino;
+    private MovimentoRealTerrestre movimentoRealTerrestre;
+    private NavioPetroleiro navioPetroleiro;
     private Hegemonia.Aeronaves.C17.C17TransporteController c17Transporte;
     private IdentidadeIA identidadeIA;
     private IdentidadeUnidade identidadeUnidade;
@@ -75,6 +79,7 @@ public class ControleUnidade : MonoBehaviour
     // --- SISTEMA DE VELOCIDADE DINÂMICA (Para Seguir) ---
     private float velocidadeOriginalSalva = -1f;
     private bool limiteVelocidadeAtivo = false;
+    private float velocidadeAlvoLimiteSalva = -1f;
     [SerializeField] private Vector3 pontoRetornoInicial;
     [SerializeField] private bool possuiPontoRetornoInicial;
     private Vector3 ultimoDestinoOrdenado = Vector3.zero;
@@ -102,6 +107,10 @@ public class ControleUnidade : MonoBehaviour
     private ControleTorretaModular[] cacheTorretasModulares = System.Array.Empty<ControleTorretaModular>();
     private SistemaDeTiro[] cacheSistemasDeTiro = System.Array.Empty<SistemaDeTiro>();
     private ControleNavioRealista[] cacheNaviosRealistas = System.Array.Empty<ControleNavioRealista>();
+    private SistemaAntiMissil[] cacheSistemasAntiMissil = System.Array.Empty<SistemaAntiMissil>();
+    private TorretaAntiaerea[] cacheTorretasAntiaereas = System.Array.Empty<TorretaAntiaerea>();
+    private LancadorNaval[] cacheLancadoresNavais = System.Array.Empty<LancadorNaval>();
+    private ControleSubmarino[] cacheSubmarinos = System.Array.Empty<ControleSubmarino>();
 
     [Header("Trilha Oficial")]
     [SerializeField] private DominioControleUnidade dominioControleAtual = DominioControleUnidade.Terrestre;
@@ -152,6 +161,8 @@ public class ControleUnidade : MonoBehaviour
             ?? GetComponentInChildren<NavegacaoInteligenteNaval>(true);
         controleSubmarino = GetComponent<ControleSubmarino>()
             ?? GetComponentInChildren<ControleSubmarino>(true);
+        movimentoRealTerrestre = GetComponent<MovimentoRealTerrestre>();
+        navioPetroleiro = GetComponent<NavioPetroleiro>();
         c17Transporte = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
         identidadeIA = GetComponent<IdentidadeIA>();
         identidadeUnidade = GetComponent<IdentidadeUnidade>();
@@ -430,6 +441,22 @@ public class ControleUnidade : MonoBehaviour
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
 
+        if (selecionado && EhUnidadeNaval()
+            && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto)
+            && !QuartelMenuUIController.EntradaGlobalBloqueada
+            && !MenuGoverno.EstaAberto)
+        {
+            bool ePortaAvioes = GetComponent<GerenciadorPortaAvioes>() != null
+                || GetComponentInChildren<GerenciadorPortaAvioes>(true) != null;
+            if (!ePortaAvioes && Input.GetKeyDown(KeyCode.O))
+                MenuCombateNaval.Alternar(this);
+
+            LancadorNaval lancador = GetComponent<LancadorNaval>()
+                ?? GetComponentInChildren<LancadorNaval>(true);
+            if (!ePortaAvioes && lancador != null && Input.GetKeyDown(KeyCode.I))
+                MenuCombateNaval.CiclarModoLancador(this);
+        }
+
         // 0. Desenha a linha de caminho (Rota) se estiver selecionado, para todos os tipos (Terra/Ar/Mar)
         if (selecionado || InfraPerformanceGameplay.DeveExecutar(this, ref proximoRefreshVisualCaminho, InfraPerformanceGameplay.ResolverIntervalo(0.10f, estadoOtimizacao, false, true)))
         {
@@ -458,8 +485,8 @@ public class ControleUnidade : MonoBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, Time.deltaTime * 5f);
 
                 // Movimento
-                transform.position += transform.forward * velocidadeVoo * Time.deltaTime;
-                velocidadeAtual = velocidadeVoo;
+                transform.position += transform.forward * velocidadeVoo * multiplicadorVelocidadeComandoHud * Time.deltaTime;
+                velocidadeAtual = velocidadeVoo * multiplicadorVelocidadeComandoHud;
             }
             else
             {
@@ -811,7 +838,7 @@ public class ControleUnidade : MonoBehaviour
             destino.y = Mathf.Max(
                 destino.y,
                 controleAviao.altitudeVoo,
-                ControleAviao.AltitudeMinimaVooMilitar,
+                controleAviao.AltitudeMinimaVooEfetiva,
                 60f);
         }
         bool foiIdempotente;
@@ -1002,7 +1029,7 @@ public class ControleUnidade : MonoBehaviour
         {
             float altitudePatrulha = Mathf.Max(
                 controleAviao.altitudeVoo,
-                ControleAviao.AltitudeMinimaVooMilitar,
+                controleAviao.AltitudeMinimaVooEfetiva,
                 60f);
             for (int i = 0; i < rotaFinal.Count; i++)
             {
@@ -1947,11 +1974,83 @@ public class ControleUnidade : MonoBehaviour
 
     public float ObterVelocidadeAtualReal()
     {
+        if (controleSubmarino != null) return controleSubmarino.VelocidadeAtual;
+        if (controleNavioRealista != null) return controleNavioRealista.VelocidadeAtual;
+        if (controleAviaoCaca != null) return controleAviaoCaca.VelocidadeAtual;
+        if (controleAviao != null) return controleAviao.VelocidadeVooAtual;
+        if (c17Transporte != null) return c17Transporte.VelocidadeAtual;
         if (agente != null && agente.enabled) return agente.velocity.magnitude;
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null) return rb.linearVelocity.magnitude;
-        if (ehAereo && voando) return velocidadeVoo;
+        if (ehAereo && voando) return velocidadeVoo * multiplicadorVelocidadeComandoHud;
         return 0f;
+    }
+
+    public bool EhUnidadeAerea()
+    {
+        return ehAereo
+            || controleAviao != null
+            || controleAviaoCaca != null
+            || helicopteroExterno != null
+            || c700TransporteAereo != null
+            || c17Transporte != null;
+    }
+
+    public bool PossuiControleVelocidadeHud =>
+        controleAviao != null
+        || controleAviaoCaca != null
+        || helicopteroExterno != null
+        || movimentoRealTerrestre != null
+        || navioPetroleiro != null
+        || controleNavioRealista != null
+        || controleSubmarino != null
+        || c700TransporteAereo != null
+        || hovercraftTransporte != null
+        || c17Transporte != null
+        || ehAereo
+        || (agente != null && agente.enabled);
+
+    /// <summary>
+    /// Ajusta em passos percentuais a velocidade de qualquer unidade móvel
+    /// selecionada. Cada executor aplica o multiplicador ao próprio modelo de
+    /// movimento; unidades paradas/estruturas não aceitam a ordem.
+    /// </summary>
+    public bool AjustarVelocidadeComandoHud(float variacao)
+    {
+        if (!PossuiControleVelocidadeHud) return false;
+
+        float anterior = multiplicadorVelocidadeComandoHud;
+        float novo = Mathf.Clamp(anterior + variacao, 0.5f, 2f);
+        if (Mathf.Approximately(anterior, novo)) return false;
+        multiplicadorVelocidadeComandoHud = novo;
+
+        if (UsaNavMeshAgentGenerico())
+        {
+            if (velocidadeOriginalSalva < 0f)
+                velocidadeOriginalSalva = Mathf.Max(0.1f, agente.speed / Mathf.Max(0.01f, anterior));
+            float baseAtual = limiteVelocidadeAtivo && velocidadeAlvoLimiteSalva > 0f
+                ? velocidadeAlvoLimiteSalva
+                : velocidadeOriginalSalva;
+            agente.speed = Mathf.Max(0.1f, baseAtual * novo);
+        }
+        return true;
+    }
+
+    private bool UsaNavMeshAgentGenerico()
+    {
+        return agente != null
+            && agente.enabled
+            && controleAviao == null
+            && controleAviaoCaca == null
+            && helicopteroExterno == null
+            && movimentoRealTerrestre == null
+            && navioPetroleiro == null
+            && controleNavioRealista == null
+            && controleSubmarino == null
+            && c700TransporteAereo == null
+            && hovercraftTransporte == null
+            && c17Transporte == null
+            && !ehAereo;
     }
 
     public bool EhUnidadeNaval()
@@ -2022,8 +2121,44 @@ public class ControleUnidade : MonoBehaviour
         for (int i = 0; i < cacheNaviosRealistas.Length; i++)
         {
             ControleNavioRealista navio = cacheNaviosRealistas[i];
-            if (navio == null || !navio.TemSistemaTorpedosConfigurado()) continue;
-            navio.DefinirModoCombateTorpedos(ativo);
+            if (navio == null) continue;
+            navio.DefinirModoOperacao(
+                ativo ? ControleNavioRealista.ModoOperacao.Ativo : ControleNavioRealista.ModoOperacao.Passivo,
+                false);
+            alterouAlgo = true;
+        }
+
+        for (int i = 0; i < cacheSistemasAntiMissil.Length; i++)
+        {
+            SistemaAntiMissil sistema = cacheSistemasAntiMissil[i];
+            if (sistema == null) continue;
+            sistema.DefinirModoAtivo(ativo);
+            alterouAlgo = true;
+        }
+
+        for (int i = 0; i < cacheTorretasAntiaereas.Length; i++)
+        {
+            TorretaAntiaerea torreta = cacheTorretasAntiaereas[i];
+            if (torreta == null) continue;
+            torreta.DefinirModoAtivo(ativo);
+            alterouAlgo = true;
+        }
+
+        for (int i = 0; i < cacheLancadoresNavais.Length; i++)
+        {
+            LancadorNaval lancador = cacheLancadoresNavais[i];
+            if (lancador == null) continue;
+            lancador.DefinirModoCombate(ativo);
+            alterouAlgo = true;
+        }
+
+        for (int i = 0; i < cacheSubmarinos.Length; i++)
+        {
+            ControleSubmarino submarino = cacheSubmarinos[i];
+            if (submarino == null) continue;
+            submarino.DefinirModoOperacao(
+                ativo ? ControleSubmarino.ModoOperacao.Automatico : ControleSubmarino.ModoOperacao.Passivo,
+                false);
             alterouAlgo = true;
         }
 
@@ -2048,9 +2183,9 @@ public class ControleUnidade : MonoBehaviour
             return abastecedor.AlternarModoOperacao();
         }
 
-        if (controleSubmarino != null)
+        if (EhUnidadeNaval())
         {
-            return controleSubmarino.AlternarEstadoOperacional();
+            return MenuCombateNaval.CiclarModoCombate(this);
         }
 
         if (controleNavioRealista != null)
@@ -2088,6 +2223,9 @@ public class ControleUnidade : MonoBehaviour
         RegistrarEstadoCombate(cacheTorretasModulares, ref encontrou, ref estadoInicial, ref misto, delegate(ControleTorretaModular t) { return t != null && t.modoPassivo; });
         RegistrarEstadoCombate(cacheSistemasDeTiro, ref encontrou, ref estadoInicial, ref misto, delegate(SistemaDeTiro t) { return t != null && t.modoPassivo; });
         RegistrarEstadoCombateNavios(cacheNaviosRealistas, ref encontrou, ref estadoInicial, ref misto);
+        RegistrarEstadoCombate(cacheSistemasAntiMissil, ref encontrou, ref estadoInicial, ref misto, delegate(SistemaAntiMissil s) { return s != null && s.modoPassivo; });
+        RegistrarEstadoCombate(cacheTorretasAntiaereas, ref encontrou, ref estadoInicial, ref misto, delegate(TorretaAntiaerea t) { return t != null && t.modoPassivo; });
+        RegistrarEstadoCombate(cacheLancadoresNavais, ref encontrou, ref estadoInicial, ref misto, delegate(LancadorNaval l) { return l != null && l.ModoPassivo; });
 
         if (!encontrou)
         {
@@ -2118,11 +2256,13 @@ public class ControleUnidade : MonoBehaviour
             else if (TryGetComponent<ControleAviaoCaca>(out var caca)) velocidadeOriginalSalva = caca.velocidadeCruzeiro;
             else if (TryGetComponent<Helicoptero>(out var helicoptero)) velocidadeOriginalSalva = helicoptero.velocidadeNavegacao;
             else if (TryGetComponent<ControleNavioRealista>(out var nav1)) velocidadeOriginalSalva = nav1.velocidadeMaxima;
-            else if (TryGetComponent<NavMeshAgent>(out var nma)) velocidadeOriginalSalva = nma.speed;
+            else if (controleSubmarino != null) velocidadeOriginalSalva = controleSubmarino.VelocidadeMaxima;
+            else if (TryGetComponent<NavMeshAgent>(out var nma)) velocidadeOriginalSalva = nma.speed / Mathf.Max(0.01f, multiplicadorVelocidadeComandoHud);
             else velocidadeOriginalSalva = 0f;
         }
 
         limiteVelocidadeAtivo = true;
+        velocidadeAlvoLimiteSalva = Mathf.Max(0.1f, velocidadeAlvo);
         ModificarVelocidadeInterna(velocidadeAlvo);
     }
 
@@ -2132,6 +2272,7 @@ public class ControleUnidade : MonoBehaviour
         {
             ModificarVelocidadeInterna(velocidadeOriginalSalva);
             limiteVelocidadeAtivo = false;
+            velocidadeAlvoLimiteSalva = -1f;
         }
     }
 
@@ -2145,7 +2286,8 @@ public class ControleUnidade : MonoBehaviour
         }
         else if (TryGetComponent<Helicoptero>(out var helicoptero)) helicoptero.velocidadeNavegacao = Mathf.Max(0.1f, v);
         else if (TryGetComponent<ControleNavioRealista>(out var nav1)) nav1.velocidadeMaxima = v;
-        else if (TryGetComponent<NavMeshAgent>(out var nma)) { if(nma.enabled) nma.speed = v; }
+        else if (controleSubmarino != null) controleSubmarino.DefinirVelocidadeMaxima(v);
+        else if (TryGetComponent<NavMeshAgent>(out var nma)) { if(nma.enabled) nma.speed = Mathf.Max(0.1f, v * multiplicadorVelocidadeComandoHud); }
     }
 
     private void RegistrarEstadoCombateValor(bool valido, bool passivoAtual, ref bool encontrou, ref bool estadoInicial, ref bool misto)
@@ -2197,12 +2339,9 @@ public class ControleUnidade : MonoBehaviour
         for (int i = 0; i < navios.Length; i++)
         {
             ControleNavioRealista navio = navios[i];
-            if (navio == null || !navio.TemSistemaTorpedosConfigurado())
-            {
-                continue;
-            }
+            if (navio == null) continue;
 
-            bool passivoAtual = !navio.ModoCombateTorpedosAtivo();
+            bool passivoAtual = navio.modoOperacao == ControleNavioRealista.ModoOperacao.Passivo;
             if (!encontrou)
             {
                 encontrou = true;
@@ -2226,6 +2365,10 @@ public class ControleUnidade : MonoBehaviour
         cacheTorretasModulares = GetComponentsInChildren<ControleTorretaModular>(true);
         cacheSistemasDeTiro = GetComponentsInChildren<SistemaDeTiro>(true);
         cacheNaviosRealistas = GetComponentsInChildren<ControleNavioRealista>(true);
+        cacheSistemasAntiMissil = GetComponentsInChildren<SistemaAntiMissil>(true);
+        cacheTorretasAntiaereas = GetComponentsInChildren<TorretaAntiaerea>(true);
+        cacheLancadoresNavais = GetComponentsInChildren<LancadorNaval>(true);
+        cacheSubmarinos = GetComponentsInChildren<ControleSubmarino>(true);
         cacheCombateSujo = false;
     }
 
@@ -2850,6 +2993,15 @@ public class ControleUnidade : MonoBehaviour
         string descricao;
         if (TryObterEstadoCombate(out passivo, out descricao))
         {
+            if (descricao == "MISTO" && EhUnidadeNaval())
+            {
+                // Um navio com modos de armas divergentes adota o estado
+                // seguro ao iniciar: nenhum subsistema dispara ate o jogador
+                // selecionar explicitamente ATIVO.
+                DefinirModoCombate(false);
+                return;
+            }
+
             modoCombateOficialAtivo = !passivo;
         }
     }

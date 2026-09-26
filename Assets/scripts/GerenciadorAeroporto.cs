@@ -98,6 +98,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     private float _proximoReporPatioTime = -999f;
     private float _proximaManutencaoListas = -999f;
     private Transform _vagaHelicopteroReserva;
+    private bool _taxiAutomaticoBaseMilitar;
 
     [Header("⚡ Energia")]
     public bool semEnergia = false;
@@ -199,7 +200,13 @@ public class GerenciadorAeroporto : MonoBehaviour
             }
             else if (wpPreparacao == null)
             {
-                wpPreparacao = wpPronto;
+                // Na Base Militar, "criando" é o ponto de spawn dentro do
+                // hangar e "Pronto" é a saída para o pátio. Não colapse as
+                // duas fases no mesmo Transform.
+                bool hangarEhPontoDeCriacao = EhAeroportoMilitar()
+                    && hangarAviao != null
+                    && hangarAviao.name.IndexOf("criando", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                wpPreparacao = hangarEhPontoDeCriacao ? hangarAviao : wpPronto;
             }
             else if (wpPronto == null)
             {
@@ -211,6 +218,8 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             foreach (Transform filho in decolagem) waypointsDecolagem.Add(filho);
         }
+
+        CarregarTaxiAutomaticoBaseMilitar();
 
         // A capacidade do pátio é exclusivamente a capacidade real configurada
         // na cena. Antes este fallback criava 24 GameObjects por aeroporto,
@@ -238,6 +247,8 @@ public class GerenciadorAeroporto : MonoBehaviour
             waypointsDecida.AddRange(waypointsDecolagem);
             waypointsDecida.Reverse();
         }
+
+        CorrigirOrientacaoDeEstacionamentoMilitar();
 
         // Tenta achar Andadar e Analise (em qualquer lugar dentro do Aeroporto)
         Transform[] todasAsTags = GetComponentsInChildren<Transform>(true);
@@ -329,6 +340,92 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         return null;
+    }
+
+    private void CarregarTaxiAutomaticoBaseMilitar()
+    {
+        if (!EhAeroportoMilitar() || this is GerenciadorPortaAvioes || waypointsTaxi.Count > 0)
+        {
+            return;
+        }
+
+        Transform grupoTaxi = EncontrarFilhoPorNome(transform, "taxiando");
+        if (grupoTaxi == null || grupoTaxi.childCount == 0)
+        {
+            return;
+        }
+
+        // Os pontos do prefab estão em ordem hangar -> pista. A lista de
+        // waypointsTaxi é consumida no pouso (pista -> estacionamento), então
+        // escolhemos a ponta mais próxima do início da pista como entrada.
+        bool inverterParaPouso = true;
+        if (waypointsDecolagem.Count > 0)
+        {
+            Vector3 inicioPista = waypointsDecolagem[0].position;
+            float distanciaPrimeiro = (grupoTaxi.GetChild(0).position - inicioPista).sqrMagnitude;
+            float distanciaUltimo = (grupoTaxi.GetChild(grupoTaxi.childCount - 1).position - inicioPista).sqrMagnitude;
+            inverterParaPouso = distanciaUltimo <= distanciaPrimeiro;
+        }
+
+        if (inverterParaPouso)
+        {
+            for (int i = grupoTaxi.childCount - 1; i >= 0; i--) waypointsTaxi.Add(grupoTaxi.GetChild(i));
+        }
+        else
+        {
+            for (int i = 0; i < grupoTaxi.childCount; i++) waypointsTaxi.Add(grupoTaxi.GetChild(i));
+        }
+
+        _taxiAutomaticoBaseMilitar = waypointsTaxi.Count > 0;
+    }
+
+    private void CorrigirOrientacaoDeEstacionamentoMilitar()
+    {
+        if (!EhAeroportoMilitar() || this is GerenciadorPortaAvioes)
+        {
+            return;
+        }
+
+        Vector3 direcaoPista = Vector3.zero;
+        if (waypointsDecolagem.Count > 1 && waypointsDecolagem[0] != null && waypointsDecolagem[1] != null)
+        {
+            direcaoPista = waypointsDecolagem[1].position - waypointsDecolagem[0].position;
+        }
+
+        direcaoPista.y = 0f;
+        if (direcaoPista.sqrMagnitude < 0.01f)
+        {
+            direcaoPista = transform.forward;
+            direcaoPista.y = 0f;
+        }
+        if (direcaoPista.sqrMagnitude < 0.01f) direcaoPista = Vector3.forward;
+
+        Quaternion rumoDaPista = Quaternion.LookRotation(direcaoPista.normalized, Vector3.up);
+        for (int i = 0; i < waypointsPatio.Count; i++)
+        {
+            Transform vaga = waypointsPatio[i];
+            if (vaga == null) continue;
+
+            // Mantém a alternância de 180 graus marcada em cada vaga, mas
+            // remove inclinação/rotação herdada dos nós de importação GLB.
+            float diferencaRumo = vaga.localRotation.eulerAngles.y;
+            vaga.rotation = rumoDaPista * Quaternion.Euler(0f, diferencaRumo, 0f);
+        }
+
+        if (wpPreparacao != null) wpPreparacao.rotation = rumoDaPista;
+        if (wpPronto != null) wpPronto.rotation = rumoDaPista;
+    }
+
+    public List<Transform> ObterWaypointsTaxiDecolagem()
+    {
+        if (!_taxiAutomaticoBaseMilitar || waypointsTaxi == null || waypointsTaxi.Count == 0)
+        {
+            return null;
+        }
+
+        List<Transform> rota = new List<Transform>(waypointsTaxi);
+        rota.Reverse();
+        return rota;
     }
 
     private void DiagnosticarConfiguracaoOperacional()
@@ -1225,9 +1322,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         // O ponto de preparacao pertence ao aeroporto. Se um prefab/scene object
         // apontar para um transform externo (por exemplo, a prefeitura), ignora a
         // referencia e usa a raiz da propria base para nunca criar a aeronave fora dela.
+        bool pontoPreparacaoDaBase = EhAeroportoMilitar()
+            && wpPreparacao != null
+            && wpPreparacao.name.IndexOf("criando", System.StringComparison.OrdinalIgnoreCase) >= 0;
         bool pontoPreparacaoLocal = wpPreparacao != null
             && (wpPreparacao == transform || wpPreparacao.IsChildOf(transform))
-            && (wpPreparacao.position - transform.position).sqrMagnitude <= 40000f;
+            && (pontoPreparacaoDaBase || (wpPreparacao.position - transform.position).sqrMagnitude <= 40000f);
         Vector3 posSpawn = pontoPreparacaoLocal ? wpPreparacao.position : transform.position;
         Quaternion rotacaoSpawn = pontoPreparacaoLocal ? wpPreparacao.rotation : transform.rotation;
 
@@ -2166,60 +2266,102 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     public Transform ObterParadaGrandePreferencial(bool aceitarOcupada = false)
     {
-        Transform encontrada = null;
-
+        Transform primeiraEncontrada = null;
         if (waypointsPatio != null)
         {
             for (int i = 0; i < waypointsPatio.Count; i++)
             {
                 Transform wp = waypointsPatio[i];
-                if (wp != null && wp.name.ToLowerInvariant().Contains("parada_grande"))
+                if (!NomeEhVagaGrande(wp)) continue;
+                if (primeiraEncontrada == null) primeiraEncontrada = wp;
+                if (aceitarOcupada || !VagaGrandeOcupada(wp))
                 {
-                    encontrada = wp;
-                    break;
+                    return wp;
                 }
             }
         }
 
-        if (encontrada == null)
+        if (primeiraEncontrada == null)
         {
             Transform[] filhos = GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < filhos.Length; i++)
             {
-                if (filhos[i] != null && filhos[i].name.ToLowerInvariant().Contains("parada_grande"))
+                Transform vaga = filhos[i];
+                if (!NomeEhVagaGrande(vaga)) continue;
+                if (primeiraEncontrada == null) primeiraEncontrada = vaga;
+                if (aceitarOcupada || !VagaGrandeOcupada(vaga))
                 {
-                    encontrada = filhos[i];
-                    break;
+                    return vaga;
                 }
             }
         }
 
-        if (encontrada == null)
-        {
-            return null;
-        }
-
         if (aceitarOcupada)
         {
-            return encontrada;
+            return primeiraEncontrada;
         }
 
-        Collider[] hits = Physics.OverlapSphere(encontrada.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-        for (int i = 0; i < hits.Length; i++)
+        return null;
+    }
+
+    private static bool NomeEhVagaGrande(Transform vaga)
+    {
+        if (vaga == null) return false;
+        string nome = vaga.name.ToLowerInvariant();
+        return nome.Contains("parada_grande")
+            || nome.Contains("vaga grande")
+            || nome.Contains("vaga_grande");
+    }
+
+    private bool VagaGrandeOcupada(Transform vaga)
+    {
+        if (vaga == null) return true;
+
+        for (int i = avioesNoPatio.Count - 1; i >= 0; i--)
         {
-            if (hits[i] == null)
+            ControleAviao aviao = avioesNoPatio[i];
+            if (aviao == null)
             {
+                avioesNoPatio.RemoveAt(i);
                 continue;
             }
 
-            C700TransporteAereo transporte = hits[i].GetComponentInParent<C700TransporteAereo>();
-            if (transporte != null)
-            {
-                return null;
-            }
+            bool ocupaVaga = aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.Taxiando
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga;
+            if (ocupaVaga && aviao.vagaRetorno == vaga) return true;
         }
 
-        return encontrada;
+        for (int i = helicopterosDoAeroporto.Count - 1; i >= 0; i--)
+        {
+            Helicoptero helicoptero = helicopterosDoAeroporto[i];
+            if (helicoptero == null)
+            {
+                helicopterosDoAeroporto.RemoveAt(i);
+                continue;
+            }
+
+            if (helicoptero.ObterVagaAeroporto() == vaga
+                && (helicoptero.EstaEstacionadoNoAeroporto() || !helicoptero.estaVoando)) return true;
+        }
+
+        Collider[] hits = Physics.OverlapSphere(vaga.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (hits[i] == null) continue;
+
+            if (hits[i].GetComponentInParent<C700TransporteAereo>() != null) return true;
+
+            ControleAviao aviao = hits[i].GetComponentInParent<ControleAviao>();
+            if (aviao != null && (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.Taxiando
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga)) return true;
+
+            Helicoptero helicoptero = hits[i].GetComponentInParent<Helicoptero>();
+            if (helicoptero != null && helicoptero.EstaEstacionadoNoAeroporto()) return true;
+        }
+
+        return false;
     }
 
     // --- HELPER: Extrai texto formatado de um avião para OnGUI (evita código repetido) ---

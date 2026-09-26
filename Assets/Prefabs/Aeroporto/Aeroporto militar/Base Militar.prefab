@@ -2020,7 +2020,7 @@ MonoBehaviour:
   helicopterosDoAeroporto: []
   prefabDroneKamikaze: {fileID: 0}
   precoDroneKamikaze: 1500
-  prefabSu11: {fileID: 0}
+  prefabSu11: {fileID: 2470324322742162747, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
   precoSu11: 2500
   prefabMarcadorPatrulhaAviao: {fileID: 0}
   prefabMarcadorBombardeiro: {fileID: 0}

@@ -1,9 +1,28 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.RTS;
 
 public class SistemaDeTiro : MonoBehaviour
 {
+    private static Vector3 ObterPontoMaisProximoSeguro(Collider collider, Vector3 referencia)
+    {
+        if (collider == null) return referencia;
+
+        if (collider is BoxCollider || collider is SphereCollider || collider is CapsuleCollider)
+        {
+            return collider.ClosestPoint(referencia);
+        }
+
+        MeshCollider malha = collider as MeshCollider;
+        if (malha != null && malha.convex)
+        {
+            return collider.ClosestPoint(referencia);
+        }
+
+        return collider.bounds.ClosestPoint(referencia);
+    }
+
     [Header("Comportamento IA")]
     public bool modoPassivo = false; // Se true, só ataca se mandarem
     public string etiquetaAlvo = "Inimigo"; 
@@ -11,6 +30,9 @@ public class SistemaDeTiro : MonoBehaviour
     private float tempoParaProximoTiro = 0f;
     public Transform alvoAtual;
     [HideInInspector] public Transform alvoPrioritario;
+    private bool modoManualNaval;
+    private bool filtrarAlvosAutorizadosNavais;
+    private readonly List<Transform> alvosAutorizadosNavais = new List<Transform>(8);
 
     [Header("Configuração de Munição")]
     public GameObject prefabProjetil; // A munição
@@ -40,6 +62,7 @@ public class SistemaDeTiro : MonoBehaviour
     private IdentidadeUnidade minhaIdentidade;
     private Transform minhaRaiz;
     private bool souSoldadoLeve;
+    private bool exigeGuerraDeclarada;
     private float alcanceComMargemSqr;
     private readonly EstadoOtimizacaoTatica estadoOtimizacao = new EstadoOtimizacaoTatica();
     private float proximaBuscaAlvo;
@@ -49,8 +72,14 @@ public class SistemaDeTiro : MonoBehaviour
 
     void Update()
     {
-        // Se estiver recarregando ou em modo passivo, não faz nada
-        if (recarregando || modoPassivo) return;
+        // O modo oficial da unidade também tem precedência sobre o estado
+        // local deste componente, inclusive durante a inicialização de cenas
+        // e prefabs em que os dois valores foram salvos de forma divergente.
+        if (recarregando || ModoCombatePassivo)
+        {
+            alvoAtual = null;
+            return;
+        }
 
         AtualizarAgendamentoBusca();
 
@@ -69,7 +98,9 @@ public class SistemaDeTiro : MonoBehaviour
 
             // Verifica distância (o Scan faz isso, mas o Update é mais rápido para parar de atirar se o alvo fugir)
             Collider colInimigo = alvoAtual.GetComponentInChildren<Collider>();
-            Vector3 alvoPosicaoReal = (colInimigo != null) ? colInimigo.ClosestPoint(transform.position) : alvoAtual.position;
+            Vector3 alvoPosicaoReal = (colInimigo != null)
+                ? ObterPontoMaisProximoSeguro(colInimigo, transform.position)
+                : alvoAtual.position;
             
             float distSqr = (transform.position - alvoPosicaoReal).sqrMagnitude;
             if (distSqr > alcanceComMargemSqr) // Margem de 3 metros pra nao perder o alvo bobamente ao parar
@@ -170,6 +201,9 @@ public class SistemaDeTiro : MonoBehaviour
         selecao = GetComponentInParent<ControleUnidade>();
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         minhaRaiz = transform.root;
+        exigeGuerraDeclarada = (selecao != null && selecao.EhUnidadeNaval())
+            || GetComponentInParent<IdentidadeNaval>() != null
+            || GetComponentInParent<ControleNavioRealista>() != null;
         PoolDeObjetosCombate.Prewarm(prefabProjetil, Mathf.Clamp(capacidadePente > 0 ? 6 : 4, 2, 8));
 
         // Cache para performance (evita GetComponent a cada tiro)
@@ -220,11 +254,25 @@ public class SistemaDeTiro : MonoBehaviour
     {
         if (modoPassivo) return;
 
+        if (modoManualNaval)
+        {
+            Transform manual = alvoPrioritario;
+            if (manual != null && manual.gameObject.activeInHierarchy
+                && ControleSubmarino.PodeSerAlvoConvencional(manual)
+                && (manual.position - transform.position).sqrMagnitude <= alcanceComMargemSqr)
+                alvoAtual = manual;
+            else
+                alvoAtual = null;
+            return;
+        }
+
         // Se houver um alvo prioritário válido e dentro do alcance, trava nele e ignora os outros
         if (alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy && ControleSubmarino.PodeSerAlvoConvencional(alvoPrioritario))
         {
             Collider colPrioritario = alvoPrioritario.GetComponentInChildren<Collider>();
-            Vector3 alvoPosRealPrioritario = (colPrioritario != null) ? colPrioritario.ClosestPoint(transform.position) : alvoPrioritario.position;
+            Vector3 alvoPosRealPrioritario = (colPrioritario != null)
+                ? ObterPontoMaisProximoSeguro(colPrioritario, transform.position)
+                : alvoPrioritario.position;
             float distSqrPrioritario = (transform.position - alvoPosRealPrioritario).sqrMagnitude;
             if (distSqrPrioritario <= alcanceComMargemSqr)
             {
@@ -236,7 +284,9 @@ public class SistemaDeTiro : MonoBehaviour
         if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
              Collider col = alvoAtual.GetComponentInChildren<Collider>();
-             Vector3 alvoPosReal = (col != null) ? col.ClosestPoint(transform.position) : alvoAtual.position;
+             Vector3 alvoPosReal = (col != null)
+                 ? ObterPontoMaisProximoSeguro(col, transform.position)
+                 : alvoAtual.position;
              float distSqr = (transform.position - alvoPosReal).sqrMagnitude;
              if (distSqr <= alcanceComMargemSqr && alvoAtual == alvoPrioritario) return; // Mantém prioritário
              if (distSqr <= alcanceComMargemSqr && alvoPrioritario == null) return;
@@ -263,6 +313,7 @@ public class SistemaDeTiro : MonoBehaviour
             Transform alvo = bufferAlvosTaticos[i];
             if (alvo == null || alvo.root == minhaRaiz) continue;
             if (!ControleSubmarino.PodeSerAlvoConvencional(alvo)) continue;
+            if (filtrarAlvosAutorizadosNavais && !ContemAlvoAutorizado(alvo)) continue;
 
             // Busca IdentidadeUnidade (Componente que define time)
             IdentidadeUnidade idAlvo = alvo.GetComponent<IdentidadeUnidade>();
@@ -273,6 +324,13 @@ public class SistemaDeTiro : MonoBehaviour
                 // Verifica se é inimigo (Time diferente)
                 if (idAlvo.teamID != minhaIdentidade.teamID) 
                 {
+                    if (exigeGuerraDeclarada
+                        && (SistemaGovernoMundial.Instancia == null
+                            || !RTSVisibilityService.TeamsAtWar(minhaIdentidade.teamID, idAlvo.teamID)))
+                    {
+                        continue;
+                    }
+
                     // NÃO ATIRA EM ALVOS AÉREOS A NÃO SER QUE SEJA UM SOLDADO
                     // Tenta otimizar checando o eixo Y antes para evitar ler strings atoa
                     bool podeSerAereo = alvo.position.y > 6f;
@@ -336,6 +394,8 @@ public class SistemaDeTiro : MonoBehaviour
 
     void Atirar()
     {
+        if (ModoCombatePassivo) return;
+
         if (prefabProjetil == null)
         {
             // Prefabs antigos podem nao ter municao configurada; o tiro nao
@@ -424,12 +484,49 @@ public class SistemaDeTiro : MonoBehaviour
     public void DefinirModoPassivo(bool estado)
     {
         modoPassivo = estado;
+        modoManualNaval = false;
         if (modoPassivo)
         {
             alvoAtual = null; // Para de mirar imediatamente
             // Opcional: Cancelar recarga se quiser ser muito estrito, mas deixar recarregar é bom.
         }
     }
+
+    public void ConfigurarModoCombateNaval(bool ativo, bool manual, bool filtrarAutorizados, IList<Transform> autorizados)
+    {
+        modoPassivo = !ativo;
+        modoManualNaval = manual;
+        filtrarAlvosAutorizadosNavais = filtrarAutorizados;
+        alvosAutorizadosNavais.Clear();
+        if (autorizados != null)
+            for (int i = 0; i < autorizados.Count; i++)
+                if (autorizados[i] != null && !alvosAutorizadosNavais.Contains(autorizados[i])) alvosAutorizadosNavais.Add(autorizados[i]);
+        if (!ativo || (manual && alvoPrioritario == null)) alvoAtual = null;
+    }
+
+    public bool DefinirAlvoManual(Transform alvo)
+    {
+        if (alvo == null || modoPassivo
+            || (alvo.position - transform.position).sqrMagnitude > alcanceComMargemSqr) return false;
+        modoManualNaval = true;
+        alvoPrioritario = alvo;
+        alvoAtual = alvo;
+        return true;
+    }
+
+    private bool ContemAlvoAutorizado(Transform alvo)
+    {
+        if (alvo == null) return false;
+        for (int i = 0; i < alvosAutorizadosNavais.Count; i++)
+        {
+            Transform autorizado = alvosAutorizadosNavais[i];
+            if (autorizado != null && (alvo == autorizado || alvo.root == autorizado.root)) return true;
+        }
+        return false;
+    }
+
+    private bool ModoCombatePassivo => modoPassivo
+        || (selecao != null && !selecao.ModoCombateAtivo);
 
     void OnDrawGizmosSelected()
     {

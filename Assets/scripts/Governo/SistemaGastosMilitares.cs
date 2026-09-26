@@ -153,7 +153,7 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
                 descricao = "Cartucho comprado diretamente pela unidade a cada disparo contra aeronaves.",
                 pesquisaId = "pesquisa_ares_ar",
                 prefabNome = "Ares_Ar",
-                valorUnitario = 220000L,
+                valorUnitario = IA_AntiAirPurchasePolicy.AresAmmoUnitPrice,
                 capacidadeCartucho = 10,
                 tempoReabastecimento = 8f,
                 ativo = true
@@ -164,7 +164,7 @@ public sealed class SistemaGastosMilitares : MonoBehaviour
         {
             // Saves antigos podem trazer o preco simbolico do cartucho.
             // O ID continua o mesmo, mas o valor definitivo passa a valer para novos disparos.
-            ares.valorUnitario = 220000L;
+            ares.valorUnitario = IA_AntiAirPurchasePolicy.AresAmmoUnitPrice;
         }
     }
 

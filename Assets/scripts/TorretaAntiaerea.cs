@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 public class TorretaAntiaerea : MonoBehaviour
 {
+    [Header("Postura de Combate")]
+    [Tooltip("Desativa disparo e radar quando a unidade está em postura pacífica.")]
+    public bool modoPassivo;
     [Header("Configurações do Radar (Aéreo)")]
     [Tooltip("Distância máxima que a torreta consegue enxergar as ameaças aéreas")]
     public float alcanceArea = 150f;
@@ -142,6 +145,12 @@ public class TorretaAntiaerea : MonoBehaviour
 
     void Update()
     {
+        if (modoPassivo)
+        {
+            alvoAtual = null;
+            return;
+        }
+
         if (reabastecendo)
         {
             contadorReabastecimento -= Time.deltaTime;
@@ -187,6 +196,12 @@ public class TorretaAntiaerea : MonoBehaviour
 
     void ProcurarAlvoAereo()
     {
+        if (modoPassivo)
+        {
+            alvoAtual = null;
+            return;
+        }
+
         // Se já tem um alvo válido dentro da área, mantém ele
         if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
@@ -267,6 +282,12 @@ public class TorretaAntiaerea : MonoBehaviour
         {
             alvoAtual = melhorAlvo;
         }
+    }
+
+    public void DefinirModoAtivo(bool ativo)
+    {
+        modoPassivo = !ativo;
+        if (modoPassivo) alvoAtual = null;
     }
 
     private Transform ProcurarAlvoAereoNoRegistroGlobal()

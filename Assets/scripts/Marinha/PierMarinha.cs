@@ -615,9 +615,39 @@ public class PierMarinha : MonoBehaviour
             Debug.LogWarning($"[Pier] Atracagem recusada: navio do time {teamDoNavio} nao pode usar pier do time {teamDoPier}.", this);
             return;
         }
+
+        float distanciaNavio = Vector3.Distance(transform.position, navio.transform.position);
+        if (distanciaNavio > Mathf.Max(0f, raioDeBusca))
+        {
+            Debug.LogWarning($"[Pier] Atracagem recusada: {navio.nomeDoNavio} esta a {distanciaNavio:F0}m, fora do raio de {raioDeBusca:F0}m.", this);
+            return;
+        }
+
+        if (navio.EstaAtracado)
+        {
+            Debug.LogWarning($"[Pier] Atracagem recusada: {navio.nomeDoNavio} ja esta atracado ou reservado.", this);
+            return;
+        }
         
-        var agent = navio.GetComponent<NavMeshAgent>();
-        if (agent == null) agent = navio.GetComponentInChildren<NavMeshAgent>();
+        if (vaga.categoriaAceita != navio.categoriaNavio)
+        {
+            Debug.LogWarning($"[Pier] Atracagem recusada: a vaga aceita {vaga.categoriaAceita}, mas {navio.nomeDoNavio} e {navio.categoriaNavio}.", this);
+            return;
+        }
+
+        if (!vaga.EstaLivre())
+        {
+            Debug.LogWarning($"[Pier] Atracagem recusada: a vaga '{vaga.nomeDaVaga}' ja esta ocupada.", this);
+            return;
+        }
+
+        if (vaga.pontoDeAtracagem == null)
+        {
+            Debug.LogError($"[Pier] Atracagem recusada: a vaga '{vaga.nomeDaVaga}' nao tem ponto final configurado.", this);
+            return;
+        }
+
+        NavMeshAgent agent = ObterAgenteNavMesh(navio);
         
         if (agent == null)
         {
@@ -637,7 +667,7 @@ public class PierMarinha : MonoBehaviour
             yield break;
         }
 
-        NavMeshAgent agent = navio.GetComponent<NavMeshAgent>();
+        NavMeshAgent agent = ObterAgenteNavMesh(navio);
         ControleNavioRealista controleFisico = navio.GetComponent<ControleNavioRealista>();
         
         if (agent == null)
@@ -1164,6 +1194,13 @@ public class PierMarinha : MonoBehaviour
             && navio != null
             && vaga.navioOcupante == navio
             && vaga.pontoDeAtracagem != null;
+    }
+
+    private static NavMeshAgent ObterAgenteNavMesh(IdentidadeNaval navio)
+    {
+        if (navio == null) return null;
+        NavMeshAgent agent = navio.GetComponent<NavMeshAgent>();
+        return agent != null ? agent : navio.GetComponentInChildren<NavMeshAgent>();
     }
 
     bool TryGetValidDockedShip(VagaDeAtracagem vaga, out IdentidadeNaval navio)

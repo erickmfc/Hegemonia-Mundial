@@ -18,12 +18,19 @@ public class ControleDroneHasaf : MonoBehaviour
     [Header("Patrulha e Seguir")]
     public float distanciaManterAlvo = 250f;
     public float raioPatrulha = 400f;
+    [Min(0f)] public float altitudeMinimaVoo = 60f;
+    [Min(0f)] public float altitudeCruzeiro = 90f;
     private Transform alvoSeguir;
+
+    private void Awake()
+    {
+        ConfigurarVoo();
+    }
 
     void Start()
     {
-        controleAviao = GetComponent<ControleAviao>();
-        controleUnidade = GetComponent<ControleUnidade>();
+        if (controleAviao == null) controleAviao = GetComponent<ControleAviao>();
+        if (controleUnidade == null) controleUnidade = GetComponent<ControleUnidade>();
 
         // 1. Remover Fumaça/Rastro para não atrapalhar a câmera
         RemoverFumaca();
@@ -35,9 +42,18 @@ public class ControleDroneHasaf : MonoBehaviour
             sistemaAntigo.enabled = false;
         }
         
-        // Ajuste de estabilidade e voo do ControleAviao
+        ConfigurarVoo();
+    }
+
+    private void ConfigurarVoo()
+    {
+        if (controleAviao == null) controleAviao = GetComponent<ControleAviao>();
+        if (controleAviao == null) return;
+
+        // O piso geral dos aviões militares é 181 m; o HASAF usa cruzeiro
+        // baixo e estável e mantém seu próprio limite de segurança.
         controleAviao.raioOrbitaMissao = raioPatrulha;
-        controleAviao.altitudeVoo = 90f; // Drone de vigia: altitude baixa e estável
+        controleAviao.altitudeVoo = Mathf.Max(altitudeMinimaVoo, altitudeCruzeiro);
     }
 
 #if UNITY_EDITOR

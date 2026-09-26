@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 9096336531868552390}
   - component: {fileID: 541215415134660848}
   - component: {fileID: 7709334987655136785}
+  - component: {fileID: 5945394366444850896}
   m_Layer: 0
   m_Name: F_C19
   m_TagString: Aereo
@@ -10224,3 +10225,29 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 423678, guid: 9823c8c6d577d4cb1a10d33c6b8c53e0, type: 3}
   m_PrefabInstance: {fileID: 7663185619105955507}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &5945394366444850896
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 118893775481832681}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc23fc57a22fec84a931072cb1213e9d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::SomUnidade
+  tipoUnidade: 1
+  somMotor: {fileID: 8300000, guid: 3375e751a9605ec469a16d6bcba85aaa, type: 3}
+  somParado: {fileID: 8300000, guid: 7784e7ab59ab376458c07be56b1a8d6f, type: 3}
+  somTiro: {fileID: 8300000, guid: bb2e2714f962491428dcb0b38598b251, type: 3}
+  somExplosao: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
+  somDano: {fileID: 8300000, guid: a599c94697eb643838997e923d7e7272, type: 3}
+  volumeMotor: 0.5
+  volumeTiro: 0.8
+  volumeExplosao: 1
+  pitchMin: 0.8
+  pitchMax: 1.5
+  registrarTransicoesDeAudio: 0
+  velocidadeParaMaxPitch: 50
+  loopMotor: 1

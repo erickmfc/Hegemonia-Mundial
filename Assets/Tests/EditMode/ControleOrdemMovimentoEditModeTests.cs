@@ -19,7 +19,6 @@ public sealed class ControleOrdemMovimentoEditModeTests
     [SetUp]
     public void SetUp()
     {
-        unidade = new GameObject("UnidadeOrdemTeste");
         Assembly assembly = AppDomain.CurrentDomain.GetAssemblies()
             .FirstOrDefault(candidate => candidate.GetName().Name == "Assembly-CSharp");
         Assert.That(assembly, Is.Not.Null);
@@ -27,6 +26,21 @@ public sealed class ControleOrdemMovimentoEditModeTests
         Assert.That(runtimeType, Is.Not.Null);
         tipoOrdemType = runtimeType.Assembly.GetType("TipoOrdemMovimento");
         Assert.That(tipoOrdemType, Is.Not.Null);
+
+        // Estes EditMode testes montam objetos artificiais sem passar por uma
+        // carga de partida. Limpe o registro estático entre casos para que um
+        // InstanceID reciclado não transforme a patrulha do caso seguinte em
+        // uma reemissão de uma ordem terminal anterior.
+        Type ordensType = assembly.GetType("OrquestradorGlobalOrdens");
+        MethodInfo reset = ordensType != null
+            ? ordensType.GetMethod("ResetRuntimeState", BindingFlags.Static | BindingFlags.NonPublic)
+            : null;
+        if (reset != null)
+        {
+            reset.Invoke(null, null);
+        }
+
+        unidade = new GameObject("UnidadeOrdemTeste_" + Guid.NewGuid().ToString("N"));
     }
 
     [TearDown]
@@ -228,7 +242,10 @@ public sealed class ControleOrdemMovimentoEditModeTests
             BindingFlags.Instance | BindingFlags.Public);
         MethodInfo assumir = aviaoType.GetMethod(
             "AssumirVooAposDecolagem",
-            BindingFlags.Instance | BindingFlags.Public);
+            BindingFlags.Instance | BindingFlags.Public,
+            null,
+            new[] { typeof(Vector3) },
+            null);
         FieldInfo alvo = aviaoType.GetField(
             "alvoGPSVoo",
             BindingFlags.Instance | BindingFlags.Public);

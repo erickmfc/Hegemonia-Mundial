@@ -325,7 +325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64c1703c9f75b3b4fb5131b78e2f4f81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TorretaAntiaerea
-  alcanceArea: 900
+  alcanceArea: 2250
   alturaMinimaVoo: 10
   baseGiratoria: {fileID: 476456}
   canoElevacao: {fileID: 6512145107656670512}
@@ -348,8 +348,8 @@ MonoBehaviour:
   anguloMaximoY: 160
   checarLinhaDeVisao: 1
   quantidadeDeDisparo: 2
-  tirosPorSegundo: 0.5
-  tempoPausaRajada: 10
+  tirosPorSegundo: 2
+  tempoPausaRajada: 3
   prefabProjetil: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}
   velocidadeProjetil: 120
   somDisparo: {fileID: 8300000, guid: 30cc20ef2ed3c4f35af5120b0a841e84, type: 3}

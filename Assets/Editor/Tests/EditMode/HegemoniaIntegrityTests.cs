@@ -62,8 +62,9 @@ public class HegemoniaIntegrityTests
     }
 
     [Test]
-    public void BuildSettings_ShouldNotContainRecoveryScenes()
+    public void BuildSettings_EnabledScenesExistOnDisk()
     {
+        int enabledScenes = 0;
         foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
         {
             if (!scene.enabled)
@@ -71,7 +72,38 @@ public class HegemoniaIntegrityTests
                 continue;
             }
 
-            Assert.IsFalse(scene.path.Contains("_Recovery"), "Cena _Recovery ainda habilitada em Build Settings: " + scene.path);
+            enabledScenes++;
+            Assert.IsNotNull(
+                AssetDatabase.LoadAssetAtPath<SceneAsset>(scene.path),
+                "Cena habilitada em Build Settings não existe: " + scene.path);
+        }
+
+        Assert.Greater(enabledScenes, 0, "O Build Settings precisa conter ao menos uma cena habilitada.");
+    }
+
+    [Test]
+    public void MilitaryAirbasePrefabs_ProvideTheSu11ForPurchase()
+    {
+        GameObject su11 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Aeroporto/Su11/Su11.prefab");
+        Assert.IsNotNull(su11, "Prefab do Su-11 não encontrado.");
+
+        string[] airbasePrefabPaths =
+        {
+            "Assets/Prefabs/Aeroporto/Aeroporto militar.prefab",
+            "Assets/Prefabs/Aeroporto/Aeroporto militar/Base Militar.prefab"
+        };
+
+        foreach (string path in airbasePrefabPaths)
+        {
+            GameObject airbase = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            Assert.IsNotNull(airbase, "Prefab da base aérea não encontrado: " + path);
+
+            GerenciadorAeroporto airport = airbase.GetComponentInChildren<GerenciadorAeroporto>(true);
+            Assert.IsNotNull(airport, "Gerenciador de aeroporto ausente: " + path);
+            Assert.AreSame(su11, airport.prefabSu11, "O botão Comprar Su-11 ficaria desativado: " + path);
+            Assert.IsNotNull(airport.hangarAviao, "Saída do hangar ausente: " + path);
+            Assert.IsNotNull(airport.decolagem, "Waypoints de decolagem ausentes: " + path);
+            Assert.IsNotNull(airport.decida, "Waypoints de pouso ausentes: " + path);
         }
     }
 

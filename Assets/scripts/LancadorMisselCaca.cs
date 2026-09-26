@@ -83,6 +83,22 @@ public class LancadorMisselCaca : MonoBehaviour
     // --- CACHE: Busca O(1) de unidades ---
     private static readonly List<IdentidadeUnidade> _bufferGlobais = new List<IdentidadeUnidade>(512);
     private readonly HashSet<Transform> _alvosJaVistos = new HashSet<Transform>();
+    private readonly HashSet<Transform> _alvosAutorizadosHud = new HashSet<Transform>();
+    private bool somenteAlvosAutorizadosHud;
+    private bool ordensManuaisHud;
+
+    public void DefinirPoliticaTaticaHud(bool manual, IList<Transform> alvosAutorizados, bool limitarAutomatico)
+    {
+        ordensManuaisHud = manual;
+        somenteAlvosAutorizadosHud = limitarAutomatico;
+        _alvosAutorizadosHud.Clear();
+        if (alvosAutorizados == null) return;
+        for (int i = 0; i < alvosAutorizados.Count; i++)
+        {
+            Transform alvo = alvosAutorizados[i];
+            if (alvo != null) _alvosAutorizadosHud.Add(alvo);
+        }
+    }
 
     void Start()
     {
@@ -243,6 +259,9 @@ public class LancadorMisselCaca : MonoBehaviour
 
         // Alvo IA forçado sempre tem prioridade, mesmo se estiver em patrulha/recon.
         if (TentarDisparoContraAlvoIA()) return;
+        // A postura manual mantém sensores e ordens explícitas disponíveis,
+        // mas impede que o lançador escolha sozinho um alvo detectado.
+        if (ordensManuaisHud) return;
 
         if (modoPassivo)
         {
@@ -258,7 +277,8 @@ public class LancadorMisselCaca : MonoBehaviour
         if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
         {
             AlvoDetectado alvo = inimigosNaArea[0];
-            if (alvo.transform != null)
+            bool autorizado = !somenteAlvosAutorizadosHud || _alvosAutorizadosHud.Contains(alvo.transform);
+            if (alvo.transform != null && autorizado)
                 Disparar(alvo.transform);
         }
 

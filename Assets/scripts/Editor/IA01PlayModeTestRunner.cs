@@ -19,7 +19,7 @@ namespace Hegemonia.EditorTools
         private const string ExitCodeKey = "IA01.Validation.ExitCode";
         private const string ResultPathKey = "IA01.Validation.ResultPath";
         private const string TracePathKey = "IA01.Validation.TracePath";
-        private const string MenuSceneName = "Menu cena";
+        private const string MenuSceneName = ConfiguracaoCenasJogo.CenaMenuPrincipalCanonica;
         private const string SaveFileName = "save_partida.json";
         private const double OverallTimeoutSeconds = 180.0;
         private const double CapitalObservationSeconds = 12.0;

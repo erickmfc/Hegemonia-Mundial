@@ -698,7 +698,8 @@ public class C700TransporteAereo : MonoBehaviour
     private void MoverAereo(Vector3 alvo, float velocidade)
     {
         Vector3 antes = transform.position;
-        transform.position = Vector3.MoveTowards(transform.position, alvo, Mathf.Max(1f, velocidade) * Time.deltaTime);
+        float multiplicador = controleUnidade != null ? controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
+        transform.position = Vector3.MoveTowards(transform.position, alvo, Mathf.Max(1f, velocidade * multiplicador) * Time.deltaTime);
         Vector3 delta = transform.position - antes;
         if (delta.sqrMagnitude > deslocamentoMinimoAereo * deslocamentoMinimoAereo)
         {
@@ -711,7 +712,8 @@ public class C700TransporteAereo : MonoBehaviour
     {
         Vector3 destino = new Vector3(alvo.x, alvo.y + offsetAlturaSolo, alvo.z);
         Vector3 delta = destino - transform.position;
-        transform.position = Vector3.MoveTowards(transform.position, destino, Mathf.Max(1f, velocidadeTaxi) * Time.deltaTime);
+        float multiplicador = controleUnidade != null ? controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
+        transform.position = Vector3.MoveTowards(transform.position, destino, Mathf.Max(1f, velocidadeTaxi * multiplicador) * Time.deltaTime);
         delta.y = 0f;
         if (delta.sqrMagnitude > 0.01f)
         {

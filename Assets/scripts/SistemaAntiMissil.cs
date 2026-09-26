@@ -110,6 +110,7 @@ public class SistemaAntiMissil : MonoBehaviour
     public bool modoPassivo = false;
 
     private AudioSource audioSource;
+    private ControleUnidade controleUnidade;
     private Transform alvoMissilAtual;
     private IdentidadeUnidade minhaIdentidade;
     private float cooldownDisparo = 0f;
@@ -151,6 +152,9 @@ public class SistemaAntiMissil : MonoBehaviour
     void Start()
     {
         InicializarPaiol();
+        controleUnidade = GetComponentInParent<ControleUnidade>()
+            ?? GetComponent<ControleUnidade>()
+            ?? GetComponentInChildren<ControleUnidade>(true);
 
         if (baseGiratoria != null)
         {
@@ -216,6 +220,13 @@ public class SistemaAntiMissil : MonoBehaviour
             {
                 FinalizarTrocaCartucho();
             }
+            return;
+        }
+
+        if (ModoCombatePassivo)
+        {
+            alvoMissilAtual = null;
+            ModoOcioso();
             return;
         }
 
@@ -394,6 +405,8 @@ public class SistemaAntiMissil : MonoBehaviour
 
     int DispararSalvaDefensiva()
     {
+        if (ModoCombatePassivo) return 0;
+
         if (misseisAtuais <= 0)
         {
             IniciarTrocaCartucho();
@@ -643,7 +656,7 @@ public class SistemaAntiMissil : MonoBehaviour
         int quantidadeObjetos = 0;
         int processados = 0;
 
-        if (modoPassivo)
+        if (ModoCombatePassivo)
         {
             ameacasOrdenadas.Clear();
             candidatosAvaliadosNoScan.Clear();
@@ -1434,8 +1447,31 @@ public class SistemaAntiMissil : MonoBehaviour
 
     public void DefinirModoAtivo(bool ativo)
     {
-        modoPassivo = !ativo;
+        if (controleUnidade == null)
+        {
+            controleUnidade = GetComponentInParent<ControleUnidade>()
+                ?? GetComponent<ControleUnidade>()
+                ?? GetComponentInChildren<ControleUnidade>(true);
+        }
+
+        modoPassivo = !ativo || (controleUnidade != null && !controleUnidade.ModoCombateAtivo);
         if (modoPassivo) alvoMissilAtual = null;
+    }
+
+    private bool ModoCombatePassivo => modoPassivo
+        || (controleUnidade != null && !controleUnidade.ModoCombateAtivo);
+
+    public bool EstaRecarregando => recarregando;
+
+    public int ObterMisseisRestantesTotais()
+    {
+        return Mathf.Max(0, misseisAtuais)
+            + Mathf.Max(0, cartuchosReserva) * ObterQuantidadePorCartuchoEfetiva();
+    }
+
+    public int ObterMisseisMaximosTotais()
+    {
+        return ObterCartuchosMaximosEfetivos() * ObterQuantidadePorCartuchoEfetiva();
     }
 
     public int ObterCartuchosMaximos()

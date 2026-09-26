@@ -13,14 +13,23 @@ MonoBehaviour:
   m_Name: Nara - Aviao Bombardeiro Antigo
   m_EditorClassIdentifier: 
   nomeItem: Nara Aviao Bombardeiro Antigo
-  descricao: Bombardeiro antigo de duas helices. Classificacao de poder NARA nivel C.
+  descricao: Bombardeiro antigo de duas helices. Classificacao de poder NARA nivel
+    C.
   icone: {fileID: 0}
   itemId: nara_bombardeiro_antigo
   aliases: nara, bombardeiro antigo, old bomber, aviao antigo
   capacidades: 100663442
-  prefabDaUnidade: {fileID: 100100000, guid: dba1be74b6b8a854089ade6338d59edd, type: 3}
+  prefabDaUnidade: {fileID: 350537872923637445, guid: dba1be74b6b8a854089ade6338d59edd, type: 3}
   preco: 1800
+  precoDefinitivo: 0
   categoria: 2
   escalaPoder: 4
+  strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

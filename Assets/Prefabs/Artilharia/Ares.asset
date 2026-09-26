@@ -16,6 +16,7 @@ MonoBehaviour:
   descricao: 'Missel de antiaereo '
   icone: {fileID: 21300000, guid: 49080954107ee6f4083c5806a1b8724f, type: 3}
   prefabDaUnidade: {fileID: 167466, guid: bee29f3b0a44c7e49b7cc895665e2cc0, type: 3}
-  preco: 100
+  preco: 120000000
+  precoDefinitivo: 120000000
   categoria: 0
   scriptsDeComando: []

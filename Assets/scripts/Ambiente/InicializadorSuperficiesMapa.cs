@@ -60,6 +60,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
 
         int camadaChao = LayerMask.NameToLayer("Chao");
         Material materialTerrain = Resources.Load<Material>(MaterialTerrainResource);
+        bool possuiAguaVisualSeparada = PossuiSuperficieVisualAguaSeparada();
 
         for (int i = 0; i < terrains.Length; i++)
         {
@@ -108,12 +109,15 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
             bool ehAguaDeclarada = EhTerrenoAguaDeclarada(terrain);
             bool ehAguaVisual = ehAguaVisualMdHistoria || ehAguaDeclarada;
             bool ehFronteiraVisualMdHistoria = EhTerrenoFronteiraVisualMdHistoria(terrain);
+            bool terrainRepresentaAguaVisual = ehAguaVisual && !possuiAguaVisualSeparada;
             // A MD História ainda contém tiles Terrain_... da água antiga e
             // cenas novas podem declarar um Terrain chamado Agua/Water. Eles
             // permanecem com collider/marcador para consultas de superfície e
-            // pathfinder, mas o Sea explícito é a superfície desenhada. Renderizar
-            // os dois ao mesmo tempo cria placas cinzas e linhas no horizonte.
-            terrain.enabled = !ehAguaVisual && !ehFronteiraVisualMdHistoria;
+            // pathfinder. Quando não há uma malha de oceano independente, o
+            // próprio Terrain marcado como água é a única superfície visual.
+            // Renderizar os dois ao mesmo tempo cria placas cinzas no horizonte.
+            terrain.enabled = (!ehAguaVisual || terrainRepresentaAguaVisual)
+                && !ehFronteiraVisualMdHistoria;
             TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
             if (collider != null)
             {
@@ -123,7 +127,9 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
             // Toda superfície Terrain da partida usa o mesmo material URP
             // validado. Isso cobre também Terrains adicionados na cena e
             // evita que o fallback padrão fique invisível na build.
-            Material materialParaTerreno = ConfigurarMaterialTerrain(terrain, materialTerrain);
+            Material materialParaTerreno = terrainRepresentaAguaVisual
+                ? terrain.materialTemplate
+                : ConfigurarMaterialTerrain(terrain, materialTerrain);
             if (materialParaTerreno != null && terrain.materialTemplate != materialParaTerreno)
             {
                 terrain.materialTemplate = materialParaTerreno;
@@ -170,6 +176,39 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         {
             Debug.Log($"[Mapa] superfícies corrigidas: terrenos={terrenosJogaveis}, reativados={terrenosReativados}, marcadores={marcadoresCriados}");
         }
+    }
+
+    private static bool PossuiSuperficieVisualAguaSeparada()
+    {
+        OceanAdvanced[] oceanos = FindObjectsByType<OceanAdvanced>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < oceanos.Length; i++)
+        {
+            OceanAdvanced oceano = oceanos[i];
+            if (oceano != null && oceano.gameObject.activeInHierarchy
+                && oceano.GetComponentInChildren<Renderer>(true) != null)
+            {
+                return true;
+            }
+        }
+
+        string[] nomesAgua = { "Agua", "Água", "Water", "Ocean", "Sea", "Mar", "Oceano" };
+        for (int i = 0; i < nomesAgua.Length; i++)
+        {
+            GameObject objetoAgua = GameObject.Find(nomesAgua[i]);
+            if (objetoAgua == null || objetoAgua.GetComponent<Terrain>() != null)
+            {
+                continue;
+            }
+
+            if (objetoAgua.GetComponentInChildren<Renderer>(true) != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static Material ConfigurarMaterialTerrain(Terrain terrain, Material materialBase)

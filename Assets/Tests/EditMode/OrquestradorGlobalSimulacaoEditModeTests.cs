@@ -94,7 +94,9 @@ public sealed class OrquestradorGlobalSimulacaoEditModeTests
         Invoke("ExecutarAgoraParaTeste", 0f);
         Invoke("DefinirPausado", true);
         Invoke("DefinirPausado", false);
-        Invoke("ExecutarAgoraParaTeste", 100f);
+        float retomada = Mathf.Max(Time.unscaledTime, 0.5f);
+        Invoke("ExecutarAgoraParaTeste", retomada);
+        Invoke("ExecutarAgoraParaTeste", retomada + 100f);
         Assert.That(calls, Is.EqualTo(2));
     }
 

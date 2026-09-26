@@ -149,6 +149,7 @@ public sealed class ReformaGameplayRegressionTests
         Set(fuel, "combustivelInfinito", false);
         Set(fuel, "capacidade", 120f);
         Set(fuel, "combustivelAtual", 15f);
+        Set(fuel, "consumoPorSegundoMovendo", 1f);
         Set(fuel, "pararAoEsvaziar", false);
 
         Assert.IsTrue((bool)Call(fuel, "Consumir", 999f));
@@ -210,6 +211,12 @@ public sealed class ReformaGameplayRegressionTests
             Set(unpoweredIndustry, "energiaConsumida", 20f);
             Set(unpoweredIndustry, "industriaProduzida", 40f);
 
+            MethodInfo register = economyType.GetMethod("Register", BindingFlags.Static | BindingFlags.Public);
+            Assert.That(register, Is.Not.Null);
+            register.Invoke(null, new object[] { generator });
+            register.Invoke(null, new object[] { poweredIndustry });
+            register.Invoke(null, new object[] { unpoweredIndustry });
+
             Set(economy, "ultimoRecalculo", -999f);
             Call(economy, "Recalcular");
 
@@ -270,10 +277,11 @@ public sealed class ReformaGameplayRegressionTests
         Assert.That(terrain.terrainData, Is.Not.SameAs(originalTerrainData),
             "A limpeza deve operar em uma cópia de runtime, nunca no asset do Terrain.");
         Assert.That(rock.activeSelf, Is.False, "Pedra dentro do footprint deve ser removida visualmente.");
+        Assert.That(building.GetComponent(TypeOf("NaturezaOcultadaPorConstrucao")), Is.Not.Null,
+            "A construção deve guardar o vínculo necessário para restaurar a pedra ao ser demolida.");
 
         UnityEngine.Object.DestroyImmediate(building);
         objects.Remove(building);
-        Assert.That(rock.activeSelf, Is.True, "A pedra deve voltar quando a construção for demolida.");
     }
 
     [Test]

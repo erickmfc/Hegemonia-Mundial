@@ -49,7 +49,7 @@ public class Helicoptero : MonoBehaviour
     public float altitudeDeVoo = 14f;       
     public float alturaPouso = 1.33f; 
     public float velocidadeHelice = 1200f;  
-    public float velocidadeNavegacao = 20f; 
+    public float velocidadeNavegacao = 30f;
     public float velocidadePouso = 4f; 
     [Tooltip("Limita a velocidade vertical de subida para evitar efeito de 'disparo' para cima.")]
     public float velocidadeSubidaVertical = 6.5f;
@@ -1113,7 +1113,12 @@ public class Helicoptero : MonoBehaviour
             alturaDesejada = Mathf.Lerp(alturaPousoFinal, alturaCruzeiroAtual, tDescida);
         }
 
-        float velocidadeHorizontal = estaPousando ? velocidadePouso : velocidadeNavegacao;
+        ControleUnidade controleVelocidade = ObterControleUnidade();
+        float multiplicadorComando = controleVelocidade != null
+            ? controleVelocidade.MultiplicadorVelocidadeComandoHud
+            : 1f;
+        float velocidadeHorizontal = Mathf.Max(0.1f,
+            (estaPousando ? velocidadePouso : velocidadeNavegacao) * multiplicadorComando);
 
         Vector3 posHorizontalAtual = new Vector3(posAtual.x, 0f, posAtual.z);
         Vector3 posHorizontalMeta = new Vector3(destino.x, 0f, destino.z);
