@@ -15,7 +15,11 @@ public static class GlobalWorldSceneBuilder
     private const string DataFolder = RootFolder + "/Data";
     private const string ScenePath = "Assets/Scenes/GlobalMapRTS.unity";
     private const string DefinitionPath = DataFolder + "/GlobalWorldDefinition.asset";
-    private const string TerrainDataPath = DataFolder + "/GlobalMap_CoarseTerrain.asset";
+    private const string TerrainDataPath = DataFolder + "/GlobalMap_CoarseTerrain_VisualGate.asset";
+    private const string MacroBiomeTexturePath = DataFolder + "/GlobalMap_MacroBiomes.png";
+    private const string MacroBiomeLayerPath = DataFolder + "/GlobalMap_MacroBiomes.terrainlayer";
+    private const string ForestGroundTexturePath = DataFolder + "/GlobalMap_ForestGround_512m.png";
+    private const string ForestGroundNormalPath = DataFolder + "/GlobalMap_ForestGround_Normal.png";
 
     private const string AuthorityTexturePath = RootFolder + "/References/fase.png";
     private const string AppearanceTexturePath = RootFolder + "/References/referencia_biomas_vista_superior.png";
@@ -72,14 +76,14 @@ public static class GlobalWorldSceneBuilder
         if (EditorApplication.isPlayingOrWillChangePlaymode)
             throw new InvalidOperationException("Saia do Play Mode antes de rebakar os dados do Terrain.");
         if (!File.Exists(ScenePath)
-            || AssetDatabase.LoadAssetAtPath<GlobalWorldDefinition>(DefinitionPath) == null
-            || AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath) == null)
-            throw new FileNotFoundException("A cena, definição e TerrainData existentes devem estar presentes antes do rebake.");
+            || AssetDatabase.LoadAssetAtPath<GlobalWorldDefinition>(DefinitionPath) == null)
+            throw new FileNotFoundException("A cena e a definição existentes devem estar presentes antes do rebake.");
 
         try
         {
-            // Rebuild only the existing definition, layer assets and coarse
-            // TerrainData. This path deliberately never opens or rewrites the scene.
+            // Keep the previously modified TerrainData asset available for
+            // recovery. Build the refreshed data under a new path, then update
+            // only the existing Terrain and TerrainCollider references.
             GlobalWorldDefinition world = BuildDefinition();
             world.ResetRuntimeData();
             world.InitializeRuntimeData();
@@ -87,8 +91,30 @@ public static class GlobalWorldSceneBuilder
             ValidateTreePrefabs(world);
             TerrainData data = BuildGlobalTerrainData(world);
             AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(TerrainDataPath, ImportAssetOptions.ForceSynchronousImport);
+            data = AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath);
+            if (data == null)
+                throw new InvalidOperationException("O Unity não conseguiu reabrir o novo TerrainData após salvá-lo.");
+
+            Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            List<Terrain> terrains = GetSceneComponents<Terrain>(scene);
+            if (terrains.Count != 1)
+                throw new InvalidOperationException("A cena deve conter exatamente um Terrain ao atualizar seus dados.");
+            Terrain terrain = terrains[0];
+            terrain.terrainData = data;
+            TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
+            if (collider != null)
+                collider.terrainData = data;
+            EditorUtility.SetDirty(terrain);
+            if (collider != null)
+                EditorUtility.SetDirty(collider);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene, ScenePath))
+                throw new IOException("Unity não conseguiu salvar a cena após atualizar a referência do TerrainData.");
+
             Debug.Log("[GlobalMap] Rebake seguro concluído: " + data.heightmapResolution
-                + " amostras de altura, " + world.terrainLayers.Length + " camadas e biomas/coast/relief atualizados. A cena não foi aberta nem reconstruída.");
+                + " amostras de altura; terreno global macro e " + world.terrainLayers.Length
+                + " camadas locais atualizados. Hierarquia e oceano preservados.");
         }
         catch (Exception exception)
         {
@@ -137,8 +163,10 @@ public static class GlobalWorldSceneBuilder
             throw new InvalidOperationException("O nível médio do mar deve continuar em Y=0.");
         if (Mathf.Abs(terrain.transform.position.y - world.terrainBaseY) > 0.01f)
             throw new InvalidOperationException("A origem do Terrain não corresponde à faixa vertical da definição.");
-        if (terrain.terrainData.terrainLayers == null || terrain.terrainData.terrainLayers.Length != 6)
-            throw new InvalidOperationException("As seis camadas de superfície esperadas não estão no Terrain.");
+        if (terrain.terrainData.terrainLayers == null || terrain.terrainData.terrainLayers.Length != 1
+            || terrain.terrainData.terrainLayers[0] == null
+            || terrain.terrainData.terrainLayers[0].name != "GlobalMap_MacroBiomes")
+            throw new InvalidOperationException("A camada única de macrobiomas não está no Terrain global.");
         if (ocean.ocean != AssetDatabase.LoadAssetAtPath<Material>(SeaSimulationMaterialPath))
             throw new InvalidOperationException("OceanAdvanced não está usando o material de simulação do projeto.");
         if (ocean.sun == null || seaColliders[0].sharedMesh == null)
@@ -172,13 +200,15 @@ public static class GlobalWorldSceneBuilder
         world.globalHeightResolution = 2049;
         world.localHeightResolution = 513;
         world.alphamapResolution = 512;
-        world.localAlphamapResolution = 256;
+        world.localAlphamapResolution = 512;
         world.seaLevel = 0f;
         world.minimumLandClearance = 4f;
         world.terrainBaseY = -200f;
-        world.terrainVerticalSize = 1800f;
+        // Reserve room above the tallest combined inland/ridge relief so
+        // Terrain height normalization does not clamp mountain crests.
+        world.terrainVerticalSize = 2200f;
         world.beachWidth = 1600f;
-        world.coastalElevationBlendWidth = 26000f;
+        world.coastalElevationBlendWidth = 14000f;
         world.maximumMountainHeight = 1250f;
         world.terrainLayers = new[]
         {
@@ -199,21 +229,20 @@ public static class GlobalWorldSceneBuilder
                 DataFolder + "/GlobalMap_Rock.terrainlayer", "GlobalMap_Rock", new Vector2(72f, 72f)),
             CreateGlobalTerrainLayer(
                 "Assets/_TerrainAutoUpgrade/layer_Grass_1_DiffuseGrass_1_Normal2023054508611406.terrainlayer",
-                DataFolder + "/GlobalMap_Forest.terrainlayer", "GlobalMap_Forest", new Vector2(260f, 260f))
+                DataFolder + "/GlobalMap_Forest.terrainlayer", "GlobalMap_Forest", new Vector2(512f, 512f))
         };
-        world.treePrefabs = new[]
+        GameObject[] sourceTreePrefabs = new[]
         {
-            LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_Background_Patch_01.prefab"),
-            LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_Background_Patch_02.prefab"),
-            LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_Background_Patch_03.prefab"),
-            LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_Background_Patch_04.prefab"),
             LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_01.prefab"),
             LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_02.prefab"),
             LoadRequired<GameObject>("Assets/Simple InterceptMissile&TurretBehaviour/PolygonWar/Prefabs/Environments/SM_Env_Tree_03.prefab")
         };
-        world.forestClusterPrototypeCount = 4;
+        world.treePrefabs = GlobalTreeLodBuilder.BuildTreePrefabs(sourceTreePrefabs);
+        world.forestClusterPrototypeCount = 0;
         world.treeCandidateSpacing = 48f;
-        world.maximumTreesPerTile = 2600;
+        // The runtime converts forest-mask area to an instance budget, using
+        // this target density only inside suitable, non-arid forest regions.
+        world.forestTreesPerSquareKilometre = 1200f;
         EditorUtility.SetDirty(world);
         return world;
     }
@@ -229,9 +258,9 @@ public static class GlobalWorldSceneBuilder
 
         data.heightmapResolution = world.globalHeightResolution;
         data.alphamapResolution = world.alphamapResolution;
-        data.baseMapResolution = world.alphamapResolution;
+        data.baseMapResolution = 1024;
         data.size = new Vector3(world.worldSize.x, world.terrainVerticalSize, world.mapFootprintHeight);
-        data.terrainLayers = world.terrainLayers;
+        data.terrainLayers = new[] { CreateGlobalMacroBiomeLayer(world) };
 
         int heightResolution = data.heightmapResolution;
         float[,] heights = new float[heightResolution, heightResolution];
@@ -251,31 +280,79 @@ public static class GlobalWorldSceneBuilder
         data.SetHeights(0, 0, heights);
 
         int alphaResolution = data.alphamapResolution;
-        float[,,] alphamaps = new float[alphaResolution, alphaResolution, world.terrainLayers.Length];
-        float[] weights = new float[world.terrainLayers.Length];
+        float[,,] alphamaps = new float[alphaResolution, alphaResolution, 1];
         for (int z = 0; z < alphaResolution; z++)
         {
-            float worldZ = world.MapMinZ + world.mapFootprintHeight * z / (alphaResolution - 1f);
             for (int x = 0; x < alphaResolution; x++)
-            {
-                float worldX = world.MapMinX + world.worldSize.x * x / (alphaResolution - 1f);
-                float normalizedX = x / (alphaResolution - 1f);
-                float normalizedZ = z / (alphaResolution - 1f);
-                float surfaceHeight = heights[Mathf.RoundToInt(normalizedZ * (heightResolution - 1)), Mathf.RoundToInt(normalizedX * (heightResolution - 1))]
-                    * world.terrainVerticalSize + world.terrainBaseY - world.seaLevel;
-                float slope = data.GetSteepness(normalizedX, normalizedZ);
-                world.BiomeWeightsAtWorld(worldX, worldZ, weights, slope, surfaceHeight);
-                for (int layer = 0; layer < weights.Length; layer++)
-                    alphamaps[z, x, layer] = weights[layer];
-            }
+                alphamaps[z, x, 0] = 1f;
 
             if (z % 48 == 0)
-                EditorUtility.DisplayProgressBar("Global Map", "Compondo pesos dos biomas", 0.75f + z / (float)alphaResolution * 0.25f);
+                EditorUtility.DisplayProgressBar("Global Map", "Preparando a camada de macrobiomas", 0.75f + z / (float)alphaResolution * 0.25f);
         }
         data.SetAlphamaps(0, 0, alphamaps);
         data.RefreshPrototypes();
         EditorUtility.SetDirty(data);
         return data;
+    }
+
+    private static TerrainLayer CreateGlobalMacroBiomeLayer(GlobalWorldDefinition world)
+    {
+        const int textureWidth = 1024;
+        const int textureHeight = 576;
+        Color32[] pixels = new Color32[textureWidth * textureHeight];
+        for (int y = 0; y < textureHeight; y++)
+        {
+            float worldZ = world.MapMinZ + world.mapFootprintHeight * y / (textureHeight - 1f);
+            for (int x = 0; x < textureWidth; x++)
+            {
+                float worldX = world.MapMinX + world.worldSize.x * x / (textureWidth - 1f);
+                pixels[y * textureWidth + x] = world.MacroBiomeColorAtWorld(worldX, worldZ);
+            }
+        }
+
+        Texture2D generated = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, true, false)
+        {
+            name = "GlobalMap_MacroBiomes_Generated"
+        };
+        generated.SetPixels32(pixels);
+        generated.Apply(true, false);
+        File.WriteAllBytes(MacroBiomeTexturePath, generated.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(generated);
+        AssetDatabase.ImportAsset(MacroBiomeTexturePath, ImportAssetOptions.ForceSynchronousImport);
+
+        TextureImporter importer = AssetImporter.GetAtPath(MacroBiomeTexturePath) as TextureImporter;
+        if (importer == null)
+            throw new InvalidOperationException("A textura processual de macrobiomas não foi importada.");
+        importer.textureType = TextureImporterType.Default;
+        importer.sRGBTexture = true;
+        importer.alphaSource = TextureImporterAlphaSource.FromInput;
+        importer.mipmapEnabled = true;
+        importer.textureCompression = TextureImporterCompression.CompressedHQ;
+        importer.maxTextureSize = 2048;
+        importer.npotScale = TextureImporterNPOTScale.None;
+        importer.filterMode = FilterMode.Bilinear;
+        importer.wrapMode = TextureWrapMode.Clamp;
+        importer.SaveAndReimport();
+
+        Texture2D macroTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(MacroBiomeTexturePath);
+        if (macroTexture == null)
+            throw new InvalidOperationException("O Unity não conseguiu reabrir a textura de macrobiomas.");
+
+        TerrainLayer layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(MacroBiomeLayerPath);
+        if (layer == null)
+        {
+            layer = new TerrainLayer { name = "GlobalMap_MacroBiomes" };
+            AssetDatabase.CreateAsset(layer, MacroBiomeLayerPath);
+        }
+        layer.name = "GlobalMap_MacroBiomes";
+        layer.diffuseTexture = macroTexture;
+        layer.normalMapTexture = null;
+        layer.tileSize = new Vector2(world.worldSize.x, world.mapFootprintHeight);
+        layer.tileOffset = Vector2.zero;
+        layer.metallic = 0f;
+        layer.smoothness = 0f;
+        EditorUtility.SetDirty(layer);
+        return layer;
     }
 
     private static Scene PrepareSceneForBuild()
@@ -492,13 +569,22 @@ public static class GlobalWorldSceneBuilder
         for (int i = 0; i < world.treePrefabs.Length; i++)
         {
             GameObject prefab = world.treePrefabs[i];
-            MeshFilter meshFilter = prefab != null ? prefab.GetComponent<MeshFilter>() : null;
-            MeshRenderer meshRenderer = prefab != null ? prefab.GetComponent<MeshRenderer>() : null;
-            if (meshFilter == null || meshFilter.sharedMesh == null || meshRenderer == null || !meshRenderer.enabled)
+            LODGroup lodGroup = prefab != null ? prefab.GetComponent<LODGroup>() : null;
+            LOD[] lods = lodGroup != null ? lodGroup.GetLODs() : Array.Empty<LOD>();
+            bool validLods = lods.Length >= 2;
+            for (int lodIndex = 0; validLods && lodIndex < lods.Length; lodIndex++)
+            {
+                bool hasRenderer = false;
+                foreach (Renderer renderer in lods[lodIndex].renderers)
+                    hasRenderer |= renderer != null && renderer.enabled;
+                validLods &= hasRenderer;
+            }
+
+            if (!validLods)
             {
                 string prefabName = prefab != null ? prefab.name : "<ausente>";
                 throw new InvalidOperationException(
-                    "O prefab de árvore precisa ter MeshFilter e MeshRenderer habilitados na raiz do protótipo do Terrain: "
+                    "O prefab de árvore precisa fornecer malhas visíveis nos LODs próximos e distantes do Terrain: "
                     + prefabName);
             }
         }
@@ -568,8 +654,154 @@ public static class GlobalWorldSceneBuilder
 
         layer.name = layerName;
         layer.tileSize = tileSize;
+        if (layerName == "GlobalMap_Forest")
+        {
+            // Regional alpha masks break the 512 m repeat at medium range;
+            // detailed albedo and tangent normals support close forest ground.
+            layer.diffuseTexture = CreateForestGroundTexture();
+            layer.normalMapTexture = CreateForestGroundNormalTexture();
+            layer.normalScale = 0.65f;
+        }
         EditorUtility.SetDirty(layer);
         return layer;
+    }
+
+    private static Texture2D CreateForestGroundTexture()
+    {
+        Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(ForestGroundTexturePath);
+        if (existing != null)
+            return existing;
+
+        const int resolution = 1024;
+        const float tileWorldSize = 512f;
+        Color32[] pixels = new Color32[resolution * resolution];
+        for (int y = 0; y < resolution; y++)
+        {
+            float wz = y / (float)resolution * tileWorldSize;
+            for (int x = 0; x < resolution; x++)
+            {
+                float wx = x / (float)resolution * tileWorldSize;
+                float broad = 0.62f * Mathf.PerlinNoise(wx / 38f + 17.3f, wz / 38f - 9.1f)
+                    + 0.38f * Mathf.PerlinNoise(wx / 17f - 4.8f, wz / 17f + 22.6f);
+                float coverage = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.37f, 0.69f, broad));
+                float detail = 0.60f * Mathf.PerlinNoise(wx / 4.5f + 8.6f, wz / 4.5f - 12.2f)
+                    + 0.40f * Mathf.PerlinNoise(wx / 1.3f - 24.8f, wz / 1.3f + 5.7f);
+
+                Color soil = new Color(0.235f, 0.205f, 0.125f);
+                Color olive = new Color(0.145f, 0.215f, 0.095f);
+                Color deepCanopy = new Color(0.075f, 0.135f, 0.060f);
+                Color color = Color.Lerp(soil, olive, 0.28f + coverage * 0.57f);
+                color = Color.Lerp(color, deepCanopy, Mathf.Clamp01((broad - 0.57f) * 0.72f));
+                color *= Mathf.Lerp(0.86f, 1.12f, detail);
+                pixels[y * resolution + x] = new Color32(
+                    (byte)Mathf.RoundToInt(Mathf.Clamp01(color.r) * 255f),
+                    (byte)Mathf.RoundToInt(Mathf.Clamp01(color.g) * 255f),
+                    (byte)Mathf.RoundToInt(Mathf.Clamp01(color.b) * 255f),
+                    255);
+            }
+        }
+
+        Texture2D generated = new Texture2D(resolution, resolution, TextureFormat.RGB24, true, false)
+        {
+            name = "GlobalMap_ForestGround_Generated"
+        };
+        generated.SetPixels32(pixels);
+        generated.Apply(true, false);
+        File.WriteAllBytes(ForestGroundTexturePath, generated.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(generated);
+        AssetDatabase.ImportAsset(ForestGroundTexturePath, ImportAssetOptions.ForceSynchronousImport);
+
+        TextureImporter importer = AssetImporter.GetAtPath(ForestGroundTexturePath) as TextureImporter;
+        if (importer == null)
+            throw new InvalidOperationException("A textura procedural de solo florestal não foi importada.");
+        importer.textureType = TextureImporterType.Default;
+        importer.sRGBTexture = true;
+        importer.mipmapEnabled = true;
+        importer.textureCompression = TextureImporterCompression.CompressedHQ;
+        importer.maxTextureSize = resolution;
+        importer.filterMode = FilterMode.Trilinear;
+        importer.anisoLevel = 8;
+        importer.wrapMode = TextureWrapMode.Repeat;
+        importer.SaveAndReimport();
+
+        Texture2D result = AssetDatabase.LoadAssetAtPath<Texture2D>(ForestGroundTexturePath);
+        if (result == null)
+            throw new InvalidOperationException("O Unity não conseguiu reabrir a textura procedural de solo florestal.");
+        return result;
+    }
+
+    private static Texture2D CreateForestGroundNormalTexture()
+    {
+        Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(ForestGroundNormalPath);
+        if (existing != null)
+            return existing;
+
+        const int resolution = 1024;
+        const float tileWorldSize = 512f;
+        const float tau = Mathf.PI * 2f;
+        Color32[] pixels = new Color32[resolution * resolution];
+        float texel = 1f / resolution;
+        for (int y = 0; y < resolution; y++)
+        {
+            float v = y / (float)resolution;
+            for (int x = 0; x < resolution; x++)
+            {
+                float u = x / (float)resolution;
+                float left = ForestGroundHeight(u - texel, v);
+                float right = ForestGroundHeight(u + texel, v);
+                float down = ForestGroundHeight(u, v - texel);
+                float up = ForestGroundHeight(u, v + texel);
+                float slopeScale = 1f / (2f * texel * tileWorldSize);
+                Vector3 normal = new Vector3(
+                    -(right - left) * slopeScale,
+                    -(up - down) * slopeScale,
+                    1f).normalized;
+                pixels[y * resolution + x] = new Color32(
+                    (byte)Mathf.RoundToInt((normal.x * 0.5f + 0.5f) * 255f),
+                    (byte)Mathf.RoundToInt((normal.y * 0.5f + 0.5f) * 255f),
+                    (byte)Mathf.RoundToInt((normal.z * 0.5f + 0.5f) * 255f),
+                    255);
+            }
+        }
+
+        Texture2D generated = new Texture2D(resolution, resolution, TextureFormat.RGB24, true, true)
+        {
+            name = "GlobalMap_ForestGround_Normal_Generated"
+        };
+        generated.SetPixels32(pixels);
+        generated.Apply(true, false);
+        File.WriteAllBytes(ForestGroundNormalPath, generated.EncodeToPNG());
+        UnityEngine.Object.DestroyImmediate(generated);
+        AssetDatabase.ImportAsset(ForestGroundNormalPath, ImportAssetOptions.ForceSynchronousImport);
+
+        TextureImporter importer = AssetImporter.GetAtPath(ForestGroundNormalPath) as TextureImporter;
+        if (importer == null)
+            throw new InvalidOperationException("A textura normal procedural do solo florestal não foi importada.");
+        importer.textureType = TextureImporterType.NormalMap;
+        importer.sRGBTexture = false;
+        importer.mipmapEnabled = true;
+        importer.textureCompression = TextureImporterCompression.CompressedHQ;
+        importer.maxTextureSize = resolution;
+        importer.filterMode = FilterMode.Trilinear;
+        importer.anisoLevel = 8;
+        importer.wrapMode = TextureWrapMode.Repeat;
+        importer.SaveAndReimport();
+
+        Texture2D result = AssetDatabase.LoadAssetAtPath<Texture2D>(ForestGroundNormalPath);
+        if (result == null)
+            throw new InvalidOperationException("O Unity não conseguiu reabrir a normal procedural do solo florestal.");
+        return result;
+    }
+
+    private static float ForestGroundHeight(float u, float v)
+    {
+        const float tau = Mathf.PI * 2f;
+        float warpU = Mathf.Sin(tau * (3f * u + 2f * v + 0.15f * Mathf.Sin(tau * 2f * v)));
+        float warpV = Mathf.Cos(tau * (2f * u - 3f * v + 0.13f * Mathf.Sin(tau * 3f * u)));
+        return 0.46f * Mathf.Sin(tau * (11f * u + 9f * v + 0.24f * warpU))
+            + 0.32f * Mathf.Cos(tau * (31f * u - 27f * v + 0.18f * warpV))
+            + 0.15f * Mathf.Sin(tau * (83f * u + 71f * v))
+            + 0.07f * Mathf.Cos(tau * (149f * u - 127f * v));
     }
 
     private static T LoadRequired<T>(string path) where T : UnityEngine.Object

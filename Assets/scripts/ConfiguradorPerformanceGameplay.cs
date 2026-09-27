@@ -71,8 +71,8 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     [SerializeField] private int shadowCascadesGameplay = 2;
     [SerializeField] private float lodBiasGameplay = 1.35f;
     [SerializeField] private float terrainDetailDistanceGameplay = 60f;
-    [SerializeField] private float terrainTreeDistanceGameplay = 1800f;
-    [SerializeField] private float terrainBillboardStartGameplay = 80f;
+    [SerializeField] private float terrainTreeDistanceGameplay = 5000f;
+    [SerializeField] private float terrainBillboardStartGameplay = 5000f;
     [SerializeField] private float terrainBasemapDistanceGameplay = 350f;
     [SerializeField] private float terrainPixelErrorGameplay = 4f;
 

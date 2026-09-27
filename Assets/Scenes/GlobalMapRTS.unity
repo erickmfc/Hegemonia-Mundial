@@ -146,7 +146,7 @@ Terrain:
   m_GameObject: {fileID: 205787056}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: ac1662ea188ff344eb03137ca28200c6, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 97207dbd46ba0f841b54328e5ef6af19, type: 2}
   m_TreeDistance: 0
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -195,7 +195,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: ac1662ea188ff344eb03137ca28200c6, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 97207dbd46ba0f841b54328e5ef6af19, type: 2}
   m_EnableTreeColliders: 1
 --- !u!4 &205787059
 Transform:
@@ -251,7 +251,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 401164718}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7af63cf04e3e9b44d9c7a71a36357bbc, type: 3}
   m_Name: 
@@ -465,7 +465,7 @@ Camera:
     height: 1
   near clip plane: 1
   far clip plane: 600000
-  field of view: 75
+  field of view: 64
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -698,6 +698,8 @@ MonoBehaviour:
   tileRadius: 1
   refreshInterval: 0.5
   tilesCreatedPerFrame: 1
+  terrainRowsPerFrame: 16
+  vegetationRowsPerFrame: 4
   showDiagnostics: 1
 --- !u!4 &1451157271
 Transform:

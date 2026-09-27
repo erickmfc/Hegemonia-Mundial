@@ -10,6 +10,7 @@ using UnityEngine.SceneManagement;
 public sealed class InicializadorSuperficiesMapa : MonoBehaviour
 {
     private const string NomeObjeto = "[InicializadorSuperficiesMapa]";
+    private const string CenaMapaGlobal = "GlobalMapRTS";
     private const string MaterialTerrainResource = "CodexCampaignTerrainURP";
     private const float MargemRecorteCamera = 500f;
     // A cena canônica possui tiles ativos que ficam além de 14 km da
@@ -104,6 +105,8 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
             }
 
             terrenosJogaveis++;
+            bool pertenceAoMapaGlobal = terrain.gameObject.scene.name.Equals(
+                CenaMapaGlobal, System.StringComparison.OrdinalIgnoreCase);
 
             bool ehAguaVisualMdHistoria = EhTerrenoAguaMdHistoria(terrain);
             bool ehAguaDeclarada = EhTerrenoAguaDeclarada(terrain);
@@ -127,7 +130,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
             // Toda superfície Terrain da partida usa o mesmo material URP
             // validado. Isso cobre também Terrains adicionados na cena e
             // evita que o fallback padrão fique invisível na build.
-            Material materialParaTerreno = terrainRepresentaAguaVisual
+            Material materialParaTerreno = terrainRepresentaAguaVisual || pertenceAoMapaGlobal
                 ? terrain.materialTemplate
                 : ConfigurarMaterialTerrain(terrain, materialTerrain);
             if (materialParaTerreno != null && terrain.materialTemplate != materialParaTerreno)
@@ -136,7 +139,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
                 materiaisCorrigidos++;
             }
 
-            if (terrain.drawInstanced)
+            if (!pertenceAoMapaGlobal && terrain.drawInstanced)
             {
                 terrain.drawInstanced = false;
                 instancingDesativado++;
@@ -520,6 +523,13 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         {
             Camera camera = cameras[c];
             if (camera == null || !camera.enabled || !camera.gameObject.scene.IsValid())
+            {
+                continue;
+            }
+
+            // A câmera estratégica do mapa global cobre centenas de
+            // quilômetros; o limite seguro das cenas táticas não se aplica.
+            if (camera.gameObject.scene.name.Equals(CenaMapaGlobal, System.StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }

@@ -20,13 +20,13 @@ MonoBehaviour:
   globalHeightResolution: 2049
   localHeightResolution: 513
   alphamapResolution: 512
-  localAlphamapResolution: 256
+  localAlphamapResolution: 512
   seaLevel: 0
   minimumLandClearance: 4
   terrainBaseY: -200
   terrainVerticalSize: 1800
   beachWidth: 1600
-  coastalElevationBlendWidth: 26000
+  coastalElevationBlendWidth: 14000
   maximumMountainHeight: 1250
   terrainLayers:
   - {fileID: 8574412962073106934, guid: f73b8a931de9ed446add3306ce06dc86, type: 2}
@@ -36,13 +36,9 @@ MonoBehaviour:
   - {fileID: 8574412962073106934, guid: 12ed0ded48083684494b2b28046f887f, type: 2}
   - {fileID: 8574412962073106934, guid: ec1d7ee0598f10e4ba480fe3e70105fb, type: 2}
   treePrefabs:
-  - {fileID: 1976625863328072, guid: 83783d40b06c4d24a93cf52a7b70fc14, type: 3}
-  - {fileID: 1371951432327878, guid: 5b640edfd493a4e46a726bf98cca0c81, type: 3}
-  - {fileID: 1120059902668366, guid: 3ddd865d3b46be342809a1dc5eda7d48, type: 3}
-  - {fileID: 1862234626290218, guid: cc22510d99ae1e248991db15ef540da0, type: 3}
-  - {fileID: 145966, guid: d295338eb2193c14f9feb82d278c826f, type: 3}
-  - {fileID: 167818, guid: 215ef3b148e692b49a3ac46988ad67ba, type: 3}
-  - {fileID: 131502, guid: 848847ad5d2e9e94b9dd1ed6dead47f2, type: 3}
-  forestClusterPrototypeCount: 4
+  - {fileID: 2310974947546035072, guid: a9f3a30deb764dd43904d1bd289fb61f, type: 3}
+  - {fileID: 1217492866718534835, guid: a30746414dcee6d45b8e7ff2bfa43045, type: 3}
+  - {fileID: 8299649049716483077, guid: 96e93abcb76d54448a9ff8ff6a67db85, type: 3}
+  forestClusterPrototypeCount: 0
   treeCandidateSpacing: 48
-  maximumTreesPerTile: 2600
+  forestTreesPerSquareKilometre: 1200
