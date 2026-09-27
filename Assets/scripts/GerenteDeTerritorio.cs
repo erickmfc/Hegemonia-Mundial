@@ -128,6 +128,23 @@ public class GerenteDeTerritorio : MonoBehaviour
         return uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
     }
 
+    public bool TryWorldToMapUv(Vector3 worldPosition, out Vector2 uv, out bool dentroDaCoberturaDoMapa)
+    {
+        if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
+        Vector3 min = limitesTerritoriais.min;
+        float largura = limitesTerritoriais.size.x;
+        float profundidade = limitesTerritoriais.size.z;
+        if (!limitesTerritoriaisProntos || largura <= 0.001f || profundidade <= 0.001f)
+        {
+            uv = Vector2.zero;
+            dentroDaCoberturaDoMapa = false;
+            return false;
+        }
+        uv = new Vector2((worldPosition.x - min.x) / largura, 1f - (worldPosition.z - min.z) / profundidade);
+        dentroDaCoberturaDoMapa = uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
+        return true;
+    }
+
     public Vector3 MapUvToWorld(Vector2 uv)
     {
         if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
@@ -143,7 +160,7 @@ public class GerenteDeTerritorio : MonoBehaviour
     public ResultadoConsultaTerritorio ObterTerritorioNaPosicao(Vector3 ponto)
     {
         GarantirMapaPolitico();
-        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv))
+        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv, out bool dentroDaCoberturaDoMapa))
         {
             ResultadoConsultaTerritorio politico = mapaPolitico.ConsultarUv(uv);
             if (politico.encontrouRegiao)
@@ -153,6 +170,7 @@ public class GerenteDeTerritorio : MonoBehaviour
                     politico.ownerCountryTeamId = proprietario;
                     politico.neutral = proprietario <= 0;
                 }
+                politico.worldPosition = ponto;
                 return politico;
             }
 
@@ -162,11 +180,33 @@ public class GerenteDeTerritorio : MonoBehaviour
                 {
                     encontrouRegiao = true,
                     territorioId = "aguas-internacionais",
-                    ownerCountryTeamId = 0,
+                    ownerCountryTeamId = -1,
                     aguasInternacionais = true,
-                    tipo = TipoRegiaoPolitica.AguasTerritoriais
+                    tipo = TipoRegiaoPolitica.AguasTerritoriais,
+                    worldPosition = ponto,
+                    mapPosition = uv,
+                    possuiMapPosition = true,
+                    fonte = FonteConsultaTerritorial.AguasInternacionais
                 };
             }
+
+            // Faixas políticas estão acima de reservas, expansões e marcadores legados.
+            // A presença do dado político, mesmo em uma lacuna, é soberana.
+            return new ResultadoConsultaTerritorio
+            {
+                worldPosition = ponto,
+                mapPosition = uv,
+                possuiMapPosition = true,
+                fonte = FonteConsultaTerritorial.Nenhuma
+            };
+        }
+        else if (mapaPolitico != null && dentroDaCoberturaDoMapa)
+        {
+            ResultadoConsultaTerritorio lacuna = ResultadoConsultaTerritorio.NaoDefinido;
+            lacuna.worldPosition = ponto;
+            lacuna.mapPosition = uv;
+            lacuna.possuiMapPosition = true;
+            return lacuna;
         }
 
         // Regiões políticas desenhadas são soberanas. Legado permanece apenas como fallback.
@@ -178,10 +218,14 @@ public class GerenteDeTerritorio : MonoBehaviour
                 encontrouRegiao = true,
                 territorioId = "legado-marker-" + donoLegado,
                 ownerCountryTeamId = donoLegado,
-                tipo = TipoRegiaoPolitica.Terra
+                tipo = TipoRegiaoPolitica.Terra,
+                worldPosition = ponto,
+                fonte = FonteConsultaTerritorial.Legado
             };
         }
-        return ResultadoConsultaTerritorio.NaoDefinido;
+        ResultadoConsultaTerritorio indefinido = ResultadoConsultaTerritorio.NaoDefinido;
+        indefinido.worldPosition = ponto;
+        return indefinido;
     }
 
     public bool TentarCapturarTerritorio(string territorioId, int novoOwnerTeamId)
@@ -266,7 +310,7 @@ public class GerenteDeTerritorio : MonoBehaviour
     public int ObterDonoDoPonto(Vector3 ponto)
     {
         GarantirMapaPolitico();
-        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv))
+        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv, out bool dentroDaCoberturaDoMapa))
         {
             ResultadoConsultaTerritorio politico = mapaPolitico.ConsultarUv(uv);
             if (politico.encontrouRegiao)
@@ -275,6 +319,12 @@ public class GerenteDeTerritorio : MonoBehaviour
                 return Mathf.Max(0, politico.ownerCountryTeamId);
             }
             if (EhAguasInternacionais(ponto)) return 0;
+            // A consulta legada em inteiro também precisa respeitar regiões políticas vazias.
+            return 0;
+        }
+        else if (mapaPolitico != null && dentroDaCoberturaDoMapa)
+        {
+            return 0;
         }
 
         // Os polígonos têm precedência absoluta; reservas de expansão e raios

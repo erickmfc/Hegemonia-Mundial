@@ -930,16 +930,28 @@ public class MapaGeralController : MonoBehaviour
 
     private Color CorPoliticaDaRegiao(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
     {
-        if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais) return new Color(1f, 0.34f, 0.70f, 0.95f);
         int dono = gerente.ObterDonoDaRegiao(regiao.territorioId);
-        if (dono <= 0) return regiao.neutral ? corUnidadeNeutro : Color.white;
+        if (dono <= 0)
+        {
+            if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais) return new Color(1f, 0.34f, 0.70f, 0.95f);
+            return regiao.neutral ? corUnidadeNeutro : Color.white;
+        }
         Color[] cores = { new Color(0.2f, 0.9f, 0.5f), new Color(0.2f, 0.75f, 1f), new Color(1f, 0.58f, 0.2f), new Color(1f, 0.3f, 0.35f), new Color(0.76f, 0.55f, 1f) };
-        return cores[(dono - 1) % cores.Length];
+        Color cor = cores[(dono - 1) % cores.Length];
+        if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais) cor = Color.Lerp(cor, new Color(0.2f, 0.55f, 0.95f), 0.38f);
+        return cor;
     }
 
     private string TextoDonoTerritorial(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
     {
         int dono = gerente.ObterDonoDaRegiao(regiao.territorioId);
+        if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais)
+        {
+            if (dono <= 0) return "ÁGUAS SEM DONO";
+            SistemaGovernoMundial governoMar = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno paisMar = governoMar != null ? governoMar.ObterPais(dono) : null;
+            return "ÁGUAS " + (paisMar != null ? paisMar.nomePais : "PAÍS " + dono);
+        }
         if (regiao.neutral && dono <= 0) return "NEUTRO";
         if (dono <= 0) return "SEM DONO";
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;

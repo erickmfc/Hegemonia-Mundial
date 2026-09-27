@@ -132,9 +132,7 @@ public sealed class TerritoryMapEditorWindow : EditorWindow
         if (GUILayout.Button("Testar ponto", GUILayout.Width(95f)))
         {
             ResultadoConsultaTerritorio consulta = mapa.ConsultarUv(ultimoUvTestado);
-            resultadoTeste = consulta.encontrouRegiao
-                ? consulta.territorioId + " | owner team " + consulta.ownerCountryTeamId + (consulta.neutral ? " | neutro" : string.Empty)
-                : "Área não definida";
+            resultadoTeste = FormatarConsulta(consulta);
         }
         GUILayout.FlexibleSpace();
         EditorGUILayout.EndHorizontal();
@@ -148,6 +146,9 @@ public sealed class TerritoryMapEditorWindow : EditorWindow
     private void DesenharPropriedades(RegiaoPolitica regiao)
     {
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        List<string> errosId = ValidarIds();
+        if (errosId.Count > 0)
+            EditorGUILayout.HelpBox("IDs territoriais inválidos ou duplicados: " + string.Join(", ", errosId.ToArray()) + ". IDs são chaves do save e dos eventos de captura.", MessageType.Error);
         EditorGUI.BeginChangeCheck();
         regiao.territorioId = EditorGUILayout.TextField("Territory ID", regiao.territorioId);
         regiao.nome = EditorGUILayout.TextField("Nome", regiao.nome);
@@ -217,9 +218,7 @@ public sealed class TerritoryMapEditorWindow : EditorWindow
             {
                 ultimoUvTestado = uv;
                 ResultadoConsultaTerritorio consulta = mapa.ConsultarUv(uv);
-                resultadoTeste = consulta.encontrouRegiao
-                    ? consulta.territorioId + " | owner team " + consulta.ownerCountryTeamId
-                    : "Área não definida";
+                resultadoTeste = FormatarConsulta(consulta);
                 Repaint();
                 evt.Use();
                 return;
@@ -321,9 +320,38 @@ public sealed class TerritoryMapEditorWindow : EditorWindow
     private void Salvar()
     {
         if (mapa == null) return;
+        List<string> errosId = ValidarIds();
+        if (errosId.Count > 0)
+        {
+            EditorUtility.DisplayDialog("IDs territoriais inválidos", "Corrija IDs vazios ou duplicados antes de salvar:\n\n" + string.Join("\n", errosId.ToArray()), "OK");
+            return;
+        }
         mapa.InvalidarIndice();
         EditorUtility.SetDirty(mapa);
         AssetDatabase.SaveAssets();
+    }
+
+    private List<string> ValidarIds()
+    {
+        List<string> erros = new List<string>();
+        HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
+        for (int i = 0; i < mapa.Regioes.Count; i++)
+        {
+            RegiaoPolitica regiao = mapa.Regioes[i];
+            if (regiao == null) { erros.Add("região nula no índice " + i); continue; }
+            string id = regiao.territorioId != null ? regiao.territorioId.Trim() : string.Empty;
+            if (id.Length == 0) { erros.Add("região no índice " + i + " sem ID"); continue; }
+            if (!ids.Add(id)) erros.Add(id);
+        }
+        return erros;
+    }
+
+    private static string FormatarConsulta(ResultadoConsultaTerritorio consulta)
+    {
+        string id = consulta.encontrouRegiao ? consulta.territorioId : "(sem território)";
+        return id + " | estado " + consulta.estado + " | owner " + consulta.ownerCountryTeamId
+            + " | tipo " + consulta.tipo + " | neutro " + consulta.neutral
+            + " | capturável " + consulta.capturable + " | definido " + consulta.encontrouRegiao;
     }
 
     private void CriarAssetInicial()

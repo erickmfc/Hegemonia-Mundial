@@ -64,7 +64,10 @@ public sealed class DadosMapaTerritorial : ScriptableObject
             ownerCountryTeamId = escolhida.ownerCountryTeamId,
             neutral = escolhida.neutral,
             capturable = escolhida.capturable,
-            tipo = escolhida.tipo
+            tipo = escolhida.tipo,
+            mapPosition = uv,
+            possuiMapPosition = true,
+            fonte = FonteConsultaTerritorial.PoligonoPolitico
         };
     }
 
