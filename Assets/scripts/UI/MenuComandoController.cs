@@ -463,6 +463,34 @@ public class MenuComandoController : MonoBehaviour
     private void AtualizarLimitesMapa()
     {
         float metadeConfigurada = Mathf.Max(1f, mundoMetade);
+
+        // The global scene streams local Terrain tiles and disables its base
+        // Terrain after the handoff. Use the stable world definition instead
+        // of deriving the tactical-map footprint from whichever tiles happen
+        // to be active during this frame.
+        GlobalTerrainStreamer streamerGlobal = FindFirstObjectByType<GlobalTerrainStreamer>();
+        GlobalWorldDefinition mundoGlobal = streamerGlobal != null ? streamerGlobal.world : null;
+        if (mundoGlobal != null && mundoGlobal.worldSize.x > 0f && mundoGlobal.mapFootprintHeight > 0f)
+        {
+            float margemGlobal = Mathf.Max(0f, margemMapa);
+            float minXGlobal = mundoGlobal.MapMinX - margemGlobal;
+            float maxXGlobal = mundoGlobal.MapMaxX + margemGlobal;
+            float minZGlobal = mundoGlobal.MapMinZ - margemGlobal;
+            float maxZGlobal = mundoGlobal.MapMaxZ + margemGlobal;
+
+            centroMapaDetectado = new Vector2(
+                (minXGlobal + maxXGlobal) * 0.5f,
+                (minZGlobal + maxZGlobal) * 0.5f);
+            float metadeGlobal = Mathf.Max(
+                (maxXGlobal - minXGlobal) * 0.5f,
+                (maxZGlobal - minZGlobal) * 0.5f);
+            mundoMetade = Mathf.Max(metadeConfigurada, metadeGlobal);
+            mapaCentro = centroMapaDetectado;
+            limitesMapaInicializados = true;
+            Debug.Log($"[MenuComando] Limites do mapa tático pela definição global: centro=({centroMapaDetectado.x:F0}, {centroMapaDetectado.y:F0}) metade={mundoMetade:F0}.");
+            return;
+        }
+
         float minX = float.MaxValue;
         float maxX = float.MinValue;
         float minZ = float.MaxValue;

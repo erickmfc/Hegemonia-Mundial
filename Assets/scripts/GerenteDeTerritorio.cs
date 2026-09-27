@@ -17,8 +17,25 @@ public class GerenteDeTerritorio : MonoBehaviour
     [SerializeField] private Bounds limitesMapaExplicitos = new Bounds(Vector3.zero, new Vector3(10000f, 1000f, 10000f));
     private readonly Dictionary<string, int> proprietariosCapturados = new Dictionary<string, int>(StringComparer.Ordinal);
     private readonly Dictionary<string, bool> neutralidadeTerritorial = new Dictionary<string, bool>(StringComparer.Ordinal);
+    private sealed class ProgressoCapturaTerritorial
+    {
+        public int equipe;
+        public float segundos;
+    }
+
+    [Header("Captura territorial")]
+    [Tooltip("Intervalo entre as leituras de presença das unidades em regiões capturáveis.")]
+    [SerializeField, Min(0.25f)] private float intervaloVerificacaoCaptura = 1f;
+    [Tooltip("Tempo contínuo de ocupação terrestre necessário para reivindicar uma região neutra.")]
+    [SerializeField, Min(1f)] private float segundosParaCapturarTerritorio = 30f;
+    private readonly Dictionary<string, ProgressoCapturaTerritorial> progressoCaptura = new Dictionary<string, ProgressoCapturaTerritorial>(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> equipesPresentesPorTerritorio = new Dictionary<string, int>(StringComparer.Ordinal);
+    private readonly HashSet<string> territoriosContestados = new HashSet<string>(StringComparer.Ordinal);
+    private readonly List<IdentidadeUnidade> bufferUnidadesCaptura = new List<IdentidadeUnidade>(128);
+    private float proximaVerificacaoCaptura;
     private Bounds limitesTerritoriais;
     private bool limitesTerritoriaisProntos;
+    private GlobalWorldDefinition definicaoMapaGlobal;
 
     public event Action<string, int, int> OnTerritoryOwnerChanged;
 
@@ -60,6 +77,120 @@ public class GerenteDeTerritorio : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        Hegemonia.RTS.RTSGameSession sessao = Hegemonia.RTS.RTSGameSession.Instancia;
+        if (!Application.isPlaying
+            || Instancia != this
+            || (sessao != null && sessao.Phase != Hegemonia.RTS.RTSSessionPhase.Playing)
+            || Time.time < proximaVerificacaoCaptura)
+        {
+            return;
+        }
+
+        float intervalo = Mathf.Max(0.25f, intervaloVerificacaoCaptura);
+        proximaVerificacaoCaptura = Time.time + intervalo;
+        AtualizarCapturasTerritoriais(intervalo);
+    }
+
+    private void AtualizarCapturasTerritoriais(float intervalo)
+    {
+        GarantirMapaPolitico();
+        if (mapaPolitico == null || mapaPolitico.Regioes == null || mapaPolitico.Regioes.Count == 0)
+        {
+            progressoCaptura.Clear();
+            return;
+        }
+
+        // Só forças terrestres podem reivindicar regiões neutras configuradas
+        // como capturáveis. Uma presença de outra equipe contesta a região.
+        equipesPresentesPorTerritorio.Clear();
+        territoriosContestados.Clear();
+        RegistroEntidadesJogo.FillUnidades(bufferUnidadesCaptura);
+
+        for (int i = 0; i < bufferUnidadesCaptura.Count; i++)
+        {
+            IdentidadeUnidade unidade = bufferUnidadesCaptura[i];
+            if (!UnidadePodeCapturarTerritorio(unidade)) continue;
+
+            ResultadoConsultaTerritorio territorio = ObterTerritorioNaPosicao(unidade.transform.position);
+            if (!territorio.encontrouRegiao
+                || territorio.aguasInternacionais
+                || territorio.tipo != TipoRegiaoPolitica.Terra
+                || !territorio.capturable
+                || !territorio.neutral
+                || territorio.ownerCountryTeamId > 0
+                || string.IsNullOrEmpty(territorio.territorioId))
+            {
+                continue;
+            }
+
+            int equipeExistente;
+            if (!equipesPresentesPorTerritorio.TryGetValue(territorio.territorioId, out equipeExistente))
+            {
+                equipesPresentesPorTerritorio[territorio.territorioId] = unidade.teamID;
+            }
+            else if (equipeExistente != unidade.teamID)
+            {
+                territoriosContestados.Add(territorio.territorioId);
+            }
+        }
+
+        for (int i = 0; i < mapaPolitico.Regioes.Count; i++)
+        {
+            RegiaoPolitica regiao = mapaPolitico.Regioes[i];
+            if (regiao == null || string.IsNullOrEmpty(regiao.territorioId) || !regiao.capturable
+                || regiao.tipo != TipoRegiaoPolitica.Terra)
+            {
+                continue;
+            }
+
+            string territorioId = regiao.territorioId;
+            bool neutralidadeAtual = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutralidadeSalva)
+                ? neutralidadeSalva
+                : regiao.neutral;
+            if (!neutralidadeAtual || ObterDonoDaRegiao(territorioId) > 0)
+            {
+                progressoCaptura.Remove(territorioId);
+                continue;
+            }
+
+            int equipe;
+            if (territoriosContestados.Contains(territorioId)
+                || !equipesPresentesPorTerritorio.TryGetValue(territorioId, out equipe))
+            {
+                progressoCaptura.Remove(territorioId);
+                continue;
+            }
+
+            ProgressoCapturaTerritorial progresso;
+            if (!progressoCaptura.TryGetValue(territorioId, out progresso) || progresso.equipe != equipe)
+            {
+                progresso = new ProgressoCapturaTerritorial { equipe = equipe, segundos = 0f };
+                progressoCaptura[territorioId] = progresso;
+            }
+
+            progresso.segundos += intervalo;
+            if (progresso.segundos >= Mathf.Max(1f, segundosParaCapturarTerritorio)
+                && TentarCapturarTerritorio(territorioId, equipe))
+            {
+                progressoCaptura.Remove(territorioId);
+            }
+        }
+    }
+
+    private static bool UnidadePodeCapturarTerritorio(IdentidadeUnidade unidade)
+    {
+        if (unidade == null || !unidade.isActiveAndEnabled || unidade.teamID <= 0
+            || (unidade.tipoUnidade != TipoUnidade.Infantaria && unidade.tipoUnidade != TipoUnidade.Veiculo))
+        {
+            return false;
+        }
+
+        SistemaDeDanos danos = unidade.GetComponent<SistemaDeDanos>();
+        return danos == null || danos.vidaAtual > 0f;
+    }
+
     private void AoCarregarCena(Scene cena, LoadSceneMode modo)
     {
         AtualizarLimitesTerritoriais();
@@ -87,6 +218,29 @@ public class GerenteDeTerritorio : MonoBehaviour
             limitesTerritoriaisProntos = limitesTerritoriais.size.x > 0f && limitesTerritoriais.size.z > 0f;
             return;
         }
+
+        GlobalTerrainStreamer[] streamers = FindObjectsByType<GlobalTerrainStreamer>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < streamers.Length; i++)
+        {
+            GlobalWorldDefinition world = streamers[i] != null ? streamers[i].world : null;
+            if (world == null || world.worldSize.x <= 0.001f || world.mapFootprintHeight <= 0.001f) continue;
+
+            definicaoMapaGlobal = world;
+            Vector3 centro = new Vector3(
+                (world.MapMinX + world.MapMaxX) * 0.5f,
+                nivelMarPolitico,
+                (world.MapMinZ + world.MapMaxZ) * 0.5f);
+            Vector3 tamanho = new Vector3(
+                world.worldSize.x,
+                Mathf.Max(1f, limitesMapaExplicitos.size.y),
+                world.mapFootprintHeight);
+            limitesTerritoriais = new Bounds(centro, tamanho);
+            limitesTerritoriaisProntos = true;
+            return;
+        }
+        definicaoMapaGlobal = null;
 
         Terrain[] terrenos = Terrain.activeTerrains;
         for (int i = 0; i < terrenos.Length; i++)
@@ -128,6 +282,9 @@ public class GerenteDeTerritorio : MonoBehaviour
     /// </summary>
     public bool TryWorldToMapUv(Vector3 worldPosition, out Vector2 uv, out bool dentroDaCoberturaDoMapa)
     {
+        if (definicaoMapaGlobal != null)
+            return definicaoMapaGlobal.TryWorldToMapUv(worldPosition, out uv, out dentroDaCoberturaDoMapa);
+
         if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
         Vector3 min = limitesTerritoriais.min;
         float largura = limitesTerritoriais.size.x;
@@ -145,6 +302,15 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     public Vector3 MapUvToWorld(Vector2 uv)
     {
+        if (definicaoMapaGlobal != null)
+        {
+            Vector3 pontoGlobal = definicaoMapaGlobal.MapUvToWorld(uv, nivelMarPolitico);
+            Terrain terrenoGlobal = EncontrarTerrain(pontoGlobal);
+            if (terrenoGlobal != null)
+                pontoGlobal.y = terrenoGlobal.SampleHeight(pontoGlobal) + terrenoGlobal.GetPosition().y;
+            return pontoGlobal;
+        }
+
         if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
         Vector3 min = limitesTerritoriais.min;
         Vector3 ponto = new Vector3(min.x + Mathf.Clamp01(uv.x) * limitesTerritoriais.size.x,

@@ -27,6 +27,10 @@ public class MapaGeralController : MonoBehaviour
 
     private Camera cameraPrincipal;
     private Camera cameraMapa;
+    private GlobalWorldDefinition definicaoMapaGlobal;
+    private Material materialBaseMilitar;
+    private static readonly int TexturaAutoridadeMapaId = Shader.PropertyToID("_AuthorityTex");
+    private static readonly int TexturaAparenciaMapaId = Shader.PropertyToID("_AppearanceTex");
     private bool mapaAtivo = false;
     private Vector3 cameraPrincipalPosicaoAntesDoMapa;
     private Quaternion cameraPrincipalRotacaoAntesDoMapa;
@@ -57,16 +61,30 @@ public class MapaGeralController : MonoBehaviour
     public float nivelDoMar = 0f; // Heights abaixo disso = oceano azul
 
     // Cores do mapa
-    private readonly Color corFundoMar      = new Color(0.10f, 0.25f, 0.55f, 1f);   // Azul oceano profundo
-    private readonly Color corBordaMar      = new Color(0.18f, 0.40f, 0.70f, 1f);   // Borda da água
-    private readonly Color corPredioProprio = new Color(0.90f, 0.90f, 0.90f, 1f);   // Branco
-    private readonly Color corUnidadePropria= new Color(0.25f, 1.00f, 0.25f, 1f);   // Verde claro
-    private readonly Color corUnidadeNeutro = new Color(0.70f, 0.70f, 0.70f, 1f);   // Cinza
+    private readonly Color corFundoMar       = new Color32(31, 49, 61, 255);
+    private readonly Color corBordaMar       = new Color32(115, 150, 164, 190);
+    private readonly Color corPredioProprio  = new Color32(190, 207, 203, 255);
+    private readonly Color corUnidadePropria = new Color32(75, 196, 205, 255);
+    private readonly Color corUnidadeNeutro  = new Color32(194, 184, 157, 255);
+    private readonly Color corInimigoAtual   = new Color32(219, 103, 94, 255);
+    private readonly Color corInimigoMemoria = new Color32(202, 133, 101, 165);
+    private readonly Color corTextoMapa      = new Color32(222, 228, 218, 255);
+    private readonly Color corPainelMapa     = new Color32(17, 29, 37, 232);
+    private static readonly Color[] CoresPoliticas =
+    {
+        new Color32(116, 169, 139, 195),
+        new Color32(112, 163, 181, 195),
+        new Color32(190, 157, 112, 195),
+        new Color32(189, 119, 116, 195),
+        new Color32(157, 143, 181, 195)
+    };
 
     // Cache de objetos do mundo para não chamar Find() o tempo todo
     private List<IdentidadeUnidade> _cacheUnidades = new List<IdentidadeUnidade>();
     private readonly HashSet<int> _imoveisMapa = new HashSet<int>();
+    private readonly HashSet<int> _prediosMapa = new HashSet<int>();
     private readonly Dictionary<int, int> _categoriasMapa = new Dictionary<int, int>(256);
+    private readonly HashSet<int> _unidadesMoveisMapa = new HashSet<int>();
     private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
     private readonly List<RTSMissileVisibilityContact> _contatosMisseis = new List<RTSMissileVisibilityContact>(64);
     private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
@@ -80,6 +98,10 @@ public class MapaGeralController : MonoBehaviour
     private GUIStyle _trianguloSombraStyle;
     private GUIStyle _trianguloCorStyle;
     private GUIStyle _camadaMapaStyle;
+    private GUIStyle _rotuloRegiaoStyle;
+    private GUIStyle _estiloMiniMapa;
+    private GUIStyle _toggleCamadaStyle;
+    private readonly List<Rect> _rotulosMapaDesenhados = new List<Rect>(16);
 
     [Header("Mapa cartográfico M")]
     [SerializeField] private bool mapaCartograficoInicial = true;
@@ -111,6 +133,8 @@ public class MapaGeralController : MonoBehaviour
     {
         public float x;
         public float y;
+        public float direcaoX;
+        public float direcaoY;
         public int quantidade;
     }
 
@@ -136,6 +160,7 @@ public class MapaGeralController : MonoBehaviour
     private void OnDestroy()
     {
         if (_cameraRastreamentoMissil != null) _cameraRastreamentoMissil.PararRastreamento();
+        if (materialBaseMilitar != null) Destroy(materialBaseMilitar);
         if (Instancia == this)
         {
             Instancia = null;
@@ -147,6 +172,7 @@ public class MapaGeralController : MonoBehaviour
         OcultarTerrenoInimigoAuxiliar();
         cameraPrincipal = Camera.main;
         AtualizarLimitesMapa();
+        InicializarBaseCartograficaMilitar();
         AtualizarLimitesTerritorioInimigo();
 
         GameObject camObj = new GameObject("Camera_MapaGeral");
@@ -213,6 +239,21 @@ public class MapaGeralController : MonoBehaviour
     /// </summary>
     private void AtualizarLimitesMapa()
     {
+        GlobalWorldDefinition definicaoGlobal = ObterDefinicaoMapaGlobal();
+        if (definicaoGlobal != null && definicaoGlobal.worldSize.x > 0.001f && definicaoGlobal.mapFootprintHeight > 0.001f)
+        {
+            larguraMapa = definicaoGlobal.worldSize.x;
+            profundidadeMapa = definicaoGlobal.mapFootprintHeight;
+            centroMapa = new Vector2(
+                (definicaoGlobal.MapMinX + definicaoGlobal.MapMaxX) * 0.5f,
+                (definicaoGlobal.MapMinZ + definicaoGlobal.MapMaxZ) * 0.5f);
+            metadeMapa = Mathf.Max(larguraMapa * 0.5f, profundidadeMapa * 0.5f);
+            zoomMaximo = Mathf.Max(zoomMaximo, metadeMapa);
+            limitesMapaInicializados = true;
+            Debug.Log($"[MapaGeral] Footprint lógico do GlobalWorldDefinition: {larguraMapa:F0} x {profundidadeMapa:F0} m; UV independente dos tiles ativos.");
+            return;
+        }
+
         float metadeConfigurada = Mathf.Max(1f, metadeMapa);
         float minX = float.MaxValue;
         float maxX = float.MinValue;
@@ -338,6 +379,54 @@ public class MapaGeralController : MonoBehaviour
         limitesMapaInicializados = true;
 
         Debug.Log($"[MapaGeral] Limites do mapa: centro=({centroMapa.x:F0}, {centroMapa.y:F0}) metade={metadeMapa:F0} zoomMaximo={zoomMaximo:F0}.");
+    }
+
+    private GlobalWorldDefinition ObterDefinicaoMapaGlobal()
+    {
+        if (definicaoMapaGlobal != null) return definicaoMapaGlobal;
+
+        GlobalTerrainStreamer[] streamers = FindObjectsByType<GlobalTerrainStreamer>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < streamers.Length; i++)
+        {
+            if (streamers[i] == null || streamers[i].world == null) continue;
+            if (streamers[i].gameObject.scene == gameObject.scene)
+            {
+                definicaoMapaGlobal = streamers[i].world;
+                return definicaoMapaGlobal;
+            }
+        }
+
+        for (int i = 0; i < streamers.Length; i++)
+        {
+            if (streamers[i] != null && streamers[i].world != null)
+            {
+                definicaoMapaGlobal = streamers[i].world;
+                return definicaoMapaGlobal;
+            }
+        }
+        return null;
+    }
+
+    private void InicializarBaseCartograficaMilitar()
+    {
+        GlobalWorldDefinition world = ObterDefinicaoMapaGlobal();
+        if (world == null || world.authorityMap == null || world.appearanceMap == null) return;
+
+        Shader shader = Resources.Load<Shader>("MapaMBaseMilitar");
+        if (shader == null || !shader.isSupported)
+        {
+            Debug.LogWarning("[MapaGeral] Shader MapaMBaseMilitar indisponível; mantendo a base cartográfica original.");
+            return;
+        }
+
+        materialBaseMilitar = new Material(shader)
+        {
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        materialBaseMilitar.SetTexture(TexturaAutoridadeMapaId, world.authorityMap);
+        materialBaseMilitar.SetTexture(TexturaAparenciaMapaId, world.appearanceMap);
     }
 
     private void LimitarCameraMapa()
@@ -606,7 +695,7 @@ public class MapaGeralController : MonoBehaviour
             && posicaoMouse.x >= Screen.width - 390f
             && yTopo >= Screen.height - 275f)
             return true;
-        return yTopo <= 34f
+        return yTopo <= 44f
             || (posicaoMouse.x <= 205f && yTopo >= Screen.height - 108f)
             || (mapaCartograficoAtivo && posicaoMouse.x >= Screen.width - 210f);
     }
@@ -622,20 +711,46 @@ public class MapaGeralController : MonoBehaviour
     {
         _cacheUnidades.Clear();
         _imoveisMapa.Clear();
+        _prediosMapa.Clear();
         _categoriasMapa.Clear();
+        _unidadesMoveisMapa.Clear();
         if (_desenharOrdens == null) _desenharOrdens = Object.FindFirstObjectByType<DesenharLinhasOrdem>();
         var todos = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         foreach (var u in todos)
         {
             if (u == null) continue;
             _cacheUnidades.Add(u);
-            if (EhImovelMapa(u.gameObject))
+            int id = u.GetInstanceID();
+            bool ehImovel = EhImovelMapa(u.gameObject);
+            bool ehMovel = EhUnidadeMovelMapa(u);
+            bool ehPredio = u.tipoUnidade == TipoUnidade.Estrutura
+                || (!ehMovel && u.GetComponent<UnityEngine.AI.NavMeshObstacle>() != null);
+            if (ehPredio) _prediosMapa.Add(id);
+            if (ehImovel)
             {
-                _imoveisMapa.Add(u.GetInstanceID());
-                _categoriasMapa[u.GetInstanceID()] = ClassificarCategoriaMapa(u);
+                _imoveisMapa.Add(id);
+                _categoriasMapa[id] = ClassificarCategoriaMapa(u);
             }
-            else _categoriasMapa[u.GetInstanceID()] = 64; // unidade móvel
+            else
+            {
+                _categoriasMapa[id] = 64; // entidade móvel ou estrutura sem classificação de imóvel.
+                if (ehMovel) _unidadesMoveisMapa.Add(id);
+            }
         }
+    }
+
+    private static bool EhUnidadeMovelMapa(IdentidadeUnidade identidade)
+    {
+        if (identidade == null) return false;
+        return identidade.GetComponent<ControleUnidade>() != null
+            || identidade.GetComponent<ControleAviao>() != null
+            || identidade.GetComponent<ControleAviaoCaca>() != null
+            || identidade.GetComponent<Helicoptero>() != null
+            || identidade.GetComponent<VooHelicoptero>() != null
+            || identidade.GetComponent<ControleNavioRealista>() != null
+            || identidade.GetComponent<ControleSubmarino>() != null
+            || identidade.GetComponent<IdentidadeNaval>() != null
+            || identidade.GetComponent<C700TransporteAereo>() != null;
     }
 
     private static int ClassificarCategoriaMapa(IdentidadeUnidade identidade)
@@ -804,6 +919,7 @@ public class MapaGeralController : MonoBehaviour
     {
         if (!mapaAtivo || cameraMapa == null) return;
         GarantirEstilosGui();
+        if (Event.current.type == EventType.Repaint) _rotulosMapaDesenhados.Clear();
 
         if (mapaCartograficoAtivo)
         {
@@ -812,46 +928,53 @@ public class MapaGeralController : MonoBehaviour
             if (camadaAreasPatrulha) DesenharRotasPatrulha();
         }
 
-        // --- Barra superior com info e botão de fechar ---
-        float barH = 30f;
-        GUI.color = new Color(0, 0, 0, 0.75f);
+        // Barra superior e controles mantêm a hierarquia visual da carta.
+        const float barH = 38f;
+        GUI.color = corPainelMapa;
         GUI.DrawTexture(new Rect(0, 0, Screen.width, barH), Texture2D.whiteTexture);
+        GUI.color = new Color32(89, 177, 184, 225);
+        GUI.DrawTexture(new Rect(0, barH - 2f, Screen.width, 2f), Texture2D.whiteTexture);
         GUI.color = Color.white;
 
-        GUIStyle titleStyle = _tituloMapaStyle;
         string modoSeguir = _seguindoAlvo && _alvoSeguir != null
-            ? $"[F seguir: {_alvoSeguir.name.ToUpper()}]"
-            : "[F seguir unidade]";
-        string titulo = mapaCartograficoAtivo ? "MAPA TÁTICO 2D" : "CÂMERA SUPERIOR (DEBUG)";
-        GUI.Label(new Rect(8, 0, Screen.width - 300f, barH),
-            $"{titulo}  [WASD mover] [Scroll zoom] [{modoSeguir}] [M fechar]", titleStyle);
+            ? "SEGUINDO: " + _alvoSeguir.name.ToUpperInvariant()
+            : "F  ACOMPANHAR UNIDADE";
+        string nivelZoom = ObterDescricaoZoomMapa();
+        string titulo = mapaCartograficoAtivo ? "HEGEMONIA  /  CARTA TÁTICA" : "HEGEMONIA  /  CÂMERA 3D";
+        GUI.Label(new Rect(14f, 2f, Mathf.Max(280f, Screen.width - 380f), 19f), titulo, _tituloMapaStyle);
+        GUI.Label(new Rect(15f, 20f, Mathf.Max(280f, Screen.width - 380f), 16f),
+            nivelZoom + "   ·   " + modoSeguir + "   ·   WASD mover   ·   Scroll zoom   ·   M fechar", _legendaMapaStyle);
 
-        GUIStyle zoomStyle = _zoomMapaStyle;
-        if (GUI.Button(new Rect(Screen.width - 250f, 3f, 116f, 24f), mapaCartograficoAtivo ? "Câmera 3D" : "Mapa 2D", zoomStyle))
+        if (GUI.Button(new Rect(Screen.width - 270f, 7f, 88f, 25f), mapaCartograficoAtivo ? "Câmera 3D" : "Carta 2D", _zoomMapaStyle))
         {
             mapaCartograficoAtivo = !mapaCartograficoAtivo;
             AtualizarRenderizacaoCameraMapa();
         }
-        if (GUI.Button(new Rect(Screen.width - 118f, 3f, 34f, 24f), "+", zoomStyle)) AjustarZoomMapa(-1f);
-        if (GUI.Button(new Rect(Screen.width - 78f, 3f, 34f, 24f), "−", zoomStyle)) AjustarZoomMapa(1f);
+        if (GUI.Button(new Rect(Screen.width - 174f, 7f, 32f, 25f), "+", _zoomMapaStyle)) AjustarZoomMapa(-1f);
+        if (GUI.Button(new Rect(Screen.width - 136f, 7f, 32f, 25f), "−", _zoomMapaStyle)) AjustarZoomMapa(1f);
+        if (GUI.Button(new Rect(Screen.width - 98f, 7f, 90f, 25f), "M  FECHAR", _zoomMapaStyle))
+            AlternarMapa(false);
 
-        GUIStyle legStyle = _legendaMapaStyle;
         if (mapaCartograficoAtivo)
         {
-            GUI.Label(new Rect(12f, Screen.height - 28f, Screen.width - 250f, 22f),
-                "A base colorida mostra geografia; soberania, dono e neutralidade vêm dos polígonos territoriais.", legStyle);
+            Rect rodape = new Rect(12f, Screen.height - 29f, Mathf.Min(640f, Screen.width - 24f), 20f);
+            GUI.color = new Color(corPainelMapa.r, corPainelMapa.g, corPainelMapa.b, 0.78f);
+            GUI.DrawTexture(rodape, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(rodape.x + 8f, rodape.y, rodape.width - 16f, rodape.height),
+                "Geografia: fase.png   ·   Soberania: polígonos políticos   ·   Contatos: inteligência disponível", _legendaMapaStyle);
         }
         else
         {
             // --- Legenda do modo de câmera superior ---
             float legX = 12f, legY = Screen.height - 100f;
-            GUI.color = new Color(0, 0, 0, 0.6f);
-            GUI.DrawTexture(new Rect(legX - 6, legY - 6, 175f, 90f), Texture2D.whiteTexture);
+            GUI.color = corPainelMapa;
+            GUI.DrawTexture(new Rect(legX - 6, legY - 6, 190f, 90f), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            GUI.Label(new Rect(legX, legY,      170, 20), "■  Prédio Aliado",   legStyle);
-            GUI.Label(new Rect(legX, legY + 22, 170, 20), "▲  Unidade Aliada",  legStyle);
-            GUI.Label(new Rect(legX, legY + 44, 170, 20), "●  Unidade Neutra",  legStyle);
-            GUI.Label(new Rect(legX, legY + 66, 170, 20), "🔵  Oceano",          legStyle);
+            GUI.Label(new Rect(legX, legY,      180, 20), "BASE  /  INSTALAÇÃO", _legendaMapaStyle);
+            GUI.Label(new Rect(legX, legY + 22, 180, 20), "UNIDADE ALIADA", _legendaMapaStyle);
+            GUI.Label(new Rect(legX, legY + 44, 180, 20), "UNIDADE NEUTRA", _legendaMapaStyle);
+            GUI.Label(new Rect(legX, legY + 66, 180, 20), "OCEANO", _legendaMapaStyle);
             DesenharTerritorioInimigo();
         }
 
@@ -859,11 +982,22 @@ public class MapaGeralController : MonoBehaviour
         DesenharIconesNoMapa();
         DesenharDisparosNoMapa();
         if (mapaCartograficoAtivo) DesenharCamadasMapa();
-        if (mapaCartograficoAtivo)
-            GUI.Label(new Rect(12f, barH + 7f, 440f, 22f), "MÍSSEIS: ciano aliado | vermelho detectado | dourado sem IFF", legStyle);
-        else
-            GUI.Label(new Rect(Screen.width - 420f, barH + 8f, 405f, 22f), "MÍSSEIS: ciano aliado | vermelho detectado | dourado sem IFF", legStyle);
+        Rect legendaContatos = new Rect(14f, barH + 8f, 305f, 20f);
+        GUI.color = new Color(corPainelMapa.r, corPainelMapa.g, corPainelMapa.b, 0.72f);
+        GUI.DrawTexture(legendaContatos, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(legendaContatos.x + 8f, legendaContatos.y, legendaContatos.width - 16f, legendaContatos.height),
+            "ALIADO  ·  HOSTIL DETECTADO  ·  ÚLTIMA POSIÇÃO", _legendaMapaStyle);
         DesenharPainelRastreamentoMissil();
+    }
+
+    private string ObterDescricaoZoomMapa()
+    {
+        if (cameraMapa == null) return "MAPA";
+        float zoom = cameraMapa.orthographicSize;
+        if (zoom > 90000f) return "VISÃO GLOBAL";
+        if (zoom > 22000f) return "VISÃO OPERACIONAL";
+        return "VISÃO TÁTICA";
     }
 
     private void DesenharFundoCartografico()
@@ -889,7 +1023,19 @@ public class MapaGeralController : MonoBehaviour
         float largura = telaInferiorDireita.x - telaSuperiorEsquerda.x;
         float altura = telaSuperiorEsquerda.y - telaInferiorDireita.y;
         if (largura <= 0f || altura <= 0f) return;
-        GUI.DrawTexture(new Rect(x, y, largura, altura), mapa, ScaleMode.StretchToFill, false);
+        Rect areaMapa = new Rect(x, y, largura, altura);
+        if (materialBaseMilitar != null)
+        {
+            Graphics.DrawTexture(areaMapa, mapa, materialBaseMilitar);
+        }
+        else
+        {
+            GUI.DrawTexture(areaMapa, mapa, ScaleMode.StretchToFill, false);
+            // Fallback para cenas antigas sem GlobalWorldDefinition ou shader.
+            GUI.color = new Color32(33, 49, 57, 34);
+            GUI.DrawTexture(areaMapa, Texture2D.whiteTexture);
+        }
+        GUI.color = Color.white;
     }
 
     private void DesenharFronteirasPoliticas()
@@ -899,11 +1045,16 @@ public class MapaGeralController : MonoBehaviour
         DadosMapaTerritorial dados = ObterDadosMapaCartografico(gerente);
         if (dados == null) return;
 
+        float zoom = cameraMapa.orthographicSize;
+        bool visaoGlobal = zoom > 90000f;
+        bool visaoMedia = zoom > 22000f;
         for (int i = 0; i < dados.Regioes.Count; i++)
         {
             RegiaoPolitica regiao = dados.Regioes[i];
             if (regiao == null || !regiao.PossuiPoligono) continue;
             Color cor = CorPoliticaDaRegiao(gerente, regiao);
+            bool limiteMaritimo = regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais;
+            float espessura = limiteMaritimo ? 0.65f : (visaoGlobal ? 0.75f : (visaoMedia ? 0.9f : 1.05f));
             Vector3 anterior = Vector3.zero;
             bool anteriorVisivel = false;
             for (int v = 0; v <= regiao.vertices.Count; v++)
@@ -917,59 +1068,140 @@ public class MapaGeralController : MonoBehaviour
                     continue;
                 }
                 Vector2 atual = new Vector2(tela.x, Screen.height - tela.y);
-                if (anteriorVisivel) DesenharLinhaTela(anterior, atual, cor, regiao.tipo == TipoRegiaoPolitica.Terra ? 2.5f : 1.8f);
+                if (anteriorVisivel)
+                {
+                    float comprimento = Vector2.Distance(anterior, atual);
+                    float comprimentoMinimo = visaoGlobal ? 3.5f : (visaoMedia ? 1.5f : 0.65f);
+                    if (comprimento >= comprimentoMinimo)
+                    {
+                        if (limiteMaritimo && !visaoGlobal)
+                            DesenharLinhaTracejada(anterior, atual, cor, espessura, 9f, 6f);
+                        else
+                            DesenharLinhaTela(anterior, atual, cor, espessura);
+                    }
+                }
                 anterior = atual;
                 anteriorVisivel = true;
             }
 
-            if (regiao.tipo == TipoRegiaoPolitica.Terra)
+            if (regiao.tipo == TipoRegiaoPolitica.Terra && DeveExibirRotuloTerritorio(regiao, visaoGlobal, visaoMedia))
             {
                 Vector2 centro = CentroideRegiao(regiao.vertices);
                 Vector3 telaCentro = cameraMapa.WorldToScreenPoint(MapUvToWorldCartografico(gerente, centro));
-                if (telaCentro.z > 0f)
+                if (telaCentro.z > 0f && telaCentro.x >= 0f && telaCentro.x <= Screen.width
+                    && telaCentro.y >= 0f && telaCentro.y <= Screen.height)
                 {
                     string dono = TextoDonoTerritorial(gerente, regiao);
-                    Rect rotulo = new Rect(telaCentro.x - 100f, Screen.height - telaCentro.y - 10f, 200f, 20f);
-                    GUI.color = new Color(0.03f, 0.07f, 0.09f, 0.82f);
-                    GUI.DrawTexture(rotulo, Texture2D.whiteTexture);
-                    GUI.color = Color.white;
-                    GUI.Label(rotulo, regiao.nome + "  " + dono, _camadaMapaStyle);
+                    string texto = visaoGlobal ? regiao.nome.ToUpperInvariant() : regiao.nome + "  ·  " + dono;
+                    float fonte = visaoGlobal ? 9f : (visaoMedia ? 10f : 11f);
+                    _rotuloRegiaoStyle.fontSize = Mathf.RoundToInt(fonte);
+                    float larguraRotulo = Mathf.Clamp(texto.Length * fonte * 0.58f + 16f, 82f, 230f);
+                    Rect rotulo = new Rect(telaCentro.x - larguraRotulo * 0.5f,
+                        Screen.height - telaCentro.y - 11f, larguraRotulo, fonte + 9f);
+                    if (PodeDesenharRotuloSemSobrepor(ref rotulo))
+                    {
+                        GUI.color = new Color(corPainelMapa.r, corPainelMapa.g, corPainelMapa.b, 0.73f);
+                        GUI.DrawTexture(rotulo, Texture2D.whiteTexture);
+                        GUI.color = new Color32(102, 164, 169, 205);
+                        GUI.DrawTexture(new Rect(rotulo.x, rotulo.y, 2f, rotulo.height), Texture2D.whiteTexture);
+                        GUI.color = Color.white;
+                        GUI.Label(new Rect(rotulo.x + 5f, rotulo.y, rotulo.width - 9f, rotulo.height), texto, _rotuloRegiaoStyle);
+                    }
+                }
+            }
+            else if (limiteMaritimo && zoom <= 9000f)
+            {
+                Vector2 centro = CentroideRegiao(regiao.vertices);
+                Vector3 telaCentro = cameraMapa.WorldToScreenPoint(MapUvToWorldCartografico(gerente, centro));
+                if (telaCentro.z > 0f && telaCentro.x >= 0f && telaCentro.x <= Screen.width
+                    && telaCentro.y >= 0f && telaCentro.y <= Screen.height)
+                {
+                    string texto = regiao.nome.ToUpperInvariant();
+                    _estiloMiniMapa.fontSize = 8;
+                    float larguraRotulo = Mathf.Clamp(texto.Length * 4.8f + 14f, 80f, 190f);
+                    Rect rotulo = new Rect(telaCentro.x - larguraRotulo * 0.5f,
+                        Screen.height - telaCentro.y - 10f, larguraRotulo, 17f);
+                    if (PodeDesenharRotuloSemSobrepor(ref rotulo))
+                    {
+                        GUI.color = new Color(corPainelMapa.r, corPainelMapa.g, corPainelMapa.b, 0.46f);
+                        GUI.DrawTexture(rotulo, Texture2D.whiteTexture);
+                        GUI.color = Color.white;
+                        GUI.Label(rotulo, texto, _estiloMiniMapa);
+                    }
                 }
             }
         }
     }
 
-    private void DesenharCamadasMapa()
+    private bool DeveExibirRotuloTerritorio(RegiaoPolitica regiao, bool visaoGlobal, bool visaoMedia)
     {
-        Rect painel = new Rect(Screen.width - 204f, 34f, 202f, Screen.height - 67f);
-        GUI.color = new Color(0.025f, 0.045f, 0.07f, 0.94f);
-        GUI.DrawTexture(painel, Texture2D.whiteTexture);
-        GUI.color = Color.white;
-        GUILayout.BeginArea(new Rect(painel.x + 10f, painel.y + 10f, painel.width - 20f, painel.height - 18f));
-        GUILayout.Label("CAMADAS", _camadaMapaStyle);
-        camadaFronteiras = GUILayout.Toggle(camadaFronteiras, "Fronteiras políticas");
-        camadaCidades = GUILayout.Toggle(camadaCidades, "Cidades");
-        camadaBases = GUILayout.Toggle(camadaBases, "Bases");
-        camadaPortos = GUILayout.Toggle(camadaPortos, "Portos");
-        camadaAeroportos = GUILayout.Toggle(camadaAeroportos, "Aeroportos");
-        camadaRadares = GUILayout.Toggle(camadaRadares, "Radares");
-        camadaUnidades = GUILayout.Toggle(camadaUnidades, "Unidades");
-        GUILayout.Space(8f);
-        GUILayout.Label("DADOS NÃO CONECTADOS", EditorStyleMini());
-        camadaRecursos = GUILayout.Toggle(camadaRecursos, "Recursos");
-        camadaEconomia = GUILayout.Toggle(camadaEconomia, "Economia");
-        camadaPopulacao = GUILayout.Toggle(camadaPopulacao, "População");
-        camadaInteligencia = GUILayout.Toggle(camadaInteligencia, "Inteligência");
-        camadaLogistica = GUILayout.Toggle(camadaLogistica, "Logística");
-        camadaAreasPatrulha = GUILayout.Toggle(camadaAreasPatrulha, "Áreas de patrulha");
-        GUILayout.FlexibleSpace();
-        GUILayout.Label("Ícones inimigos respeitam a inteligência disponível.", _legendaMapaStyle);
-        GUILayout.EndArea();
+        if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra) return false;
+        if (!visaoGlobal && !visaoMedia) return true;
+        if (regiao.vertices == null || regiao.vertices.Count < 3) return false;
+        Vector2 min = regiao.vertices[0];
+        Vector2 max = min;
+        for (int i = 1; i < regiao.vertices.Count; i++)
+        {
+            min = Vector2.Min(min, regiao.vertices[i]);
+            max = Vector2.Max(max, regiao.vertices[i]);
+        }
+        float areaCaixaUv = (max.x - min.x) * (max.y - min.y);
+        return visaoGlobal ? areaCaixaUv >= 0.045f : areaCaixaUv >= 0.008f;
     }
 
-    private static GUIStyle EditorStyleMini()
+    private bool PodeDesenharRotuloSemSobrepor(ref Rect candidato)
     {
-        return new GUIStyle(GUI.skin.label) { fontSize = 9, normal = { textColor = new Color(0.65f, 0.72f, 0.8f) } };
+        candidato.x = Mathf.Clamp(candidato.x, 6f, Mathf.Max(6f, Screen.width - candidato.width - 6f));
+        candidato.y = Mathf.Clamp(candidato.y, 44f, Mathf.Max(44f, Screen.height - candidato.height - 35f));
+        for (int i = 0; i < _rotulosMapaDesenhados.Count; i++)
+            if (_rotulosMapaDesenhados[i].Overlaps(candidato)) return false;
+        _rotulosMapaDesenhados.Add(candidato);
+        return true;
+    }
+
+    private void DesenharLinhaTracejada(Vector2 inicio, Vector2 fim, Color cor, float espessura, float tracado, float intervalo)
+    {
+        Vector2 delta = fim - inicio;
+        float comprimento = delta.magnitude;
+        if (comprimento < 0.1f) return;
+        Vector2 direcao = delta / comprimento;
+        float passo = Mathf.Max(1f, tracado + intervalo);
+        for (float distancia = 0f; distancia < comprimento; distancia += passo)
+        {
+            Vector2 a = inicio + direcao * distancia;
+            Vector2 b = inicio + direcao * Mathf.Min(distancia + tracado, comprimento);
+            DesenharLinhaTela(a, b, cor, espessura);
+        }
+    }
+
+    private void DesenharCamadasMapa()
+    {
+        Rect painel = new Rect(Screen.width - 212f, 44f, 200f, Screen.height - 84f);
+        GUI.color = corPainelMapa;
+        GUI.DrawTexture(painel, Texture2D.whiteTexture);
+        GUI.color = new Color32(88, 152, 158, 220);
+        GUI.DrawTexture(new Rect(painel.x, painel.y, 2f, painel.height), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUILayout.BeginArea(new Rect(painel.x + 12f, painel.y + 10f, painel.width - 22f, painel.height - 18f));
+        GUILayout.Label("CAMADAS", _camadaMapaStyle);
+        camadaFronteiras = GUILayout.Toggle(camadaFronteiras, "Fronteiras políticas", _toggleCamadaStyle);
+        camadaCidades = GUILayout.Toggle(camadaCidades, "Cidades", _toggleCamadaStyle);
+        camadaBases = GUILayout.Toggle(camadaBases, "Bases", _toggleCamadaStyle);
+        camadaPortos = GUILayout.Toggle(camadaPortos, "Portos", _toggleCamadaStyle);
+        camadaAeroportos = GUILayout.Toggle(camadaAeroportos, "Aeroportos", _toggleCamadaStyle);
+        camadaRadares = GUILayout.Toggle(camadaRadares, "Radares", _toggleCamadaStyle);
+        camadaUnidades = GUILayout.Toggle(camadaUnidades, "Unidades", _toggleCamadaStyle);
+        GUILayout.Space(8f);
+        GUILayout.Label("CAMADAS ADICIONAIS", _estiloMiniMapa);
+        camadaRecursos = GUILayout.Toggle(camadaRecursos, "Recursos", _toggleCamadaStyle);
+        camadaEconomia = GUILayout.Toggle(camadaEconomia, "Economia", _toggleCamadaStyle);
+        camadaPopulacao = GUILayout.Toggle(camadaPopulacao, "População", _toggleCamadaStyle);
+        camadaInteligencia = GUILayout.Toggle(camadaInteligencia, "Inteligência", _toggleCamadaStyle);
+        camadaLogistica = GUILayout.Toggle(camadaLogistica, "Logística", _toggleCamadaStyle);
+        camadaAreasPatrulha = GUILayout.Toggle(camadaAreasPatrulha, "Áreas de patrulha", _toggleCamadaStyle);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label("Contatos hostis seguem a inteligência disponível.", _estiloMiniMapa);
+        GUILayout.EndArea();
     }
 
     private Color CorPoliticaDaRegiao(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
@@ -985,12 +1217,11 @@ public class MapaGeralController : MonoBehaviour
         int dono = estado.ownerCountryTeamId;
         if (dono <= 0)
         {
-            if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais) return new Color(1f, 0.34f, 0.70f, 0.95f);
-            return estado.neutral ? corUnidadeNeutro : Color.white;
+            if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais) return corBordaMar;
+            return estado.neutral ? new Color32(208, 198, 169, 185) : new Color32(204, 211, 201, 185);
         }
-        Color[] cores = { new Color(0.2f, 0.9f, 0.5f), new Color(0.2f, 0.75f, 1f), new Color(1f, 0.58f, 0.2f), new Color(1f, 0.3f, 0.35f), new Color(0.76f, 0.55f, 1f) };
-        Color cor = cores[(dono - 1) % cores.Length];
-        if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais) cor = Color.Lerp(cor, new Color(0.2f, 0.55f, 0.95f), 0.38f);
+        Color cor = CoresPoliticas[(dono - 1) % CoresPoliticas.Length];
+        if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais) cor = Color.Lerp(cor, corBordaMar, 0.7f);
         return cor;
     }
 
@@ -1033,6 +1264,8 @@ public class MapaGeralController : MonoBehaviour
     private Vector3 MapUvToWorldCartografico(GerenteDeTerritorio gerente, Vector2 uv)
     {
         if (gerente != null) return gerente.MapUvToWorld(uv);
+        GlobalWorldDefinition world = ObterDefinicaoMapaGlobal();
+        if (world != null) return world.MapUvToWorld(uv, nivelDoMar);
         if (!limitesMapaInicializados) AtualizarLimitesMapa();
 
         // Usa o footprint lógico do mundo para projetar o mesmo asset quando
@@ -1077,7 +1310,7 @@ public class MapaGeralController : MonoBehaviour
             Vector3 b = cameraMapa.WorldToScreenPoint(pontos[i]);
             if (a.z <= 0f || b.z <= 0f) continue;
             DesenharLinhaTela(new Vector2(a.x, Screen.height - a.y),
-                new Vector2(b.x, Screen.height - b.y), new Color(1f, 0.84f, 0.2f, 0.9f), 2.2f);
+                new Vector2(b.x, Screen.height - b.y), new Color32(212, 173, 103, 188), 1.4f);
         }
     }
 
@@ -1088,24 +1321,64 @@ public class MapaGeralController : MonoBehaviour
             && _legendaMapaStyle != null
             && _trianguloSombraStyle != null
             && _trianguloCorStyle != null
-            && _camadaMapaStyle != null) return;
+            && _camadaMapaStyle != null
+            && _rotuloRegiaoStyle != null
+            && _estiloMiniMapa != null
+            && _toggleCamadaStyle != null) return;
 
         _tituloMapaStyle = new GUIStyle(GUI.skin.label)
         {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 15,
+            alignment = TextAnchor.MiddleLeft,
+            fontSize = 13,
             fontStyle = FontStyle.Bold,
-            normal = { textColor = Color.cyan }
+            normal = { textColor = corTextoMapa }
         };
-        _zoomMapaStyle = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold };
-        _legendaMapaStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, normal = { textColor = Color.white } };
+        _zoomMapaStyle = new GUIStyle(GUI.skin.button)
+        {
+            fontSize = 10,
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter,
+            normal = { textColor = corTextoMapa },
+            hover = { textColor = Color.white },
+            active = { textColor = Color.white }
+        };
+        _legendaMapaStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 9,
+            normal = { textColor = new Color32(182, 199, 199, 245) }
+        };
         _trianguloSombraStyle = new GUIStyle
         {
             alignment = TextAnchor.MiddleCenter,
             normal = { textColor = Color.black }
         };
         _trianguloCorStyle = new GUIStyle { alignment = TextAnchor.MiddleCenter };
-        _camadaMapaStyle = new GUIStyle(_legendaMapaStyle) { fontStyle = FontStyle.Bold, fontSize = 13 };
+        _camadaMapaStyle = new GUIStyle(_legendaMapaStyle)
+        {
+            fontStyle = FontStyle.Bold,
+            fontSize = 11,
+            normal = { textColor = corTextoMapa }
+        };
+        _rotuloRegiaoStyle = new GUIStyle(_legendaMapaStyle)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            fontStyle = FontStyle.Bold,
+            clipping = TextClipping.Clip,
+            normal = { textColor = corTextoMapa }
+        };
+        _estiloMiniMapa = new GUIStyle(_legendaMapaStyle)
+        {
+            fontSize = 8,
+            normal = { textColor = new Color32(137, 160, 164, 235) }
+        };
+        _toggleCamadaStyle = new GUIStyle(GUI.skin.toggle)
+        {
+            fontSize = 10,
+            normal = { textColor = new Color32(187, 200, 197, 245) },
+            onNormal = { textColor = corTextoMapa },
+            hover = { textColor = Color.white },
+            onHover = { textColor = Color.white }
+        };
     }
 
     private void DesenharTerritorioInimigo()
@@ -1143,13 +1416,13 @@ public class MapaGeralController : MonoBehaviour
         maxY = Mathf.Clamp(maxY, -2f, Screen.height + 2f);
         if (maxX <= minX || maxY <= minY) return;
 
-        GUI.color = new Color(0.82f, 0.08f, 0.08f, 0.22f);
+        GUI.color = new Color32(162, 83, 79, 38);
         GUI.DrawTexture(new Rect(minX, minY, maxX - minX, maxY - minY), Texture2D.whiteTexture);
-        GUI.color = new Color(1f, 0.18f, 0.12f, 0.8f);
-        GUI.DrawTexture(new Rect(minX, minY, maxX - minX, 2f), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(minX, maxY - 2f, maxX - minX, 2f), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(minX, minY, 2f, maxY - minY), Texture2D.whiteTexture);
-        GUI.DrawTexture(new Rect(maxX - 2f, minY, 2f, maxY - minY), Texture2D.whiteTexture);
+        GUI.color = new Color32(185, 115, 107, 165);
+        GUI.DrawTexture(new Rect(minX, minY, maxX - minX, 1.2f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(minX, maxY - 1.2f, maxX - minX, 1.2f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(minX, minY, 1.2f, maxY - minY), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(maxX - 1.2f, minY, 1.2f, maxY - minY), Texture2D.whiteTexture);
         GUI.color = Color.white;
     }
 
@@ -1157,8 +1430,10 @@ public class MapaGeralController : MonoBehaviour
     {
         if (cameraMapa == null) return;
 
-        bool agrupar = cameraMapa.orthographicSize > 120f;
-        float tamanhoCelula = cameraMapa.orthographicSize > 350f ? 48f : 30f;
+        float zoom = cameraMapa.orthographicSize;
+        bool visaoGlobal = zoom > 90000f;
+        bool agrupar = zoom > 22000f;
+        float tamanhoCelula = visaoGlobal ? 76f : 42f;
         _clustersUnidades.Clear();
 
         foreach (var id in _cacheUnidades)
@@ -1166,7 +1441,8 @@ public class MapaGeralController : MonoBehaviour
             if (id == null || id.gameObject == null) continue;
 
             bool ehAliado  = (id.teamID == meuTeamID);
-            bool ehImovel = _imoveisMapa.Contains(id.GetInstanceID());
+            int instanceId = id.GetInstanceID();
+            bool ehImovel = _imoveisMapa.Contains(instanceId);
             bool ehNeutro  = (id.teamID == 0);
             bool ehInimigo = (!ehAliado && !ehNeutro);
 
@@ -1188,19 +1464,9 @@ public class MapaGeralController : MonoBehaviour
                 }
             }
 
-            // Aeronaves e alguns navios não usam Rigidbody/NavMeshAgent. A
-            // ausência desses componentes não os torna prédios no mapa.
-            bool temControladorDeUnidade = id.GetComponent<ControleUnidade>() != null
-                || id.GetComponent<ControleAviao>() != null
-                || id.GetComponent<ControleAviaoCaca>() != null
-                || id.GetComponent<Helicoptero>() != null
-                || id.GetComponent<VooHelicoptero>() != null
-                || id.GetComponent<ControleNavioRealista>() != null
-                || id.GetComponent<ControleSubmarino>() != null
-                || id.GetComponent<IdentidadeNaval>() != null
-                || id.GetComponent<C700TransporteAereo>() != null;
-            bool ehPredio = id.tipoUnidade == TipoUnidade.Estrutura
-                || (!temControladorDeUnidade && id.GetComponent<UnityEngine.AI.NavMeshObstacle>() != null);
+            // Componentes móveis e NavMeshObstacle são classificados uma vez
+            // por atualização do cache, não em cada repaint IMGUI.
+            bool ehPredio = _prediosMapa.Contains(instanceId);
             if (!CamadaMostraEntidade(id, ehPredio)) continue;
 
             // Converte posição 3D para coordenadas da tela relativa à cameraMapa
@@ -1217,10 +1483,18 @@ public class MapaGeralController : MonoBehaviour
 
             Color cor = ehAliado
                 ? (ehPredio ? corPredioProprio : corUnidadePropria)
-                : (ehNeutro ? corUnidadeNeutro
-                    : (contatoAtual ? new Color(1f, 0.2f, 0.12f, 1f) : new Color(1f, 0.35f, 0.18f, 0.45f)));
+                : (ehNeutro ? corUnidadeNeutro : (contatoAtual ? corInimigoAtual : corInimigoMemoria));
             int classe = ehAliado ? 0 : (ehNeutro ? 1 : (contatoAtual ? 2 : 3));
-            int tipo = ehPredio ? (int)TipoUnidade.Estrutura : (int)id.tipoUnidade;
+            int categoria = _categoriasMapa.TryGetValue(instanceId, out int categoriaCache) ? categoriaCache : 0;
+            int tipo = ehPredio ? (0x80 | (categoria & 0x7f)) : (int)id.tipoUnidade;
+            float angulo = 0f;
+            if (!agrupar && _unidadesMoveisMapa.Contains(instanceId) && (ehAliado || ehNeutro || contatoAtual))
+            {
+                Vector3 frente = cameraMapa.WorldToScreenPoint(posicaoMapa + id.transform.forward * 10f);
+                Vector2 direcaoTela = new Vector2(frente.x - screenPos.x, screenPos.y - frente.y);
+                if (direcaoTela.sqrMagnitude > 0.01f)
+                    angulo = Mathf.Atan2(direcaoTela.x, -direcaoTela.y) * Mathf.Rad2Deg;
+            }
             if (agrupar)
             {
                 int cellX = Mathf.FloorToInt(sx / tamanhoCelula);
@@ -1233,17 +1507,32 @@ public class MapaGeralController : MonoBehaviour
                 {
                     cluster.x += sx;
                     cluster.y += sy;
+                    if (classe != 3 && tipo < 0x80)
+                    {
+                        Vector3 frente = cameraMapa.WorldToScreenPoint(posicaoMapa + id.transform.forward * 10f);
+                        cluster.direcaoX += frente.x - screenPos.x;
+                        cluster.direcaoY += screenPos.y - frente.y;
+                    }
                     cluster.quantidade++;
                     _clustersUnidades[chave] = cluster;
                 }
                 else
                 {
-                    _clustersUnidades[chave] = new ClusterUnidadeMapa { x = sx, y = sy, quantidade = 1 };
+                    Vector3 frente = cameraMapa.WorldToScreenPoint(posicaoMapa + id.transform.forward * 10f);
+                    _clustersUnidades[chave] = new ClusterUnidadeMapa
+                    {
+                        x = sx,
+                        y = sy,
+                        direcaoX = classe == 3 || ehPredio ? 0f : frente.x - screenPos.x,
+                        direcaoY = classe == 3 || ehPredio ? 0f : screenPos.y - frente.y,
+                        quantidade = 1
+                    };
                 }
             }
             else
             {
-                DesenharIconeUnidade(sx, sy, ehPredio ? 10f : 8f, (TipoUnidade)tipo, cor);
+                DesenharIconeUnidade(sx, sy, zoom < 9000f ? 10f : 8f, tipo,
+                    ehPredio ? TipoUnidade.Estrutura : id.tipoUnidade, cor, angulo, classe == 3);
             }
         }
 
@@ -1252,51 +1541,115 @@ public class MapaGeralController : MonoBehaviour
         {
             long chave = item.Key;
             int classe = (int)((chave >> 56) & 0xff);
-            TipoUnidade tipo = (TipoUnidade)((chave >> 48) & 0xff);
+            int codigoSimbolo = (int)((chave >> 48) & 0xff);
             ClusterUnidadeMapa cluster = item.Value;
             float x = cluster.x / Mathf.Max(1, cluster.quantidade);
             float y = cluster.y / Mathf.Max(1, cluster.quantidade);
-            Color cor = classe == 0 ? (tipo == TipoUnidade.Estrutura ? corPredioProprio : corUnidadePropria)
-                : (classe == 1 ? corUnidadeNeutro
-                    : (classe == 2 ? new Color(1f, 0.2f, 0.12f, 1f) : new Color(1f, 0.35f, 0.18f, 0.45f)));
-            DesenharIconeUnidade(x, y, cluster.quantidade > 1 ? 9f : 7f, tipo, cor);
+            bool ehPredio = (codigoSimbolo & 0x80) != 0;
+            TipoUnidade tipo = ehPredio ? TipoUnidade.Estrutura : (TipoUnidade)codigoSimbolo;
+            Color cor = classe == 0 ? (ehPredio ? corPredioProprio : corUnidadePropria)
+                : (classe == 1 ? corUnidadeNeutro : (classe == 2 ? corInimigoAtual : corInimigoMemoria));
+            float angulo = cluster.direcaoX * cluster.direcaoX + cluster.direcaoY * cluster.direcaoY > 0.01f
+                ? Mathf.Atan2(cluster.direcaoX, -cluster.direcaoY) * Mathf.Rad2Deg
+                : 0f;
+            DesenharIconeUnidade(x, y, cluster.quantidade > 1 ? 7.5f : 6.5f,
+                codigoSimbolo, tipo, cor, angulo, classe == 3);
             if (cluster.quantidade > 1)
             {
-                GUI.color = new Color(0.025f, 0.035f, 0.045f, 0.92f);
-                GUI.DrawTexture(new Rect(x + 5f, y - 8f, 19f, 16f), Texture2D.whiteTexture);
+                GUI.color = corPainelMapa;
+                GUI.DrawTexture(new Rect(x + 5f, y - 8f, 20f, 16f), Texture2D.whiteTexture);
                 GUI.color = Color.white;
                 GUI.Label(new Rect(x + 5f, y - 8f, 19f, 16f), cluster.quantidade.ToString(), _legendaMapaStyle);
             }
         }
     }
 
-    private void DesenharIconeUnidade(float x, float y, float tamanho, TipoUnidade tipo, Color cor)
+    private void DesenharIconeUnidade(float x, float y, float tamanho, int codigoSimbolo,
+        TipoUnidade tipo, Color cor, float angulo, bool ultimaPosicaoConhecida)
     {
-        if (tipo == TipoUnidade.Estrutura)
+        if ((codigoSimbolo & 0x80) != 0 || tipo == TipoUnidade.Estrutura)
         {
-            DesenharIcone(x, y, tamanho + 2f, tamanho + 2f, cor);
+            int categoria = codigoSimbolo & 0x7f;
+            DesenharIconeEstrutura(x, y, tamanho, categoria, cor, ultimaPosicaoConhecida);
         }
         else if (tipo == TipoUnidade.Naval)
         {
-            DesenharSimbolo(x, y, "◆", tamanho * 2.2f, cor);
+            Vector2 proa = new Vector2(0f, -1f);
+            Vector2 ombroE = new Vector2(-0.58f, -0.1f);
+            Vector2 ombroD = new Vector2(0.58f, -0.1f);
+            Vector2 popaE = new Vector2(-0.38f, 0.72f);
+            Vector2 popaD = new Vector2(0.38f, 0.72f);
+            DesenharLinhaIcone(x, y, tamanho, angulo, proa, ombroE, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, proa, ombroD, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, ombroE, popaE, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, ombroD, popaD, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, popaE, popaD, cor, ultimaPosicaoConhecida);
         }
         else if (tipo == TipoUnidade.Aereo)
         {
-            DesenharSimbolo(x, y, "▲", tamanho * 2.1f, cor);
+            DesenharLinhaIcone(x, y, tamanho, angulo, new Vector2(0f, 0.9f), new Vector2(0f, -1f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, new Vector2(-0.88f, 0.12f), new Vector2(0.88f, 0.12f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, new Vector2(-0.42f, 0.58f), new Vector2(0.42f, 0.58f), cor, ultimaPosicaoConhecida);
         }
         else
         {
-            DesenharSimbolo(x, y, "●", tamanho * 1.8f, cor);
+            Vector2 topo = new Vector2(0f, -0.8f);
+            Vector2 direita = new Vector2(0.8f, 0f);
+            Vector2 baixo = new Vector2(0f, 0.8f);
+            Vector2 esquerda = new Vector2(-0.8f, 0f);
+            DesenharLinhaIcone(x, y, tamanho, angulo, topo, direita, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, direita, baixo, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, baixo, esquerda, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, esquerda, topo, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, angulo, new Vector2(-0.38f, 0f), new Vector2(0.38f, 0f), cor, ultimaPosicaoConhecida);
         }
     }
 
-    private void DesenharSimbolo(float x, float y, string simbolo, float tamanho, Color cor)
+    private void DesenharIconeEstrutura(float x, float y, float tamanho, int categoria, Color cor, bool ultimaPosicaoConhecida)
     {
-        GUIStyle estilo = _trianguloCorStyle ?? GUI.skin.label;
-        estilo.alignment = TextAnchor.MiddleCenter;
-        estilo.fontSize = Mathf.Max(10, Mathf.RoundToInt(tamanho));
-        estilo.normal.textColor = cor;
-        GUI.Label(new Rect(x - tamanho, y - tamanho, tamanho * 2f, tamanho * 2f), simbolo, estilo);
+        if ((categoria & 32) != 0)
+        {
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(0f, 0.6f), new Vector2(0f, -0.25f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.58f, -0.25f), new Vector2(0.58f, -0.25f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.36f, -0.62f), new Vector2(0.36f, -0.62f), cor, ultimaPosicaoConhecida);
+        }
+        else if ((categoria & 16) != 0)
+        {
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(0f, -0.8f), new Vector2(0f, 0.8f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.55f, -0.35f), new Vector2(0.55f, -0.35f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.55f, 0.35f), new Vector2(0.55f, 0.35f), cor, ultimaPosicaoConhecida);
+        }
+        else if ((categoria & 8) != 0)
+        {
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.7f, -0.45f), new Vector2(0.7f, -0.45f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.45f, -0.45f), new Vector2(-0.45f, 0.65f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(0.45f, -0.45f), new Vector2(0.45f, 0.65f), cor, ultimaPosicaoConhecida);
+        }
+        else
+        {
+            Vector2 topo = new Vector2(0f, -0.7f);
+            Vector2 direita = new Vector2(0.7f, 0f);
+            Vector2 baixo = new Vector2(0f, 0.7f);
+            Vector2 esquerda = new Vector2(-0.7f, 0f);
+            DesenharLinhaIcone(x, y, tamanho, 0f, topo, direita, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, direita, baixo, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, baixo, esquerda, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, esquerda, topo, cor, ultimaPosicaoConhecida);
+        }
+    }
+
+    private void DesenharLinhaIcone(float centroX, float centroY, float tamanho, float angulo,
+        Vector2 inicioLocal, Vector2 fimLocal, Color cor, bool ultimaPosicaoConhecida)
+    {
+        float radians = angulo * Mathf.Deg2Rad;
+        float sin = Mathf.Sin(radians);
+        float cos = Mathf.Cos(radians);
+        Vector2 inicio = new Vector2(inicioLocal.x * cos - inicioLocal.y * sin,
+            inicioLocal.x * sin + inicioLocal.y * cos) * tamanho + new Vector2(centroX, centroY);
+        Vector2 fim = new Vector2(fimLocal.x * cos - fimLocal.y * sin,
+            fimLocal.x * sin + fimLocal.y * cos) * tamanho + new Vector2(centroX, centroY);
+        if (ultimaPosicaoConhecida) cor.a *= 0.58f;
+        DesenharLinhaTela(inicio, fim, cor, Mathf.Max(1.2f, tamanho * 0.16f));
     }
 
     private static bool EhImovelMapa(GameObject objeto)
@@ -1349,7 +1702,7 @@ public class MapaGeralController : MonoBehaviour
             direcaoPlano.y = 0f;
             DesenharHistoricoMissil(contato, posicao, aoVivoConhecido);
             DesenharMarcadorMissil(posicao, direcaoPlano, contato.sourceTeamId, !contato.currentlyVisible && !equipeConhecidaAliada,
-                contato.missileId == _missilSelecionadoId);
+                contato.missileId == _missilSelecionadoId, contato.lastSeenAt);
         }
     }
 
@@ -1377,7 +1730,13 @@ public class MapaGeralController : MonoBehaviour
             Vector3 tela3D = cameraMapa.WorldToScreenPoint(contato.trajectory[i]);
             if (tela3D.z <= 0f) { anteriorVisivel = false; continue; }
             Vector2 tela = new Vector2(tela3D.x, Screen.height - tela3D.y);
-            if (anteriorVisivel) DesenharLinhaTela(anterior, tela, cor, 2f);
+            if (anteriorVisivel)
+            {
+                if (!contatoAtual && contato.sourceTeamId != meuTeamID)
+                    DesenharLinhaTracejada(anterior, tela, cor, 1.2f, 6f, 5f);
+                else
+                    DesenharLinhaTela(anterior, tela, cor, 1.4f);
+            }
             anterior = tela;
             anteriorVisivel = true;
         }
@@ -1386,11 +1745,12 @@ public class MapaGeralController : MonoBehaviour
         {
             Vector3 atual3D = cameraMapa.WorldToScreenPoint(posicaoAtual);
             if (atual3D.z > 0f)
-                DesenharLinhaTela(anterior, new Vector2(atual3D.x, Screen.height - atual3D.y), cor, 2f);
+                DesenharLinhaTela(anterior, new Vector2(atual3D.x, Screen.height - atual3D.y), cor, 1.4f);
         }
     }
 
-    private void DesenharMarcadorMissil(Vector3 posicao, Vector3 direcao, int equipeOrigem, bool ultimoConhecido, bool selecionado)
+    private void DesenharMarcadorMissil(Vector3 posicao, Vector3 direcao, int equipeOrigem,
+        bool ultimoConhecido, bool selecionado, float ultimoContatoEm)
     {
         Vector3 tela = cameraMapa.WorldToScreenPoint(posicao);
         if (tela.z <= 0f) return;
@@ -1399,22 +1759,32 @@ public class MapaGeralController : MonoBehaviour
         if (sx < -20f || sx > Screen.width + 20f || sy < -20f || sy > Screen.height + 20f) return;
 
         Color cor = CorDoDisparo(equipeOrigem);
-        if (equipeOrigem <= 0) cor = new Color(1f, 0.78f, 0.2f, 1f);
-        if (ultimoConhecido) cor.a = 0.5f;
+        if (equipeOrigem <= 0) cor = new Color32(224, 184, 104, 255);
+        if (ultimoConhecido) cor.a *= 0.58f;
         float alcanceRumo = Mathf.Clamp(cameraMapa.orthographicSize * 0.05f, 20f, 90f);
         Vector3 plano = direcao;
         plano.y = 0f;
+        float angulo = 0f;
         if (plano.sqrMagnitude > 0.001f)
         {
             Vector3 frente = cameraMapa.WorldToScreenPoint(posicao + plano.normalized * alcanceRumo);
             if (frente.z > 0f)
+            {
                 DesenharLinhaTela(new Vector2(sx, sy), new Vector2(frente.x, Screen.height - frente.y), cor, selecionado ? 3f : 2f);
+                Vector2 direcaoTela = new Vector2(frente.x - tela.x, tela.y - frente.y);
+                if (direcaoTela.sqrMagnitude > 0.01f)
+                    angulo = Mathf.Atan2(direcaoTela.x, -direcaoTela.y) * Mathf.Rad2Deg;
+            }
         }
-        DesenharIcone(sx, sy, selecionado ? 14f : 9f, selecionado ? 14f : 9f, cor);
+        DesenharIcone(sx, sy, selecionado ? 11f : 8f, cor, angulo);
         if (selecionado)
         {
             GUI.color = cor;
-            GUI.Label(new Rect(sx + 10f, sy - 18f, 160f, 22f), ultimoConhecido ? "MÍSSIL — ÚLTIMA POSIÇÃO" : "MÍSSIL DETECTADO", _legendaMapaStyle);
+            float idade = Mathf.Max(0f, Time.unscaledTime - ultimoContatoEm);
+            string estado = ultimoConhecido
+                ? "ÚLTIMA POSIÇÃO  ·  " + idade.ToString("0") + " s"
+                : "CONTATO ATUAL";
+            GUI.Label(new Rect(sx + 11f, sy - 18f, 190f, 22f), "MÍSSIL  /  " + estado, _legendaMapaStyle);
             GUI.color = Color.white;
         }
     }
@@ -1543,18 +1913,21 @@ public class MapaGeralController : MonoBehaviour
 
     Color CorDoDisparo(int team)
     {
-        if (team == meuTeamID) return Color.cyan;
-        if (team > 0) return new Color(1f, 0.2f, 0.12f, 1f);
-        return Color.yellow;
+        if (team == meuTeamID) return corUnidadePropria;
+        if (team > 0) return corInimigoAtual;
+        return new Color32(224, 184, 104, 255);
     }
 
-    void DesenharIcone(float cx, float cy, float w, float h, Color cor)
+    void DesenharIcone(float cx, float cy, float tamanho, Color cor, float angulo)
     {
-        GUI.color = Color.black;
-        GUI.DrawTexture(new Rect(cx - w/2f - 1, cy - h/2f - 1, w + 2, h + 2), Texture2D.whiteTexture);
-        GUI.color = cor;
-        GUI.DrawTexture(new Rect(cx - w/2f, cy - h/2f, w, h), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        Vector2 topo = new Vector2(0f, -1f);
+        Vector2 direita = new Vector2(0.68f, 0f);
+        Vector2 baixo = new Vector2(0f, 1f);
+        Vector2 esquerda = new Vector2(-0.68f, 0f);
+        DesenharLinhaIcone(cx, cy, tamanho, angulo, topo, direita, cor, false);
+        DesenharLinhaIcone(cx, cy, tamanho, angulo, direita, baixo, cor, false);
+        DesenharLinhaIcone(cx, cy, tamanho, angulo, baixo, esquerda, cor, false);
+        DesenharLinhaIcone(cx, cy, tamanho, angulo, esquerda, topo, cor, false);
     }
 
     // Desenha triângulo (simulado com labels de símbolo)

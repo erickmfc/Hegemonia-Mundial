@@ -54,6 +54,34 @@ public sealed class GlobalWorldDefinition : ScriptableObject
     public float MapMaxX => worldSize.x * 0.5f;
     public float MapMaxZ => mapFootprintHeight * 0.5f;
 
+    /// <summary>Converts world XZ into the top-left-origin UV used by phase.png and the political map.</summary>
+    public bool TryWorldToMapUv(Vector3 worldPosition, out Vector2 uv, out bool insideFootprint)
+    {
+        if (worldSize.x <= 0.001f || mapFootprintHeight <= 0.001f)
+        {
+            uv = Vector2.zero;
+            insideFootprint = false;
+            return false;
+        }
+
+        float u = (worldPosition.x - MapMinX) / worldSize.x;
+        float v = (MapMaxZ - worldPosition.z) / mapFootprintHeight;
+        uv = new Vector2(u, v);
+        insideFootprint = u >= 0f && u <= 1f && v >= 0f && v <= 1f;
+        return true;
+    }
+
+    /// <summary>Converts top-left-origin map UV into the stable world footprint, independent of loaded Terrain tiles.</summary>
+    public Vector3 MapUvToWorld(Vector2 uv, float worldY = 0f)
+    {
+        float u = Mathf.Clamp01(uv.x);
+        float v = Mathf.Clamp01(uv.y);
+        return new Vector3(
+            MapMinX + u * worldSize.x,
+            worldY,
+            MapMaxZ - v * mapFootprintHeight);
+    }
+
     public void InitializeRuntimeData()
     {
         if (initialized)

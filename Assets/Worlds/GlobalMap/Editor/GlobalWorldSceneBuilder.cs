@@ -420,6 +420,17 @@ public static class GlobalWorldSceneBuilder
 
         GameObject mapControllerObject = CreateChild("MapaGeralController", worldSystemsGroup.transform);
         mapControllerObject.AddComponent<MapaGeralController>();
+        mapControllerObject.AddComponent<GerenteSelecao>();
+
+        GameObject gameManagerObject = CreateChild("GerenteDeJogo", worldSystemsGroup.transform);
+        gameManagerObject.AddComponent<GerenteDeJogo>();
+
+        // GerenciadorRecursos persists itself at runtime, so keep it as a scene
+        // root instead of parenting it under GlobalMap_World (which would also
+        // persist the entire world hierarchy through DontDestroyOnLoad).
+        GameObject resourceManagerObject = new GameObject("GerenciadorRecursos");
+        SceneManager.MoveGameObjectToScene(resourceManagerObject, scene);
+        resourceManagerObject.AddComponent<GerenciadorRecursos>();
 
         GameObject diagnosticsObject = new GameObject("GlobalWorldDiagnostics");
         diagnosticsObject.transform.SetParent(debugGroup.transform, false);

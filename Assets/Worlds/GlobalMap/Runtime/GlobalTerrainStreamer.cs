@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
+using PackageNavMeshSurface = Unity.AI.Navigation.NavMeshSurface;
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// Keeps a coarse, collidable world Terrain available everywhere and streams
@@ -9,6 +12,10 @@ using UnityEngine;
 /// </summary>
 public sealed class GlobalTerrainStreamer : MonoBehaviour
 {
+    private const int LocalNavMeshAgentTypeId = 0;
+    private const int LocalNavMeshTileSize = 256;
+    private const float LocalNavMeshVoxelSize = 2f;
+
     public GlobalWorldDefinition world;
     public Terrain globalTerrain;
     public Camera cameraOverride;
@@ -30,14 +37,23 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private bool localFarClipLimited;
     private int totalTreeInstances;
     private int lastGenerationMilliseconds;
+    private int lastLocalNavMeshBuildMilliseconds;
+    private PackageNavMeshSurface localNavMeshSurface;
+    private NavMeshData runtimeLocalNavMeshData;
+    private string committedNavMeshTileSet = string.Empty;
+    private string failedNavMeshTileSet;
 
     public int ActiveTileCount => loadedTiles.Count;
     public int DesiredTileCount => desiredTiles.Count;
     public int ActiveTreeCount => totalTreeInstances;
     public int LastGenerationMilliseconds => lastGenerationMilliseconds;
+    public int LastLocalNavMeshBuildMilliseconds => lastLocalNavMeshBuildMilliseconds;
 
     private void OnEnable()
     {
+        if (Application.isPlaying)
+            EnsureLocalNavMeshSurface();
+
         streamingLoop = StartCoroutine(StreamContinuously());
     }
 
@@ -52,7 +68,11 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         // Tiles are runtime children and must not survive a play-mode or
         // script-domain restart, where this component's dictionaries reset.
         if (Application.isPlaying)
+        {
             RemoveAllTiles();
+            if (globalTerrain != null)
+                globalTerrain.enabled = true;
+        }
 
         if (localFarClipLimited && farClipCamera != null)
             farClipCamera.farClipPlane = farClipBeforeLocalStreaming;
@@ -197,7 +217,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             }
 
             if (AllDesiredTilesLoaded())
-                CommitVisibleSet();
+                yield return CommitVisibleSet();
             else
             {
                 globalTerrain.gameObject.SetActive(true);
@@ -242,8 +262,35 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         return true;
     }
 
-    private void CommitVisibleSet()
+    private IEnumerator CommitVisibleSet()
     {
+        string tileSet = BuildDesiredTileSetSignature();
+
+        if (desiredTiles.Count == 0)
+        {
+            if (tileSet == committedNavMeshTileSet)
+                yield break;
+
+            ClearLocalNavMesh();
+            globalTerrain.enabled = true;
+            RemoveStaleTiles();
+            committedNavMeshTileSet = tileSet;
+            failedNavMeshTileSet = null;
+            yield break;
+        }
+
+        if (tileSet == committedNavMeshTileSet && localNavMeshSurface != null
+            && localNavMeshSurface.navMeshData != null)
+        {
+            yield break;
+        }
+
+        if (tileSet == failedNavMeshTileSet)
+        {
+            globalTerrain.enabled = true;
+            yield break;
+        }
+
         foreach (KeyValuePair<Vector2Int, Terrain> pair in loadedTiles)
         {
             bool visible = desiredTiles.Contains(pair.Key);
@@ -252,10 +299,142 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
             if (collider != null) collider.enabled = visible;
             terrain.enabled = visible;
+            terrain.gameObject.SetActive(visible);
         }
 
-        globalTerrain.enabled = desiredTiles.Count == 0;
+        // Keep the coarse Terrain as the visual/collider fallback while the
+        // streamed local navmesh is built on a worker thread.
+        globalTerrain.enabled = true;
+
+        bool navMeshReady = false;
+        yield return BuildLocalNavMeshAsync(tileSet, ready => navMeshReady = ready);
+        if (navMeshReady)
+        {
+            committedNavMeshTileSet = tileSet;
+            failedNavMeshTileSet = null;
+            globalTerrain.enabled = false;
+        }
+        else
+        {
+            ClearLocalNavMesh();
+            failedNavMeshTileSet = tileSet;
+            globalTerrain.enabled = true;
+        }
+
         RemoveStaleTiles();
+    }
+
+    private void EnsureLocalNavMeshSurface()
+    {
+        if (localNavMeshSurface == null)
+        {
+            localNavMeshSurface = GetComponent<PackageNavMeshSurface>();
+            if (localNavMeshSurface == null)
+                localNavMeshSurface = gameObject.AddComponent<PackageNavMeshSurface>();
+        }
+
+        int groundLayer = LayerMask.NameToLayer("Chao");
+        localNavMeshSurface.agentTypeID = LocalNavMeshAgentTypeId;
+        localNavMeshSurface.collectObjects = Unity.AI.Navigation.CollectObjects.Children;
+        localNavMeshSurface.layerMask = 1 << (groundLayer >= 0 ? groundLayer : 0);
+        localNavMeshSurface.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+        localNavMeshSurface.defaultArea = 0;
+        localNavMeshSurface.ignoreNavMeshAgent = true;
+        localNavMeshSurface.ignoreNavMeshObstacle = true;
+        localNavMeshSurface.minRegionArea = 2f;
+        localNavMeshSurface.overrideTileSize = true;
+        localNavMeshSurface.tileSize = LocalNavMeshTileSize;
+        // The world tiles are 8 km across. A coarse 2 m voxel keeps the local
+        // build tractable while preserving the broad vehicle routes validated
+        // with the existing Tank_Arthur prefab.
+        localNavMeshSurface.overrideVoxelSize = true;
+        localNavMeshSurface.voxelSize = LocalNavMeshVoxelSize;
+    }
+
+    private string BuildDesiredTileSetSignature()
+    {
+        List<Vector2Int> sorted = new List<Vector2Int>(desiredTiles);
+        sorted.Sort((a, b) => a.y == b.y ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+
+        StringBuilder signature = new StringBuilder(sorted.Count * 8);
+        for (int i = 0; i < sorted.Count; i++)
+            signature.Append(sorted[i].x).Append(',').Append(sorted[i].y).Append(';');
+        return signature.ToString();
+    }
+
+    private IEnumerator BuildLocalNavMeshAsync(string tileSet, System.Action<bool> completed)
+    {
+        EnsureLocalNavMeshSurface();
+
+        NavMeshData nextData = new NavMeshData(LocalNavMeshAgentTypeId);
+        AsyncOperation buildOperation = null;
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try
+        {
+            buildOperation = localNavMeshSurface.UpdateNavMesh(nextData);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception, this);
+        }
+
+        if (buildOperation == null)
+        {
+            Destroy(nextData);
+            Debug.LogError("[GlobalMap] Não foi possível iniciar o NavMesh local para " + tileSet + ".", this);
+            completed(false);
+            yield break;
+        }
+
+        while (!buildOperation.isDone)
+            yield return null;
+
+        lastLocalNavMeshBuildMilliseconds = (int)(
+            (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0
+            / System.Diagnostics.Stopwatch.Frequency);
+
+        NavMeshData previousGeneratedData = runtimeLocalNavMeshData;
+        if (localNavMeshSurface.enabled)
+            localNavMeshSurface.RemoveData();
+
+        localNavMeshSurface.navMeshData = nextData;
+        if (!localNavMeshSurface.enabled)
+            localNavMeshSurface.enabled = true;
+        else
+            localNavMeshSurface.AddData();
+
+        runtimeLocalNavMeshData = nextData;
+        if (previousGeneratedData != null && previousGeneratedData != nextData)
+            Destroy(previousGeneratedData);
+
+        // Let NavMeshSurface register the completed data before checking that
+        // it produced polygons. The shared surface makes adjacent streamed
+        // Terrain tiles one connected navigation region.
+        yield return null;
+        bool hasPolygons = NavMesh.CalculateTriangulation().vertices.Length > 0;
+        if (!hasPolygons)
+            Debug.LogError("[GlobalMap] O NavMesh local terminou vazio para " + tileSet + ".", this);
+
+        completed(hasPolygons);
+    }
+
+    private void ClearLocalNavMesh()
+    {
+        if (localNavMeshSurface == null)
+            localNavMeshSurface = GetComponent<PackageNavMeshSurface>();
+
+        if (localNavMeshSurface != null)
+        {
+            localNavMeshSurface.RemoveData();
+            localNavMeshSurface.navMeshData = null;
+            localNavMeshSurface.enabled = false;
+        }
+
+        if (runtimeLocalNavMeshData != null)
+            Destroy(runtimeLocalNavMeshData);
+        runtimeLocalNavMeshData = null;
+        committedNavMeshTileSet = string.Empty;
+        failedNavMeshTileSet = null;
     }
 
     private IEnumerator CreateLocalTileIncremental(
@@ -604,6 +783,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
     private void RemoveAllTiles()
     {
+        ClearLocalNavMesh();
+
         HashSet<GameObject> tileObjects = new HashSet<GameObject>();
         HashSet<TerrainData> tileData = new HashSet<TerrainData>();
         foreach (Terrain terrain in loadedTiles.Values)

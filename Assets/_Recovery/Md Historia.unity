@@ -3785,6 +3785,7 @@ MonoBehaviour:
   margemEnquadramentoInicial: 1.08
   meuTeamID: 1
   nivelDoMar: 0
+  mapaCartograficoInicial: 1
 --- !u!1 &428371250
 GameObject:
   m_ObjectHideFlags: 0
@@ -5418,6 +5419,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6652660a65de69c48bc4fb5e6393945a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
+  layoutId: ia02.layout
+  layoutVersion: 1
+  slotRegistry: {fileID: 0}
+  autonomousZones: []
+  capitalSlot: {fileID: 1185808656}
 --- !u!114 &673729060
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5447,6 +5453,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6652660a65de69c48bc4fb5e6393945a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA02.IA02BuildSlotRegistry
+  layoutId: ia02.layout
+  layoutVersion: 1
+  slotRegistry: {fileID: 0}
+  autonomousZones: []
+  capitalSlot: {fileID: 1185808656}
 --- !u!1 &686592548
 GameObject:
   m_ObjectHideFlags: 0
@@ -10183,6 +10194,8 @@ MonoBehaviour:
   velocidadeZoom: 1000
   velocidadeRotacao: 100
   multiplicadorShift: 12
+  alturaMaximaZoom: 8000
+  alturaReferenciaEscalaControles: 0
   campoDeVisaoBase: 150
   campoDeVisaoMin: 85
   campoDeVisaoMax: 90
@@ -11317,6 +11330,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d4e86b8a095f7e4f8124d5ff4d520a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+  layoutId: ia01.layout
+  layoutVersion: 1
+  slotRegistry: {fileID: 0}
+  autonomousZones: []
+  capitalSlot: {fileID: 428371252}
 --- !u!114 &1309340736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16894,6 +16912,7 @@ MonoBehaviour:
   margemEnquadramentoInicial: 1.08
   meuTeamID: 1
   nivelDoMar: 0
+  mapaCartograficoInicial: 1
 --- !u!1 &1771236727
 GameObject:
   m_ObjectHideFlags: 0
@@ -21656,10 +21675,10 @@ SceneRoots:
   - {fileID: 1690534029}
   - {fileID: 1817657666}
   - {fileID: 989727895}
+  - {fileID: 659829930}
   - {fileID: 1371579697}
   - {fileID: 1027438110}
   - {fileID: 1810942525}
-  - {fileID: 659829930}
   - {fileID: 1106341025}
   - {fileID: 707819633}
   - {fileID: 1905580896}

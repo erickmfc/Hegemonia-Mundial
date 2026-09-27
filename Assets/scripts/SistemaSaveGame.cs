@@ -724,21 +724,28 @@ public class SistemaSaveGame : MonoBehaviour
 
     private void AoCarregarCena(Scene cena, LoadSceneMode modo)
     {
-        if (!carregouDeSave && partidaNovaRecemIniciada)
+        // Capture before sanitization: it can consume the new-game marker,
+        // but the selected starting resources still need to be applied.
+        bool aplicarRecursosDePartidaNova = !carregouDeSave && partidaNovaRecemIniciada;
+
+        if (aplicarRecursosDePartidaNova)
         {
             SanitizarCenaDePartidaNova(cena);
         }
 
-        if (!carregouDeSave)
+        if (!carregouDeSave && !aplicarRecursosDePartidaNova)
         {
-            // A sanitizacao pode consumir o marcador antes do Start de
-            // GerenciadorRecursos. A partida nova ainda precisa receber os
-            // valores escolhidos no menu, nunca os valores serializados da cena.
-            AplicarRecursosSalvos();
+            // Ao iniciar uma cena diretamente, preserve os recursos definidos
+            // no proprio mapa em vez de aplicar o objeto de save vazio (5.000).
             return;
         }
 
         AplicarRecursosSalvos();
+        if (!carregouDeSave)
+        {
+            return;
+        }
+
         if (restauracaoPendente && dadosAtuais != null && dadosAtuais.saveVersion >= 2)
         {
             StartCoroutine(RestaurarMundoDepoisDaCena());

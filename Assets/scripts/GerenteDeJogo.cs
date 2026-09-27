@@ -182,8 +182,16 @@ public class GerenteDeJogo : MonoBehaviour
                 if (pedidoAtual.tempoRestante <= 0)
                 {
                     // Ficou pronto!
-                    FinalizarProducao(pedidoAtual);
-                    filaProducao.RemoveAt(0);
+                    if (FinalizarProducao(pedidoAtual))
+                    {
+                        filaProducao.RemoveAt(0);
+                    }
+                    else
+                    {
+                        // A malha local pode ainda estar sendo criada pelo
+                        // streaming. Reavalie este pedido no próximo ciclo.
+                        pedidoAtual.tempoRestante = IntervaloProcessamentoFilaProducao;
+                    }
                 }
             }
             
@@ -305,7 +313,7 @@ public class GerenteDeJogo : MonoBehaviour
         return identidade != null && identidade.tipoUnidade == TipoUnidade.Infantaria;
     }
 
-    void FinalizarProducao(PedidoDeProducao pedido)
+    bool FinalizarProducao(PedidoDeProducao pedido)
     {
         if (pedido.ehAviao || pedido.ehHelicoptero)
         {
@@ -355,7 +363,7 @@ public class GerenteDeJogo : MonoBehaviour
             {
                 Debug.LogWarning($"[Logística] Helicóptero '{pedido.nomeUnidade}' sem vaga militar livre em aeroporto. Produção aguardando vaga.");
             }
-            return; 
+            return true;
         }
 
         Transform spawnAtual = null;
@@ -428,7 +436,7 @@ public class GerenteDeJogo : MonoBehaviour
         if (pedido.prefab == null)
         {
             Debug.LogError($"ERRO CRÍTICO: O prefab do pedido '{pedido.nomeUnidade}' está NULO! Verifique o ScriptableObject.");
-            return;
+            return true;
         }
 
         // FALLBACK: Se não tiver fábrica, nasce no GerenteDeJogo + Offset
@@ -542,13 +550,23 @@ public class GerenteDeJogo : MonoBehaviour
              // posNascimento.y = 0; // Opcional
         }
 
+        // Não instancie prefabs com NavMeshAgent até haver NavMesh no ponto de
+        // nascimento. O Agent é habilitado no prefab e o erro ocorria durante
+        // Instantiate, antes do código que o desabilita como fallback.
+        if (!spawnNoNavMeshValido
+            && pedido.prefab != null
+            && pedido.prefab.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>(true) != null)
+        {
+            return false;
+        }
+
         // NASCER
         GameObject novaUnidade = Instantiate(pedido.prefab, posNascimento, rotNascimento);
         
         if (novaUnidade == null)
         {
             Debug.LogError("ERRO: Instantiate falhou! O objeto não foi criado.");
-            return;
+            return true;
         }
 
         // --- DEFINIR IDENTIDADE (O GerenteDeJogo do Jogador sempre cria unidades para o Time 1) ---
@@ -665,6 +683,7 @@ public class GerenteDeJogo : MonoBehaviour
         }
 
         LogInfo($"SUCESSO: Saiu da fábrica: {pedido.nomeUnidade}");
+        return true;
     }
 
     Vector3 CalcularDestinoSaidaOrganizada(Vector3 destinoBase, Transform referenciaSaida, GameObject unidade)

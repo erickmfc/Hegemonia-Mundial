@@ -42,6 +42,16 @@ public static class FluxoInicialJogo
         }
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void GarantirInterfaceGlobalAposCargaInicial()
+    {
+        Scene cenaAtual = SceneManager.GetActiveScene();
+        if (cenaAtual.IsValid() && !EhCenaDeTestePlayMode(cenaAtual))
+        {
+            GarantirInterfaceTaticaGlobal(cenaAtual.name);
+        }
+    }
+
     public static void AutorizarCarga(string nomeCena)
     {
         cenaAutorizada = nomeCena;
@@ -69,7 +79,31 @@ public static class FluxoInicialJogo
             new GameObject("MenuPausaController").AddComponent<MenuPausaController>();
         }
 
+        GarantirInterfaceTaticaGlobal(cena.name);
         GarantirSistemasDeCampanha(cena.name);
+    }
+
+    /// <summary>
+    /// GlobalMapRTS is assembled from the world builder rather than copied
+    /// from a campaign scene. Reuse the existing tactical command presenters
+    /// there when the scene does not already serialize them.
+    /// </summary>
+    private static void GarantirInterfaceTaticaGlobal(string nomeCena)
+    {
+        if (!string.Equals(nomeCena, "GlobalMapRTS", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (Object.FindFirstObjectByType<MenuComandoController>(FindObjectsInactive.Include) == null)
+        {
+            new GameObject("MenuComandoController").AddComponent<MenuComandoController>();
+        }
+
+        if (Object.FindFirstObjectByType<MenuComandoInteligente>(FindObjectsInactive.Include) == null)
+        {
+            new GameObject("Gerente_Comandos").AddComponent<MenuComandoInteligente>();
+        }
     }
 
     /// <summary>
