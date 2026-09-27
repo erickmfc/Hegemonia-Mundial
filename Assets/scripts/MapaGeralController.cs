@@ -68,7 +68,7 @@ public class MapaGeralController : MonoBehaviour
     private readonly HashSet<int> _imoveisMapa = new HashSet<int>();
     private readonly Dictionary<int, int> _categoriasMapa = new Dictionary<int, int>(256);
     private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
-    private readonly List<Projetil> _projeteisAtivos = new List<Projetil>(256);
+    private readonly List<RTSMissileVisibilityContact> _contatosMisseis = new List<RTSMissileVisibilityContact>(64);
     private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
     private float _tempoRefreshCache = 0f;
     private DesenharLinhasOrdem _desenharOrdens;
@@ -101,6 +101,18 @@ public class MapaGeralController : MonoBehaviour
     // --- Modo de seguir unidade selecionada ---
     private bool _seguindoAlvo = false;
     private Transform _alvoSeguir = null;
+    private int _missilSelecionadoId = -1;
+    private CartaTerrenoRenderer _cameraRastreamentoMissil;
+    private bool _cameraMissilEmRastreamento;
+    private int _cameraMissilInstanceId;
+    private readonly Dictionary<long, ClusterUnidadeMapa> _clustersUnidades = new Dictionary<long, ClusterUnidadeMapa>(256);
+
+    private struct ClusterUnidadeMapa
+    {
+        public float x;
+        public float y;
+        public int quantidade;
+    }
 
     private Vector2 centroMapa = Vector2.zero;
     private float metadeMapa = 5000f;
@@ -110,6 +122,8 @@ public class MapaGeralController : MonoBehaviour
     private Terrain terrenoInimigo;
     private Bounds limitesTerrenoInimigo;
     private bool territorioInimigoDisponivel;
+    private DadosMapaTerritorial dadosMapaCartograficoFallback;
+    private bool tentouCarregarDadosMapaCartografico;
 
     // --- Shader warmup (evita compilação durante o voo) ---
 
@@ -121,6 +135,7 @@ public class MapaGeralController : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_cameraRastreamentoMissil != null) _cameraRastreamentoMissil.PararRastreamento();
         if (Instancia == this)
         {
             Instancia = null;
@@ -146,6 +161,7 @@ public class MapaGeralController : MonoBehaviour
         cameraMapa.depth            = 100;
         cameraMapa.nearClipPlane    = 0.3f;
         cameraMapa.farClipPlane     = Mathf.Max(6000f, metadeMapa * 4f);
+        cameraMapa.enabled          = false; // Mapa cartográfico é desenhado pela base e overlays IMGUI.
         cameraMapa.gameObject.SetActive(false);
 
         fogOriginal = RenderSettings.fog;
@@ -332,8 +348,8 @@ public class MapaGeralController : MonoBehaviour
         float aspecto = Mathf.Max(0.1f, (float)Screen.width / Mathf.Max(1f, Screen.height));
         float meiaAltura = cameraMapa.orthographicSize;
         float meiaLargura = meiaAltura * aspecto;
-        float limiteX = Mathf.Max(0f, metadeMapa - meiaLargura);
-        float limiteZ = Mathf.Max(0f, metadeMapa - meiaAltura);
+        float limiteX = Mathf.Max(0f, larguraMapa * 0.5f - meiaLargura);
+        float limiteZ = Mathf.Max(0f, profundidadeMapa * 0.5f - meiaAltura);
 
         Vector3 pos = cameraMapa.transform.position;
         pos.x = Mathf.Clamp(pos.x, centroMapa.x - limiteX, centroMapa.x + limiteX);
@@ -405,6 +421,7 @@ public class MapaGeralController : MonoBehaviour
             snapshotCameraPrincipalValido = true;
         }
         cameraMapa.gameObject.SetActive(mapaAtivo);
+        AtualizarRenderizacaoCameraMapa();
         AplicarModoMapa(mapaAtivo);
 
         if (mapaAtivo && cameraPrincipal != null)
@@ -425,6 +442,7 @@ public class MapaGeralController : MonoBehaviour
             AudioListener.volume = volumeAudioOriginal;
             _seguindoAlvo = false;
             _alvoSeguir = null;
+            PararCameraDeRastreamentoMissil();
             if (snapshotCameraPrincipalValido && cameraPrincipal != null)
             {
                 cameraPrincipal.transform.SetPositionAndRotation(
@@ -473,6 +491,8 @@ public class MapaGeralController : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0))
         {
+            if (SelecionarMissilSobCursor()) return;
+
             ControleUnidade unidade = EncontrarUnidadeAliadaNoIcone();
             if (unidade != null)
             {
@@ -582,6 +602,10 @@ public class MapaGeralController : MonoBehaviour
     private bool AreaDeInterfaceMapa(Vector3 posicaoMouse)
     {
         float yTopo = Screen.height - posicaoMouse.y;
+        if (_missilSelecionadoId >= 0
+            && posicaoMouse.x >= Screen.width - 390f
+            && yTopo >= Screen.height - 275f)
+            return true;
         return yTopo <= 34f
             || (posicaoMouse.x <= 205f && yTopo >= Screen.height - 108f)
             || (mapaCartograficoAtivo && posicaoMouse.x >= Screen.width - 210f);
@@ -590,6 +614,7 @@ public class MapaGeralController : MonoBehaviour
     private void OnDisable()
     {
         AudioListener.volume = volumeAudioOriginal;
+        PararCameraDeRastreamentoMissil();
         AplicarModoMapa(false);
     }
 
@@ -670,8 +695,7 @@ public class MapaGeralController : MonoBehaviour
             float scroll = Input.GetAxis("Mouse ScrollWheel");
             if (scroll != 0)
             {
-                cameraMapa.orthographicSize -= scroll * zoomVelocidade * Time.unscaledDeltaTime;
-                cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
+                AplicarZoomPorScroll(scroll);
                 LimitarCameraMapa();
             }
             return;
@@ -697,8 +721,7 @@ public class MapaGeralController : MonoBehaviour
         float scrollLivre = Input.GetAxis("Mouse ScrollWheel");
         if (scrollLivre != 0)
         {
-            cameraMapa.orthographicSize -= scrollLivre * zoomVelocidade * Time.unscaledDeltaTime;
-            cameraMapa.orthographicSize  = Mathf.Clamp(cameraMapa.orthographicSize, zoomMinimo, zoomMaximo);
+            AplicarZoomPorScroll(scrollLivre);
             LimitarCameraMapa();
         }
 
@@ -712,10 +735,28 @@ public class MapaGeralController : MonoBehaviour
     {
         if (cameraMapa == null) return;
         cameraMapa.orthographicSize = Mathf.Clamp(
-            cameraMapa.orthographicSize + direcao * Mathf.Max(10f, zoomVelocidade * 0.08f),
+            cameraMapa.orthographicSize * Mathf.Exp(direcao * 0.2f),
             zoomMinimo,
             zoomMaximo);
         LimitarCameraMapa();
+    }
+
+    private void AplicarZoomPorScroll(float scrollDelta)
+    {
+        if (cameraMapa == null || Mathf.Approximately(scrollDelta, 0f)) return;
+        cameraMapa.orthographicSize = Mathf.Clamp(
+            cameraMapa.orthographicSize * Mathf.Exp(-scrollDelta * 2f),
+            zoomMinimo,
+            zoomMaximo);
+        LimitarCameraMapa();
+    }
+
+    private void AtualizarRenderizacaoCameraMapa()
+    {
+        if (cameraMapa == null) return;
+        // No modo cartográfico a câmera serve para projeção e picking. Deixá-la
+        // renderizar por cima do IMGUI apagava a base, as fronteiras e os rótulos.
+        cameraMapa.enabled = mapaAtivo && !mapaCartograficoAtivo;
     }
 
     /// <summary>
@@ -787,7 +828,10 @@ public class MapaGeralController : MonoBehaviour
 
         GUIStyle zoomStyle = _zoomMapaStyle;
         if (GUI.Button(new Rect(Screen.width - 250f, 3f, 116f, 24f), mapaCartograficoAtivo ? "Câmera 3D" : "Mapa 2D", zoomStyle))
+        {
             mapaCartograficoAtivo = !mapaCartograficoAtivo;
+            AtualizarRenderizacaoCameraMapa();
+        }
         if (GUI.Button(new Rect(Screen.width - 118f, 3f, 34f, 24f), "+", zoomStyle)) AjustarZoomMapa(-1f);
         if (GUI.Button(new Rect(Screen.width - 78f, 3f, 34f, 24f), "−", zoomStyle)) AjustarZoomMapa(1f);
 
@@ -814,12 +858,12 @@ public class MapaGeralController : MonoBehaviour
         // Os mesmos registros de entidades e visibilidade alimentam os dois modos.
         DesenharIconesNoMapa();
         DesenharDisparosNoMapa();
-        DesenharOrigensMisseisNoMapa();
         if (mapaCartograficoAtivo) DesenharCamadasMapa();
         if (mapaCartograficoAtivo)
-            GUI.Label(new Rect(12f, barH + 7f, 330f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
+            GUI.Label(new Rect(12f, barH + 7f, 440f, 22f), "MÍSSEIS: ciano aliado | vermelho detectado | dourado sem IFF", legStyle);
         else
-            GUI.Label(new Rect(Screen.width - 330f, barH + 8f, 315f, 22f), "DISPAROS: ciano aliado | vermelho inimigo | amarelo neutro", legStyle);
+            GUI.Label(new Rect(Screen.width - 420f, barH + 8f, 405f, 22f), "MÍSSEIS: ciano aliado | vermelho detectado | dourado sem IFF", legStyle);
+        DesenharPainelRastreamentoMissil();
     }
 
     private void DesenharFundoCartografico()
@@ -829,14 +873,14 @@ public class MapaGeralController : MonoBehaviour
         GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
         GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
-        DadosMapaTerritorial dados = gerente != null ? gerente.MapaPolitico : null;
+        DadosMapaTerritorial dados = ObterDadosMapaCartografico(gerente);
         Texture2D mapa = dados != null && dados.ImagemReferencia != null
             ? dados.ImagemReferencia
             : Resources.Load<Texture2D>("fase");
-        if (mapa == null || gerente == null || cameraMapa == null) return;
+        if (mapa == null || cameraMapa == null) return;
 
-        Vector3 cantoSuperiorEsquerdo = gerente.MapUvToWorld(Vector2.zero);
-        Vector3 cantoInferiorDireito = gerente.MapUvToWorld(Vector2.one);
+        Vector3 cantoSuperiorEsquerdo = MapUvToWorldCartografico(gerente, Vector2.zero);
+        Vector3 cantoInferiorDireito = MapUvToWorldCartografico(gerente, Vector2.one);
         Vector3 telaSuperiorEsquerda = cameraMapa.WorldToScreenPoint(cantoSuperiorEsquerdo);
         Vector3 telaInferiorDireita = cameraMapa.WorldToScreenPoint(cantoInferiorDireito);
         if (telaSuperiorEsquerda.z <= 0f || telaInferiorDireita.z <= 0f) return;
@@ -852,7 +896,7 @@ public class MapaGeralController : MonoBehaviour
     {
         if (Event.current.type != EventType.Repaint || cameraMapa == null) return;
         GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
-        DadosMapaTerritorial dados = gerente != null ? gerente.MapaPolitico : null;
+        DadosMapaTerritorial dados = ObterDadosMapaCartografico(gerente);
         if (dados == null) return;
 
         for (int i = 0; i < dados.Regioes.Count; i++)
@@ -865,7 +909,7 @@ public class MapaGeralController : MonoBehaviour
             for (int v = 0; v <= regiao.vertices.Count; v++)
             {
                 Vector2 uv = regiao.vertices[v % regiao.vertices.Count];
-                Vector3 mundo = gerente.MapUvToWorld(uv);
+                Vector3 mundo = MapUvToWorldCartografico(gerente, uv);
                 Vector3 tela = cameraMapa.WorldToScreenPoint(mundo);
                 if (tela.z <= 0f)
                 {
@@ -881,11 +925,11 @@ public class MapaGeralController : MonoBehaviour
             if (regiao.tipo == TipoRegiaoPolitica.Terra)
             {
                 Vector2 centro = CentroideRegiao(regiao.vertices);
-                Vector3 telaCentro = cameraMapa.WorldToScreenPoint(gerente.MapUvToWorld(centro));
+                Vector3 telaCentro = cameraMapa.WorldToScreenPoint(MapUvToWorldCartografico(gerente, centro));
                 if (telaCentro.z > 0f)
                 {
                     string dono = TextoDonoTerritorial(gerente, regiao);
-                    Rect rotulo = new Rect(telaCentro.x - 72f, Screen.height - telaCentro.y - 13f, 160f, 24f);
+                    Rect rotulo = new Rect(telaCentro.x - 100f, Screen.height - telaCentro.y - 10f, 200f, 20f);
                     GUI.color = new Color(0.03f, 0.07f, 0.09f, 0.82f);
                     GUI.DrawTexture(rotulo, Texture2D.whiteTexture);
                     GUI.color = Color.white;
@@ -930,33 +974,75 @@ public class MapaGeralController : MonoBehaviour
 
     private Color CorPoliticaDaRegiao(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
     {
-        int dono = gerente.ObterDonoDaRegiao(regiao.territorioId);
+        ResultadoConsultaTerritorio estado = gerente != null
+            ? gerente.ObterEstadoDaRegiao(regiao.territorioId)
+            : new ResultadoConsultaTerritorio
+            {
+                ownerCountryTeamId = regiao.ownerCountryTeamId,
+                neutral = regiao.neutral,
+                tipo = regiao.tipo
+            };
+        int dono = estado.ownerCountryTeamId;
         if (dono <= 0)
         {
-            if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais) return new Color(1f, 0.34f, 0.70f, 0.95f);
-            return regiao.neutral ? corUnidadeNeutro : Color.white;
+            if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais) return new Color(1f, 0.34f, 0.70f, 0.95f);
+            return estado.neutral ? corUnidadeNeutro : Color.white;
         }
         Color[] cores = { new Color(0.2f, 0.9f, 0.5f), new Color(0.2f, 0.75f, 1f), new Color(1f, 0.58f, 0.2f), new Color(1f, 0.3f, 0.35f), new Color(0.76f, 0.55f, 1f) };
         Color cor = cores[(dono - 1) % cores.Length];
-        if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais) cor = Color.Lerp(cor, new Color(0.2f, 0.55f, 0.95f), 0.38f);
+        if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais) cor = Color.Lerp(cor, new Color(0.2f, 0.55f, 0.95f), 0.38f);
         return cor;
     }
 
     private string TextoDonoTerritorial(GerenteDeTerritorio gerente, RegiaoPolitica regiao)
     {
-        int dono = gerente.ObterDonoDaRegiao(regiao.territorioId);
-        if (regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais)
+        ResultadoConsultaTerritorio estado = gerente != null
+            ? gerente.ObterEstadoDaRegiao(regiao.territorioId)
+            : new ResultadoConsultaTerritorio
+            {
+                ownerCountryTeamId = regiao.ownerCountryTeamId,
+                neutral = regiao.neutral,
+                tipo = regiao.tipo
+            };
+        int dono = estado.ownerCountryTeamId;
+        if (estado.tipo == TipoRegiaoPolitica.AguasTerritoriais)
         {
             if (dono <= 0) return "ÁGUAS SEM DONO";
             SistemaGovernoMundial governoMar = SistemaGovernoMundial.Instancia;
             DadosPaisGoverno paisMar = governoMar != null ? governoMar.ObterPais(dono) : null;
             return "ÁGUAS " + (paisMar != null ? paisMar.nomePais : "PAÍS " + dono);
         }
-        if (regiao.neutral && dono <= 0) return "NEUTRO";
+        if (estado.neutral && dono <= 0) return "NEUTRO";
         if (dono <= 0) return "SEM DONO";
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         DadosPaisGoverno pais = governo != null ? governo.ObterPais(dono) : null;
         return pais != null ? pais.nomePais : "PAÍS " + dono;
+    }
+
+    private DadosMapaTerritorial ObterDadosMapaCartografico(GerenteDeTerritorio gerente)
+    {
+        if (gerente != null && gerente.MapaPolitico != null) return gerente.MapaPolitico;
+        if (!tentouCarregarDadosMapaCartografico)
+        {
+            dadosMapaCartograficoFallback = Resources.Load<DadosMapaTerritorial>(DadosMapaTerritorial.NomeResource);
+            tentouCarregarDadosMapaCartografico = true;
+        }
+        return dadosMapaCartograficoFallback;
+    }
+
+    private Vector3 MapUvToWorldCartografico(GerenteDeTerritorio gerente, Vector2 uv)
+    {
+        if (gerente != null) return gerente.MapUvToWorld(uv);
+        if (!limitesMapaInicializados) AtualizarLimitesMapa();
+
+        // Usa o footprint lógico do mundo para projetar o mesmo asset quando
+        // o singleton territorial está ausente; margemMapa só é de navegação.
+        float larguraBase = Mathf.Max(1f, larguraMapa - Mathf.Max(0f, margemMapa) * 2f);
+        float profundidadeBase = Mathf.Max(1f, profundidadeMapa - Mathf.Max(0f, margemMapa) * 2f);
+        return new Vector3(
+            centroMapa.x - larguraBase * 0.5f + Mathf.Clamp01(uv.x) * larguraBase,
+            nivelDoMar,
+            centroMapa.y + profundidadeBase * 0.5f - Mathf.Clamp01(uv.y) * profundidadeBase);
     }
 
     private void DesenharLinhaTela(Vector2 inicio, Vector2 fim, Color cor, float espessura)
@@ -997,7 +1083,12 @@ public class MapaGeralController : MonoBehaviour
 
     private void GarantirEstilosGui()
     {
-        if (_trianguloSombraStyle != null) return;
+        if (_tituloMapaStyle != null
+            && _zoomMapaStyle != null
+            && _legendaMapaStyle != null
+            && _trianguloSombraStyle != null
+            && _trianguloCorStyle != null
+            && _camadaMapaStyle != null) return;
 
         _tituloMapaStyle = new GUIStyle(GUI.skin.label)
         {
@@ -1066,6 +1157,10 @@ public class MapaGeralController : MonoBehaviour
     {
         if (cameraMapa == null) return;
 
+        bool agrupar = cameraMapa.orthographicSize > 120f;
+        float tamanhoCelula = cameraMapa.orthographicSize > 350f ? 48f : 30f;
+        _clustersUnidades.Clear();
+
         foreach (var id in _cacheUnidades)
         {
             if (id == null || id.gameObject == null) continue;
@@ -1075,17 +1170,16 @@ public class MapaGeralController : MonoBehaviour
             bool ehNeutro  = (id.teamID == 0);
             bool ehInimigo = (!ehAliado && !ehNeutro);
 
-            // No mapa satélite, forças neutras/inimigas não aparecem sem
-            // motivo estratégico; imóveis continuam como referências visíveis.
-            if (!ehAliado && !ehImovel && (ehNeutro
-                || !RTSVisibilityService.TeamsAtWar(meuTeamID, id.teamID)))
+            // Estruturas inimigas também respeitam a neblina: ser imóvel não
+            // concede conhecimento estratégico automático ao observador.
+            if (!ehAliado && !ehNeutro && !RTSVisibilityService.TeamsAtWar(meuTeamID, id.teamID))
                 continue;
 
             Vector3 posicaoMapa = id.transform.position;
             RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
-            bool contatoAtual = !ehInimigo || ehImovel || (visibilidade != null
+            bool contatoAtual = !ehInimigo || (visibilidade != null
                 && visibilidade.IsVisibleToTeam(meuTeamID, id));
-            if (ehInimigo && !contatoAtual)
+            if (!ehAliado && !ehNeutro && !contatoAtual)
             {
                 if (visibilidade == null
                     || !visibilidade.TryGetLastKnownPosition(meuTeamID, id, out posicaoMapa))
@@ -1121,28 +1215,88 @@ public class MapaGeralController : MonoBehaviour
 
             if (sx < -20 || sx > Screen.width + 20 || sy < -20 || sy > Screen.height + 20) continue;
 
-            if (ehAliado && ehPredio)
+            Color cor = ehAliado
+                ? (ehPredio ? corPredioProprio : corUnidadePropria)
+                : (ehNeutro ? corUnidadeNeutro
+                    : (contatoAtual ? new Color(1f, 0.2f, 0.12f, 1f) : new Color(1f, 0.35f, 0.18f, 0.45f)));
+            int classe = ehAliado ? 0 : (ehNeutro ? 1 : (contatoAtual ? 2 : 3));
+            int tipo = ehPredio ? (int)TipoUnidade.Estrutura : (int)id.tipoUnidade;
+            if (agrupar)
             {
-                // Prédio aliado: quadrado branco com borda preta
-                DesenharIcone(sx, sy, 10f, 10f, corPredioProprio);
+                int cellX = Mathf.FloorToInt(sx / tamanhoCelula);
+                int cellY = Mathf.FloorToInt(sy / tamanhoCelula);
+                long chave = ((long)(classe & 0xff) << 56)
+                    | ((long)(tipo & 0xff) << 48)
+                    | ((long)(cellX & 0xffffff) << 24)
+                    | (uint)(cellY & 0xffffff);
+                if (_clustersUnidades.TryGetValue(chave, out ClusterUnidadeMapa cluster))
+                {
+                    cluster.x += sx;
+                    cluster.y += sy;
+                    cluster.quantidade++;
+                    _clustersUnidades[chave] = cluster;
+                }
+                else
+                {
+                    _clustersUnidades[chave] = new ClusterUnidadeMapa { x = sx, y = sy, quantidade = 1 };
+                }
             }
-            else if (ehAliado)
+            else
             {
-                // Unidade aliada: triângulo verde
-                DesenharTriangulo(sx, sy, 8f, corUnidadePropria);
-            }
-            else if (ehNeutro)
-            {
-                // Referência civil/imóvel neutro: círculo cinza discreto
-                DesenharIcone(sx, sy, 7f, 7f, corUnidadeNeutro);
-            }
-            else if (ehInimigo)
-            {
-                DesenharIcone(sx, sy, 7f, 7f, contatoAtual
-                    ? new Color(1f, 0.2f, 0.12f, 1f)
-                    : new Color(1f, 0.35f, 0.18f, 0.45f));
+                DesenharIconeUnidade(sx, sy, ehPredio ? 10f : 8f, (TipoUnidade)tipo, cor);
             }
         }
+
+        if (!agrupar) return;
+        foreach (KeyValuePair<long, ClusterUnidadeMapa> item in _clustersUnidades)
+        {
+            long chave = item.Key;
+            int classe = (int)((chave >> 56) & 0xff);
+            TipoUnidade tipo = (TipoUnidade)((chave >> 48) & 0xff);
+            ClusterUnidadeMapa cluster = item.Value;
+            float x = cluster.x / Mathf.Max(1, cluster.quantidade);
+            float y = cluster.y / Mathf.Max(1, cluster.quantidade);
+            Color cor = classe == 0 ? (tipo == TipoUnidade.Estrutura ? corPredioProprio : corUnidadePropria)
+                : (classe == 1 ? corUnidadeNeutro
+                    : (classe == 2 ? new Color(1f, 0.2f, 0.12f, 1f) : new Color(1f, 0.35f, 0.18f, 0.45f)));
+            DesenharIconeUnidade(x, y, cluster.quantidade > 1 ? 9f : 7f, tipo, cor);
+            if (cluster.quantidade > 1)
+            {
+                GUI.color = new Color(0.025f, 0.035f, 0.045f, 0.92f);
+                GUI.DrawTexture(new Rect(x + 5f, y - 8f, 19f, 16f), Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                GUI.Label(new Rect(x + 5f, y - 8f, 19f, 16f), cluster.quantidade.ToString(), _legendaMapaStyle);
+            }
+        }
+    }
+
+    private void DesenharIconeUnidade(float x, float y, float tamanho, TipoUnidade tipo, Color cor)
+    {
+        if (tipo == TipoUnidade.Estrutura)
+        {
+            DesenharIcone(x, y, tamanho + 2f, tamanho + 2f, cor);
+        }
+        else if (tipo == TipoUnidade.Naval)
+        {
+            DesenharSimbolo(x, y, "◆", tamanho * 2.2f, cor);
+        }
+        else if (tipo == TipoUnidade.Aereo)
+        {
+            DesenharSimbolo(x, y, "▲", tamanho * 2.1f, cor);
+        }
+        else
+        {
+            DesenharSimbolo(x, y, "●", tamanho * 1.8f, cor);
+        }
+    }
+
+    private void DesenharSimbolo(float x, float y, string simbolo, float tamanho, Color cor)
+    {
+        GUIStyle estilo = _trianguloCorStyle ?? GUI.skin.label;
+        estilo.alignment = TextAnchor.MiddleCenter;
+        estilo.fontSize = Mathf.Max(10, Mathf.RoundToInt(tamanho));
+        estilo.normal.textColor = cor;
+        GUI.Label(new Rect(x - tamanho, y - tamanho, tamanho * 2f, tamanho * 2f), simbolo, estilo);
     }
 
     private static bool EhImovelMapa(GameObject objeto)
@@ -1175,84 +1329,216 @@ public class MapaGeralController : MonoBehaviour
     void DesenharDisparosNoMapa()
     {
         if (cameraMapa == null || Event.current.type != EventType.Repaint) return;
+        RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+        if (visibilidade == null) return;
 
+        visibilidade.CopiarContatosDeMisseis(meuTeamID, _contatosMisseis);
         MissileThreatTracker.CopiarAmeacasAtivas(_misseisAtivos);
-        Projetil.CopiarAtivosNoMapa(_projeteisAtivos);
-
-        int inicioMisseis = Mathf.Max(0, _misseisAtivos.Count - 128);
-        for (int i = inicioMisseis; i < _misseisAtivos.Count; i++)
+        for (int i = 0; i < _contatosMisseis.Count; i++)
         {
-            MissileThreatTracker missil = _misseisAtivos[i];
-            if (missil == null || missil.RaizMissil == null) continue;
-            DesenharRastroCombate(missil.RaizMissil.position, missil.ObterVelocidadeAtual(), CorDoDisparo(missil.TeamOrigem), true);
-        }
+            RTSMissileVisibilityContact contato = _contatosMisseis[i];
+            if (contato == null) continue;
 
-        int inicioProjeteis = Mathf.Max(0, _projeteisAtivos.Count - 160);
-        for (int i = inicioProjeteis; i < _projeteisAtivos.Count; i++)
-        {
-            Projetil projetil = _projeteisAtivos[i];
-            if (projetil == null || projetil.GetComponent<MissileThreatTracker>() != null) continue;
-            DesenharRastroCombate(projetil.transform.position, projetil.transform.forward, CorDoDisparo(projetil.TeamDono), false);
+            MissileThreatTracker tracker = EncontrarMissilAtivo(contato.missileId);
+            bool equipeConhecidaAliada = contato.sourceTeamId == meuTeamID;
+            bool aoVivoConhecido = tracker != null && tracker.RaizMissil != null
+                && (equipeConhecidaAliada || contato.currentlyVisible);
+            Vector3 posicao = aoVivoConhecido ? tracker.RaizMissil.position : contato.lastKnownPosition;
+            Vector3 velocidade = aoVivoConhecido ? tracker.ObterVelocidadeAtual() : contato.lastKnownDirection * contato.lastKnownSpeed;
+            Vector3 direcaoPlano = velocidade;
+            direcaoPlano.y = 0f;
+            DesenharHistoricoMissil(contato, posicao, aoVivoConhecido);
+            DesenharMarcadorMissil(posicao, direcaoPlano, contato.sourceTeamId, !contato.currentlyVisible && !equipeConhecidaAliada,
+                contato.missileId == _missilSelecionadoId);
         }
     }
 
-    private void DesenharOrigensMisseisNoMapa()
+    private MissileThreatTracker EncontrarMissilAtivo(int missileId)
     {
-        if (cameraMapa == null || Event.current.type != EventType.Repaint) return;
-
-        IReadOnlyList<CartaCombateRegistro.EventoCombate> eventos = CartaCombateRegistro.Eventos;
-        float agora = Time.unscaledTime;
-        for (int i = 0; i < eventos.Count; i++)
+        for (int i = 0; i < _misseisAtivos.Count; i++)
         {
-            CartaCombateRegistro.EventoCombate evento = eventos[i];
-            if (evento == null || evento.tipo != "LANÇAMENTO"
-                || evento.equipeAtacante <= 0 || evento.equipeAtacante == meuTeamID)
-                continue;
+            MissileThreatTracker tracker = _misseisAtivos[i];
+            if (tracker == null) continue;
+            int id = tracker.MissileId >= 0 ? tracker.MissileId : tracker.GetInstanceID();
+            if (id == missileId) return tracker;
+        }
+        return null;
+    }
 
-            float idade = agora - evento.momento;
-            if (idade < 0f || idade > 120f) continue;
+    private void DesenharHistoricoMissil(RTSMissileVisibilityContact contato, Vector3 posicaoAtual, bool contatoAtual)
+    {
+        if (contato == null || contato.trajectory == null || contato.trajectory.Count < 2) return;
+        Color cor = CorDoDisparo(contato.sourceTeamId);
+        if (!contatoAtual && contato.sourceTeamId != meuTeamID) cor.a = 0.42f;
+        Vector3 anterior = Vector3.zero;
+        bool anteriorVisivel = false;
+        for (int i = 0; i < contato.trajectory.Count; i++)
+        {
+            Vector3 tela3D = cameraMapa.WorldToScreenPoint(contato.trajectory[i]);
+            if (tela3D.z <= 0f) { anteriorVisivel = false; continue; }
+            Vector2 tela = new Vector2(tela3D.x, Screen.height - tela3D.y);
+            if (anteriorVisivel) DesenharLinhaTela(anterior, tela, cor, 2f);
+            anterior = tela;
+            anteriorVisivel = true;
+        }
 
-            Vector3 tela = cameraMapa.WorldToScreenPoint(evento.posicao);
-            if (tela.z <= 0f) continue;
-            float sx = tela.x;
-            float sy = Screen.height - tela.y;
-            if (sx < -90f || sx > Screen.width + 20f || sy < -20f || sy > Screen.height + 20f) continue;
-
-            DesenharIcone(sx, sy, 12f, 12f, new Color(1f, 0.05f, 0.02f, 1f));
-            GUI.color = new Color(1f, 0.45f, 0.25f, 1f);
-            GUI.Label(new Rect(sx + 9f, sy - 9f, 160f, 20f),
-                "ORIGEM MÍSSIL  " + evento.posicao.x.ToString("0") + ", " + evento.posicao.z.ToString("0"),
-                _legendaMapaStyle);
-            GUI.color = Color.white;
+        if (contatoAtual && anteriorVisivel)
+        {
+            Vector3 atual3D = cameraMapa.WorldToScreenPoint(posicaoAtual);
+            if (atual3D.z > 0f)
+                DesenharLinhaTela(anterior, new Vector2(atual3D.x, Screen.height - atual3D.y), cor, 2f);
         }
     }
 
-    void DesenharRastroCombate(Vector3 posicao, Vector3 direcao, Color cor, bool missil)
+    private void DesenharMarcadorMissil(Vector3 posicao, Vector3 direcao, int equipeOrigem, bool ultimoConhecido, bool selecionado)
     {
         Vector3 tela = cameraMapa.WorldToScreenPoint(posicao);
         if (tela.z <= 0f) return;
-
         float sx = tela.x;
         float sy = Screen.height - tela.y;
         if (sx < -20f || sx > Screen.width + 20f || sy < -20f || sy > Screen.height + 20f) return;
 
-        Vector3 dir = direcao.sqrMagnitude > 0.001f ? direcao.normalized : Vector3.forward;
-        Vector3 telaFrente = cameraMapa.WorldToScreenPoint(posicao + dir * (missil ? 45f : 20f));
-        Vector2 delta = new Vector2(telaFrente.x - tela.x, -(telaFrente.y - tela.y));
-        if (delta.sqrMagnitude > 0.01f) delta.Normalize();
-
-        GUI.color = new Color(cor.r, cor.g, cor.b, 0.65f);
-        int pontos = missil ? 5 : 3;
-        for (int i = 1; i <= pontos; i++)
+        Color cor = CorDoDisparo(equipeOrigem);
+        if (equipeOrigem <= 0) cor = new Color(1f, 0.78f, 0.2f, 1f);
+        if (ultimoConhecido) cor.a = 0.5f;
+        float alcanceRumo = Mathf.Clamp(cameraMapa.orthographicSize * 0.05f, 20f, 90f);
+        Vector3 plano = direcao;
+        plano.y = 0f;
+        if (plano.sqrMagnitude > 0.001f)
         {
-            float distancia = i * (missil ? 4f : 3f);
-            GUI.DrawTexture(new Rect(sx - delta.x * distancia - 1f, sy - delta.y * distancia - 1f, 2f, 2f), Texture2D.whiteTexture);
+            Vector3 frente = cameraMapa.WorldToScreenPoint(posicao + plano.normalized * alcanceRumo);
+            if (frente.z > 0f)
+                DesenharLinhaTela(new Vector2(sx, sy), new Vector2(frente.x, Screen.height - frente.y), cor, selecionado ? 3f : 2f);
+        }
+        DesenharIcone(sx, sy, selecionado ? 14f : 9f, selecionado ? 14f : 9f, cor);
+        if (selecionado)
+        {
+            GUI.color = cor;
+            GUI.Label(new Rect(sx + 10f, sy - 18f, 160f, 22f), ultimoConhecido ? "MÍSSIL — ÚLTIMA POSIÇÃO" : "MÍSSIL DETECTADO", _legendaMapaStyle);
+            GUI.color = Color.white;
+        }
+    }
+
+    private bool SelecionarMissilSobCursor()
+    {
+        RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+        if (visibilidade == null || cameraMapa == null) return false;
+        visibilidade.CopiarContatosDeMisseis(meuTeamID, _contatosMisseis);
+        MissileThreatTracker.CopiarAmeacasAtivas(_misseisAtivos);
+        float menorDistancia = 16f;
+        RTSMissileVisibilityContact escolhido = null;
+        for (int i = 0; i < _contatosMisseis.Count; i++)
+        {
+            RTSMissileVisibilityContact contato = _contatosMisseis[i];
+            if (contato == null) continue;
+            MissileThreatTracker tracker = EncontrarMissilAtivo(contato.missileId);
+            bool aliado = contato.sourceTeamId == meuTeamID;
+            bool contatoAtual = tracker != null && tracker.RaizMissil != null
+                && (aliado || contato.currentlyVisible);
+            Vector3 posicao = contatoAtual ? tracker.RaizMissil.position : contato.lastKnownPosition;
+            Vector3 tela = cameraMapa.WorldToScreenPoint(posicao);
+            if (tela.z <= 0f) continue;
+            float distancia = Vector2.Distance(Input.mousePosition, new Vector2(tela.x, tela.y));
+            if (distancia >= menorDistancia) continue;
+            menorDistancia = distancia;
+            escolhido = contato;
+        }
+        if (escolhido == null) return false;
+
+        _missilSelecionadoId = escolhido.missileId;
+        IniciarCameraMissilSeObservado(escolhido);
+        return true;
+    }
+
+    private void IniciarCameraMissilSeObservado(RTSMissileVisibilityContact contato)
+    {
+        if (contato == null) return;
+        MissileThreatTracker tracker = EncontrarMissilAtivo(contato.missileId);
+        bool podeVerTransformReal = tracker != null && tracker.RaizMissil != null
+            && (contato.sourceTeamId == meuTeamID || contato.currentlyVisible);
+        if (!podeVerTransformReal)
+        {
+            PararCameraDeRastreamentoMissil();
+            return;
         }
 
-        GUI.color = cor;
-        float tamanho = missil ? 8f : 4f;
-        GUI.DrawTexture(new Rect(sx - tamanho * 0.5f, sy - tamanho * 0.5f, tamanho, tamanho), Texture2D.whiteTexture);
+        if (_cameraRastreamentoMissil == null)
+            _cameraRastreamentoMissil = GetComponent<CartaTerrenoRenderer>() ?? gameObject.AddComponent<CartaTerrenoRenderer>();
+
+        Transform raiz = tracker.RaizMissil;
+        if (!_cameraMissilEmRastreamento || _cameraMissilInstanceId != raiz.GetInstanceID())
+        {
+            _cameraRastreamentoMissil.IniciarRastreamento(raiz);
+            _cameraMissilEmRastreamento = true;
+            _cameraMissilInstanceId = raiz.GetInstanceID();
+        }
+    }
+
+    private void PararCameraDeRastreamentoMissil()
+    {
+        if (_cameraRastreamentoMissil != null)
+        {
+            _cameraRastreamentoMissil.PararRastreamento();
+            _cameraRastreamentoMissil.DefinirAtualizacaoContinua(false);
+        }
+        _cameraMissilEmRastreamento = false;
+        _cameraMissilInstanceId = 0;
+    }
+
+    private void DesenharPainelRastreamentoMissil()
+    {
+        if (!mapaAtivo || _missilSelecionadoId < 0) return;
+        RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+        if (visibilidade == null) return;
+        visibilidade.CopiarContatosDeMisseis(meuTeamID, _contatosMisseis);
+        RTSMissileVisibilityContact contato = null;
+        for (int i = 0; i < _contatosMisseis.Count; i++)
+            if (_contatosMisseis[i] != null && _contatosMisseis[i].missileId == _missilSelecionadoId) { contato = _contatosMisseis[i]; break; }
+        if (contato == null)
+        {
+            _missilSelecionadoId = -1;
+            PararCameraDeRastreamentoMissil();
+            return;
+        }
+
+        IniciarCameraMissilSeObservado(contato);
+        MissileThreatTracker tracker = EncontrarMissilAtivo(contato.missileId);
+        bool vivoConhecido = tracker != null && tracker.RaizMissil != null
+            && (contato.sourceTeamId == meuTeamID || contato.currentlyVisible);
+        Vector3 posicao = vivoConhecido ? tracker.RaizMissil.position : contato.lastKnownPosition;
+        Texture camera = null;
+        if (vivoConhecido && _cameraRastreamentoMissil == null)
+            _cameraRastreamentoMissil = GetComponent<CartaTerrenoRenderer>() ?? gameObject.AddComponent<CartaTerrenoRenderer>();
+        if (vivoConhecido && _cameraRastreamentoMissil != null && Event.current.type == EventType.Repaint)
+            camera = _cameraRastreamentoMissil.Renderizar(posicao, 360f, 16f / 9f, true);
+
+        Rect painel = new Rect(Screen.width - 382f, Screen.height - 266f, 370f, 250f);
+        GUI.color = new Color(0.015f, 0.025f, 0.04f, 0.96f);
+        GUI.DrawTexture(painel, Texture2D.whiteTexture);
         GUI.color = Color.white;
+        if (camera != null) GUI.DrawTexture(new Rect(painel.x + 8f, painel.y + 28f, 354f, 199f), camera, ScaleMode.ScaleToFit, false);
+        else
+        {
+            GUI.color = new Color(0.08f, 0.11f, 0.13f, 1f);
+            GUI.DrawTexture(new Rect(painel.x + 8f, painel.y + 28f, 354f, 199f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(painel.x + 20f, painel.y + 110f, 330f, 40f), "SEM CONTATO VISUAL\nÚltima posição observada", _tituloMapaStyle);
+        }
+        GUI.Label(new Rect(painel.x + 10f, painel.y + 5f, 270f, 20f), "ACOMPANHAMENTO — MÍSSIL " + contato.missileId, _camadaMapaStyle);
+        if (GUI.Button(new Rect(painel.xMax - 28f, painel.y + 3f, 24f, 22f), "×"))
+        {
+            _missilSelecionadoId = -1;
+            PararCameraDeRastreamentoMissil();
+            return;
+        }
+        string estado = vivoConhecido ? "AO VIVO" : "ÚLTIMA POSIÇÃO CONHECIDA";
+        string telemetria = estado + "  |  " + contato.lastKnownSpeed.ToString("0") + " m/s  |  ALT " + contato.lastKnownPosition.y.ToString("0") + " m";
+        if (contato.targetKnown)
+        {
+            string alvo = string.IsNullOrWhiteSpace(contato.knownTargetName) ? "COORDENADA CONHECIDA" : contato.knownTargetName;
+            telemetria += "  |  ALVO " + alvo + " (" + contato.knownTargetPosition.x.ToString("0") + ", " + contato.knownTargetPosition.z.ToString("0") + ")";
+        }
+        GUI.Label(new Rect(painel.x + 10f, painel.yMax - 24f, 350f, 18f), telemetria, _legendaMapaStyle);
     }
 
     Color CorDoDisparo(int team)

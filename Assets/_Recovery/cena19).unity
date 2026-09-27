@@ -3126,6 +3126,7 @@ MonoBehaviour:
   margemEnquadramentoInicial: 1.08
   meuTeamID: 1
   nivelDoMar: 0
+  mapaCartograficoInicial: 1
 --- !u!1 &235610957
 GameObject:
   m_ObjectHideFlags: 0
@@ -5111,6 +5112,8 @@ MonoBehaviour:
   velocidadeZoom: 1000
   velocidadeRotacao: 100
   multiplicadorShift: 12
+  alturaMaximaZoom: 8000
+  alturaReferenciaEscalaControles: 0
   campoDeVisaoBase: 150
   campoDeVisaoMin: 85
   campoDeVisaoMax: 90
@@ -5480,7 +5483,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &358294490
 Transform:
   m_ObjectHideFlags: 0
@@ -7740,6 +7743,7 @@ MonoBehaviour:
   margemEnquadramentoInicial: 1.08
   meuTeamID: 1
   nivelDoMar: 0
+  mapaCartograficoInicial: 1
 --- !u!1 &511982579
 GameObject:
   m_ObjectHideFlags: 0

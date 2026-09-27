@@ -84,4 +84,5 @@ public sealed class SaveProprietarioTerritorio
 {
     public string territorioId;
     public int ownerCountryTeamId;
+    public bool neutral;
 }

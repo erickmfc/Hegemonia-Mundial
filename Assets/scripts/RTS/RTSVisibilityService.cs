@@ -32,6 +32,29 @@ namespace Hegemonia.RTS
     }
 
     /// <summary>
+    /// Snapshot of a missile at the last time an allied sensor observed it.
+    /// Position and telemetry are intentionally frozen when contact is lost.
+    /// </summary>
+    public sealed class RTSMissileVisibilityContact
+    {
+        public int observerTeamId;
+        public int missileId;
+        public int targetSceneHandle;
+        public int sourceTeamId;
+        public Vector3 lastKnownPosition;
+        public Vector3 lastKnownDirection;
+        public float lastKnownSpeed;
+        public float lastSeenAt;
+        public float expiresAt;
+        public float lastKnownExpiresAt;
+        public bool currentlyVisible;
+        public bool targetKnown;
+        public Vector3 knownTargetPosition;
+        public string knownTargetName;
+        public readonly List<Vector3> trajectory = new List<Vector3>(32);
+    }
+
+    /// <summary>
     /// Fonte comum para neblina, minimapa, mapa estrategico e percepcao da IA.
     /// A primeira implementacao fornece visao direta segura e APIs para sensores
     /// especializados migrarem sem alterar as telas.
@@ -48,7 +71,10 @@ namespace Hegemonia.RTS
         [SerializeField, Min(1f)] private float alliedRadarShareRange = 1800f;
 
         private readonly Dictionary<int, Dictionary<int, RTSVisibilityContact>> contactsByTeam = new Dictionary<int, Dictionary<int, RTSVisibilityContact>>();
+        private readonly Dictionary<int, Dictionary<int, RTSMissileVisibilityContact>> missileContactsByTeam = new Dictionary<int, Dictionary<int, RTSMissileVisibilityContact>>();
         private readonly List<int> expiredContactIds = new List<int>(64);
+        private readonly List<int> expiredMissileContactIds = new List<int>(64);
+        private readonly List<MissileThreatTracker> missileTrackersBuffer = new List<MissileThreatTracker>(64);
         // A visibilidade direta usa o mesmo alcance para qualquer observador.
         // Organizar as unidades por celula evita comparar cada unidade com
         // todas as outras quando a partida ja acumulou muitos spawns.
@@ -88,6 +114,7 @@ namespace Hegemonia.RTS
             nextScanAt = Time.unscaledTime + scanInterval;
             RefreshDirectContacts();
             RefreshRadarContacts();
+            RefreshMissileContacts();
             ExpireContacts();
         }
 
@@ -105,6 +132,7 @@ namespace Hegemonia.RTS
         {
             if (mode != LoadSceneMode.Single) return;
             contactsByTeam.Clear();
+            missileContactsByTeam.Clear();
             nextRadarCounterstrikeAt.Clear();
             nextScanAt = 0f;
         }
@@ -123,6 +151,17 @@ namespace Hegemonia.RTS
 
                 for (int i = 0; i < expiredContactIds.Count; i++)
                     teamContacts.Remove(expiredContactIds[i]);
+            }
+
+            foreach (Dictionary<int, RTSMissileVisibilityContact> teamContacts in missileContactsByTeam.Values)
+            {
+                if (teamContacts == null) continue;
+                expiredMissileContactIds.Clear();
+                foreach (KeyValuePair<int, RTSMissileVisibilityContact> pair in teamContacts)
+                    if (pair.Value == null || pair.Value.targetSceneHandle == scene.handle)
+                        expiredMissileContactIds.Add(pair.Key);
+                for (int i = 0; i < expiredMissileContactIds.Count; i++)
+                    teamContacts.Remove(expiredMissileContactIds[i]);
             }
 
             nextScanAt = 0f;
@@ -231,6 +270,127 @@ namespace Hegemonia.RTS
             }
 
             return count;
+        }
+
+        public void CopiarContatosDeMisseis(int observerTeamId, List<RTSMissileVisibilityContact> destino)
+        {
+            if (destino == null) return;
+            destino.Clear();
+            if (observerTeamId <= 0 || !missileContactsByTeam.TryGetValue(observerTeamId, out Dictionary<int, RTSMissileVisibilityContact> contatos)
+                || contatos == null) return;
+
+            float agora = Time.unscaledTime;
+            foreach (RTSMissileVisibilityContact contato in contatos.Values)
+                if (contato != null && contato.lastKnownExpiresAt >= agora)
+                    destino.Add(contato);
+        }
+
+        private void RefreshMissileContacts()
+        {
+            missileTrackersBuffer.Clear();
+            MissileThreatTracker.CopiarAmeacasAtivas(missileTrackersBuffer);
+            if (missileTrackersBuffer.Count == 0) return;
+
+            float agora = Time.unscaledTime;
+            int count = Mathf.Min(unitsBuffer.Count, maxUnitsPerScan);
+            for (int m = 0; m < missileTrackersBuffer.Count; m++)
+            {
+                MissileThreatTracker tracker = missileTrackersBuffer[m];
+                Transform missil = tracker != null ? tracker.RaizMissil : null;
+                if (missil == null || !missil.gameObject.activeInHierarchy) continue;
+
+                int equipeOrigem = tracker.TeamOrigem;
+                Vector3 posicao = missil.position;
+                Vector3 velocidade = tracker.ObterVelocidadeAtual();
+
+                // A equipe que disparou conhece o próprio míssil em tempo real.
+                if (equipeOrigem > 0)
+                    ReportMissileContact(equipeOrigem, tracker, posicao, velocidade, agora);
+
+                for (int i = 0; i < count; i++)
+                {
+                    IdentidadeUnidade observador = unitsBuffer[i];
+                    if (observador == null || !observador.gameObject.activeInHierarchy || observador.teamID <= 0
+                        || observador.teamID == equipeOrigem
+                        || (equipeOrigem > 0 && !TeamsAtWar(observador.teamID, equipeOrigem))) continue;
+
+                    Vector3 delta = posicao - observador.transform.position;
+                    RadarUnidadeTatica radar = observador.GetComponent<RadarUnidadeTatica>();
+                    bool detectado = false;
+                    if (radar != null && radar.RadarLigado)
+                    {
+                        float alcance = Mathf.Max(0f, radar.AlcanceRadar);
+                        if (delta.sqrMagnitude <= alcance * alcance
+                            && RadarTemLinhaDeVisao(observador.transform.position, observador.transform, missil))
+                        {
+                            detectado = true;
+                        }
+                    }
+
+                    if (!detectado && delta.sqrMagnitude <= directVisionRange * directVisionRange
+                        && RadarTemLinhaDeVisao(observador.transform.position, observador.transform, missil))
+                        detectado = true;
+
+                    if (detectado)
+                        ReportMissileContact(observador.teamID, tracker, posicao, velocidade, agora);
+                }
+            }
+        }
+
+        private void ReportMissileContact(int observerTeamId, MissileThreatTracker tracker, Vector3 position, Vector3 velocity, float now)
+        {
+            if (observerTeamId <= 0 || tracker == null || tracker.RaizMissil == null) return;
+            if (!missileContactsByTeam.TryGetValue(observerTeamId, out Dictionary<int, RTSMissileVisibilityContact> contatos)
+                || contatos == null)
+            {
+                contatos = new Dictionary<int, RTSMissileVisibilityContact>(32);
+                missileContactsByTeam[observerTeamId] = contatos;
+            }
+
+            int id = tracker.MissileId;
+            if (id < 0) id = tracker.GetInstanceID();
+            if (!contatos.TryGetValue(id, out RTSMissileVisibilityContact contato) || contato == null)
+            {
+                contato = new RTSMissileVisibilityContact { observerTeamId = observerTeamId, missileId = id };
+                contatos[id] = contato;
+            }
+
+            contato.targetSceneHandle = tracker.RaizMissil.gameObject.scene.handle;
+            contato.sourceTeamId = tracker.TeamOrigem;
+            contato.lastKnownPosition = position;
+            contato.lastKnownDirection = velocity.sqrMagnitude > 0.01f ? velocity.normalized : tracker.RaizMissil.forward;
+            contato.lastKnownSpeed = velocity.magnitude;
+            contato.lastSeenAt = now;
+            contato.expiresAt = now + Mathf.Max(0.5f, scanInterval * 1.5f);
+            contato.lastKnownExpiresAt = now + memoryDuration;
+            contato.currentlyVisible = true;
+            contato.targetKnown = tracker.TeamOrigem == observerTeamId;
+            contato.knownTargetPosition = contato.targetKnown ? tracker.PontoAlvoConhecido : Vector3.zero;
+            contato.knownTargetName = contato.targetKnown ? tracker.AlvoNome : string.Empty;
+
+            if (contato.trajectory.Count == 0 || Vector3.Distance(contato.trajectory[contato.trajectory.Count - 1], position) >= 20f)
+            {
+                if (contato.trajectory.Count >= 32) contato.trajectory.RemoveAt(0);
+                contato.trajectory.Add(position);
+            }
+        }
+
+        private void RefreshMissileContactExpiry()
+        {
+            float now = Time.unscaledTime;
+            foreach (Dictionary<int, RTSMissileVisibilityContact> teamContacts in missileContactsByTeam.Values)
+            {
+                if (teamContacts == null) continue;
+                expiredMissileContactIds.Clear();
+                foreach (KeyValuePair<int, RTSMissileVisibilityContact> pair in teamContacts)
+                {
+                    RTSMissileVisibilityContact contact = pair.Value;
+                    if (contact == null) continue;
+                    contact.currentlyVisible = contact.expiresAt >= now;
+                    if (contact.lastKnownExpiresAt < now) expiredMissileContactIds.Add(pair.Key);
+                }
+                for (int i = 0; i < expiredMissileContactIds.Count; i++) teamContacts.Remove(expiredMissileContactIds[i]);
+            }
         }
 
         private void RefreshDirectContacts()
@@ -522,8 +682,14 @@ namespace Hegemonia.RTS
 
         private bool RadarTemLinhaDeVisao(Vector3 origem, IdentidadeUnidade observador, IdentidadeUnidade alvo)
         {
+            return observador != null && alvo != null
+                && RadarTemLinhaDeVisao(origem, observador.transform, alvo.transform);
+        }
+
+        private bool RadarTemLinhaDeVisao(Vector3 origem, Transform observador, Transform alvo)
+        {
             Vector3 inicio = origem + Vector3.up * 2f;
-            Vector3 fim = alvo.transform.position + Vector3.up * 2f;
+            Vector3 fim = alvo.position + Vector3.up * 2f;
             Vector3 delta = fim - inicio;
             float distancia = delta.magnitude;
             if (distancia <= 0.01f) return true;
@@ -540,10 +706,10 @@ namespace Hegemonia.RTS
             {
                 Collider colisor = terrainRaycastHits[i].collider;
                 if (colisor == null
-                    || colisor.transform == observador.transform
-                    || colisor.transform.IsChildOf(observador.transform)
-                    || colisor.transform == alvo.transform
-                    || colisor.transform.IsChildOf(alvo.transform))
+                    || colisor.transform == observador
+                    || colisor.transform.IsChildOf(observador)
+                    || colisor.transform == alvo
+                    || colisor.transform.IsChildOf(alvo))
                     continue;
 
                 // Terreno alto bloqueia o radar entre unidades terrestres.
@@ -665,6 +831,8 @@ namespace Hegemonia.RTS
                 for (int i = 0; i < expiredContactIds.Count; i++)
                     teamContacts.Remove(expiredContactIds[i]);
             }
+
+            RefreshMissileContactExpiry();
         }
 
         private RTSVisibilityContact TryGetContact(int observerTeamId, int targetInstanceId)

@@ -26,7 +26,7 @@ public sealed class GlobalWorldDefinition : ScriptableObject
     public float seaLevel = 0f;
     [Min(0f)] public float minimumLandClearance = 4f;
     public float terrainBaseY = -200f;
-    [Min(500f)] public float terrainVerticalSize = 2200f;
+    [Min(500f)] public float terrainVerticalSize = 1800f;
     [Min(0f)] public float beachWidth = 1600f;
     [Min(1f)] public float coastalElevationBlendWidth = 26000f;
     [Min(0f)] public float maximumMountainHeight = 1250f;

@@ -206,7 +206,7 @@ public static class GlobalWorldSceneBuilder
         world.terrainBaseY = -200f;
         // Reserve room above the tallest combined inland/ridge relief so
         // Terrain height normalization does not clamp mountain crests.
-        world.terrainVerticalSize = 2200f;
+        world.terrainVerticalSize = 1800f;
         world.beachWidth = 1600f;
         world.coastalElevationBlendWidth = 14000f;
         world.maximumMountainHeight = 1250f;

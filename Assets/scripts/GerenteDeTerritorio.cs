@@ -16,6 +16,7 @@ public class GerenteDeTerritorio : MonoBehaviour
     [SerializeField] private bool usarLimitesDeTerreno = true;
     [SerializeField] private Bounds limitesMapaExplicitos = new Bounds(Vector3.zero, new Vector3(10000f, 1000f, 10000f));
     private readonly Dictionary<string, int> proprietariosCapturados = new Dictionary<string, int>(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> neutralidadeTerritorial = new Dictionary<string, bool>(StringComparer.Ordinal);
     private Bounds limitesTerritoriais;
     private bool limitesTerritoriaisProntos;
 
@@ -115,19 +116,16 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     public bool TryWorldToMapUv(Vector3 worldPosition, out Vector2 uv)
     {
-        if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
-        Vector3 min = limitesTerritoriais.min;
-        float largura = limitesTerritoriais.size.x;
-        float profundidade = limitesTerritoriais.size.z;
-        if (!limitesTerritoriaisProntos || largura <= 0.001f || profundidade <= 0.001f)
-        {
-            uv = Vector2.zero;
-            return false;
-        }
-        uv = new Vector2((worldPosition.x - min.x) / largura, 1f - (worldPosition.z - min.z) / profundidade);
-        return uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
+        bool dentroDaCoberturaDoMapa;
+        return TryWorldToMapUv(worldPosition, out uv, out dentroDaCoberturaDoMapa)
+            && dentroDaCoberturaDoMapa;
     }
 
+    /// <summary>
+    /// Converts against the political map bounds and separately reports whether
+    /// the point is covered. A valid conversion outside [0,1] is important:
+    /// legacy territory may only be considered outside political coverage.
+    /// </summary>
     public bool TryWorldToMapUv(Vector3 worldPosition, out Vector2 uv, out bool dentroDaCoberturaDoMapa)
     {
         if (!limitesTerritoriaisProntos) AtualizarLimitesTerritoriais();
@@ -160,7 +158,11 @@ public class GerenteDeTerritorio : MonoBehaviour
     public ResultadoConsultaTerritorio ObterTerritorioNaPosicao(Vector3 ponto)
     {
         GarantirMapaPolitico();
-        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv, out bool dentroDaCoberturaDoMapa))
+        Vector2 uv = Vector2.zero;
+        bool dentroDaCoberturaDoMapa = false;
+        bool possuiPosicaoMapa = mapaPolitico != null
+            && TryWorldToMapUv(ponto, out uv, out dentroDaCoberturaDoMapa);
+        if (possuiPosicaoMapa && dentroDaCoberturaDoMapa)
         {
             ResultadoConsultaTerritorio politico = mapaPolitico.ConsultarUv(uv);
             if (politico.encontrouRegiao)
@@ -168,8 +170,8 @@ public class GerenteDeTerritorio : MonoBehaviour
                 if (proprietariosCapturados.TryGetValue(politico.territorioId, out int proprietario))
                 {
                     politico.ownerCountryTeamId = proprietario;
-                    politico.neutral = proprietario <= 0;
                 }
+                if (neutralidadeTerritorial.TryGetValue(politico.territorioId, out bool neutro)) politico.neutral = neutro;
                 politico.worldPosition = ponto;
                 return politico;
             }
@@ -190,23 +192,32 @@ public class GerenteDeTerritorio : MonoBehaviour
                 };
             }
 
-            // Faixas políticas estão acima de reservas, expansões e marcadores legados.
-            // A presença do dado político, mesmo em uma lacuna, é soberana.
+            // A cobertura política é soberana mesmo onde exista um vão entre
+            // polígonos. Não deixar marcadores/zones legados preencherem esse
+            // espaço com uma soberania que não foi desenhada.
+            ResultadoConsultaTerritorio indefinidoNaCobertura = ResultadoConsultaTerritorio.NaoDefinido;
+            indefinidoNaCobertura.worldPosition = ponto;
+            indefinidoNaCobertura.mapPosition = uv;
+            indefinidoNaCobertura.possuiMapPosition = true;
+            return indefinidoNaCobertura;
+        }
+
+        // Água física fora das águas territoriais definidas continua sendo
+        // internacional, inclusive fora da extensão UV da camada política.
+        if (EhAguasInternacionais(ponto))
+        {
             return new ResultadoConsultaTerritorio
             {
+                encontrouRegiao = true,
+                territorioId = "aguas-internacionais",
+                ownerCountryTeamId = -1,
+                aguasInternacionais = true,
+                tipo = TipoRegiaoPolitica.AguasTerritoriais,
                 worldPosition = ponto,
                 mapPosition = uv,
-                possuiMapPosition = true,
-                fonte = FonteConsultaTerritorial.Nenhuma
+                possuiMapPosition = possuiPosicaoMapa && dentroDaCoberturaDoMapa,
+                fonte = FonteConsultaTerritorial.AguasInternacionais
             };
-        }
-        else if (mapaPolitico != null && dentroDaCoberturaDoMapa)
-        {
-            ResultadoConsultaTerritorio lacuna = ResultadoConsultaTerritorio.NaoDefinido;
-            lacuna.worldPosition = ponto;
-            lacuna.mapPosition = uv;
-            lacuna.possuiMapPosition = true;
-            return lacuna;
         }
 
         // Regiões políticas desenhadas são soberanas. Legado permanece apenas como fallback.
@@ -220,11 +231,15 @@ public class GerenteDeTerritorio : MonoBehaviour
                 ownerCountryTeamId = donoLegado,
                 tipo = TipoRegiaoPolitica.Terra,
                 worldPosition = ponto,
+                mapPosition = uv,
+                possuiMapPosition = possuiPosicaoMapa && dentroDaCoberturaDoMapa,
                 fonte = FonteConsultaTerritorial.Legado
             };
         }
         ResultadoConsultaTerritorio indefinido = ResultadoConsultaTerritorio.NaoDefinido;
         indefinido.worldPosition = ponto;
+        indefinido.mapPosition = uv;
+        indefinido.possuiMapPosition = possuiPosicaoMapa && dentroDaCoberturaDoMapa;
         return indefinido;
     }
 
@@ -234,8 +249,12 @@ public class GerenteDeTerritorio : MonoBehaviour
         RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
         if (regiao == null || !regiao.capturable) return false;
         int donoAnterior = ObterDonoDaRegiao(territorioId);
-        if (donoAnterior == novoOwnerTeamId && !regiao.neutral) return false;
+        bool neutroAnterior = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutro)
+            ? neutro
+            : regiao.neutral;
+        if (donoAnterior == novoOwnerTeamId && (!neutroAnterior || proprietariosCapturados.ContainsKey(territorioId))) return false;
         proprietariosCapturados[territorioId] = novoOwnerTeamId;
+        neutralidadeTerritorial[territorioId] = false;
         OnTerritoryOwnerChanged?.Invoke(territorioId, donoAnterior, novoOwnerTeamId);
         return true;
     }
@@ -252,22 +271,75 @@ public class GerenteDeTerritorio : MonoBehaviour
     {
         List<SaveProprietarioTerritorio> resultado = new List<SaveProprietarioTerritorio>(proprietariosCapturados.Count);
         foreach (KeyValuePair<string, int> par in proprietariosCapturados)
-            resultado.Add(new SaveProprietarioTerritorio { territorioId = par.Key, ownerCountryTeamId = par.Value });
+        {
+            RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(par.Key) : null;
+            if (regiao == null) continue;
+            resultado.Add(new SaveProprietarioTerritorio
+            {
+                territorioId = par.Key,
+                ownerCountryTeamId = par.Value,
+                neutral = neutralidadeTerritorial.TryGetValue(par.Key, out bool neutro) ? neutro : regiao.neutral
+            });
+        }
         resultado.Sort((a, b) => string.CompareOrdinal(a.territorioId, b.territorioId));
         return resultado;
     }
 
     public void RestaurarProprietariosCapturados(IList<SaveProprietarioTerritorio> estados)
     {
+        RestaurarEstadoPolitico(estados, true);
+    }
+
+    /// <summary>
+    /// Restores owners over the asset configuration. Saves before format 17
+    /// did not carry neutral, so their default bool must never override the
+    /// base map value. A legacy positive owner on a capturable neutral region
+    /// is the old representation of a successful capture.
+    /// </summary>
+    public void RestaurarEstadoPolitico(IList<SaveProprietarioTerritorio> estados, bool neutralSnapshotAvailable)
+    {
+        GarantirMapaPolitico();
         proprietariosCapturados.Clear();
+        neutralidadeTerritorial.Clear();
         if (estados == null) return;
         for (int i = 0; i < estados.Count; i++)
         {
             SaveProprietarioTerritorio estado = estados[i];
             RegiaoPolitica regiao = estado != null && MapaPolitico != null ? MapaPolitico.EncontrarRegiao(estado.territorioId) : null;
-            if (regiao != null && regiao.capturable && estado.ownerCountryTeamId > 0)
-                proprietariosCapturados[estado.territorioId] = estado.ownerCountryTeamId;
+            if (regiao == null || estado == null || string.IsNullOrWhiteSpace(estado.territorioId)) continue;
+
+            if (!neutralSnapshotAvailable)
+            {
+                // Legacy records contain only an owner. The asset remains the
+                // source for neutral/capturable configuration except for the
+                // old capture convention on a neutral capturable territory.
+                if (regiao.capturable && estado.ownerCountryTeamId > 0)
+                {
+                    proprietariosCapturados[estado.territorioId] = estado.ownerCountryTeamId;
+                    neutralidadeTerritorial[estado.territorioId] = false;
+                }
+                continue;
+            }
+
+            if (estado.ownerCountryTeamId > 0) proprietariosCapturados[estado.territorioId] = estado.ownerCountryTeamId;
+            neutralidadeTerritorial[estado.territorioId] = estado.neutral;
         }
+    }
+
+    public ResultadoConsultaTerritorio ObterEstadoDaRegiao(string territorioId)
+    {
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        if (regiao == null) return ResultadoConsultaTerritorio.NaoDefinido;
+        return new ResultadoConsultaTerritorio
+        {
+            encontrouRegiao = true,
+            territorioId = regiao.territorioId,
+            ownerCountryTeamId = ObterDonoDaRegiao(territorioId),
+            neutral = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutro) ? neutro : regiao.neutral,
+            capturable = regiao.capturable,
+            tipo = regiao.tipo,
+            fonte = FonteConsultaTerritorial.PoligonoPolitico
+        };
     }
 
     private bool EhAguasInternacionais(Vector3 ponto)
@@ -310,7 +382,9 @@ public class GerenteDeTerritorio : MonoBehaviour
     public int ObterDonoDoPonto(Vector3 ponto)
     {
         GarantirMapaPolitico();
-        if (mapaPolitico != null && TryWorldToMapUv(ponto, out Vector2 uv, out bool dentroDaCoberturaDoMapa))
+        if (mapaPolitico != null
+            && TryWorldToMapUv(ponto, out Vector2 uv, out bool dentroDaCoberturaDoMapa)
+            && dentroDaCoberturaDoMapa)
         {
             ResultadoConsultaTerritorio politico = mapaPolitico.ConsultarUv(uv);
             if (politico.encontrouRegiao)
@@ -318,15 +392,11 @@ public class GerenteDeTerritorio : MonoBehaviour
                 if (proprietariosCapturados.TryGetValue(politico.territorioId, out int novoDono)) return novoDono;
                 return Mathf.Max(0, politico.ownerCountryTeamId);
             }
-            if (EhAguasInternacionais(ponto)) return 0;
-            // A consulta legada em inteiro também precisa respeitar regiões políticas vazias.
+            // Uma lacuna dentro da camada política é indefinida e não recebe
+            // propriedade legada. A API inteira representa ambos como 0.
             return 0;
         }
-        else if (mapaPolitico != null && dentroDaCoberturaDoMapa)
-        {
-            return 0;
-        }
-
+        if (EhAguasInternacionais(ponto)) return 0;
         // Os polígonos têm precedência absoluta; reservas de expansão e raios
         // de marcadores só podem responder onde não há região política definida.
         return ObterDonoLegadoDoPonto(ponto);

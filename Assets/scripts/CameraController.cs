@@ -157,6 +157,15 @@ public class CameraController : MonoBehaviour
         {
             Vector3 forward = transform.forward;
             forward.y = 0;
+            // Em visão global, a câmera começa apontando quase na vertical e
+            // a projeção horizontal de forward pode ser nula. Nesse caso use
+            // o eixo vertical da tela projetado no plano do mundo para que W/S
+            // continuem movendo a câmera sobre a superfície.
+            if (forward.sqrMagnitude < 0.0001f)
+            {
+                forward = transform.up;
+                forward.y = 0;
+            }
             forward.Normalize();
             Vector3 right = transform.right;
             right.y = 0;

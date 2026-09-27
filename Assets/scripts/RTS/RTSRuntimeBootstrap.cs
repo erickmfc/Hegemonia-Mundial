@@ -15,6 +15,11 @@ namespace Hegemonia.RTS
                 Object.DontDestroyOnLoad(root);
             }
 
+            // GlobalMapRTS can be entered directly from Multiplayer, without the
+            // campaign menu having created its persistent services first.
+            SistemaGovernoMundial.GarantirInstancia();
+            SistemaSaveGame.GarantirInstancia();
+
             if (root.GetComponent<RTSGameSession>() == null) root.AddComponent<RTSGameSession>();
             if (root.GetComponent<RTSSimulationClock>() == null) root.AddComponent<RTSSimulationClock>();
             if (root.GetComponent<RTSResourceLedgerService>() == null) root.AddComponent<RTSResourceLedgerService>();

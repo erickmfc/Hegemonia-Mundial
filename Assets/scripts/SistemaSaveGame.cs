@@ -16,7 +16,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 16;
+    public int saveVersion = 17;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -521,7 +521,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         GarantirColecoesIA01();
         GarantirColecoesIA02();
-        dadosAtuais.saveVersion = 16;
+        dadosAtuais.saveVersion = 17;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -1461,7 +1461,10 @@ public class SistemaSaveGame : MonoBehaviour
             GameObject raiz = new GameObject("GerenteDeTerritorio_SaveRestore");
             gerente = raiz.AddComponent<GerenteDeTerritorio>();
         }
-        gerente.RestaurarProprietariosCapturados(dadosAtuais.territoriosCapturados);
+        // The base map is ensured by MapaPolitico before applying the save.
+        // Version 17 introduced the serialized mutable Neutral field; older
+        // JsonUtility snapshots default it to false when absent, so ignore it.
+        gerente.RestaurarEstadoPolitico(dadosAtuais.territoriosCapturados, dadosAtuais.saveVersion >= 17);
     }
 
     private void RestaurarEstadoIA01()

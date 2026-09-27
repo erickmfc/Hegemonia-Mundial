@@ -251,7 +251,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 401164718}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7af63cf04e3e9b44d9c7a71a36357bbc, type: 3}
   m_Name: 
@@ -391,7 +391,7 @@ Transform:
   m_GameObject: {fileID: 925739428}
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 250000, z: 0}
+  m_LocalPosition: {x: 196698, y: 250, z: 27258}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -404,7 +404,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 925739428}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7199e87ba37848959160271a5132677d, type: 3}
   m_Name: 
@@ -763,6 +763,8 @@ MonoBehaviour:
   streamer: {fileID: 1451157270}
   visible: 1
   sampleInterval: 1
+  benchmarkLabel: 250km-parado
+  benchmarkKey: 290
 --- !u!1001 &1744977305
 PrefabInstance:
   m_ObjectHideFlags: 0
