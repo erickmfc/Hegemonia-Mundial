@@ -33,7 +33,7 @@ public sealed class DadosMapaTerritorial : ScriptableObject
         int x = Mathf.Min(colunasIndice - 1, Mathf.FloorToInt(uv.x * colunasIndice));
         int y = Mathf.Min(linhasIndice - 1, Mathf.FloorToInt(uv.y * linhasIndice));
         int chave = y * colunasIndice + x;
-        if (!indiceEspacial.TryGetValue(chave, out List<int> candidatos)) return ResultadoConsultaTerritorio.NaoDefinido;
+        if (!indiceEspacial.TryGetValue(chave, out List<int> candidatos)) return ResultadoVazio(uv);
 
         int melhorIndice = -1;
         int melhorRank = int.MinValue;
@@ -55,7 +55,7 @@ public sealed class DadosMapaTerritorial : ScriptableObject
             }
         }
 
-        if (melhorIndice < 0) return ResultadoConsultaTerritorio.NaoDefinido;
+        if (melhorIndice < 0) return ResultadoVazio(uv);
         RegiaoPolitica escolhida = Regioes[melhorIndice];
         return new ResultadoConsultaTerritorio
         {
@@ -68,6 +68,17 @@ public sealed class DadosMapaTerritorial : ScriptableObject
             mapPosition = uv,
             possuiMapPosition = true,
             fonte = FonteConsultaTerritorial.PoligonoPolitico
+        };
+    }
+
+    private static ResultadoConsultaTerritorio ResultadoVazio(Vector2 uv)
+    {
+        return new ResultadoConsultaTerritorio
+        {
+            ownerCountryTeamId = -1,
+            mapPosition = uv,
+            possuiMapPosition = true,
+            fonte = FonteConsultaTerritorial.Nenhuma
         };
     }
 
