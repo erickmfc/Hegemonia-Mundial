@@ -78,7 +78,8 @@ public class HovercraftTransporte : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        controleUnidade = GetComponent<ControleUnidade>();
+        controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         rb.useGravity = false; rb.isKinematic = false; 
         rb.linearDamping = 1f; 
         rb.angularDamping = 2f; 

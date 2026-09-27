@@ -1194,6 +1194,7 @@ GameObject:
   - component: {fileID: 7085343783887940215}
   - component: {fileID: 3159084832657925120}
   - component: {fileID: 2941279973582650729}
+  - component: {fileID: 1122217379833074883}
   m_Layer: 0
   m_Name: 'Liberty Prime '
   m_TagString: Navio
@@ -2874,3 +2875,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2828000575713313541, guid: 68bea833d17395d44b0667a026463265, type: 3}
   m_PrefabInstance: {fileID: 7432587642440223586}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1122217379833074883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4357442004992980676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 70000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

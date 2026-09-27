@@ -12,6 +12,7 @@ namespace Hegemonia.RTS
     public sealed class RadarUnidadeTatica : MonoBehaviour
     {
         [SerializeField, Min(50f)] private float alcanceRadar = 900f;
+        [SerializeField] private bool alcanceConfiguradoNoPrefab;
         [SerializeField] private bool radarLigado;
 
         private float proximaDecisaoIA;
@@ -121,6 +122,15 @@ namespace Hegemonia.RTS
         public void AtualizarAlcance(IdentidadeUnidade identidade)
         {
             if (identidade == null) return;
+
+            // Prefabs com perfil de sensor próprio mantêm seu alcance. O
+            // fallback abaixo continua configurando os sensores adicionados
+            // dinamicamente pelo serviço de visibilidade.
+            if (alcanceConfiguradoNoPrefab)
+            {
+                alcanceRadar = Mathf.Max(50f, alcanceRadar);
+                return;
+            }
 
             BoeingE3Reconhecimento e3 = GetComponent<BoeingE3Reconhecimento>();
             if (e3 != null)

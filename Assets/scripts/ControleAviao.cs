@@ -158,7 +158,8 @@ public class ControleAviao : MonoBehaviour
     {
         if (_controleUnidade == null)
         {
-            _controleUnidade = GetComponent<ControleUnidade>();
+            _controleUnidade = GetComponent<ControleUnidade>()
+                ?? GetComponentInParent<ControleUnidade>();
         }
 
         return _controleUnidade;
@@ -195,7 +196,8 @@ public class ControleAviao : MonoBehaviour
         if (rb != null) rb.isKinematic = true; 
 
         // Cache de componentes usados no Update
-        _controleUnidade = GetComponent<ControleUnidade>();
+        _controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _lancadorCaca = GetComponent<LancadorMisselCaca>();
 

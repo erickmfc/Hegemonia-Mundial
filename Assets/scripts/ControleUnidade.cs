@@ -143,15 +143,19 @@ public class ControleUnidade : MonoBehaviour
         // Verifica controladores externos
         helicopteroExterno = GetComponent<Helicoptero>()
             ?? GetComponentInChildren<Helicoptero>(true);
-        controleAviao = GetComponent<ControleAviao>();
-        controleAviaoCaca = GetComponent<ControleAviaoCaca>();
+        controleAviao = GetComponent<ControleAviao>()
+            ?? GetComponentInChildren<ControleAviao>(true);
+        controleAviaoCaca = GetComponent<ControleAviaoCaca>()
+            ?? GetComponentInChildren<ControleAviaoCaca>(true);
         lancadorMisselCaca = GetComponent<LancadorMisselCaca>();
         if (lancadorMisselCaca == null)
         {
             lancadorMisselCaca = GetComponentInChildren<LancadorMisselCaca>(true);
         }
-        c700TransporteAereo = GetComponent<C700TransporteAereo>();
-        hovercraftTransporte = GetComponent<HovercraftTransporte>();
+        c700TransporteAereo = GetComponent<C700TransporteAereo>()
+            ?? GetComponentInChildren<C700TransporteAereo>(true);
+        hovercraftTransporte = GetComponent<HovercraftTransporte>()
+            ?? GetComponentInChildren<HovercraftTransporte>(true);
         // O casco é a autoridade do movimento naval. Prefabs antigos podem
         // deixar o controlador em um filho do objeto selecionável; manter a
         // busca limitada ao Awake evita custo por frame sem perder o comando.
@@ -161,9 +165,11 @@ public class ControleUnidade : MonoBehaviour
             ?? GetComponentInChildren<NavegacaoInteligenteNaval>(true);
         controleSubmarino = GetComponent<ControleSubmarino>()
             ?? GetComponentInChildren<ControleSubmarino>(true);
-        movimentoRealTerrestre = GetComponent<MovimentoRealTerrestre>();
+        movimentoRealTerrestre = GetComponent<MovimentoRealTerrestre>()
+            ?? GetComponentInChildren<MovimentoRealTerrestre>(true);
         navioPetroleiro = GetComponent<NavioPetroleiro>();
-        c17Transporte = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+        c17Transporte = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>()
+            ?? GetComponentInChildren<Hegemonia.Aeronaves.C17.C17TransporteController>(true);
         identidadeIA = GetComponent<IdentidadeIA>();
         identidadeUnidade = GetComponent<IdentidadeUnidade>();
         controleOrdemMovimento = new ControleOrdemMovimentoRuntime(intervaloEntreTentativasOrdem);

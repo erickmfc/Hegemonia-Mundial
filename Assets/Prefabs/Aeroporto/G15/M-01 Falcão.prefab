@@ -165,7 +165,7 @@ MonoBehaviour:
   tempoQuedaLivre: 0.1
   forcaQuedaAdicional: 2
   aceleracaoBoost: 70
-  velocidadeMaxima: 150
+  velocidadeMaxima: 650
   forcaRotacao: 5
   sistemaFumaca: {fileID: 0}
   dano: 350

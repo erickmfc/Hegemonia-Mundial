@@ -5675,6 +5675,7 @@ GameObject:
   - component: {fileID: 9146441868202509668}
   - component: {fileID: 758157507575036818}
   - component: {fileID: 5869100521656101236}
+  - component: {fileID: 851948582534947843}
   m_Layer: 0
   m_Name: Nav_Tropas 1
   m_TagString: Navio
@@ -5937,7 +5938,7 @@ MonoBehaviour:
   tirosPorSalva: 4
   intervaloEntreTiros: 2
   tempoRecargaSalva: 5
-  alcanceRadar: 2000
+  alcanceRadar: 30000
   intervaloVarreduraAutomatica: 0.45
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
@@ -6718,3 +6719,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2907651921835993360, guid: 52807069f07852449aeeb2b0c31184a1, type: 3}
   m_PrefabInstance: {fileID: 6175928735686030991}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &851948582534947843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7010249315367195738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 35000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

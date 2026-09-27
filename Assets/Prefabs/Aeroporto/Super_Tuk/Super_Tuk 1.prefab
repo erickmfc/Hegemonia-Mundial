@@ -344,6 +344,7 @@ GameObject:
   - component: {fileID: 45871844760888793}
   - component: {fileID: 7307860497800188225}
   - component: {fileID: 3249276889803989556}
+  - component: {fileID: 102091566489879650}
   m_Layer: 0
   m_Name: Super_Tuk 1
   m_TagString: Aereo
@@ -1525,3 +1526,18 @@ MonoBehaviour:
   registrarTransicoesDeAudio: 0
   velocidadeParaMaxPitch: 50
   loopMotor: 1
+--- !u!114 &102091566489879650
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4070482625320473334}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 25000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

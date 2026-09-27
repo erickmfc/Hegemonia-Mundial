@@ -16,7 +16,7 @@ MonoBehaviour:
   regioes:
   - territorioId: terra-noroeste-oeste
     nome: Noroeste oeste
-    ownerCountryTeamId: -1
+    ownerCountryTeamId: 1
     neutral: 0
     capturable: 0
     tipo: 0
@@ -51,7 +51,7 @@ MonoBehaviour:
     - {x: 0.0546875, y: 0.11265432}
   - territorioId: terra-noroeste-leste
     nome: Noroeste leste
-    ownerCountryTeamId: -1
+    ownerCountryTeamId: 2
     neutral: 0
     capturable: 0
     tipo: 0
@@ -89,7 +89,7 @@ MonoBehaviour:
     - {x: 0.18055555, y: 0.057098765}
   - territorioId: terra-nordeste-norte
     nome: Nordeste norte
-    ownerCountryTeamId: -1
+    ownerCountryTeamId: 3
     neutral: 0
     capturable: 0
     tipo: 0
@@ -126,7 +126,7 @@ MonoBehaviour:
     - {x: 0.7708333, y: 0.19135803}
   - territorioId: terra-nordeste-sul
     nome: Nordeste sul
-    ownerCountryTeamId: -1
+    ownerCountryTeamId: 3
     neutral: 0
     capturable: 0
     tipo: 0
@@ -158,7 +158,7 @@ MonoBehaviour:
     - {x: 0.8793403, y: 0.44135803}
   - territorioId: terra-sudoeste
     nome: Sudoeste
-    ownerCountryTeamId: -1
+    ownerCountryTeamId: 4
     neutral: 0
     capturable: 0
     tipo: 0
@@ -208,7 +208,7 @@ MonoBehaviour:
     - {x: 0.097222224, y: 0.837963}
   - territorioId: terra-sudeste
     nome: Sudeste
-    ownerCountryTeamId: -1
+    ownerCountryTeamId: 5
     neutral: 0
     capturable: 0
     tipo: 0

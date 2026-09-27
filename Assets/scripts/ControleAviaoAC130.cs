@@ -84,7 +84,8 @@ public sealed class ControleAviaoAC130 : ControleAviao
         base.Start();
 
         torretas = GetComponentsInChildren<ControleTorreta>(true);
-        controleUnidade = GetComponent<ControleUnidade>();
+        controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         ConfigurarTorretasAC130();
         IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
         meuTime = identidade != null ? identidade.teamID : 0;

@@ -49,6 +49,7 @@ GameObject:
   - component: {fileID: 3881439562138129166}
   - component: {fileID: 7520479819138951782}
   - component: {fileID: 6204088749075918417}
+  - component: {fileID: 299196503118275678}
   m_Layer: 0
   m_Name: USS Leviathan
   m_TagString: Navio
@@ -123,9 +124,9 @@ MonoBehaviour:
   - {fileID: 0}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosDisponiveis: 22
-  alcanceTorpedos: 2500
+  alcanceTorpedos: 18000
   cooldownTorpedo: 1
-  alcanceMisseis: 2300
+  alcanceMisseis: 45000
   modoAtual: 0
   intervaloBuscaAutomatica: 2
   estaSubmerso: 1
@@ -1055,3 +1056,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2617109060813063789}
   m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+--- !u!114 &299196503118275678
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 790024337851436606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 15000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

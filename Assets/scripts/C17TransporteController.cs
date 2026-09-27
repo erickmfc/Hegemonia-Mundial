@@ -55,7 +55,8 @@ namespace Hegemonia.Aeronaves.C17
             pouso = GetComponent<C17LandingController>();
             transporte = GetComponent<C17TransportSystem>();
             controleAviao = GetComponent<ControleAviao>();
-            controleUnidade = GetComponent<ControleUnidade>();
+            controleUnidade = GetComponent<ControleUnidade>()
+                ?? GetComponentInParent<ControleUnidade>();
             corpo = GetComponent<Rigidbody>();
 
             // Esta versao e a unica dona da transformacao do C-17.
@@ -301,7 +302,9 @@ namespace Hegemonia.Aeronaves.C17
 
         private float ObterMultiplicadorVelocidadeComando()
         {
-            if (controleUnidade == null) controleUnidade = GetComponent<ControleUnidade>();
+            if (controleUnidade == null)
+                controleUnidade = GetComponent<ControleUnidade>()
+                    ?? GetComponentInParent<ControleUnidade>();
             return controleUnidade != null ? controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
         }
 

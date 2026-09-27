@@ -8789,6 +8789,7 @@ GameObject:
   - component: {fileID: 8761119439644266682}
   - component: {fileID: 1554022188000186006}
   - component: {fileID: 3293840000382689405}
+  - component: {fileID: 593729623095985212}
   m_Layer: 0
   m_Name: Uss Enterprise
   m_TagString: Untagged
@@ -11478,3 +11479,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: c43d2c0017748f24d91ee8381ff39128, type: 3}
   m_PrefabInstance: {fileID: 5294670825957193483}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &593729623095985212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5971301636513872909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 100000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

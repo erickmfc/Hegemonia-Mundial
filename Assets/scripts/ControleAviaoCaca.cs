@@ -81,7 +81,8 @@ public class ControleAviaoCaca : MonoBehaviour
     {
         altitudeCruzeiro = Mathf.Max(ControleAviao.AltitudeMinimaVooMilitar, altitudeCruzeiro);
 
-        _controleUnidade = GetComponent<ControleUnidade>();
+        _controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         _sistemaTiro = GetComponentInChildren<SistemaDeTiro>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _controleAviaoModerno = GetComponent<ControleAviao>();
@@ -327,7 +328,9 @@ public class ControleAviaoCaca : MonoBehaviour
 
     private float ObterMultiplicadorVelocidadeComando()
     {
-        if (_controleUnidade == null) _controleUnidade = GetComponent<ControleUnidade>();
+        if (_controleUnidade == null)
+            _controleUnidade = GetComponent<ControleUnidade>()
+                ?? GetComponentInParent<ControleUnidade>();
         return _controleUnidade != null ? _controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
     }
 

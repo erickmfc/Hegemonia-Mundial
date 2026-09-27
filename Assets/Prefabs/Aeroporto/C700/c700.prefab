@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: 1405430845721605051}
   - component: {fileID: 8982411069363398455}
   - component: {fileID: 258523724560620256}
+  - component: {fileID: 638630366853899295}
   m_Layer: 0
   m_Name: c700
   m_TagString: Aereo
@@ -642,3 +643,18 @@ MonoBehaviour:
   registrarTransicoesDeAudio: 0
   velocidadeParaMaxPitch: 50
   loopMotor: 1
+--- !u!114 &638630366853899295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 508363159047402675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 40000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

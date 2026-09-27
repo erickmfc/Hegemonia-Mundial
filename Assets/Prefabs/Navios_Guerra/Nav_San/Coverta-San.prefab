@@ -466,6 +466,7 @@ GameObject:
   - component: {fileID: 781230316867838661}
   - component: {fileID: 5351874306366902083}
   - component: {fileID: 279515160016225489}
+  - component: {fileID: 963574114733126886}
   m_Layer: 0
   m_Name: Coverta-San
   m_TagString: Navio
@@ -606,7 +607,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 900
+  alcance: 7000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -815,7 +816,7 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.1
   tempoRecargaSalva: 1
-  alcanceRadar: 2000
+  alcanceRadar: 35000
   intervaloVarreduraAutomatica: 0.45
   mascaraVarredura:
     serializedVersion: 2
@@ -4059,7 +4060,7 @@ MonoBehaviour:
   municaoAtual: 0
   municaoMaxima: 8
   custoMissil: 200
-  alcanceMaximo: 200
+  alcanceMaximo: 18000
   tempoRecarga: 2
   pontosDeSaida:
   - {fileID: 3511596786014645580}
@@ -4587,3 +4588,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8034747084403064430, guid: 0f4186ce4da6b864daaebbb3263d84af, type: 3}
   m_PrefabInstance: {fileID: 4713274397372632303}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &963574114733126886
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1839352793183847460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 50000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

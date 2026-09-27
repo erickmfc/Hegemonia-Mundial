@@ -234,8 +234,8 @@ MonoBehaviour:
   tempoBoostVertical: 4
   aceleracaoBoost: 35
   sistemaFumaca: {fileID: 0}
-  velocidadeCruzeiro: 90
-  velocidadeMergulho: 500
+  velocidadeCruzeiro: 450
+  velocidadeMergulho: 750
   distanciaInicioMergulho: 80
   forcaRotacaoCruzeiro: 1.5
   forcaRotacaoMergulho: 5

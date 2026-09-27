@@ -46,7 +46,8 @@ public class MovimentoRealTerrestre : MonoBehaviour
     void Start()
     {
         agente = GetComponent<NavMeshAgent>();
-        controleUnidadeCache = GetComponent<ControleUnidade>();
+        controleUnidadeCache = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         
         // Desacopla o Agente: Nós controlamos a física
         agente.updateRotation = false;

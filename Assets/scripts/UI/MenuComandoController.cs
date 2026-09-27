@@ -242,20 +242,22 @@ public class MenuComandoController : MonoBehaviour
     private static bool UnidadePodeUsarRadar(ControleUnidade unidade)
     {
         if (unidade == null) return false;
-        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
         if (identidade == null) return false;
         if (identidade.tipoUnidade != TipoUnidade.Estrutura) return true;
 
-        IA_ConstructionMetadata metadata = unidade.GetComponent<IA_ConstructionMetadata>();
+        IA_ConstructionMetadata metadata = unidade.GetComponent<IA_ConstructionMetadata>()
+            ?? unidade.GetComponentInChildren<IA_ConstructionMetadata>(true);
         return (metadata != null && metadata.IsRadar)
-            || unidade.GetComponent<ControleAviao>() != null
-            || unidade.GetComponent<ControleAviaoCaca>() != null
-            || unidade.GetComponent<Helicoptero>() != null
-            || unidade.GetComponent<VooHelicoptero>() != null
-            || unidade.GetComponent<ControleNavioRealista>() != null
-            || unidade.GetComponent<ControleSubmarino>() != null
-            || unidade.GetComponent<IdentidadeNaval>() != null
-            || unidade.GetComponent<C700TransporteAereo>() != null;
+            || unidade.GetComponent<ControleAviao>() != null || unidade.GetComponentInChildren<ControleAviao>(true) != null
+            || unidade.GetComponent<ControleAviaoCaca>() != null || unidade.GetComponentInChildren<ControleAviaoCaca>(true) != null
+            || unidade.GetComponent<Helicoptero>() != null || unidade.GetComponentInChildren<Helicoptero>(true) != null
+            || unidade.GetComponent<VooHelicoptero>() != null || unidade.GetComponentInChildren<VooHelicoptero>(true) != null
+            || unidade.GetComponent<ControleNavioRealista>() != null || unidade.GetComponentInChildren<ControleNavioRealista>(true) != null
+            || unidade.GetComponent<ControleSubmarino>() != null || unidade.GetComponentInChildren<ControleSubmarino>(true) != null
+            || unidade.GetComponent<IdentidadeNaval>() != null || unidade.GetComponentInChildren<IdentidadeNaval>(true) != null
+            || unidade.GetComponent<C700TransporteAereo>() != null || unidade.GetComponentInChildren<C700TransporteAereo>(true) != null;
     }
 
     // O satélite deve catalogar toda unidade do jogador, inclusive aeronaves
@@ -2299,6 +2301,9 @@ public class MenuComandoController : MonoBehaviour
         int colunas = Mathf.CeilToInt(Mathf.Sqrt(total));
         float largura = (colunas - 1) * espacamento;
         int atribuidas = 0;
+        int ordensGrade = 0;
+        int ordensSeguir = 0;
+        int ordensRecusadas = 0;
 
         // Mantém o líder no centro; membros restantes ocupam uma grade alinhada ao rumo dele.
         for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
@@ -2311,11 +2316,31 @@ public class MenuComandoController : MonoBehaviour
             int linha = slot / colunas;
             float x = coluna * espacamento - largura * 0.5f;
             Vector3 destino = centro - frente * ((linha + 1) * espacamento) + direita * x;
-            unidade.EmitirOrdemMover(destino);
+            if (unidade.EmitirOrdemMover(destino))
+            {
+                ordensGrade++;
+            }
+            else if (unidade.EmitirOrdemSeguir(unidadeSelecionadaMenu.transform, espacamento))
+            {
+                // A grade fixa depende de um caminho aceito pelo executor.
+                // Se o destino for recusado, mantenha o membro conectado ao líder.
+                ordensSeguir++;
+            }
+            else
+            {
+                ordensRecusadas++;
+            }
         }
         if (contextoFeedback != null)
-            contextoFeedback.text = string.Format(TextoHud("feedback.grid_applied", "FORMAÇÃO EM GRADE · {0} UNIDADES"), total);
-        AdicionarLog("OPS", $"Formação em grade aplicada a {total} unidades.", "normal");
+            contextoFeedback.text = string.Format(
+                TextoHud("feedback.grid_result", "FORMAÇÃO · {0} EM GRADE · {1} SEGUINDO LÍDER · {2} SEM ORDEM"),
+                ordensGrade,
+                ordensSeguir,
+                ordensRecusadas);
+        AdicionarLog(
+            "OPS",
+            $"Formação aplicada: {ordensGrade} em grade, {ordensSeguir} seguindo o líder, {ordensRecusadas} sem ordem aceita.",
+            ordensRecusadas > 0 ? "alerta" : "normal");
     }
 
     private void AlternarEdicaoFormacaoHud()
@@ -4651,7 +4676,8 @@ public class MenuComandoController : MonoBehaviour
                 {
                     ControleUnidade unidade = unidadesSelecionadasMenu[i];
                     if (!UnidadePodeUsarRadar(unidade)) continue;
-                    IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+                    IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>()
+                        ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
                     if (identidade == null || identidade.teamID != TimeJogadorAtual) continue;
                     RadarUnidadeTatica radar = unidade.GetComponent<RadarUnidadeTatica>();
                     if (radar == null) radar = unidade.gameObject.AddComponent<RadarUnidadeTatica>();
@@ -4804,7 +4830,8 @@ public class MenuComandoController : MonoBehaviour
                 {
                     if (u != null)
                     {
-                        var c17 = u.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+                        var c17 = u.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>()
+                            ?? u.GetComponentInChildren<Hegemonia.Aeronaves.C17.C17TransporteController>(true);
                         if (c17 != null)
                         {
                             c17.ComandoZ_VoltarAeroporto();
@@ -4812,7 +4839,8 @@ public class MenuComandoController : MonoBehaviour
                             continue;
                         }
 
-                        var aviao = u.GetComponent<ControleAviao>();
+                        var aviao = u.GetComponent<ControleAviao>()
+                            ?? u.GetComponentInChildren<ControleAviao>(true);
                         if (aviao != null)
                         {
                             aviao.ComandoRetornarBase();
@@ -4820,7 +4848,8 @@ public class MenuComandoController : MonoBehaviour
                             continue;
                         }
 
-                        var c700 = u.GetComponent<C700TransporteAereo>();
+                        var c700 = u.GetComponent<C700TransporteAereo>()
+                            ?? u.GetComponentInChildren<C700TransporteAereo>(true);
                         if (c700 != null)
                         {
                             c700.OrdenarRetornoAoAeroporto();
@@ -4828,7 +4857,8 @@ public class MenuComandoController : MonoBehaviour
                             continue;
                         }
 
-                        var heli = u.GetComponent<Helicoptero>();
+                        var heli = u.GetComponent<Helicoptero>()
+                            ?? u.GetComponentInChildren<Helicoptero>(true);
                         if (heli != null)
                         {
                             heli.RetornarParaVagaAeroporto();
@@ -4938,7 +4968,8 @@ public class MenuComandoController : MonoBehaviour
         {
             ControleUnidade unidade = unidadesSelecionadasMenu[i];
             if (!UnidadePodeUsarRadar(unidade)) continue;
-            IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
+                    IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>()
+                        ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
             if (identidade == null || identidade.teamID != TimeJogadorAtual) continue;
             temUnidadeAliada = true;
             RadarUnidadeTatica radar = unidade.GetComponent<RadarUnidadeTatica>();

@@ -178,6 +178,7 @@ GameObject:
   - component: {fileID: -7936503780851982939}
   - component: {fileID: -8273886024182249181}
   - component: {fileID: 1325541585328682289}
+  - component: {fileID: 402285079194469619}
   m_Layer: 0
   m_Name: Destroyer_Iron
   m_TagString: Navio
@@ -276,7 +277,7 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.5
   tempoRecargaSalva: 5
-  alcanceRadar: 2000
+  alcanceRadar: 50000
   intervaloVarreduraAutomatica: 0.45
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
@@ -976,7 +977,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aereo
-  alcance: 1100
+  alcance: 10000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -1161,7 +1162,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64c1703c9f75b3b4fb5131b78e2f4f81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TorretaAntiaerea
-  alcanceArea: 1000
+  alcanceArea: 18000
   alturaMinimaVoo: 5
   baseGiratoria: {fileID: 3365054093538493300}
   canoElevacao: {fileID: 0}
@@ -1304,7 +1305,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 1200
+  alcance: 12000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -1531,7 +1532,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 1200
+  alcance: 12000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -1605,3 +1606,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 9799967631c2af242a78a8f8bd57bca0, type: 3}
   m_PrefabInstance: {fileID: 7405242875088843370}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &402285079194469619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 982682618168300699}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 85000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

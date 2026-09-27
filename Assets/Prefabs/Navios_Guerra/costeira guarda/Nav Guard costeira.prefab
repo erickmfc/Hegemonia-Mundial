@@ -146,6 +146,7 @@ GameObject:
   - component: {fileID: 6132080000000008}
   - component: {fileID: 6132080000000009}
   - component: {fileID: 6132080000000010}
+  - component: {fileID: 131288783835428015}
   m_Layer: 0
   m_Name: Nav Guard costeira
   m_TagString: Navio
@@ -593,3 +594,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: 269a18342a284104590f41df7943fbc0, type: 3}
   m_PrefabInstance: {fileID: 4813799223258979253}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &131288783835428015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3474791008449835462}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 25000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

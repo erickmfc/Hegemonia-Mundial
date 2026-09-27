@@ -226,7 +226,7 @@ MonoBehaviour:
   municaoAtual: 4
   municaoMaxima: 4
   custoMissil: 200
-  alcanceMaximo: 500
+  alcanceMaximo: 18000
   tempoRecarga: 2
   pontosDeSaida:
   - {fileID: 826026298553848029}

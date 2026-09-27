@@ -107,6 +107,7 @@ GameObject:
   - component: {fileID: 2058216646179585129}
   - component: {fileID: 8167340928124736501}
   - component: {fileID: 8167340928124736502}
+  - component: {fileID: 1019546528842216526}
   m_Layer: 0
   m_Name: "F-16D Bloco 60 Falc\xE3o"
   m_TagString: Aereo
@@ -683,3 +684,18 @@ MonoBehaviour:
   segmentosCirculo: 50
   linhaCaminho: {fileID: 0}
   corCaminho: {r: 0, g: 1, b: 0.5, a: 0.4}
+--- !u!114 &1019546528842216526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2862378472141181767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 110000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

@@ -191,6 +191,7 @@ GameObject:
   - component: {fileID: 6432776805775185723}
   - component: {fileID: 3937113161340545259}
   - component: {fileID: 116029158839171234}
+  - component: {fileID: 531651912743249114}
   m_Layer: 0
   m_Name: B260
   m_TagString: Aereo
@@ -554,3 +555,18 @@ MonoBehaviour:
   registrarTransicoesDeAudio: 0
   velocidadeParaMaxPitch: 50
   loopMotor: 1
+--- !u!114 &531651912743249114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8988326293356594916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 70000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

@@ -2164,6 +2164,7 @@ GameObject:
   - component: {fileID: 3352914713470956228}
   - component: {fileID: -3650460382533573971}
   - component: {fileID: 5553646398861365756}
+  - component: {fileID: 11674062512092277}
   m_Layer: 0
   m_Name: USS Sovereign
   m_TagString: Navio
@@ -2766,3 +2767,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7558865025457626659, guid: ca809153c1d9cde41859e5ec9d6832a5, type: 3}
   m_PrefabInstance: {fileID: 8967063063684262398}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &11674062512092277
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8878861334362878399}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 85000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

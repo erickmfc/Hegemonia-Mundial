@@ -152,7 +152,8 @@ public class ControleSubmarino : MonoBehaviour
     void Start()
     {
         cameraPrincipal = Camera.main;
-        meuControle = GetComponent<ControleUnidade>();
+        meuControle = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         minhaIdentidade = GetComponent<IdentidadeUnidade>();
         if (minhaIdentidade == null)
         {

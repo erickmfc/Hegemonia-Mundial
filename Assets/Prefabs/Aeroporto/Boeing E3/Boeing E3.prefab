@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 6503468448039000351}
   - component: {fileID: 9126401837462018357}
   - component: {fileID: 5979123669720203246}
+  - component: {fileID: 184891202394555576}
   m_Layer: 0
   m_Name: Boeing E3
   m_TagString: Untagged
@@ -180,7 +181,7 @@ MonoBehaviour:
   aceleracaoVoo: 8
   desaceleracaoVoo: 12
   reconhecimentoAtivo: 1
-  alcanceReconhecimento: 4500
+  alcanceReconhecimento: 220000
   alcanceSubmarinoNaSuperficie: 3200
   intervaloVarredura: 1.5
   memoriaContato: 30
@@ -620,3 +621,18 @@ MonoBehaviour:
   registrarTransicoesDeAudio: 0
   velocidadeParaMaxPitch: 50
   loopMotor: 1
+--- !u!114 &184891202394555576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 819382474612140520}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 220000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

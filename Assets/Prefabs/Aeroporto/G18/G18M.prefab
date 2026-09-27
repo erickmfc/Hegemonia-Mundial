@@ -54,6 +54,7 @@ GameObject:
   - component: {fileID: 6822669880444300208}
   - component: {fileID: -1960936707701329789}
   - component: {fileID: -5951652902521827119}
+  - component: {fileID: 528214984390349909}
   m_Layer: 0
   m_Name: G18M
   m_TagString: Aereo
@@ -10271,3 +10272,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4465720305584277147, guid: 10adef391087e6642abeb92f0f239d3c, type: 3}
   m_PrefabInstance: {fileID: 8901604047959798086}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &528214984390349909
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3555054237250671952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 105000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

@@ -5602,6 +5602,7 @@ GameObject:
   - component: {fileID: 5869265404152730662}
   - component: {fileID: 3899473936046241787}
   - component: {fileID: 7304169203847715231}
+  - component: {fileID: 16576996446512369}
   m_Layer: 0
   m_Name: Des_Wall
   m_TagString: Navio
@@ -5812,7 +5813,7 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 1
   tempoRecargaSalva: 2
-  alcanceRadar: 2000
+  alcanceRadar: 45000
   intervaloVarreduraAutomatica: 0.45
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
@@ -5840,7 +5841,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aerea
-  alcance: 1100
+  alcance: 10000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -5965,7 +5966,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aerea
-  alcance: 1100
+  alcance: 10000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -11752,3 +11753,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7558865025457626659, guid: ca809153c1d9cde41859e5ec9d6832a5, type: 3}
   m_PrefabInstance: {fileID: 7098954472785912913}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &16576996446512369
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5115040976698317614}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 80000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

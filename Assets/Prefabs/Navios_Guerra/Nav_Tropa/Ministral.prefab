@@ -310,6 +310,7 @@ GameObject:
   - component: {fileID: 610000000000000002}
   - component: {fileID: 610000000000000003}
   - component: {fileID: 610000000000000004}
+  - component: {fileID: 738845365495669810}
   m_Layer: 0
   m_Name: Ministral
   m_TagString: Navio
@@ -1408,3 +1409,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: d4b9353bc30816348a92b2bae75a44d5, type: 3}
   m_PrefabInstance: {fileID: 8813575328398589711}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &738845365495669810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5353090939695550640}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 70000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

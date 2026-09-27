@@ -153,7 +153,8 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void Awake()
     {
-        controleUnidade = GetComponent<ControleUnidade>();
+        controleUnidade = GetComponent<ControleUnidade>()
+            ?? GetComponentInParent<ControleUnidade>();
         controleAviaoLegado = GetComponent<ControleAviao>();
         combustivel = CombustivelUnidade.Garantir(gameObject, true);
         landingController = GetComponent<TransportLandingController>();

@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 5390707483109136423}
   - component: {fileID: 8486358277374954082}
   - component: {fileID: 7384679558856971169}
+  - component: {fileID: 671997262470034672}
   m_Layer: 0
   m_Name: Navio de carga
   m_TagString: Navio
@@ -256,3 +257,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: 4a5297bb7ca9bef459b5294bf0ea11fd, type: 3}
   m_PrefabInstance: {fileID: 495552263690426472}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &671997262470034672
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2370659336498935496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 20000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

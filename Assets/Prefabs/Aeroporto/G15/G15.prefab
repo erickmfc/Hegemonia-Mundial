@@ -9724,6 +9724,7 @@ GameObject:
   - component: {fileID: 228078682546798533}
   - component: {fileID: 5229373166570721363}
   - component: {fileID: -8568332837996343044}
+  - component: {fileID: 438028910857065672}
   m_Layer: 0
   m_Name: G15
   m_TagString: Aereo
@@ -20303,3 +20304,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 423678, guid: 9823c8c6d577d4cb1a10d33c6b8c53e0, type: 3}
   m_PrefabInstance: {fileID: 6788584835668871789}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &438028910857065672
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5614758741420790710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 100000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0

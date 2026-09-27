@@ -413,6 +413,7 @@ public sealed class LocalizationManager : MonoBehaviour
         Add("hud.feedback.need_two_grid", "Selecione pelo menos duas unidades para formar uma grade.", "Select at least two units to form a grid.", "至少选择两个单位以组成网格编队。");
         Add("hud.feedback.mode", "MODO {0} · {1}/{2} UNIDADES", "MODE {0} · {1}/{2} UNITS", "模式 {0} · {1}/{2} 个单位");
         Add("hud.feedback.grid_applied", "FORMAÇÃO EM GRADE · {0} UNIDADES", "GRID FORMATION · {0} UNITS", "网格编队 · {0} 个单位");
+        Add("hud.feedback.grid_result", "FORMAÇÃO · {0} EM GRADE · {1} SEGUINDO LÍDER · {2} SEM ORDEM", "FORMATION · {0} IN GRID · {1} FOLLOWING LEADER · {2} WITHOUT AN ORDER", "编队 · {0} 个网格位置 · {1} 个跟随队长 · {2} 个未接受命令");
         Add("hud.feedback.need_two_formation", "Selecione pelo menos duas unidades para editar a formação.", "Select at least two units to edit the formation.", "至少选择两个单位以编辑编队。");
         Add("hud.feedback.formation_drag", "ARRASTE OS SLOTS · F3 CONCLUIR", "DRAG SLOTS · F3 FINISH", "拖动位置 · F3 完成");
         Add("hud.feedback.formation_active", "EDIÇÃO DE FORMAÇÃO ATIVA · ARRASTE UNIDADES ENTRE SLOTS", "FORMATION EDITING ACTIVE · DRAG UNITS BETWEEN SLOTS", "编队编辑已启用 · 在位置间拖动单位");
