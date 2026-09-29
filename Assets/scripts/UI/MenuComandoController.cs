@@ -2420,12 +2420,14 @@ public class MenuComandoController : MonoBehaviour
         bool velocidadesEmNos = true;
         int modosPassivo = 0, modosManual = 0, modosAutomaticoLimitado = 0, modosAutomaticoLivre = 0;
         int quantidade = 0;
+        bool grupoPossuiAeronave = false;
         IReadOnlyList<ControleUnidade> selecionadas = unidadesSelecionadasMenu;
         for (int i = 0; i < selecionadas.Count; i++)
         {
             ControleUnidade item = selecionadas[i];
             if (item == null) continue;
             quantidade++;
+            grupoPossuiAeronave |= item.EhUnidadeAerea();
             SistemaDeDanos danoItem = item.GetComponentInChildren<SistemaDeDanos>(true);
             if (danoItem != null && danoItem.vidaMaxima > 0f)
             {
@@ -2567,7 +2569,7 @@ public class MenuComandoController : MonoBehaviour
                 unidade.transform.position.z.ToString("F0")));
         }
         Button rtb = root.Q<Button>("hud-context-rtb");
-        if (rtb != null) rtb.style.display = unidade.EhUnidadeAerea() ? DisplayStyle.Flex : DisplayStyle.None;
+        if (rtb != null) rtb.style.display = grupoPossuiAeronave ? DisplayStyle.Flex : DisplayStyle.None;
 
         int time = identidade != null ? identidade.teamID : -1;
         RadarUnidadeTatica radar = unidade.GetComponent<RadarUnidadeTatica>();

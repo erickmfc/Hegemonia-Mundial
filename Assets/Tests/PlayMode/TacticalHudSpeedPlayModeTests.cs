@@ -334,8 +334,8 @@ public sealed class TacticalHudSpeedPlayModeTests
                 "The follow-camera action should switch modes or report that its camera is unavailable.");
 
             SimulateButtonClick(root.Q<Button>("hud-context-rtb"));
-            Assert.That(controllerType.GetField("ordemFeedback", BindingFlags.Instance | BindingFlags.NonPublic)
-                .GetValue(controller).ToString(), Does.Contain("RETORNANDO"),
+            Assert.That(((Label)controllerType.GetField("ordemFeedback", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(controller)).text, Does.Contain("RETORNANDO"),
                 "The aircraft return-to-base action should process the selected aircraft.");
 
             SimulateButtonClick(root.Q<Button>("hud-roe-hold"));
@@ -348,6 +348,7 @@ public sealed class TacticalHudSpeedPlayModeTests
             SimulateButtonClick(root.Q<Button>("hud-roe-tight"));
             Assert.That(getCombatMode.Invoke(null, new[] { unit }), Is.EqualTo(automaticMode));
             Assert.That(getCombatMode.Invoke(null, new[] { unit2 }), Is.EqualTo(automaticMode));
+
 
             SimulateCardClick(speedCard);
             yield return null;
