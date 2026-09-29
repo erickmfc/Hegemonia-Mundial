@@ -136,8 +136,21 @@ public sealed class GerenciadorExpansaoFronteira : MonoBehaviour
     /// </summary>
     public bool NotificarConstrucao(GameObject edificacao, Vector3 pontoMundial)
     {
+        if (edificacao == null) return false;
+
+        IdentidadeUnidade identidade = edificacao.GetComponentInParent<IdentidadeUnidade>();
+        int teamId = identidade != null && identidade.teamID > 0 ? identidade.teamID : 1;
+        return NotificarConstrucao(edificacao, pontoMundial, teamId);
+    }
+
+    /// <summary>
+    /// Variante usada pelo Construtor do jogador para que prefabs com uma
+    /// identidade serializada de outro time não reivindiquem a zona errada.
+    /// </summary>
+    public bool NotificarConstrucao(GameObject edificacao, Vector3 pontoMundial, int teamId)
+    {
         ZonaFronteiraExpansionavel zona = EncontrarNoPonto(pontoMundial);
-        if (zona == null || edificacao == null) return false;
+        if (zona == null || edificacao == null || teamId <= 0) return false;
 
         bool eFundacao = edificacao.GetComponentInChildren<MarcadorTerritorio>(true) != null
             || edificacao.GetComponentInChildren<ComplexoGovernamental>(true) != null
@@ -146,8 +159,11 @@ public sealed class GerenciadorExpansaoFronteira : MonoBehaviour
         if (!eFundacao) return false;
 
         IdentidadeUnidade identidade = edificacao.GetComponentInParent<IdentidadeUnidade>();
-        int teamId = identidade != null && identidade.teamID > 0 ? identidade.teamID : 1;
-        string paisId = identidade != null ? identidade.nomeDoPais : string.Empty;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        string paisId = pais != null && !string.IsNullOrWhiteSpace(pais.nomePais)
+            ? pais.nomePais
+            : identidade != null ? identidade.nomeDoPais : string.Empty;
         TryReivindicarZona(zona.IdZona, teamId, paisId, out _);
         return zona.TeamDono == teamId;
     }

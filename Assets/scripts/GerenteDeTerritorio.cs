@@ -409,6 +409,39 @@ public class GerenteDeTerritorio : MonoBehaviour
         return indefinido;
     }
 
+    /// <summary>
+    /// A fundação de uma Prefeitura transfere somente uma região política
+    /// terrestre explicitamente neutra. A captura militar continua seguindo
+    /// seu próprio tempo de ocupação em TentarCapturarTerritorio.
+    /// </summary>
+    public bool TentarFundarTerritorio(Vector3 ponto, int novoOwnerTeamId)
+    {
+        if (novoOwnerTeamId <= 0) return false;
+
+        ResultadoConsultaTerritorio territorio = ObterTerritorioNaPosicao(ponto);
+        if (!territorio.encontrouRegiao
+            || territorio.aguasInternacionais
+            || territorio.tipo != TipoRegiaoPolitica.Terra
+            || territorio.fonte != FonteConsultaTerritorial.PoligonoPolitico)
+        {
+            return false;
+        }
+
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorio.territorioId) : null;
+        if (regiao == null) return false;
+
+        int donoAnterior = ObterDonoDaRegiao(territorio.territorioId);
+        bool neutroAnterior = neutralidadeTerritorial.TryGetValue(territorio.territorioId, out bool neutro)
+            ? neutro
+            : regiao.neutral;
+        if (donoAnterior != 0 || !neutroAnterior) return false;
+
+        proprietariosCapturados[territorio.territorioId] = novoOwnerTeamId;
+        neutralidadeTerritorial[territorio.territorioId] = false;
+        OnTerritoryOwnerChanged?.Invoke(territorio.territorioId, donoAnterior, novoOwnerTeamId);
+        return true;
+    }
+
     public bool TentarCapturarTerritorio(string territorioId, int novoOwnerTeamId)
     {
         if (novoOwnerTeamId <= 0) return false;

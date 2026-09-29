@@ -418,9 +418,9 @@ public class Construtor : MonoBehaviour
         }
 
         int donoDoPonto = gerenteTerritorio.ObterDonoDoPonto(ponto);
-        int meuTime = 1;
+        int meuTime = ObterTimeJogador();
 
-        bool ehPrefeitura = prefabSelecionado.GetComponent<ComplexoGovernamental>() != null || prefabSelecionado.name.ToLower().Contains("prefeitura") || prefabSelecionado.name.ToLower().Contains("complexo");
+        bool ehPrefeitura = EhPrefeituraPrefab(prefabSelecionado);
         bool ehBandeira = prefabSelecionado.name.ToLower().Contains("bandeira") || prefabSelecionado.name.ToLower().Contains("flag") || prefabSelecionado.GetComponent<MarcadorTerritorio>() != null;
         bool ehSiloEstrategico = permitirIcbmForaTerritorio ||
             prefabSelecionado.GetComponentInChildren<SiloLancadorEstrategico>(true) != null;
@@ -437,10 +437,22 @@ public class Construtor : MonoBehaviour
 
         if (ehPrefeitura)
         {
-            if (donoDoPonto != 0 && donoDoPonto != meuTime)
+            ResultadoConsultaTerritorio territorio = gerenteTerritorio.ObterTerritorioNaPosicao(ponto);
+            if (!territorio.encontrouRegiao || territorio.aguasInternacionais || territorio.tipo != TipoRegiaoPolitica.Terra)
             {
                 previewLocalInvalido = true;
-                motivoInvalido = "❌ INVASÃO DIRETA:\nVocê não pode fundar a Prefeitura/Capital em um país inimigo.";
+                motivoInvalido = "❌ FUNDAÇÃO INVÁLIDA:\nA Prefeitura só pode ser fundada em uma região terrestre definida.";
+                return;
+            }
+
+            bool terraDoJogador = territorio.ownerCountryTeamId == meuTime;
+            bool terraNeutra = territorio.ownerCountryTeamId == 0 && territorio.neutral;
+            if (!terraNeutra && !terraDoJogador)
+            {
+                previewLocalInvalido = true;
+                motivoInvalido = territorio.ownerCountryTeamId > 0
+                    ? "❌ INVASÃO DIRETA:\nVocê não pode fundar a Prefeitura/Capital em um país inimigo."
+                    : "❌ FUNDAÇÃO INVÁLIDA:\nA região precisa ser neutra ou pertencer ao seu País.";
                 return;
             }
             if (!gerenteTerritorio.PodeConstruirPrefeitura(ponto))
@@ -460,6 +472,20 @@ public class Construtor : MonoBehaviour
 
         previewLocalInvalido = false;
         motivoInvalido = "";
+    }
+
+    private static bool EhPrefeituraPrefab(GameObject prefab)
+    {
+        return prefab != null
+            && (prefab.GetComponent<ComplexoGovernamental>() != null
+                || prefab.name.IndexOf("prefeitura", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || prefab.name.IndexOf("complexo", System.StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
+    private static int ObterTimeJogador()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        return governo != null && governo.teamJogador > 0 ? governo.teamJogador : 1;
     }
 
     void GerenciarConstrucaoNormal(Vector3 ponto)
@@ -823,10 +849,20 @@ public class Construtor : MonoBehaviour
         EnsureCollider(novo);
         LimpezaVegetacaoConstrucao.Aplicar(novo);
 
+        int teamJogadorConstruindo = ObterTimeJogador();
+        if (EhPrefeituraPrefab(prefabSelecionado))
+        {
+            GerenteDeTerritorio gerenteTerritorio = ObterGerenteTerritorio(true);
+            if (gerenteTerritorio != null)
+            {
+                gerenteTerritorio.TentarFundarTerritorio(posFinal, teamJogadorConstruindo);
+            }
+        }
+
         // Uma fundação/bandeira construída em uma parcela neutra confirma a
         // expansão somente depois da instanciação e da cobrança. O gerenciador
         // de fronteira não move o prédio nem substitui a jurisdição existente.
-        GerenciadorExpansaoFronteira.Instancia?.NotificarConstrucao(novo, posFinal);
+        GerenciadorExpansaoFronteira.Instancia?.NotificarConstrucao(novo, posFinal, teamJogadorConstruindo);
 
         Estaleiro estaleiro = novo.GetComponent<Estaleiro>();
         if (estaleiro != null)
