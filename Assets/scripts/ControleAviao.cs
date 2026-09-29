@@ -116,6 +116,9 @@ public class ControleAviao : MonoBehaviour
     // Variáveis internas
     public Vector3 alvoGPSVoo;
     public Vector3 centroDaPatrulha; 
+    private GlobalTerrainStreamer streamerLimitesVoo;
+    private GlobalWorldDefinition definicaoLimitesVoo;
+    private float proximaBuscaLimitesVoo;
     [HideInInspector] public bool emAtaqueMergulho = false;
     [HideInInspector] public Vector3 alvoDoMergulho;
     [HideInInspector] public bool alvoPrioritarioIA = false; 
@@ -463,6 +466,7 @@ public class ControleAviao : MonoBehaviour
 
     protected virtual void ManobraVooRealista(float multDano = 1f)
     {
+        alvoGPSVoo = LimitarPosicaoAosLimitesDoMapa(alvoGPSVoo);
         float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;
         float anguloPressaoLateralY = 0f;
@@ -543,15 +547,6 @@ public class ControleAviao : MonoBehaviour
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * dt);
         }
         
-        if (Mathf.Abs(novaPos.x) > 10000f || Mathf.Abs(novaPos.z) > 10000f)
-        {
-             Vector3 centroDoMap = new Vector3(0, novaPos.y, 0);
-             alvoGPSVoo = centroDoMap;
-             Quaternion freioDeOuro = Quaternion.LookRotation((centroDoMap - transform.position).normalized);
-             transform.rotation = Quaternion.RotateTowards(transform.rotation, freioDeOuro, 100f * dt);
-             novaPos = transform.position + transform.forward * (velocidadeVooAtual * dt);
-        }
-
         transform.position = novaPos;
 
         if (modeloMecanicoVisual != null)
@@ -562,6 +557,30 @@ public class ControleAviao : MonoBehaviour
             empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, dt * 5f);
             modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, giroLateralYInicial, giroLateralRoll);
         }
+    }
+
+    /// <summary>
+    /// Mantém ordens de voo dentro da cobertura geográfica real do mundo.
+    /// O antigo limite fixo de 10 km cortava o mapa global válido e redirecionava
+    /// o avião para a origem; sem a definição disponível, preserva o destino.
+    /// </summary>
+    protected Vector3 LimitarPosicaoAosLimitesDoMapa(Vector3 posicao)
+    {
+        if (definicaoLimitesVoo == null && Time.unscaledTime >= proximaBuscaLimitesVoo)
+        {
+            proximaBuscaLimitesVoo = Time.unscaledTime + 1f;
+            if (streamerLimitesVoo == null)
+                streamerLimitesVoo = FindFirstObjectByType<GlobalTerrainStreamer>();
+            if (streamerLimitesVoo != null)
+                definicaoLimitesVoo = streamerLimitesVoo.world;
+        }
+
+        if (definicaoLimitesVoo == null)
+            return posicao;
+
+        posicao.x = Mathf.Clamp(posicao.x, definicaoLimitesVoo.MapMinX, definicaoLimitesVoo.MapMaxX);
+        posicao.z = Mathf.Clamp(posicao.z, definicaoLimitesVoo.MapMinZ, definicaoLimitesVoo.MapMaxZ);
+        return posicao;
     }
 
     private float LimitarVelocidadeAproximacao(float velocidadeDesejada)

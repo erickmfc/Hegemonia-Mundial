@@ -10,6 +10,7 @@ using UnityEngine.TestTools;
 public sealed class ReformaAircraftPlayModeTests
 {
     private readonly List<GameObject> objects = new List<GameObject>();
+    private readonly List<ScriptableObject> assets = new List<ScriptableObject>();
     private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private static Type TypeOf(string name) => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(name)).First(t => t != null);
     private static void Set(object target, string name, object value) => target.GetType().GetField(name, Members).SetValue(target, value);
@@ -40,7 +41,74 @@ public sealed class ReformaAircraftPlayModeTests
     {
         foreach (var go in objects) if (go != null) UnityEngine.Object.Destroy(go);
         objects.Clear();
+        foreach (var asset in assets) if (asset != null) UnityEngine.Object.Destroy(asset);
+        assets.Clear();
         yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator AircraftAtGlobalMapCoordinatesKeepsItsWaypointAndClimbsTowardCommandedAltitude()
+    {
+        var world = (ScriptableObject)ScriptableObject.CreateInstance(TypeOf("GlobalWorldDefinition"));
+        assets.Add(world);
+        Set(world, "worldSize", new Vector2(512000f, 512000f));
+        Set(world, "mapFootprintHeight", 288000f);
+
+        Component aircraft = Create("ControleAviao");
+        Vector3 initialPosition = new Vector3(-196000f, 15f, 80000f);
+        Vector3 waypoint = new Vector3(-195000f, 181f, 80000f);
+        aircraft.transform.SetPositionAndRotation(
+            initialPosition,
+            Quaternion.LookRotation((waypoint - initialPosition).normalized, Vector3.up));
+        Set(aircraft, "definicaoLimitesVoo", world);
+        Set(aircraft, "estadoAtual", Enum.Parse(TypeOf("ControleAviao+EstadoAviao"), "EmMissao"));
+        Set(aircraft, "alvoGPSVoo", waypoint);
+        Set(aircraft, "altitudeVoo", 181f);
+        Set(aircraft, "velocidadeMaximaVoo", 110f);
+        Set(aircraft, "velocidadeVooAtual", 110f);
+        Set(aircraft, "taxaDeGiroLeme", 45f);
+        aircraft.gameObject.SetActive(true);
+        ((MonoBehaviour)aircraft).enabled = false;
+
+        MethodInfo maneuver = TypeOf("ControleAviao").GetMethod("ManobraVooRealista", Members);
+        Assert.IsNotNull(maneuver);
+        float start = Time.realtimeSinceStartup;
+        float[] samples = { 1f, 3f, 5f };
+        float altitudeAtOneSecond = initialPosition.y;
+
+        Debug.Log($"[AircraftMapBounds] t=0 y={aircraft.transform.position.y:F1} altitudeVoo=181 targetY={waypoint.y:F1} state=EmMissao");
+        foreach (float sampleAt in samples)
+        {
+            while (Time.realtimeSinceStartup - start < sampleAt)
+            {
+                yield return null;
+                maneuver.Invoke(aircraft, new object[] { 1f });
+            }
+
+            Vector3 current = aircraft.transform.position;
+            Vector3 currentTarget = (Vector3)Read(aircraft, "alvoGPSVoo");
+            Assert.AreEqual(waypoint.x, currentTarget.x, 0.01f,
+                "Um waypoint válido dentro do mapa global não deve ser substituído pelo centro.");
+            Assert.AreEqual(waypoint.z, currentTarget.z, 0.01f);
+            Assert.AreEqual(waypoint.y, currentTarget.y, 0.01f,
+                "A correção de limites não deve rebaixar a altitude ordenada.");
+            Assert.That(current.x, Is.InRange(-256000f, 256000f));
+            Assert.That(current.z, Is.InRange(-144000f, 144000f));
+            if (Mathf.Approximately(sampleAt, 1f)) altitudeAtOneSecond = current.y;
+            Debug.Log($"[AircraftMapBounds] t={sampleAt:F0} y={current.y:F1} AGL=sem terreno no fixture altitudeVoo=181 targetY={currentTarget.y:F1} state=EmMissao");
+        }
+
+        Assert.Greater(altitudeAtOneSecond, initialPosition.y,
+            "O avião deve começar a subir quando o waypoint ordena altitude maior que a altitude inicial.");
+
+        MethodInfo clamp = TypeOf("ControleAviao").GetMethod("LimitarPosicaoAosLimitesDoMapa", Members);
+        Assert.IsNotNull(clamp);
+        Vector3 correctedOutsideWaypoint = (Vector3)clamp.Invoke(
+            aircraft, new object[] { new Vector3(-300000f, 350f, 180000f) });
+        Assert.AreEqual(-256000f, correctedOutsideWaypoint.x, 0.01f);
+        Assert.AreEqual(350f, correctedOutsideWaypoint.y, 0.01f,
+            "A correção horizontal não pode alterar a altitude Y do destino.");
+        Assert.AreEqual(144000f, correctedOutsideWaypoint.z, 0.01f);
     }
 
     [UnityTest]

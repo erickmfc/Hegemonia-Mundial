@@ -163,7 +163,7 @@ public sealed class ControleAviaoAC130 : ControleAviao
 
         AtualizarPrevisaoAlvo(Time.deltaTime);
 
-        Vector3 centro = ObterCentroDaOrbita();
+        Vector3 centro = LimitarPosicaoAosLimitesDoMapa(ObterCentroDaOrbita());
         float raio = Mathf.Max(80f, raioOrbitaAtaque);
         float distanciaCentro = DistanciaHorizontal(transform.position, centro);
 
@@ -190,7 +190,7 @@ public sealed class ControleAviaoAC130 : ControleAviao
         float seno = Mathf.Sin(anguloOrbitaAtual);
         float cosseno = Mathf.Cos(anguloOrbitaAtual);
         Vector3 radialIdeal = new Vector3(cosseno, 0f, seno) * raio;
-        Vector3 posicaoIdeal = centro + radialIdeal;
+        Vector3 posicaoIdeal = LimitarPosicaoAosLimitesDoMapa(centro + radialIdeal);
         posicaoIdeal.y = ObterAltitudeOperacao(centro);
 
         Vector3 erroAnel = posicaoIdeal - transform.position;
@@ -235,10 +235,6 @@ public sealed class ControleAviaoAC130 : ControleAviao
 
         Vector3 novaPosicao = transform.position + transform.forward * (velocidadeVooAtual * dt);
         novaPosicao.y = Mathf.Max(15f, novaPosicao.y);
-        if (Mathf.Abs(novaPosicao.x) > 10000f || Mathf.Abs(novaPosicao.z) > 10000f)
-        {
-            novaPosicao = Vector3.Lerp(novaPosicao, posicaoIdeal, 0.15f);
-        }
         transform.position = novaPosicao;
 
         AtualizarVisualDeVoo(direcaoDesejada, dt);

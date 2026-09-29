@@ -53,8 +53,6 @@ public class MenuComandoController : MonoBehaviour
     private Vector2 mapaCentro = Vector2.zero;
     private Vector2 centroMapaDetectado = Vector2.zero;
     private bool limitesMapaInicializados;
-    private bool arrastandoMapa = false;
-    private Vector2 ultimaPosicaoMouseDrag;
 
     // Elementos do mapa
     private VisualElement mapaUnidadesLayer;
@@ -1382,17 +1380,10 @@ public class MenuComandoController : MonoBehaviour
                 evt.StopPropagation();
             });
 
-            // Arrastar (Pan) com botão do meio (MMB) ou com o cursor
+            // O mapa aceita cliques e zoom, mas não pode ser deslocado pelo mouse.
             painelMapa.RegisterCallback<PointerDownEvent>(evt =>
             {
-                if (evt.button == 2) // Botão do meio (Scroll click)
-                {
-                    arrastandoMapa = true;
-                    ultimaPosicaoMouseDrag = evt.localPosition;
-                    painelMapa.CapturePointer(evt.pointerId);
-                    evt.StopPropagation();
-                }
-                else if (evt.button == 0) // Botão esquerdo
+                if (evt.button == 0) // Botão esquerdo
                 {
                     OnMapClicked(evt.localPosition);
                     evt.StopPropagation();
@@ -1400,41 +1391,6 @@ public class MenuComandoController : MonoBehaviour
                 else if (evt.button == 1) // Botão direito
                 {
                     OnMapRightClicked(evt.localPosition);
-                    evt.StopPropagation();
-                }
-            });
-
-            painelMapa.RegisterCallback<PointerMoveEvent>(evt =>
-            {
-                if (arrastandoMapa)
-                {
-                    Vector2 delta = (Vector2)evt.localPosition - ultimaPosicaoMouseDrag;
-                    ultimaPosicaoMouseDrag = evt.localPosition;
-
-                    float rangeX = (mundoMetade * 2f) / mapaZoom;
-                    float rangeZ = (mundoMetade * 2f) / mapaZoom;
-
-                    float W = painelMapa.resolvedStyle.width;
-                    float H = painelMapa.resolvedStyle.height;
-
-                    if (W > 0 && H > 0)
-                    {
-                        float deltaWorldX = -(delta.x / W) * rangeX;
-                        float deltaWorldZ = (delta.y / H) * rangeZ;
-
-                        mapaCentro += new Vector2(deltaWorldX, deltaWorldZ);
-                        LimitarCentroMapa(rangeX, rangeZ);
-                    }
-                    evt.StopPropagation();
-                }
-            });
-
-            painelMapa.RegisterCallback<PointerUpEvent>(evt =>
-            {
-                if (evt.button == 2 && arrastandoMapa)
-                {
-                    arrastandoMapa = false;
-                    painelMapa.ReleasePointer(evt.pointerId);
                     evt.StopPropagation();
                 }
             });

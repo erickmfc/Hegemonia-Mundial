@@ -7,7 +7,7 @@ using Hegemonia.RTS;
 /// - Camera ortográfica de cima com fundo pintado de azul oceano.
 /// - Mostra ícones de PRÉDIOS aliados e UNIDADES aliadas.
 /// - NUNCA revela unidades inimigas (Fog of War).
-/// - Zoom com scroll do mouse. Pan com WASD/setas ou bordas da tela.
+/// - Zoom com scroll do mouse. Pan apenas com WASD/setas (sem movimento nas bordas).
 /// </summary>
 public class MapaGeralController : MonoBehaviour
 {
@@ -816,14 +816,9 @@ public class MapaGeralController : MonoBehaviour
             return;
         }
 
-        // --- MODO LIVRE: pan normal com WASD/bordas ---
+        // --- MODO LIVRE: pan pelo teclado; mouse fica reservado a zoom e cliques ---
         float movX = Input.GetAxisRaw("Horizontal");
         float movZ = Input.GetAxisRaw("Vertical");
-
-        if (Input.mousePosition.x >= Screen.width  - 5) movX =  1;
-        if (Input.mousePosition.x <= 5)                 movX = -1;
-        if (Input.mousePosition.y >= Screen.height - 5) movZ =  1;
-        if (Input.mousePosition.y <= 5)                 movZ = -1;
 
         if (movX != 0 || movZ != 0)
         {
