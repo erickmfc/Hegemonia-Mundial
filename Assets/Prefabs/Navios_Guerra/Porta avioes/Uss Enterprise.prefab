@@ -8890,7 +8890,8 @@ MonoBehaviour:
   reservaCombustivelHelicopteros: -1
   taxaAbastecimentoHelicopteros: 40
   operacoesV2AssumiuControle: 0
-  raioRadarResgate: 2300
+  raioRadarResgate: 10000
+  percentualAlaAereaEmOperacao: 0
   modoDesempenhoUI: 1
 --- !u!65 &3454497209212280774
 BoxCollider:
@@ -9126,6 +9127,21 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!114 &593729623095985212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5971301636513872909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 100000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0
 --- !u!1 &5979122891533765948
 GameObject:
   m_ObjectHideFlags: 0
@@ -11479,18 +11495,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: c43d2c0017748f24d91ee8381ff39128, type: 3}
   m_PrefabInstance: {fileID: 5294670825957193483}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &593729623095985212
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5971301636513872909}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 100000
-  alcanceConfiguradoNoPrefab: 1
-  radarLigado: 0

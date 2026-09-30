@@ -447,12 +447,13 @@ public class Construtor : MonoBehaviour
 
             bool terraDoJogador = territorio.ownerCountryTeamId == meuTime;
             bool terraNeutra = territorio.ownerCountryTeamId == 0 && territorio.neutral;
-            if (!terraNeutra && !terraDoJogador)
+            bool terraSemPais = territorio.ownerCountryTeamId == -1;
+            if (!terraNeutra && !terraDoJogador && !terraSemPais)
             {
                 previewLocalInvalido = true;
                 motivoInvalido = territorio.ownerCountryTeamId > 0
                     ? "❌ INVASÃO DIRETA:\nVocê não pode fundar a Prefeitura/Capital em um país inimigo."
-                    : "❌ FUNDAÇÃO INVÁLIDA:\nA região precisa ser neutra ou pertencer ao seu País.";
+                    : "❌ FUNDAÇÃO INVÁLIDA:\nA região precisa estar sem país associado, ser neutra ou pertencer ao seu País.";
                 return;
             }
             if (!gerenteTerritorio.PodeConstruirPrefeitura(ponto))

@@ -205,6 +205,10 @@ public sealed class ControleOrdemMovimentoEditModeTests
         Assert.That(awake, Is.Not.Null);
         awake.Invoke(controle, null);
 
+        Component combustivel = unidade.GetComponent(assembly.GetType("CombustivelUnidade"));
+        Assert.That(combustivel, Is.Not.Null);
+        combustivel.GetType().GetField("usaCombustivel").SetValue(combustivel, false);
+
         Vector3 novoPonto = new Vector3(240f, 95f, -130f);
         MethodInfo emitirPatrulha = controleType.GetMethod(
             "EmitirOrdemPatrulha",
@@ -219,11 +223,17 @@ public sealed class ControleOrdemMovimentoEditModeTests
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.That(rotaField, Is.Not.Null);
         System.Collections.IList rota = (System.Collections.IList)rotaField.GetValue(aviao);
-        Assert.That(rota, Has.Count.EqualTo(1));
-        Vector3 pontoNormalizado = (Vector3)rota[0];
-        Assert.That(pontoNormalizado.x, Is.EqualTo(novoPonto.x).Within(0.01f));
-        Assert.That(pontoNormalizado.z, Is.EqualTo(novoPonto.z).Within(0.01f));
-        Assert.That(pontoNormalizado.y, Is.GreaterThanOrEqualTo(181f));
+        Assert.That(rota, Has.Count.EqualTo(4));
+        Vector3 somaRota = Vector3.zero;
+        for (int i = 0; i < rota.Count; i++)
+        {
+            Vector3 pontoNormalizado = (Vector3)rota[i];
+            somaRota += pontoNormalizado;
+            Assert.That(pontoNormalizado.y, Is.GreaterThanOrEqualTo(181f));
+        }
+        Vector3 centroRota = somaRota / rota.Count;
+        Assert.That(centroRota.x, Is.EqualTo(novoPonto.x).Within(0.01f));
+        Assert.That(centroRota.z, Is.EqualTo(novoPonto.z).Within(0.01f));
     }
 
     [Test]
@@ -256,14 +266,22 @@ public sealed class ControleOrdemMovimentoEditModeTests
         Vector3 primeiroPonto = new Vector3(180f, 95f, -30f);
         Vector3 segundoPonto = new Vector3(260f, 100f, 65f);
         registrar.Invoke(aviao, new object[] { new List<Vector3> { primeiroPonto, segundoPonto } });
+        FieldInfo rotaField = aviaoType.GetField(
+            "rotaPatrulhaSalva",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(rotaField, Is.Not.Null);
+        System.Collections.IList rotaRegistrada = (System.Collections.IList)rotaField.GetValue(aviao);
+        Assert.That(rotaRegistrada, Has.Count.EqualTo(4));
+        Vector3 primeiroWaypointRegistrado = (Vector3)rotaRegistrada[0];
 
         // O V2 envia o último ponto apenas para identificar a ordem. Depois
         // da catapulta o controlador deve iniciar no primeiro waypoint real.
         assumir.Invoke(aviao, new object[] { segundoPonto });
 
         Vector3 alvoAtual = (Vector3)alvo.GetValue(aviao);
-        Assert.That(alvoAtual.x, Is.EqualTo(primeiroPonto.x).Within(0.01f));
-        Assert.That(alvoAtual.z, Is.EqualTo(primeiroPonto.z).Within(0.01f));
+        Assert.That(alvoAtual.x, Is.EqualTo(primeiroWaypointRegistrado.x).Within(0.01f));
+        Assert.That(alvoAtual.z, Is.EqualTo(primeiroWaypointRegistrado.z).Within(0.01f));
+        Assert.That(alvoAtual.x, Is.Not.EqualTo(segundoPonto.x).Within(0.01f));
         Assert.That(alvoAtual.y, Is.GreaterThanOrEqualTo(60f));
     }
 

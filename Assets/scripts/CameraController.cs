@@ -147,7 +147,9 @@ public class CameraController : MonoBehaviour
         // O menu do Pier e uma janela operacional, nao deve congelar a
         // navegacao do mapa. Mantem a camera em pan/zoom, respeitando o mouse
         // sobre a UI; os outros menus continuam modais.
-        bool podeMoverCamera = !outrosMenusAbertos && unidadeSeguindo == null;
+        bool podeMoverCamera = !outrosMenusAbertos
+            && !MapaGeralController.EstaAberto
+            && unidadeSeguindo == null;
         bool moverW = podeMoverCamera && Input.GetKey(KeyCode.W);
         bool moverS = podeMoverCamera && Input.GetKey(KeyCode.S);
         bool moverD = podeMoverCamera && Input.GetKey(KeyCode.D);
@@ -192,7 +194,7 @@ public class CameraController : MonoBehaviour
         float multiplicadorEspaco = tempoEspacoPressionado >= TempoAceleracaoZoomTeclado ? 3f : 1f;
         
         // Bloqueia Zoom se estiver sobre UI ou com Menus Abertos
-        if (!outrosMenusAbertos)
+        if (!outrosMenusAbertos && !MapaGeralController.EstaAberto)
         {
             UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
             bool mouseEmCimaDeUI = eventSystem != null && eventSystem.IsPointerOverGameObject();
@@ -202,7 +204,7 @@ public class CameraController : MonoBehaviour
             }
         }
 
-        if (!outrosMenusAbertos)
+        if (!outrosMenusAbertos && !MapaGeralController.EstaAberto)
         {
             // Teclas + e - (Teclado) com atalhos espelhados em Espaço/Ctrl.
             if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Plus) || Input.GetKey(KeyCode.Equals))
@@ -259,7 +261,9 @@ public class CameraController : MonoBehaviour
 
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
-        bool podeRotacionar = !outrosMenusAbertos && unidadeSeguindo == null;
+        bool podeRotacionar = !outrosMenusAbertos
+            && !MapaGeralController.EstaAberto
+            && unidadeSeguindo == null;
         InteractionModeSnapshot snapshotInteracao = InteractionModeService.CurrentSnapshot();
         if (snapshotInteracao.Policy.bloqueiaRotacaoCamera)
         {

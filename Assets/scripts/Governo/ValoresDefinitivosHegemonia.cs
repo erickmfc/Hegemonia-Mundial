@@ -27,7 +27,7 @@ public static class ValoresDefinitivosHegemonia
         {
             case DificuldadeJogo.Facil: return 120000000000L;
             case DificuldadeJogo.Dificil: return 35000000000L;
-            default: return 70000000000L;
+            default: return 50000000000L;
         }
     }
 

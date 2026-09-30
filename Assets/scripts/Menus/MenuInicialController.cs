@@ -293,7 +293,7 @@ public class MenuInicialController : MonoBehaviour
         float posicaoY = 0f;
         CriarBotao(lista, "FACIL\n$120.000.000.000\nExpansao rapida e margem para erros", "F", corBotaoDestaque, true,
             () => IniciarCampanhaSelecionada("facil"), ref posicaoY);
-        CriarBotao(lista, "MEDIO\n$70.000.000.000\nPlanejamento e desenvolvimento equilibrado", "M", corBotao, true,
+        CriarBotao(lista, "MEDIO\n$50.000.000.000\nPlanejamento e desenvolvimento equilibrado", "M", corBotao, true,
             () => IniciarCampanhaSelecionada("medio"), ref posicaoY);
         CriarBotao(lista, "DIFICIL\n$35.000.000.000\nPriorize energia, empregos e defesa", "D", corBotao, true,
             () => IniciarCampanhaSelecionada("dificil"), ref posicaoY);

@@ -243,6 +243,110 @@ public sealed class ReformaGameplayRegressionTests
     }
 
     [Test]
+    public void AirportStaysUnpoweredWithoutGenerationAndReactivatesWhenPowerIsAvailable()
+    {
+        const int isolatedTeamId = 987654;
+        Type economyType = TypeOf("SistemaEconomiaImoveis");
+        Type structureType = TypeOf("EstruturaEconomica");
+        Type structureKind = TypeOf("TipoEstruturaEconomica");
+        Type registryType = TypeOf("RegistroEntidadesJogo");
+        FieldInfo airportRegistryField = registryType.GetField("Aeroportos", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(airportRegistryField, Is.Not.Null);
+        object airportRegistry = airportRegistryField.GetValue(null);
+        MethodInfo clearAirports = airportRegistry.GetType().GetMethod("Clear", Members);
+        MethodInfo addAirport = airportRegistry.GetType().GetMethod("Add", Members);
+        var originalAirports = new List<object>();
+        foreach (object item in (IEnumerable)airportRegistry) originalAirports.Add(item);
+        clearAirports.Invoke(airportRegistry, null);
+        FieldInfo imovelRegistryField = registryType.GetField("Imoveis", BindingFlags.Static | BindingFlags.NonPublic);
+        object imovelRegistry = imovelRegistryField.GetValue(null);
+        MethodInfo clearImoveis = imovelRegistry.GetType().GetMethod("Clear", Members);
+        MethodInfo addImovel = imovelRegistry.GetType().GetMethod("Add", Members);
+        var originalImoveis = new List<object>();
+        foreach (object item in (IEnumerable)imovelRegistry) originalImoveis.Add(item);
+        clearImoveis.Invoke(imovelRegistry, null);
+        FieldInfo registeredField = economyType.GetField(
+            "EstruturasRegistradas",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(registeredField, Is.Not.Null);
+
+        object registered = registeredField.GetValue(null);
+        MethodInfo clear = registered.GetType().GetMethod("Clear", Members);
+        MethodInfo add = registered.GetType().GetMethod("Add", Members);
+        MethodInfo unregisterAirport = registryType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .First(method => method.Name == "Unregister"
+                && method.GetParameters().Length == 1
+                && method.GetParameters()[0].ParameterType == TypeOf("GerenciadorAeroporto"));
+        var original = new List<object>();
+        foreach (object item in (IEnumerable)registered) original.Add(item);
+        clear.Invoke(registered, null);
+
+        Component airport = null;
+        try
+        {
+            Component economy = Create("SistemaEconomiaImoveis");
+            Set(economy, "usarCompatibilidadeImovel", true);
+            Set(economy, "usarTagsEconomicas", false);
+
+            airport = CreateActive("AeroportoSemUsina", TypeOf("GerenciadorAeroporto"));
+            ((IList)Read(airport, "avioesNoPatio")).Clear();
+            ((IList)Read(airport, "avioesNoHangar")).Clear();
+            ((IList)Read(airport, "helicopterosDoAeroporto")).Clear();
+            ((IList)Read(airport, "transportesC700NoPatio")).Clear();
+            Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+            Set(identity, "teamID", isolatedTeamId);
+            Set(airport, "semEnergia", true);
+            MethodInfo registerAirport = registryType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+                .First(method => method.Name == "Register"
+                    && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == TypeOf("GerenciadorAeroporto"));
+            registerAirport.Invoke(null, new object[] { airport });
+
+            Set(economy, "ultimoRecalculo", -999f);
+            Call(economy, "Recalcular");
+            Assert.That(Read(airport, "semEnergia"), Is.True,
+                "Sem geração disponível, o aeroporto deve permanecer sem energia.");
+
+            Component generator = CreateActive("UsinaSolarDeTeste", structureType);
+            Set(generator, "teamId", isolatedTeamId);
+            Set(generator, "tipo", Enum.Parse(structureKind, "UsinaSolar"));
+            Set(generator, "energiaProduzida", 100f);
+            Assert.That(Read(generator, "tipo").ToString(), Is.EqualTo("UsinaSolar"));
+            MethodInfo register = economyType.GetMethod("Register", BindingFlags.Static | BindingFlags.Public);
+            register.Invoke(null, new object[] { generator });
+
+            Set(economy, "ultimoRecalculo", -999f);
+            Call(economy, "Recalcular");
+
+            object teamEconomy = Call(economy, "ObterEconomia", isolatedTeamId);
+            Assert.That((float)Read(teamEconomy, "energiaProduzida"), Is.EqualTo(100f).Within(0.01f));
+            Assert.That((int)Read(teamEconomy, "estruturasContadas"), Is.EqualTo(2),
+                "O cenário isolado deve conter somente a usina e o aeroporto; consumo observado="
+                + Read(teamEconomy, "energiaConsumida"));
+            Assert.That((float)Read(teamEconomy, "energiaConsumida"), Is.EqualTo(15f).Within(0.01f),
+                "O cálculo deve incluir apenas o consumo base do aeroporto vazio. "
+                + "aviões pátio/hangar=" + ((IList)Read(airport, "avioesNoPatio")).Count + "/"
+                + ((IList)Read(airport, "avioesNoHangar")).Count + ", helicópteros="
+                + ((IList)Read(airport, "helicopterosDoAeroporto")).Count + ", C700="
+                + ((IList)Read(airport, "transportesC700NoPatio")).Count + ", usina consumo="
+                + Read(generator, "energiaConsumida"));
+            Assert.That(Read(airport, "semEnergia"), Is.False,
+                "Uma usina com energia suficiente deve reativar o aeroporto no próximo ciclo.");
+        }
+        finally
+        {
+            if (airport != null)
+                unregisterAirport.Invoke(null, new object[] { airport });
+            clearAirports.Invoke(airportRegistry, null);
+            for (int i = 0; i < originalAirports.Count; i++) addAirport.Invoke(airportRegistry, new[] { originalAirports[i] });
+            clearImoveis.Invoke(imovelRegistry, null);
+            for (int i = 0; i < originalImoveis.Count; i++) addImovel.Invoke(imovelRegistry, new[] { originalImoveis[i] });
+            clear.Invoke(registered, null);
+            for (int i = 0; i < original.Count; i++) add.Invoke(registered, new[] { original[i] });
+        }
+    }
+
+    [Test]
     public void BuildingClearsNaturalPropsInsideItsFootprintWithoutDeletingTerrain()
     {
         TerrainData originalTerrainData = new TerrainData

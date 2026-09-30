@@ -114,7 +114,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (semEnergia)
         {
             Debug.Log($"[ENERGIA] Aeroporto {name} está sem energia! Operações e compras bloqueadas.");
-            HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("economy.no_energy_action", "SEM ENERGIA\nEnergia insuficiente para esta ação."), 3.2f);
+            HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativá-lo."), 4.5f);
         }
     }
 
@@ -1256,11 +1256,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (sinal != null) Destroy(sinal);
     }
 
-    public void ComprarAviao(GameObject prefabDeAeronave)
+    public bool ComprarAviao(GameObject prefabDeAeronave)
     {
         if (prefabDeAeronave == null)
         {
-            return;
+            return false;
         }
 
         if (semEnergia)
@@ -1284,10 +1284,10 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (_filaSpawnAeronavesIA.Count == 0) _primeiroEnfileiramentoAeronaveIA = Time.unscaledTime;
             _filaSpawnAeronavesIA.Enqueue(prefabDeAeronave);
             ProcessarFilaCompraAeronavesIA();
-            return;
+            return true;
         }
 
-        ComprarAviaoImediato(prefabDeAeronave);
+        return ComprarAviaoImediato(prefabDeAeronave);
     }
 
     /// <summary>
@@ -1309,11 +1309,11 @@ public class GerenciadorAeroporto : MonoBehaviour
     }
 
 
-    private void ComprarAviaoImediato(GameObject prefabDeAeronave, string productionOrderId = "")
+    private bool ComprarAviaoImediato(GameObject prefabDeAeronave, string productionOrderId = "")
     {
         if (prefabDeAeronave == null)
         {
-            return;
+            return false;
         }
 
         long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1338,7 +1338,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogError($"[Aeroporto] Spawn aéreo bloqueado em água: {name} ({posSpawn:F1}). Corrija o ponto Preparacao/pista da base.", this);
-            return;
+            return false;
         }
 
         // A rotação do ponto Preparacao (ou da própria base no fallback) é a
@@ -1349,7 +1349,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogError("[Aeroporto] Nao foi possivel instanciar o prefab de aeronave: " + prefabDeAeronave.name, this);
-            return;
+            return false;
         }
 
         // A aeronave já foi entregue ao aeroporto, mesmo que o pátio esteja
@@ -1421,7 +1421,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             StartCoroutine(RotinaRecebimentoC700(c700));
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
-            return;
+            return true;
         }
 
         Helicoptero helicoptero = aeronaveNascente != null
@@ -1432,7 +1432,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             StartCoroutine(RotinaRecebimentoHelicoptero(helicoptero));
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
-            return;
+            return true;
         }
 
         ControleAviao controleDaNave = aeronaveNascente != null
@@ -1454,6 +1454,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         RegistrarTempoDiagnostico("prefab_init_ms", initStart);
         RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
+        return true;
     }
 
     public int ExecutarSortidaIA(Vector3 alvoReconhecimento, Vector3 alvoPatrulha, Vector3 alvoAtaque, int quantidadeMaxima = 5)
@@ -1836,7 +1837,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
-    public Transform ObterPrimeiraVagaLivre()
+    public virtual Transform ObterPrimeiraVagaLivre()
     {
         if (waypointsPatio == null || waypointsPatio.Count == 0) return null;
 
@@ -2599,7 +2600,9 @@ public class GerenciadorAeroporto : MonoBehaviour
             float consumo = baseConsumo + (totalAvioes * 2.0f) + (totalHelis * 1.5f) + (totalHeavy * 5.0f);
             
             string statusEnergia = semEnergia ? "<color=#ff5555>⚡ APAGÃO (SEM ENERGIA)</color>" : "<color=#55ff55>⚡ OPERACIONAL</color>";
-            string avisoBlackout = semEnergia ? "\n<color=orange>⚠️ Lançamentos e compras bloqueados!</color>" : "";
+            string avisoBlackout = semEnergia
+                ? "\n<color=orange>⚠️ " + LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativá-lo.") + "</color>"
+                : "";
 
             string content = $"<b>✈️ AEROPORTO MILITAR ({name.Replace("(Clone)", "")})</b>\n\n" +
                              $"🛸 Frota no Pátio: <b>{avioesNoPatio.Count + transportesC700NoPatio.Count}</b>\n" +
@@ -2677,6 +2680,12 @@ public class GerenciadorAeroporto : MonoBehaviour
     private void DesenharAbaMilitar()
     {
         GUILayout.Label("<size=18><b>FROTA AÉREA E TÁTICA</b></size>");
+
+        if (semEnergia)
+        {
+            GUILayout.Label(
+                "<color=#ffb347>⚡ " + LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativá-lo.") + "</color>");
+        }
         
         // Botão de compra para o Drone Kamikaze
         if (prefabDroneKamikaze != null)

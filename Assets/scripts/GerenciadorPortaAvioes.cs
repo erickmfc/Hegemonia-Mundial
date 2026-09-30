@@ -76,6 +76,10 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private IdentidadeUnidade _idCarrier;
     private ControleUnidade _controleUnidade;
     private Camera _cameraPrincipal;
+    // Vagas externas (convés) guardadas separadamente para prioridade de alocação.
+    // Aeronaves que pousam vão primeiro para vagas externas; só se não houver
+    // nenhuma disponível é que são direcionadas para as vagas internas (hangar).
+    private readonly List<Transform> _vagasExternas = new List<Transform>();
 
     [Header("=== RADAR DE CONTROLE AÉREO ===")]
     public float raioRadarResgate = 1500f; // Aumentei um pouco o alcance para facilitar
@@ -126,6 +130,32 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     {
         if (debugLogs)
             Debug.Log(msg);
+    }
+
+    /// <summary>
+    /// Override com prioridade de alocação:
+    /// 1ª passada — procura uma vaga EXTERNA livre (convés).
+    /// 2ª passada — se não houver nenhuma externa disponível, usa uma INTERNA (hangar).
+    /// </summary>
+    public override Transform ObterPrimeiraVagaLivre()
+    {
+        // --- 1ª passada: somente vagas externas ---
+        if (_vagasExternas != null && _vagasExternas.Count > 0)
+        {
+            var backup = new System.Collections.Generic.List<Transform>(waypointsPatio);
+            waypointsPatio.Clear();
+            waypointsPatio.AddRange(_vagasExternas);
+            Transform vagaExterna = base.ObterPrimeiraVagaLivre();
+            waypointsPatio.Clear();
+            waypointsPatio.AddRange(backup);
+
+            if (vagaExterna != null)
+                return vagaExterna;
+        }
+
+        // --- 2ª passada: fallback para vagas internas (convés lotado) ---
+        LogDebug("[Porta-Aviões] Convés lotado — usando vaga interna (hangar) como fallback.");
+        return base.ObterPrimeiraVagaLivre();
     }
 
     private static string CompactarTextoMenu(string texto, int maxChars)
@@ -411,6 +441,24 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                     if (nm.Contains("parada") || nm.Contains("vaga") || nm.Contains("ponto") || nm.Contains("deck")) waypointsPatio.Add(t);
                 }
             }
+        }
+
+        // Salva snapshot das vagas externas para prioridade: aeronaves que
+        // pousam vão primeiro para o convés; hangar só como fallback.
+        _vagasExternas.Clear();
+        _vagasExternas.AddRange(waypointsPatio);
+
+        // 1b. Adiciona vagas internas (hangarAviao / VagasInternas) ao total de capacidade,
+        //     ficando no FINAL da lista para que vagas externas sejam sempre preferidas.
+        if (hangarAviao != null)
+        {
+            foreach (Transform t in hangarAviao)
+            {
+                if (t == null) continue;
+                if (!waypointsPatio.Contains(t))
+                    waypointsPatio.Add(t);
+            }
+            LogDebug($"[Porta-Aviões] {_vagasExternas.Count} vagas externas + {hangarAviao.childCount} internas = {waypointsPatio.Count} total.");
         }
         
         // 2. Mapeia Decolagem

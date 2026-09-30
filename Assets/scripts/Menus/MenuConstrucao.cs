@@ -3746,39 +3746,55 @@ public class MenuConstrucao : MonoBehaviour
                 break;
             }
 
+            bool compraConcluida = false;
             if (targetHeliporto != null)
             {
                 Vector3 spawnPos = targetHeliporto.ObterPontoDePousoMundial();
                 GameObject heliObj = Instantiate(item.PrefabDaUnidade, spawnPos, targetHeliporto.transform.rotation);
-                
-                IdentidadeUnidade id = heliObj.GetComponent<IdentidadeUnidade>();
-                if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
-                id.teamID = 1;
-                id.nomeDoPais = "Hegemonia";
-
-                ControleUnidade controle = heliObj.GetComponent<ControleUnidade>();
-                if (controle == null) controle = heliObj.AddComponent<ControleUnidade>();
-
-                Helicoptero heli = heliObj.GetComponent<Helicoptero>();
-                if (heli == null) heli = heliObj.GetComponentInChildren<Helicoptero>(true);
-                if (heli != null)
+                if (heliObj != null)
                 {
-                    targetHeliporto.HelicopteroPousou(heli);
+                    IdentidadeUnidade id = heliObj.GetComponent<IdentidadeUnidade>();
+                    if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
+                    id.teamID = 1;
+                    id.nomeDoPais = "Hegemonia";
+
+                    ControleUnidade controle = heliObj.GetComponent<ControleUnidade>();
+                    if (controle == null) controle = heliObj.AddComponent<ControleUnidade>();
+
+                    Helicoptero heli = heliObj.GetComponent<Helicoptero>();
+                    if (heli == null) heli = heliObj.GetComponentInChildren<Helicoptero>(true);
+                    if (heli != null)
+                    {
+                        targetHeliporto.HelicopteroPousou(heli);
+                    }
+                    compraConcluida = true;
                 }
-                comprados++;
             }
             else if (targetAeroporto != null)
             {
-                targetAeroporto.ComprarAviao(item.PrefabDaUnidade);
+                compraConcluida = targetAeroporto.ComprarAviao(item.PrefabDaUnidade);
+            }
+
+            if (compraConcluida)
+            {
                 comprados++;
+            }
+            else
+            {
+                ReembolsarDinheiro(PrecoEfetivo(item));
+                EmitirAvisoJogador(string.Format(
+                    LocalizationManager.T("build.aircraft_spawn_failed", "Falha ao entregar {0}; o valor foi devolvido."),
+                    item.NomeItem));
+                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": falha no spawn; valor devolvido");
+                break;
             }
         }
 
         if (comprados <= 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.no_money", "Fundos insuficientes para comprar {0}."), item.NomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": fundos insuficientes");
+            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.aircraft_not_purchased", "Nao foi possivel comprar {0}."), item.NomeItem));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": compra sem aeronave entregue");
             return;
         }
 

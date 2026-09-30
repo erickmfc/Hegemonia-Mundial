@@ -40,7 +40,7 @@ public sealed class ValoresDefinitivosEconomiaTests
     public void Dificuldades_UsamCaixaInicialOficial()
     {
         Assert.That(Longo("DinheiroInicial", "Facil"), Is.EqualTo(120000000000L));
-        Assert.That(Longo("DinheiroInicial", "Normal"), Is.EqualTo(70000000000L));
+        Assert.That(Longo("DinheiroInicial", "Normal"), Is.EqualTo(50000000000L));
         Assert.That(Longo("DinheiroInicial", "Dificil"), Is.EqualTo(35000000000L));
     }
 

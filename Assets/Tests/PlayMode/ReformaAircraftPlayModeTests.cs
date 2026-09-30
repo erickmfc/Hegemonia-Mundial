@@ -10,8 +10,16 @@ using UnityEngine.TestTools;
 public sealed class ReformaAircraftPlayModeTests
 {
     private readonly List<GameObject> objects = new List<GameObject>();
-    private readonly List<ScriptableObject> assets = new List<ScriptableObject>();
+    private readonly List<UnityEngine.Object> assets = new List<UnityEngine.Object>();
     private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private Component originalResourcesManager;
+    private long originalResourceBalance;
+    private float originalMoneyPerSecond;
+    private bool originalAutomaticIncome;
+    private Component originalConstructionMenu;
+    private Component originalMenuManager;
+    private GameObject originalMenuPanel;
+    private Component originalMenuCanvasGroup;
     private static Type TypeOf(string name) => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(name)).First(t => t != null);
     private static void Set(object target, string name, object value) => target.GetType().GetField(name, Members).SetValue(target, value);
     private static object Read(object target, string name) => target.GetType().GetField(name, Members).GetValue(target);
@@ -39,11 +47,116 @@ public sealed class ReformaAircraftPlayModeTests
     [UnityTearDown]
     public IEnumerator Cleanup()
     {
+        if (originalResourcesManager != null)
+        {
+            Set(originalResourcesManager, "dinheiro", originalResourceBalance);
+            Set(originalResourcesManager, "dinheiroPorSegundo", originalMoneyPerSecond);
+            Set(originalResourcesManager, "ativarGanhosAutomaticos", originalAutomaticIncome);
+        }
+        if (originalConstructionMenu != null)
+        {
+            Set(originalConstructionMenu, "gerente", originalMenuManager);
+            Set(originalConstructionMenu, "painelPrincipal", originalMenuPanel);
+            Set(originalConstructionMenu, "canvasGroupPainel", originalMenuCanvasGroup);
+        }
         foreach (var go in objects) if (go != null) UnityEngine.Object.Destroy(go);
         objects.Clear();
         foreach (var asset in assets) if (asset != null) UnityEngine.Object.Destroy(asset);
         assets.Clear();
         yield return null;
+    }
+
+    private Terrain CreateRaisedLandFixture()
+    {
+        var data = new TerrainData
+        {
+            heightmapResolution = 33,
+            size = new Vector3(100f, 30f, 100f)
+        };
+        assets.Add(data);
+        var heights = new float[33, 33];
+        for (int z = 0; z < 33; z++)
+        for (int x = 0; x < 33; x++)
+            heights[z, x] = 1f;
+        data.SetHeights(0, 0, heights);
+        GameObject go = Terrain.CreateTerrainGameObject(data);
+        go.name = "Regression_AirportTransactionLand";
+        objects.Add(go);
+        return go.GetComponent<Terrain>();
+    }
+
+    private Component CreatePlayerAirport(Vector3 position)
+    {
+        Component airport = Create("GerenciadorAeroporto");
+        airport.name = "Regression_AirportTransaction";
+        airport.transform.position = position;
+        Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(identity, "teamID", 1);
+        airport.gameObject.SetActive(true);
+        return airport;
+    }
+
+    private Component PrepareResources(long balance)
+    {
+        Type type = TypeOf("GerenciadorRecursos");
+        originalResourcesManager = type.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public).GetValue(null, null) as Component;
+        if (originalResourcesManager != null)
+        {
+            originalResourceBalance = (long)Read(originalResourcesManager, "dinheiro");
+            originalMoneyPerSecond = (float)Read(originalResourcesManager, "dinheiroPorSegundo");
+            originalAutomaticIncome = (bool)Read(originalResourcesManager, "ativarGanhosAutomaticos");
+            Set(originalResourcesManager, "dinheiro", balance);
+            Set(originalResourcesManager, "dinheiroPorSegundo", 0f);
+            Set(originalResourcesManager, "ativarGanhosAutomaticos", false);
+            return originalResourcesManager;
+        }
+
+        Component resources = Create("GerenciadorRecursos");
+        resources.gameObject.SetActive(true);
+        Set(resources, "dinheiro", balance);
+        Set(resources, "dinheiroPorSegundo", 0f);
+        Set(resources, "ativarGanhosAutomaticos", false);
+        return resources;
+    }
+
+    private Component PrepareConstructionMenu(Component manager)
+    {
+        Type type = TypeOf("MenuConstrucao");
+        originalConstructionMenu = type.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public)
+            .GetValue(null, null) as Component;
+        Component menu = originalConstructionMenu;
+        if (menu != null)
+        {
+            originalMenuManager = (Component)Read(menu, "gerente");
+            originalMenuPanel = (GameObject)Read(menu, "painelPrincipal");
+            originalMenuCanvasGroup = (Component)Read(menu, "canvasGroupPainel");
+        }
+        else
+        {
+            menu = Create("MenuConstrucao");
+        }
+
+        Set(menu, "gerente", manager);
+        if (Read(menu, "painelPrincipal") == null || Read(menu, "canvasGroupPainel") == null)
+        {
+            var panel = new GameObject("Regression_ConstructionPanel");
+            objects.Add(panel);
+            Component group = panel.AddComponent<CanvasGroup>();
+            Set(menu, "painelPrincipal", panel);
+            Set(menu, "canvasGroupPainel", group);
+        }
+        if (!menu.gameObject.activeSelf) menu.gameObject.SetActive(true);
+        return menu;
+    }
+
+    private ScriptableObject CreateAircraftCard(GameObject prefab, long price)
+    {
+        ScriptableObject item = ScriptableObject.CreateInstance(TypeOf("DadosConstrucao"));
+        assets.Add(item);
+        item.GetType().GetProperty("NomeItem").SetValue(item, "Jato de regressão", null);
+        item.GetType().GetProperty("PrefabDaUnidade").SetValue(item, prefab, null);
+        Set(item, "precoDefinitivo", price);
+        return item;
     }
 
     [UnityTest]
@@ -109,6 +222,184 @@ public sealed class ReformaAircraftPlayModeTests
         Assert.AreEqual(350f, correctedOutsideWaypoint.y, 0.01f,
             "A correção horizontal não pode alterar a altitude Y do destino.");
         Assert.AreEqual(144000f, correctedOutsideWaypoint.z, 0.01f);
+    }
+
+    [UnityTest]
+    public IEnumerator AirportPurchaseReturnsSuccessOnlyAfterSpawningAircraft()
+    {
+        var terrainData = new TerrainData
+        {
+            heightmapResolution = 33,
+            size = new Vector3(100f, 30f, 100f)
+        };
+        assets.Add(terrainData);
+        var heights = new float[33, 33];
+        for (int z = 0; z < 33; z++)
+        for (int x = 0; x < 33; x++)
+            heights[z, x] = 1f;
+        terrainData.SetHeights(0, 0, heights);
+        GameObject terrainObject = Terrain.CreateTerrainGameObject(terrainData);
+        terrainObject.name = "Regression_AirportPurchaseLand";
+        objects.Add(terrainObject);
+
+        Component airport = Create("GerenciadorAeroporto");
+        airport.name = "Regression_AirportPurchase";
+        airport.transform.position = new Vector3(50f, 30f, 50f);
+        Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(identity, "teamID", 1);
+        airport.gameObject.SetActive(true);
+
+        GameObject aircraftPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        aircraftPrefab.name = "Regression_AircraftPurchasePrefab";
+        aircraftPrefab.transform.position = new Vector3(80f, 30f, 80f);
+        objects.Add(aircraftPrefab);
+        yield return null;
+
+        bool purchased = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
+            .Invoke(airport, new object[] { aircraftPrefab });
+        yield return null;
+
+        Assert.IsTrue(purchased, "O aeroporto deve confirmar somente um spawn realmente criado.");
+        Assert.AreEqual(1, ((IList)Read(airport, "avioesNoHangar")).Count,
+            "Sem vaga de pátio, a aeronave criada deve ficar guardada no hangar.");
+    }
+
+    [UnityTest]
+    public IEnumerator AirportPurchaseRejectedOnWaterDoesNotReportSuccessOrSpawn()
+    {
+        GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        water.name = "Regression_Water_Surface";
+        water.transform.position = new Vector3(5000f, 0f, 5000f);
+        water.transform.localScale = new Vector3(100f, 2f, 100f);
+        objects.Add(water);
+
+        Component airport = Create("GerenciadorAeroporto");
+        airport.name = "Regression_AirportOnWater";
+        airport.transform.position = new Vector3(5000f, 0f, 5000f);
+        Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(identity, "teamID", 1);
+        airport.gameObject.SetActive(true);
+
+        GameObject aircraftPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        aircraftPrefab.name = "Regression_AircraftWaterPrefab";
+        aircraftPrefab.transform.position = new Vector3(5200f, 20f, 5200f);
+        objects.Add(aircraftPrefab);
+        yield return null;
+
+        LogAssert.Expect(LogType.Error,
+            "[Aeroporto] Spawn aéreo bloqueado em água: Regression_AirportOnWater ((5000.0, 0.0, 5000.0)). Corrija o ponto Preparacao/pista da base.");
+        bool purchased = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
+            .Invoke(airport, new object[] { aircraftPrefab });
+
+        Assert.IsFalse(purchased, "Um spawn bloqueado não pode ser registrado como compra concluída.");
+        Assert.IsNull(GameObject.Find("Regression_AircraftWaterPrefab(Clone)"),
+            "Uma compra rejeitada não pode deixar aeronave no mundo.");
+        yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator MenuAircraftPurchaseDebitsOnceAfterOneSuccessfulSpawn()
+    {
+        CreateRaisedLandFixture();
+        Component airport = CreatePlayerAirport(new Vector3(50f, 30f, 50f));
+        Component resources = PrepareResources(1000L);
+        Component gameManager = Create("GerenteDeJogo");
+        GameObject aircraftPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        aircraftPrefab.name = "Regression_MenuAircraftPrefab";
+        aircraftPrefab.transform.position = new Vector3(80f, 30f, 80f);
+        objects.Add(aircraftPrefab);
+        ScriptableObject item = CreateAircraftCard(aircraftPrefab, 200L);
+        Component menu = PrepareConstructionMenu(gameManager);
+
+        menu.GetType().GetMethod("ProduzirUnidadeAerea", Members)
+            .Invoke(menu, new object[] { item, 1, null });
+        yield return null;
+
+        Assert.AreEqual(800L, Read(resources, "dinheiro"),
+            "Uma aeronave entregue deve debitar exatamente um preço.");
+        Assert.AreEqual(1, ((IList)Read(airport, "avioesNoHangar")).Count,
+            "Sem vagas no pátio, a aeronave comprada deve ficar registrada no hangar.");
+    }
+
+    [UnityTest]
+    public IEnumerator MenuAircraftPurchaseRefundsWhenAirportRejectsWaterSpawn()
+    {
+        CreateRaisedLandFixture();
+        GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        water.name = "Regression_Water_Surface";
+        water.transform.position = new Vector3(5000f, 0f, 5000f);
+        water.transform.localScale = new Vector3(100f, 2f, 100f);
+        objects.Add(water);
+
+        Component airport = CreatePlayerAirport(new Vector3(5000f, 0f, 5000f));
+        Component resources = PrepareResources(1000L);
+        Component gameManager = Create("GerenteDeJogo");
+        GameObject aircraftPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        aircraftPrefab.name = "Regression_MenuAircraftWaterPrefab";
+        aircraftPrefab.transform.position = new Vector3(5200f, 20f, 5200f);
+        objects.Add(aircraftPrefab);
+        ScriptableObject item = CreateAircraftCard(aircraftPrefab, 200L);
+        Component menu = PrepareConstructionMenu(gameManager);
+
+        LogAssert.Expect(LogType.Error,
+            "[Aeroporto] Spawn aéreo bloqueado em água: Regression_AirportTransaction ((5000.0, 0.0, 5000.0)). Corrija o ponto Preparacao/pista da base.");
+        menu.GetType().GetMethod("ProduzirUnidadeAerea", Members)
+            .Invoke(menu, new object[] { item, 1, null });
+        yield return null;
+
+        Assert.AreEqual(1000L, Read(resources, "dinheiro"),
+            "Uma compra rejeitada pelo aeroporto deve devolver o débito integral.");
+        Assert.AreEqual(0, ((IList)Read(airport, "avioesNoHangar")).Count);
+        Assert.AreEqual(0, ((IList)Read(airport, "avioesNoPatio")).Count);
+    }
+
+    [UnityTest]
+    public IEnumerator AircraftMaintainsCruiseAltitudeAboveElevatedTerrain()
+    {
+        var terrainData = new TerrainData
+        {
+            heightmapResolution = 33,
+            size = new Vector3(4000f, 1000f, 4000f)
+        };
+        assets.Add(terrainData);
+        var heights = new float[33, 33];
+        for (int z = 0; z < 33; z++)
+            for (int x = 0; x < 33; x++)
+                heights[z, x] = 0.5f;
+        terrainData.SetHeights(0, 0, heights);
+        var terrainObject = Terrain.CreateTerrainGameObject(terrainData);
+        objects.Add(terrainObject);
+        terrainObject.transform.position = new Vector3(99000f, 0f, 99000f);
+        Terrain terrain = terrainObject.GetComponent<Terrain>();
+
+        Component aircraft = Create("ControleAviao");
+        Vector3 initialPosition = new Vector3(100000f, 515f, 100000f);
+        Vector3 waypoint = new Vector3(100500f, 181f, 100000f);
+        aircraft.transform.SetPositionAndRotation(
+            initialPosition,
+            Quaternion.LookRotation((waypoint - initialPosition).normalized, Vector3.up));
+        Set(aircraft, "estadoAtual", Enum.Parse(TypeOf("ControleAviao+EstadoAviao"), "EmMissao"));
+        Set(aircraft, "alvoGPSVoo", waypoint);
+        Set(aircraft, "altitudeVoo", 181f);
+        Set(aircraft, "velocidadeMaximaVoo", 110f);
+        Set(aircraft, "velocidadeVooAtual", 110f);
+        Set(aircraft, "taxaDeGiroLeme", 45f);
+        aircraft.gameObject.SetActive(true);
+        ((MonoBehaviour)aircraft).enabled = false;
+
+        MethodInfo maneuver = TypeOf("ControleAviao").GetMethod("ManobraVooRealista", Members);
+        Assert.IsNotNull(maneuver);
+        maneuver.Invoke(aircraft, new object[] { 1f });
+
+        Vector3 currentTarget = (Vector3)Read(aircraft, "alvoGPSVoo");
+        float groundHeight = terrain.SampleHeight(waypoint) + terrain.transform.position.y;
+        Debug.Log($"[AircraftTerrainClearance] ground={groundHeight:F1} targetY={currentTarget.y:F1} aircraftY={aircraft.transform.position.y:F1}");
+
+        Assert.GreaterOrEqual(currentTarget.y, groundHeight + 181f,
+            "Altitude de cruzeiro é AGL e precisa compensar elevação do terreno no waypoint.");
+        Assert.Greater(aircraft.transform.position.y, groundHeight,
+            "A aeronave deve permanecer acima do terreno elevado durante a subida.");
+        yield return null;
     }
 
     [UnityTest]

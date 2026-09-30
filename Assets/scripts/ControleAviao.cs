@@ -119,6 +119,8 @@ public class ControleAviao : MonoBehaviour
     private GlobalTerrainStreamer streamerLimitesVoo;
     private GlobalWorldDefinition definicaoLimitesVoo;
     private float proximaBuscaLimitesVoo;
+    private Terrain[] terrenosAtivosVoo;
+    private float proximaBuscaTerrenosVoo;
     [HideInInspector] public bool emAtaqueMergulho = false;
     [HideInInspector] public Vector3 alvoDoMergulho;
     [HideInInspector] public bool alvoPrioritarioIA = false; 
@@ -467,6 +469,16 @@ public class ControleAviao : MonoBehaviour
     protected virtual void ManobraVooRealista(float multDano = 1f)
     {
         alvoGPSVoo = LimitarPosicaoAosLimitesDoMapa(alvoGPSVoo);
+        KamikazeDrone kd = GetComponent<KamikazeDrone>();
+        bool isKamikazeDiving = kd != null && kd.kamikazeAtivo;
+        bool exigeAfastamentoDoSolo = estadoAtual != EstadoAviao.Pousando
+            && !isKamikazeDiving
+            && !emAtaqueMergulho;
+        if (exigeAfastamentoDoSolo)
+        {
+            alvoGPSVoo.y = Mathf.Max(alvoGPSVoo.y, AltitudeMinimaSeguraNaPosicao(alvoGPSVoo));
+        }
+
         float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;
         float anguloPressaoLateralY = 0f;
@@ -537,14 +549,15 @@ public class ControleAviao : MonoBehaviour
         velocidadeVooAtual = Mathf.MoveTowards(velocidadeVooAtual, velFinal, taxaVelocidade * dt);
         Vector3 novaPos = transform.position + transform.forward * (velocidadeVooAtual * dt);
 
-        bool isKamikazeDiving = false;
-        KamikazeDrone kd = GetComponent<KamikazeDrone>();
-        if (kd != null && kd.kamikazeAtivo) isKamikazeDiving = true;
-
         if (novaPos.y < 15f && !isKamikazeDiving)
         {
             novaPos.y = 15f;
             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * dt);
+        }
+
+        if (exigeAfastamentoDoSolo)
+        {
+            novaPos.y = Mathf.Max(novaPos.y, AltitudePisoFisicoNaPosicao(novaPos));
         }
         
         transform.position = novaPos;
@@ -557,6 +570,72 @@ public class ControleAviao : MonoBehaviour
             empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, dt * 5f);
             modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, giroLateralYInicial, giroLateralRoll);
         }
+    }
+
+    private float AltitudeMinimaSeguraNaPosicao(Vector3 posicao)
+    {
+        float altitudeMinima = Mathf.Max(AltitudeMinimaVooEfetiva, 60f);
+        float altitudeCruzeiro = Mathf.Max(altitudeVoo, altitudeMinima);
+        if (TryObterAlturaSolo(posicao, out float alturaSolo))
+        {
+            return Mathf.Max(altitudeCruzeiro, alturaSolo + altitudeMinima);
+        }
+
+        return altitudeCruzeiro;
+    }
+
+    private float AltitudePisoFisicoNaPosicao(Vector3 posicao)
+    {
+        if (TryObterAlturaSolo(posicao, out float alturaSolo))
+        {
+            return alturaSolo + 5f;
+        }
+
+        return 15f;
+    }
+
+    private bool TryObterAlturaSolo(Vector3 posicao, out float alturaSolo)
+    {
+        if (terrenosAtivosVoo == null || Time.unscaledTime >= proximaBuscaTerrenosVoo)
+        {
+            terrenosAtivosVoo = Terrain.activeTerrains;
+            proximaBuscaTerrenosVoo = Time.unscaledTime + 0.5f;
+        }
+
+        for (int i = 0; terrenosAtivosVoo != null && i < terrenosAtivosVoo.Length; i++)
+        {
+            Terrain terreno = terrenosAtivosVoo[i];
+            TerrainData dadosTerreno = terreno != null ? terreno.terrainData : null;
+            if (dadosTerreno == null) continue;
+
+            Vector3 origem = terreno.GetPosition();
+            Vector3 tamanho = dadosTerreno.size;
+            if (posicao.x < origem.x || posicao.x > origem.x + tamanho.x
+                || posicao.z < origem.z || posicao.z > origem.z + tamanho.z)
+            {
+                continue;
+            }
+
+            alturaSolo = terreno.SampleHeight(posicao) + origem.y;
+            return true;
+        }
+
+        if (definicaoLimitesVoo != null)
+        {
+            try
+            {
+                alturaSolo = definicaoLimitesVoo.HeightAtWorld(posicao.x, posicao.z);
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                // O terreno procedural pode ainda não ter carregado suas
+                // máscaras; nesse caso preserve o piso de voo já configurado.
+            }
+        }
+
+        alturaSolo = 0f;
+        return false;
     }
 
     /// <summary>

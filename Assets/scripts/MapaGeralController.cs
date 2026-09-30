@@ -816,9 +816,13 @@ public class MapaGeralController : MonoBehaviour
             return;
         }
 
-        // --- MODO LIVRE: pan pelo teclado; mouse fica reservado a zoom e cliques ---
-        float movX = Input.GetAxisRaw("Horizontal");
-        float movZ = Input.GetAxisRaw("Vertical");
+        // --- MODO LIVRE: pan somente por teclas; mouse fica para zoom e cliques ---
+        // Nao use os eixos Horizontal/Vertical aqui: eles podem ser remapeados
+        // para Mouse X/Y no Input Manager e fazer o cursor deslocar o mapa.
+        float movX = (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
+            - (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
+        float movZ = (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
+            - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
 
         if (movX != 0 || movZ != 0)
         {

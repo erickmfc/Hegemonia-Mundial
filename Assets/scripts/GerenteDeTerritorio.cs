@@ -434,7 +434,10 @@ public class GerenteDeTerritorio : MonoBehaviour
         bool neutroAnterior = neutralidadeTerritorial.TryGetValue(territorio.territorioId, out bool neutro)
             ? neutro
             : regiao.neutral;
-        if (donoAnterior != 0 || !neutroAnterior) return false;
+        // Uma Prefeitura pode fundar tanto uma região neutra quanto uma
+        // região terrestre ainda sem país associado (-1). Territórios já
+        // pertencentes a uma equipe continuam protegidos.
+        if (donoAnterior > 0 || (donoAnterior == 0 && !neutroAnterior)) return false;
 
         proprietariosCapturados[territorio.territorioId] = novoOwnerTeamId;
         neutralidadeTerritorial[territorio.territorioId] = false;

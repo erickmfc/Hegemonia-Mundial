@@ -115,7 +115,7 @@ public sealed class PoliticoTerritoryEditModeTests
     }
 
     [Test]
-    public void InitialTerritoryResource_LoadsScriptAndPreservesEditableOwnership()
+    public void InitialTerritoryResource_LoadsAuthoredOwnersAndNeutralIsland()
     {
         UnityEngine.Object carregado = Resources.Load("MapaTerritorialInicial", ResolveType("DadosMapaTerritorial"));
         Assert.That(carregado, Is.Not.Null, "O asset Resources precisa carregar com a classe ScriptableObject correta.");
@@ -127,9 +127,21 @@ public sealed class PoliticoTerritoryEditModeTests
         {
             object regiao = regioes[i];
             string id = GetField<string>(regiao, "territorioId");
-            if (id == "ilha-central") continue;
-            Assert.That(GetField<int>(regiao, "ownerCountryTeamId"), Is.EqualTo(-1), id);
-            Assert.That(GetField<bool>(regiao, "neutral"), Is.False, id);
+            int donoEsperado;
+            switch (id)
+            {
+                case "terra-noroeste-oeste": donoEsperado = 1; break;
+                case "terra-noroeste-leste": donoEsperado = 2; break;
+                case "terra-nordeste-norte":
+                case "terra-nordeste-sul": donoEsperado = 3; break;
+                case "terra-sudoeste": donoEsperado = 4; break;
+                case "terra-sudeste": donoEsperado = 5; break;
+                case "ilha-central": donoEsperado = 0; break;
+                default: donoEsperado = -1; break;
+            }
+
+            Assert.That(GetField<int>(regiao, "ownerCountryTeamId"), Is.EqualTo(donoEsperado), id);
+            Assert.That(GetField<bool>(regiao, "neutral"), Is.EqualTo(id == "ilha-central"), id);
         }
     }
 

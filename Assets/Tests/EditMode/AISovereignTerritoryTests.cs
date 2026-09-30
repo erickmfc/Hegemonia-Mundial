@@ -30,6 +30,9 @@ public sealed class AISovereignTerritoryTests
         territoryManagerObject.AddComponent(TerritoryManagerType);
 
         markerObject = new GameObject("Test_MarcadorTerritorio");
+        // Keep this fixture outside the political polygon coverage so it
+        // exercises the legacy marker fallback rather than the authoritative map.
+        markerObject.transform.position = new Vector3(10000f, 0f, 10000f);
         markerObject.AddComponent(IdentityType);
         markerComponent = markerObject.AddComponent(MarkerType);
         InvokeInstance(markerComponent, "ConfigureOwnership", 1, true, 300f);
@@ -53,7 +56,7 @@ public sealed class AISovereignTerritoryTests
     [Test]
     public void SovereignBuild_IsBlockedInsidePlayerTerritory()
     {
-        bool allowed = Validate("Factory", new Vector3(0f, 0f, 0f), out string reason);
+        bool allowed = Validate("Factory", new Vector3(10000f, 0f, 10000f), out string reason);
 
         Assert.That(allowed, Is.False);
         Assert.That(reason, Is.EqualTo("territorio_do_jogador"));
@@ -62,7 +65,7 @@ public sealed class AISovereignTerritoryTests
     [Test]
     public void SovereignBuild_IsBlockedInNeutralTerritory()
     {
-        bool allowed = Validate("Factory", new Vector3(1000f, 0f, 1000f), out string reason);
+        bool allowed = Validate("Factory", new Vector3(20000f, 0f, 20000f), out string reason);
 
         Assert.That(allowed, Is.False);
         Assert.That(reason, Is.EqualTo("territorio_nao_reivindicado"));
@@ -73,7 +76,7 @@ public sealed class AISovereignTerritoryTests
     {
         InvokeInstance(markerComponent, "ConfigureOwnership", 2, true, 300f);
 
-        bool allowed = Validate("Factory", new Vector3(0f, 0f, 0f), out string reason);
+        bool allowed = Validate("Factory", new Vector3(10000f, 0f, 10000f), out string reason);
 
         Assert.That(allowed, Is.True, reason);
     }
