@@ -90,6 +90,8 @@ public class MapaGeralController : MonoBehaviour
     private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
     private float _tempoRefreshCache = 0f;
     private DesenharLinhasOrdem _desenharOrdens;
+    private Vector3 _ultimaDirecaoPanMapa;
+    private bool _panAutomaticoAtivo;
 
     // Estilos IMGUI sao reutilizados enquanto o mapa esta aberto para nao alocar por repaint.
     private GUIStyle _tituloMapaStyle;
@@ -153,8 +155,27 @@ public class MapaGeralController : MonoBehaviour
 
     private void Awake()
     {
-        Instancia = this;
         mapaCartograficoAtivo = mapaCartograficoInicial;
+    }
+
+    private void OnEnable()
+    {
+        if (Instancia != null && Instancia != this)
+        {
+            // A cena global contém cópias do controlador. O controlador que
+            // também possui GerenteSelecao é o responsável pela interação.
+            bool preferirEste = GetComponent<GerenteSelecao>() != null
+                && Instancia.GetComponent<GerenteSelecao>() == null;
+            if (preferirEste)
+                Instancia.enabled = false;
+            else
+            {
+                enabled = false;
+                return;
+            }
+        }
+
+        Instancia = this;
     }
 
     private void OnDestroy()
@@ -457,6 +478,9 @@ public class MapaGeralController : MonoBehaviour
 
         if (mapaAtivo && cameraMapa != null)
         {
+            if (Input.GetKeyDown(KeyCode.Home)) FocarNaAreaAtual();
+            if (Input.GetKeyDown(KeyCode.End)) MostrarVisaoGeral();
+
             // Tecla F: alterna modo de seguir unidade selecionada
             if (RTSInputBindings.GetKeyDown(RTSInputAction.Follow))
             {
@@ -520,6 +544,10 @@ public class MapaGeralController : MonoBehaviour
             if (enquadrarCoberturaCompletaAoAbrir)
             {
                 EnquadrarCoberturaCompleta();
+            }
+            if (definicaoMapaGlobal != null)
+            {
+                FocarNaAreaAtual();
             }
             LimitarCameraMapa();
             volumeAudioOriginal = AudioListener.volume;
@@ -702,6 +730,9 @@ public class MapaGeralController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (Instancia != this) return;
+        if (mapaAtivo && cameraMapa != null) AlternarMapa(false);
+        Instancia = null;
         AudioListener.volume = volumeAudioOriginal;
         PararCameraDeRastreamentoMissil();
         AplicarModoMapa(false);
@@ -824,10 +855,34 @@ public class MapaGeralController : MonoBehaviour
         float movZ = (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
             - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
 
-        if (movX != 0 || movZ != 0)
+        Vector3 direcaoManual = new Vector3(movX, 0f, movZ);
+        if (direcaoManual.sqrMagnitude > 0.0001f)
+        {
+            _ultimaDirecaoPanMapa = direcaoManual.normalized;
+        }
+
+        bool teclaPanAutomaticoPressionada = Input.GetKeyDown(KeyCode.Alpha2)
+            || Input.GetKeyDown(KeyCode.Keypad2);
+        if (teclaPanAutomaticoPressionada)
+        {
+            if (_panAutomaticoAtivo)
+            {
+                _panAutomaticoAtivo = false;
+            }
+            else if (_ultimaDirecaoPanMapa.sqrMagnitude > 0.0001f)
+            {
+                _panAutomaticoAtivo = true;
+            }
+        }
+
+        Vector3 direcaoPan = direcaoManual.sqrMagnitude > 0.0001f
+            ? direcaoManual.normalized
+            : (_panAutomaticoAtivo ? _ultimaDirecaoPanMapa : Vector3.zero);
+
+        if (direcaoPan.sqrMagnitude > 0.0001f)
         {
             float mult = cameraMapa.orthographicSize / 50f;
-            cameraMapa.transform.position += new Vector3(movX, 0, movZ).normalized
+            cameraMapa.transform.position += direcaoPan
                 * (velocidadeMover * mult) * Time.unscaledDeltaTime;
             LimitarCameraMapa();
         }
@@ -839,7 +894,7 @@ public class MapaGeralController : MonoBehaviour
             LimitarCameraMapa();
         }
 
-        if (Input.GetKeyDown(KeyCode.KeypadPlus) || Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.Plus))
+        if (Input.GetKeyDown(KeyCode.KeypadPlus) || Input.GetKeyDown(KeyCode.Plus))
             AjustarZoomMapa(-1f);
         if (Input.GetKeyDown(KeyCode.KeypadMinus) || Input.GetKeyDown(KeyCode.Minus))
             AjustarZoomMapa(1f);
@@ -858,10 +913,51 @@ public class MapaGeralController : MonoBehaviour
     private void AplicarZoomPorScroll(float scrollDelta)
     {
         if (cameraMapa == null || Mathf.Approximately(scrollDelta, 0f)) return;
+
+        Plane planoMapa = new Plane(Vector3.up, new Vector3(0f, nivelDoMar, 0f));
+        bool zoomNoCursor = !_seguindoAlvo && !AreaDeInterfaceMapa(Input.mousePosition);
+        Vector3 pontoAntes = Vector3.zero;
+        if (zoomNoCursor)
+        {
+            Ray raioAntes = cameraMapa.ScreenPointToRay(Input.mousePosition);
+            zoomNoCursor = planoMapa.Raycast(raioAntes, out float distanciaAntes);
+            if (zoomNoCursor) pontoAntes = raioAntes.GetPoint(distanciaAntes);
+        }
+
         cameraMapa.orthographicSize = Mathf.Clamp(
             cameraMapa.orthographicSize * Mathf.Exp(-scrollDelta * 2f),
             zoomMinimo,
             zoomMaximo);
+
+        if (zoomNoCursor)
+        {
+            Ray raioDepois = cameraMapa.ScreenPointToRay(Input.mousePosition);
+            if (planoMapa.Raycast(raioDepois, out float distanciaDepois))
+                cameraMapa.transform.position += pontoAntes - raioDepois.GetPoint(distanciaDepois);
+        }
+        LimitarCameraMapa();
+    }
+
+    private void FocarNaAreaAtual()
+    {
+        if (cameraMapa == null || cameraPrincipal == null) return;
+        _seguindoAlvo = false;
+        _alvoSeguir = null;
+        float zoomLocal = Mathf.Clamp(profundidadeMapa * 0.05f, 3000f, 18000f);
+        cameraMapa.orthographicSize = Mathf.Clamp(zoomLocal, zoomMinimo, zoomMaximo);
+        cameraMapa.transform.position = new Vector3(
+            cameraPrincipalPosicaoAntesDoMapa.x,
+            cameraMapa.transform.position.y,
+            cameraPrincipalPosicaoAntesDoMapa.z);
+        LimitarCameraMapa();
+    }
+
+    private void MostrarVisaoGeral()
+    {
+        if (cameraMapa == null) return;
+        _seguindoAlvo = false;
+        _alvoSeguir = null;
+        EnquadrarCoberturaCompleta();
         LimitarCameraMapa();
     }
 
@@ -940,9 +1036,14 @@ public class MapaGeralController : MonoBehaviour
             : "F  ACOMPANHAR UNIDADE";
         string nivelZoom = ObterDescricaoZoomMapa();
         string titulo = mapaCartograficoAtivo ? "HEGEMONIA  /  CARTA TÁTICA" : "HEGEMONIA  /  CÂMERA 3D";
-        GUI.Label(new Rect(14f, 2f, Mathf.Max(280f, Screen.width - 380f), 19f), titulo, _tituloMapaStyle);
-        GUI.Label(new Rect(15f, 20f, Mathf.Max(280f, Screen.width - 380f), 16f),
-            nivelZoom + "   ·   " + modoSeguir + "   ·   WASD mover   ·   Scroll zoom   ·   M fechar", _legendaMapaStyle);
+        GUI.Label(new Rect(14f, 2f, Mathf.Max(280f, Screen.width - 470f), 19f), titulo, _tituloMapaStyle);
+        GUI.Label(new Rect(15f, 20f, Mathf.Max(280f, Screen.width - 470f), 16f),
+            nivelZoom + "   ·   " + modoSeguir + "   ·   WASD mover   ·   Scroll zoom no cursor   ·   M fechar", _legendaMapaStyle);
+
+        if (GUI.Button(new Rect(Screen.width - 442f, 7f, 78f, 25f), "MINHA ÁREA", _zoomMapaStyle))
+            FocarNaAreaAtual();
+        if (GUI.Button(new Rect(Screen.width - 356f, 7f, 78f, 25f), "GLOBAL", _zoomMapaStyle))
+            MostrarVisaoGeral();
 
         if (GUI.Button(new Rect(Screen.width - 270f, 7f, 88f, 25f), mapaCartograficoAtivo ? "Câmera 3D" : "Carta 2D", _zoomMapaStyle))
         {
@@ -1023,16 +1124,30 @@ public class MapaGeralController : MonoBehaviour
         float altura = telaSuperiorEsquerda.y - telaInferiorDireita.y;
         if (largura <= 0f || altura <= 0f) return;
         Rect areaMapa = new Rect(x, y, largura, altura);
+        float visivelXMin = Mathf.Max(0f, areaMapa.xMin);
+        float visivelXMax = Mathf.Min(Screen.width, areaMapa.xMax);
+        float visivelYMin = Mathf.Max(0f, areaMapa.yMin);
+        float visivelYMax = Mathf.Min(Screen.height, areaMapa.yMax);
+        if (visivelXMax <= visivelXMin || visivelYMax <= visivelYMin) return;
+
+        // Em zoom local, desenhar somente o trecho visível evita um quad
+        // gigantesco e mantém a textura alinhada ao mesmo ponto do mundo.
+        Rect areaVisivel = Rect.MinMaxRect(visivelXMin, visivelYMin, visivelXMax, visivelYMax);
+        Rect uvVisivel = new Rect(
+            (visivelXMin - areaMapa.xMin) / areaMapa.width,
+            1f - (visivelYMax - areaMapa.yMin) / areaMapa.height,
+            areaVisivel.width / areaMapa.width,
+            areaVisivel.height / areaMapa.height);
         if (materialBaseMilitar != null)
         {
-            Graphics.DrawTexture(areaMapa, mapa, materialBaseMilitar);
+            Graphics.DrawTexture(areaVisivel, mapa, uvVisivel, 0, 0, 0, 0, Color.white, materialBaseMilitar);
         }
         else
         {
-            GUI.DrawTexture(areaMapa, mapa, ScaleMode.StretchToFill, false);
+            GUI.DrawTextureWithTexCoords(areaVisivel, mapa, uvVisivel, false);
             // Fallback para cenas antigas sem GlobalWorldDefinition ou shader.
             GUI.color = new Color32(33, 49, 57, 34);
-            GUI.DrawTexture(areaMapa, Texture2D.whiteTexture);
+            GUI.DrawTexture(areaVisivel, Texture2D.whiteTexture);
         }
         GUI.color = Color.white;
     }

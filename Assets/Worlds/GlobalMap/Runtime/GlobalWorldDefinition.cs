@@ -38,7 +38,7 @@ public sealed class GlobalWorldDefinition : ScriptableObject
     public GameObject[] treePrefabs = Array.Empty<GameObject>();
     [Min(0)] public int forestClusterPrototypeCount = 4;
     [Min(20f)] public float treeCandidateSpacing = 48f;
-    [Min(100f)] public float forestTreesPerSquareKilometre = 1200f;
+    [Min(100f)] public float forestTreesPerSquareKilometre = 800f;
 
     [NonSerialized] private bool initialized;
     [NonSerialized] private int mapWidth;

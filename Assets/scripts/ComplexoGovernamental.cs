@@ -113,7 +113,29 @@ public class ComplexoGovernamental : MonoBehaviour
 
         if (podeDecretarQuedaDoGoverno && ehDoJogador && !jaDerrotado)
         {
-            AbrirMenuGestaoDeEstado();
+            AbrirResumoAdministrativoRegional();
+        }
+    }
+
+    private void AbrirResumoAdministrativoRegional()
+    {
+        if (ultimoFrameAbertura == Time.frameCount)
+        {
+            return;
+        }
+
+        ultimoFrameAbertura = Time.frameCount;
+        MenuGoverno.GarantirInstancia();
+        aoAbrirMenuGestao?.Invoke();
+
+        if (MenuGoverno.Instancia != null && MenuGoverno.Instancia.AbrirResumoRegional(this))
+        {
+            return;
+        }
+
+        if (MenuGoverno.Instancia != null)
+        {
+            MenuGoverno.Instancia.AlternarMenu(true);
         }
     }
 

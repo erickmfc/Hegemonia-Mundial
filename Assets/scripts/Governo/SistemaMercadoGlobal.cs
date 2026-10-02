@@ -68,6 +68,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
         if (itens == null) itens = new List<DadosItemMercado>();
         if (itens.Count > 0)
         {
+            GarantirItensAgricolas();
+            ConfigurarEstoquePorCultura();
             NormalizarItensMercado();
             IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
             SincronizarEquipamentosMilitares();
@@ -86,6 +88,8 @@ public class SistemaMercadoGlobal : MonoBehaviour
         itens.Add(CriarItemPadrao("comida_soja", "Soja", RecursoMercado.Comida, 500, 13400, 67f, 63f, 0.07f, "Agricola"));
         itens.Add(CriarItemPadrao("comida_cafe", "Cafe", RecursoMercado.Comida, 4500, 7600, 44f, 61f, 0.10f, "Agricola"));
         itens.Add(CriarItemPadrao("comida_cacau", "Cacau", RecursoMercado.Comida, 7000, 6200, 40f, 64f, 0.11f, "Agricola"));
+        GarantirItensAgricolas();
+        ConfigurarEstoquePorCultura();
         itens.Add(CriarItemPadrao("petroleo", "Petroleo", RecursoMercado.Petroleo, 80, 18340, 52f, 72f, 0.12f));
         itens.Add(CriarItemPadrao("aco", "Aco", RecursoMercado.Aco, 700, 31760, 81f, 55f, 0.06f));
         itens.Add(CriarItemPadrao("energia", "Energia", RecursoMercado.Energia, 70, 45000, 65f, 50f, 0.05f));
@@ -95,6 +99,33 @@ public class SistemaMercadoGlobal : MonoBehaviour
         IntegracaoMercadoIndustrial.GarantirCatalogoNoMercado(this);
         SincronizarEquipamentosMilitares();
         CatalogoProdutoCompartilhado.RegistrarMercado(itens);
+    }
+
+    private void GarantirItensAgricolas()
+    {
+        if (itens == null) itens = new List<DadosItemMercado>();
+        RegistrarItem(CriarItemPadrao("comida_mandioca", "Mandioca", RecursoMercado.Comida, 180, 10000, 60f, 58f, 0.07f, "Agricola"));
+        RegistrarItem(CriarItemPadrao("comida_aveia", "Aveia", RecursoMercado.Comida, 260, 8500, 58f, 54f, 0.07f, "Agricola"));
+        RegistrarItem(CriarItemPadrao("comida_cevada", "Cevada", RecursoMercado.Comida, 280, 9000, 58f, 54f, 0.07f, "Agricola"));
+        RegistrarItem(CriarItemPadrao("comida_tomate", "Tomate", RecursoMercado.Comida, 350, 10500, 62f, 61f, 0.08f, "Agricola"));
+        RegistrarItem(CriarItemPadrao("comida_frutas", "Frutas", RecursoMercado.Comida, 700, 9800, 61f, 59f, 0.08f, "Agricola"));
+        RegistrarItem(CriarItemPadrao("comida_hortalicas", "Hortaliças", RecursoMercado.Comida, 320, 9800, 62f, 60f, 0.08f, "Agricola"));
+        RegistrarItem(CriarItemPadrao("fertilizante_organico", "Fertilizante Orgânico", RecursoMercado.Nenhum, 140, 6000, 35f, 42f, 0.05f, "Insumo agricola"));
+        RegistrarItem(CriarItemPadrao("sementes", "Sementes", RecursoMercado.Nenhum, 90, 8000, 45f, 52f, 0.05f, "Insumo agricola"));
+        RegistrarItem(CriarItemPadrao("agrotoxicos", "Agrotóxicos", RecursoMercado.Nenhum, 550, 3200, 20f, 48f, 0.12f, "Insumo agricola"));
+        RegistrarItem(CriarItemPadrao("agua", "Água", RecursoMercado.Agua, 12, 16000, 70f, 64f, 0.04f, "Recurso agrícola"));
+    }
+
+    private void ConfigurarEstoquePorCultura()
+    {
+        string[] ids = { "comida_milho", "comida_batata", "comida_feijao", "comida_trigo", "comida_arroz", "comida_cana", "comida_soja", "comida_cafe", "comida_cacau", "comida_mandioca", "comida_aveia", "comida_cevada", "comida_tomate", "comida_frutas", "comida_hortalicas" };
+        for (int i = 0; i < ids.Length; i++)
+        {
+            DadosItemMercado item = ObterItem(ids[i]);
+            if (item == null) continue;
+            item.recurso = RecursoMercado.Nenhum;
+            item.recursoId = ids[i];
+        }
     }
 
     public void RegistrarItem(DadosItemMercado item)

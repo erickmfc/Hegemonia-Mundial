@@ -343,6 +343,14 @@ public class MenuConstrucao : MonoBehaviour
             }
 
             string nome = item.GetDisplayName();
+            string chaveLegada = nome.ToLowerInvariant();
+            // Itens de fazenda antigos podem continuar serializados em cenas
+            // e catálogos; não voltam a aparecer como opção construível.
+            if ((chaveLegada.Contains("fazenda") || chaveLegada.Contains("farm"))
+                && !chaveLegada.Contains("farmacia") && !chaveLegada.Contains("farmácia"))
+            {
+                continue;
+            }
             bool isDestrocos = nome.IndexOf("destroc", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
                                nome.IndexOf("chama", System.StringComparison.OrdinalIgnoreCase) >= 0;
             try
@@ -1990,11 +1998,22 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         string displayName = item.GetDisplayName();
+        string nomeApresentado = NomeApresentacaoConstrucao(item);
 
         return (!string.IsNullOrEmpty(item.NomeItem) && item.NomeItem.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || (!string.IsNullOrEmpty(displayName) && displayName.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            || (!string.IsNullOrEmpty(nomeApresentado) && nomeApresentado.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || (!string.IsNullOrEmpty(item.descricao) && item.descricao.IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0)
             || ObterRotuloCategoria(item.categoria).IndexOf(filtro, System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static string NomeApresentacaoConstrucao(DadosConstrucao item)
+    {
+        if (item == null) return string.Empty;
+        GameObject prefab = item.PrefabDaUnidade;
+        return prefab != null && prefab.GetComponent<ComplexoGovernamental>() != null
+            ? "Centro Administrativo Regional"
+            : item.GetDisplayName();
     }
 
     void AjustarGradeAoEspacoDisponivel()
@@ -2079,7 +2098,7 @@ public class MenuConstrucao : MonoBehaviour
                 : string.Empty;
         }
 
-        textoDetalheNome.text = item.GetDisplayName();
+        textoDetalheNome.text = NomeApresentacaoConstrucao(item);
         textoDetalheCategoria.text = ObterRotuloCategoria(item.categoria);
         textoDetalhePreco.text = ValoresDefinitivosHegemonia.FormatarDinheiro(PrecoEfetivo(item));
         textoDetalheTipo.text = ObterTipoItem(item);
@@ -2430,7 +2449,7 @@ public class MenuConstrucao : MonoBehaviour
         leNome.preferredHeight = 30;
 
         Text tNome = nomeObj.AddComponent<Text>();
-        tNome.text = item.GetDisplayName();
+        tNome.text = NomeApresentacaoConstrucao(item);
         tNome.font = ObterFontePadrao();
         tNome.fontSize = 14;
         tNome.alignment = TextAnchor.MiddleCenter;

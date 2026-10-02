@@ -7,7 +7,7 @@ public enum TipoEstruturaEconomica
     Industria,
     Petroleo,
     Comercio,
-    Farm,
+    LegacyReservedAgriculture,
     Energia,
     PesquisaMilitar,
     UsinaSolar,

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Hegemonia.AI.BrainMaster;
 
 public class SistemaGovernoMundial : MonoBehaviour
 {
@@ -71,6 +72,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         InicializarDadosPadrao();
         GarantirMercado();
+        if (GetComponent<AgriculturaNacional>() == null) gameObject.AddComponent<AgriculturaNacional>();
         GarantirEconomiaViva();
         GerenciadorTempo.GarantirInstancia();
         GarantirSistemaIndustrial();
@@ -115,11 +117,11 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         if (paises.Count == 0)
         {
-            paises.Add(new DadosPaisGoverno { teamId = 1, nomePais = "Republica Atlas", nomeMoeda = "Atlas", simboloMoeda = "AT$", bloco = "Ordem Atlas", saldo = 5000, comida = 500, petroleo = 500, energia = 260, aco = 300, armamentos = 500, emprego = 78f, moradia = 72f, estabilidade = 76f, producao = 78f, aliadoPrioritarioTeamId = 2, rivalTeamId = 3, perfilIA = PerfilPaisIA.Neutro, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 62, nivelIndustrial = 58, nivelMilitar = 54, nivelDiplomatico = 65, pesoComercio = 0.58f, pesoDiplomacia = 0.62f });
-            paises.Add(new DadosPaisGoverno { teamId = 2, nomePais = "Republica Boreal", nomeMoeda = "Boreal", simboloMoeda = "BO$", bloco = "Ordem Atlas", saldo = 18000, comida = 1800, petroleo = 2600, energia = 380, aco = 700, armamentos = 900, emprego = 82f, moradia = 78f, estabilidade = 84f, producao = 74f, perfilIA = PerfilPaisIA.Aliado, modoInicialIA = ModoInicialPaisIA.Comercial, nivelEconomico = 78, nivelIndustrial = 66, nivelMilitar = 55, nivelDiplomatico = 76, pesoLealdadeAliados = 0.82f, pesoComercio = 0.72f });
-            paises.Add(new DadosPaisGoverno { teamId = 3, nomePais = "Uniao Carmesim", nomeMoeda = "Carmesim", simboloMoeda = "CA$", bloco = "Pacto Solaris", saldo = 22000, comida = 900, petroleo = 4800, energia = 420, aco = 1200, armamentos = 1600, emprego = 61f, moradia = 52f, estabilidade = 44f, producao = 81f, emGuerra = true, perfilIA = PerfilPaisIA.ProdutorPetroleo, modoInicialIA = ModoInicialPaisIA.GuerraFria, nivelEconomico = 70, nivelIndustrial = 62, nivelMilitar = 78, nivelDiplomatico = 36, pesoAgressividade = 0.72f, pesoOdioRivais = 0.80f });
-            paises.Add(new DadosPaisGoverno { teamId = 4, nomePais = "Dominio Valerian", nomeMoeda = "Valer", simboloMoeda = "VA$", bloco = "Liga Continental", saldo = 16000, comida = 600, petroleo = 900, energia = 280, aco = 1800, armamentos = 2100, emprego = 66f, moradia = 58f, estabilidade = 48f, producao = 76f, sancionado = true, perfilIA = PerfilPaisIA.Militarista, modoInicialIA = ModoInicialPaisIA.Mobilizacao, nivelEconomico = 58, nivelIndustrial = 78, nivelMilitar = 86, nivelDiplomatico = 32, pesoMilitarismo = 0.88f, pesoControleEstoque = 0.75f });
-            paises.Add(new DadosPaisGoverno { teamId = 5, nomePais = "Federacao Alvorada", nomeMoeda = "Aurora", simboloMoeda = "AU$", bloco = "Nenhum", saldo = 12500, comida = 3400, petroleo = 600, energia = 220, aco = 500, armamentos = 350, emprego = 74f, moradia = 80f, estabilidade = 69f, producao = 67f, perfilIA = PerfilPaisIA.Pequeno, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 52, nivelIndustrial = 34, nivelMilitar = 24, nivelDiplomatico = 58, pesoDependenciaExterna = 0.80f, pesoDiplomacia = 0.70f });
+            paises.Add(new DadosPaisGoverno { teamId = 1, nomePais = "Republica Atlas", nomeMoeda = "Atlas", simboloMoeda = "AT$", bloco = "Ordem Atlas", saldo = 5000, comida = 500, agua = 3000, petroleo = 500, energia = 260, aco = 300, armamentos = 500, emprego = 78f, moradia = 72f, estabilidade = 76f, producao = 78f, aliadoPrioritarioTeamId = 2, rivalTeamId = 3, perfilIA = PerfilPaisIA.Neutro, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 62, nivelIndustrial = 58, nivelMilitar = 54, nivelDiplomatico = 65, pesoComercio = 0.58f, pesoDiplomacia = 0.62f });
+            paises.Add(new DadosPaisGoverno { teamId = 2, nomePais = "Republica Boreal", nomeMoeda = "Boreal", simboloMoeda = "BO$", bloco = "Ordem Atlas", saldo = 18000, comida = 1800, agua = 3000, petroleo = 2600, energia = 380, aco = 700, armamentos = 900, emprego = 82f, moradia = 78f, estabilidade = 84f, producao = 74f, perfilIA = PerfilPaisIA.Aliado, modoInicialIA = ModoInicialPaisIA.Comercial, nivelEconomico = 78, nivelIndustrial = 66, nivelMilitar = 55, nivelDiplomatico = 76, pesoLealdadeAliados = 0.82f, pesoComercio = 0.72f });
+            paises.Add(new DadosPaisGoverno { teamId = 3, nomePais = "Uniao Carmesim", nomeMoeda = "Carmesim", simboloMoeda = "CA$", bloco = "Pacto Solaris", saldo = 22000, comida = 900, agua = 3000, petroleo = 4800, energia = 420, aco = 1200, armamentos = 1600, emprego = 61f, moradia = 52f, estabilidade = 44f, producao = 81f, emGuerra = true, perfilIA = PerfilPaisIA.ProdutorPetroleo, modoInicialIA = ModoInicialPaisIA.GuerraFria, nivelEconomico = 70, nivelIndustrial = 62, nivelMilitar = 78, nivelDiplomatico = 36, pesoAgressividade = 0.72f, pesoOdioRivais = 0.80f });
+            paises.Add(new DadosPaisGoverno { teamId = 4, nomePais = "Dominio Valerian", nomeMoeda = "Valer", simboloMoeda = "VA$", bloco = "Liga Continental", saldo = 16000, comida = 600, agua = 3000, petroleo = 900, energia = 280, aco = 1800, armamentos = 2100, emprego = 66f, moradia = 58f, estabilidade = 48f, producao = 76f, sancionado = true, perfilIA = PerfilPaisIA.Militarista, modoInicialIA = ModoInicialPaisIA.Mobilizacao, nivelEconomico = 58, nivelIndustrial = 78, nivelMilitar = 86, nivelDiplomatico = 32, pesoMilitarismo = 0.88f, pesoControleEstoque = 0.75f });
+            paises.Add(new DadosPaisGoverno { teamId = 5, nomePais = "Federacao Alvorada", nomeMoeda = "Aurora", simboloMoeda = "AU$", bloco = "Nenhum", saldo = 12500, comida = 3400, agua = 3000, petroleo = 600, energia = 220, aco = 500, armamentos = 350, emprego = 74f, moradia = 80f, estabilidade = 69f, producao = 67f, perfilIA = PerfilPaisIA.Pequeno, modoInicialIA = ModoInicialPaisIA.Crescimento, nivelEconomico = 52, nivelIndustrial = 34, nivelMilitar = 24, nivelDiplomatico = 58, pesoDependenciaExterna = 0.80f, pesoDiplomacia = 0.70f });
         }
 
         if (relacoes.Count == 0)
@@ -1134,6 +1136,10 @@ public class SistemaGovernoMundial : MonoBehaviour
         switch (recurso)
         {
             case RecursoMercado.Comida: return pais.comida;
+            case RecursoMercado.Agua:
+                if (teamId == teamJogador && GerenciadorArmazens.Instancia != null && GerenciadorArmazens.Instancia.armazemRecursos != null)
+                    return GerenciadorArmazens.Instancia.armazemRecursos.agua;
+                return pais.agua;
             case RecursoMercado.Petroleo: return pais.petroleo;
             case RecursoMercado.Energia: return pais.energia;
             case RecursoMercado.Aco: return pais.aco;
@@ -1312,6 +1318,12 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (pais.sateliteDefesa == null) pais.sateliteDefesa = new SateliteDefesaEstado();
 
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_ferro", "Extracao de Minerio de Ferro", "Extracao", "Organiza a primeira cadeia nacional de ferro bruto.", "Base de mineracao", "Ordens de ferro e lotes pesados", string.Empty, 520, 60, 2));
+        GarantirPesquisaCatalogo(pais, CriarPesquisa(AgriculturaNacional.PesquisaAgrotoxicosId, "Tecnologia de Agrotóxicos", "Pesquisa", "Desenvolve formulação e produção nacional de agrotóxicos.", "Ciência agrícola e química", "Produção nacional de agrotóxicos", string.Empty, 1800, 120, 30));
+        if (pais.teamId == 2)
+        {
+            PesquisaNacionalEstado tecnologiaAgro = pais.pesquisas.FirstOrDefault(p => p != null && p.id == AgriculturaNacional.PesquisaAgrotoxicosId);
+            if (tecnologiaAgro != null && !tecnologiaAgro.emAndamento) tecnologiaAgro.concluida = true;
+        }
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_cobre", "Extracao de Minerio de Cobre", "Extracao", "Abre o ciclo de cobre para eletrica e industria.", "Aco leve e energia basica", "Ordens de cobre e refino industrial", string.Empty, 580, 70, 2));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_extracao_bauxita", "Extracao de Bauxita", "Extracao", "Prepara a base para materiais leves.", "Base de extracao e logistica", "Bauxita e duraluminio", string.Empty, 640, 75, 2));
         GarantirPesquisaCatalogo(pais, CriarPesquisa("pesquisa_metalurgia", "Metalurgia do Aco", "Pesquisa", "Libera o refino nacional de aco estrutural.", "Base industrial", "Aco estrutural e linhas de refino", "pesquisa_extracao_ferro", 650, 90, 2));
@@ -2022,6 +2034,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         switch (recurso)
         {
             case RecursoMercado.Comida: return "comida";
+            case RecursoMercado.Agua: return "agua";
             case RecursoMercado.Petroleo: return "petroleo";
             case RecursoMercado.Energia: return "energia";
             case RecursoMercado.Aco: return "aco";
@@ -2102,6 +2115,22 @@ public class SistemaGovernoMundial : MonoBehaviour
                     armazens.NotificarAtualizacaoManual();
                 }
                 break;
+            case RecursoMercado.Agua:
+                if (teamId == teamJogador && armazens != null && armazens.armazemRecursos != null)
+                {
+                    DadosArmazemRecursos dadosAgua = armazens.armazemRecursos;
+                    int quantidadeAgua = Mathf.Abs(delta);
+                    bool alterou = delta >= 0
+                        ? dadosAgua.AdicionarRecurso(TipoRecurso.Agua, quantidadeAgua)
+                        : dadosAgua.RemoverRecurso(TipoRecurso.Agua, quantidadeAgua);
+                    if (alterou) pais.agua = dadosAgua.agua;
+                    armazens.NotificarAtualizacaoManual();
+                }
+                else
+                {
+                    pais.agua = Mathf.Clamp(pais.agua + delta, 0, Mathf.Max(0, pais.aguaMaxima));
+                }
+                break;
             case RecursoMercado.Petroleo:
                 pais.petroleo = Mathf.Max(0, pais.petroleo + delta);
                 if (gr != null)
@@ -2159,6 +2188,19 @@ public class SistemaGovernoMundial : MonoBehaviour
             return;
         }
 
+        if (EhIdCulturaAgricola(recursoId))
+        {
+            SistemaIndustrialNacional armazemAgricola = SistemaIndustrialNacional.Instancia;
+            if (armazemAgricola == null) return;
+            if (delta < 0 && !armazemAgricola.Armazem.TentarConsumir(teamId.ToString(), recursoId, -delta)) return;
+            if (delta > 0) armazemAgricola.Armazem.Adicionar(teamId.ToString(), recursoId, delta);
+            DadosPaisGoverno paisAgricola = ObterPais(teamId);
+            paisAgricola.estoqueAgricolaTotal = Mathf.Max(0, paisAgricola.estoqueAgricolaTotal + delta);
+            AlterarEstoque(teamId, RecursoMercado.Comida, delta);
+            OnGovernoAtualizado?.Invoke();
+            return;
+        }
+
         RecursoMercado recursoLegado;
         if (TentarConverterRecursoMercado(recursoId, out recursoLegado))
         {
@@ -2184,6 +2226,16 @@ public class SistemaGovernoMundial : MonoBehaviour
         OnGovernoAtualizado?.Invoke();
     }
 
+    private static bool EhIdCulturaAgricola(string recursoId)
+    {
+        string id = IA_Text.Normalize(recursoId);
+        return id == "comida_milho" || id == "comida_batata" || id == "comida_feijao"
+            || id == "comida_trigo" || id == "comida_arroz" || id == "comida_cana"
+            || id == "comida_soja" || id == "comida_cafe" || id == "comida_cacau"
+            || id == "comida_mandioca" || id == "comida_aveia" || id == "comida_cevada"
+            || id == "comida_tomate" || id == "comida_frutas" || id == "comida_hortalicas";
+    }
+
     private static bool TentarConverterRecursoMercado(string recursoId, out RecursoMercado recurso)
     {
         recurso = RecursoMercado.Nenhum;
@@ -2196,6 +2248,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             case "comida":
                 recurso = RecursoMercado.Comida;
+                return true;
+            case "agua":
+                recurso = RecursoMercado.Agua;
                 return true;
             case "petroleo":
                 recurso = RecursoMercado.Petroleo;

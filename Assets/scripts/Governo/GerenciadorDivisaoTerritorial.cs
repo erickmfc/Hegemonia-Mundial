@@ -335,7 +335,7 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
                     cidade.scoreComercial += est.empregosGerados;
                     cidade.scoreTurismo += est.empregosGerados * 0.2f;
                 }
-                else if (est.tipo == TipoEstruturaEconomica.Farm)
+                else if (est.tipo == TipoEstruturaEconomica.LegacyReservedAgriculture)
                 {
                     cidade.scoreAgricola += est.empregosGerados * 2f;
                 }

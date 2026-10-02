@@ -14,7 +14,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 {
     private const int LocalNavMeshAgentTypeId = 0;
     private const int LocalNavMeshTileSize = 256;
-    private const float LocalNavMeshVoxelSize = 2f;
+    private const float LocalNavMeshVoxelSize = 4f;
 
     public GlobalWorldDefinition world;
     public Terrain globalTerrain;
@@ -23,8 +23,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     [Range(1, 2)] public int tileRadius = 1;
     [Min(0.1f)] public float refreshInterval = 0.5f;
     [Range(1, 4)] public int tilesCreatedPerFrame = 1;
-    [Range(1, 64)] public int terrainRowsPerFrame = 16;
-    [Range(1, 16)] public int vegetationRowsPerFrame = 4;
+    [Range(1, 64)] public int terrainRowsPerFrame = 2;
+    [Range(1, 16)] public int vegetationRowsPerFrame = 1;
     public bool showDiagnostics = true;
 
     private readonly Dictionary<Vector2Int, Terrain> loadedTiles = new Dictionary<Vector2Int, Terrain>(16);
@@ -344,9 +344,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         localNavMeshSurface.minRegionArea = 2f;
         localNavMeshSurface.overrideTileSize = true;
         localNavMeshSurface.tileSize = LocalNavMeshTileSize;
-        // The world tiles are 8 km across. A coarse 2 m voxel keeps the local
-        // build tractable while preserving the broad vehicle routes validated
-        // with the existing Tank_Arthur prefab.
+        // The world tiles are 8 km across. A 4 m voxel keeps the streamed
+        // 3x3 build responsive while preserving broad vehicle routes; 2 m
+        // produced a 12 s build for the same loaded area in the runtime smoke test.
         localNavMeshSurface.overrideVoxelSize = true;
         localNavMeshSurface.voxelSize = LocalNavMeshVoxelSize;
     }
@@ -407,15 +407,44 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         if (previousGeneratedData != null && previousGeneratedData != nextData)
             Destroy(previousGeneratedData);
 
-        // Let NavMeshSurface register the completed data before checking that
-        // it produced polygons. The shared surface makes adjacent streamed
-        // Terrain tiles one connected navigation region.
+        // Let NavMeshSurface register the completed data before checking it.
         yield return null;
-        bool hasPolygons = NavMesh.CalculateTriangulation().vertices.Length > 0;
-        if (!hasPolygons)
+        bool hasNavigableLand = HasNavigableLand();
+        if (!hasNavigableLand)
             Debug.LogError("[GlobalMap] O NavMesh local terminou vazio para " + tileSet + ".", this);
 
-        completed(hasPolygons);
+        completed(hasNavigableLand);
+    }
+
+    private bool HasNavigableLand()
+    {
+        if (world == null || desiredTiles.Count == 0)
+            return false;
+
+        float size = Mathf.Max(100f, world.terrainTileSize);
+        const int samplesPerAxis = 5;
+        foreach (Vector2Int coordinate in desiredTiles)
+        {
+            float minX = world.MapMinX + coordinate.x * size;
+            float minZ = world.MapMinZ + coordinate.y * size;
+            for (int z = 0; z < samplesPerAxis; z++)
+            {
+                for (int x = 0; x < samplesPerAxis; x++)
+                {
+                    float worldX = minX + (x + 0.5f) * size / samplesPerAxis;
+                    float worldZ = minZ + (z + 0.5f) * size / samplesPerAxis;
+                    float height = world.HeightAtWorld(worldX, worldZ);
+                    if (height <= world.seaLevel + 2f)
+                        continue;
+
+                    Vector3 candidate = new Vector3(worldX, height, worldZ);
+                    if (NavMesh.SamplePosition(candidate, out _, 20f, NavMesh.AllAreas))
+                        return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void ClearLocalNavMesh()

@@ -24,6 +24,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private Label breadcrumb;
     private string categoria = "Relacoes";
     private string abaAtual = "Resumo";
+    private string cidadeSelecionadaId = string.Empty;
     // Nenhum alvo de diplomacia deve ser escolhido por acidente. O jogador e o
     // primeiro pais ativo da cena sao os unicos valores seguros no inicio.
     private int paisSelecionado = 1; // alvo inicial seguro; nunca apontar para uma IA inativa
@@ -195,6 +196,28 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             InteractionModeService.Release(this, InteractionOwner.GovernmentMenu);
         }
+    }
+
+    public bool AbrirResumoRegional(ComplexoGovernamental centro)
+    {
+        if (centro == null) return false;
+
+        MarcadorTerritorio marcador = centro.GetComponent<MarcadorTerritorio>();
+        if (marcador == null) return false;
+
+        GerenciadorDivisaoTerritorial.GarantirInstancia();
+        GerenciadorDivisaoTerritorial divisao = GerenciadorDivisaoTerritorial.Instancia;
+        if (divisao == null) return false;
+
+        divisao.RegistrarCidade(marcador);
+        CidadeEstado regiao = divisao.cidades.FirstOrDefault(c => c != null && c.marcador == marcador);
+        if (regiao == null) return false;
+
+        categoria = "Interior";
+        abaAtual = "Cidades";
+        cidadeSelecionadaId = regiao.id;
+        Abrir(true);
+        return true;
     }
 
     private System.Collections.IEnumerator AbrirQuandoPronto()
@@ -1797,10 +1820,63 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             TabelaCabecalho("CIDADE", "TIPO", "POP CIVIL", "AEROPORTO", "DOMINIO");
             foreach (CidadeEstado cidade in cidades)
             {
-                string tipo = cidade.ehEstado ? "ESTADO" : "CIDADE";
+                string tipo = cidade.marcador != null && cidade.marcador.GetComponent<ComplexoGovernamental>() != null
+                    ? "CENTRO ADMINISTRATIVO REGIONAL"
+                    : cidade.ehEstado ? "ESTADO" : "CIDADE";
                 string aero = cidade.temAeroporto ? "SIM" : "NAO";
                 string dominio = cidade.teamID == 1 ? "JOGADOR" : cidade.teamID > 1 ? "IA " + cidade.teamID : "NEUTRO";
-                TabelaLinha(cidade.nome, tipo, cidade.populacaoCivil.ToString("N0"), aero, dominio, () => MostrarMensagem(cidade.nome + " selecionada."));
+                TabelaLinha(cidade.nome, tipo, cidade.populacaoCivil.ToString("N0"), aero, dominio, () =>
+                {
+                    cidadeSelecionadaId = cidade.id;
+                    MostrarPagina("Cidades");
+                });
+            }
+            CidadeEstado selecionada = cidades.FirstOrDefault(c => c != null && c.id == cidadeSelecionadaId);
+            if (selecionada != null)
+            {
+                string tipo = selecionada.marcador != null && selecionada.marcador.GetComponent<ComplexoGovernamental>() != null
+                    ? "Centro Administrativo Regional"
+                    : selecionada.ehEstado ? "Estado" : "Cidade";
+                string resumo = "Região: " + selecionada.nome
+                    + "\nTipo: " + tipo
+                    + "\nPopulação: " + selecionada.populacaoCivil.ToString("N0")
+                    + "\nEmpregos: " + selecionada.empregosTotais.ToString("N0")
+                    + " | Vagas abertas: " + selecionada.vagasDeEmpregoAbertas.ToString("N0")
+                    + "\nCapacidade habitacional: " + selecionada.capacidadeHabitacional.ToString("N0")
+                    + "\nPerfil produtivo local (indicadores): indústria " + selecionada.scoreIndustrial.ToString("0")
+                    + ", comércio " + selecionada.scoreComercial.ToString("0")
+                    + ", agricultura " + selecionada.scoreAgricola.ToString("0")
+                    + ", energia " + selecionada.scoreEnergia.ToString("0")
+                    + "\nInfraestrutura: aeroporto " + (selecionada.temAeroporto ? "sim" : "não")
+                    + ", porto " + (selecionada.temPorto ? "sim" : "não")
+                    + ", logística " + selecionada.scoreLogistica.ToString("0")
+                    + "\nNecessidades: moradia " + Mathf.Max(0, selecionada.populacaoCivil - selecionada.capacidadeHabitacional).ToString("N0")
+                    + " vagas; empregos " + Mathf.Max(0, selecionada.populacaoCivil - selecionada.empregosTotais).ToString("N0")
+                    + " necessários"
+                    + "\nConsumo e impostos seguem consolidados no nível nacional; não há valores regionais existentes.";
+                AdicionarCard(conteudo, "RESUMO REGIONAL", resumo);
+
+                TextField nomeRegiao = new TextField("Nome da região") { value = selecionada.nome };
+                nomeRegiao.style.marginTop = 4f;
+                nomeRegiao.style.marginBottom = 8f;
+                conteudo.Add(nomeRegiao);
+                Button salvarNome = new Button(() =>
+                {
+                    if (string.IsNullOrWhiteSpace(nomeRegiao.value))
+                    {
+                        MostrarMensagem("Informe um nome para a região.");
+                        return;
+                    }
+
+                    GerenciadorDivisaoTerritorial.Instancia.RenomearCidade(selecionada.id, nomeRegiao.value);
+                    MostrarMensagem("Região renomeada para " + nomeRegiao.value.Trim() + ".");
+                    MostrarPagina("Cidades");
+                })
+                {
+                    text = "SALVAR NOME DA REGIÃO"
+                };
+                salvarNome.AddToClassList("gov-action-button");
+                conteudo.Add(salvarNome);
             }
             if (cidades.Count == 0) AdicionarCard(conteudo, "SEM CIDADES CADASTRADAS", "Crie ou registre marcadores territoriais para popular esta lista.");
             return;

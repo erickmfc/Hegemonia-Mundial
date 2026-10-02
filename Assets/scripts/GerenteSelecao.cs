@@ -32,6 +32,7 @@ public class GerenteSelecao : MonoBehaviour
     public List<ControleUnidade> unidadesSelecionadas = new List<ControleUnidade>();
     private Camera cameraPrincipal;
     private Construtor construtorCache;
+    private GlobalWorldDefinition mundoGlobalCache;
     private DesenharLinhasOrdem desenhadorOrdensCache;
     private readonly RaycastHit[] bufferHitsClique = new RaycastHit[64];
     private readonly List<RaycastResult> bufferRaycastUI = new List<RaycastResult>(16);
@@ -1066,6 +1067,20 @@ public class GerenteSelecao : MonoBehaviour
                 int mascaraAmostragem = agenteFormacao != null && agenteFormacao.areaMask != 0
                     ? agenteFormacao.areaMask
                     : UnityEngine.AI.NavMesh.AllAreas;
+                if (!unidadeAnfibia && !alvoCtrl.EhUnidadeAerea())
+                {
+                    GlobalWorldDefinition mundo = ObterMundoGlobal();
+                    if (mundo != null && mundo.SignedCoastDistanceAtWorld(posAlvo.x, posAlvo.z) <= 0f)
+                    {
+                        float margem = Mathf.Max(
+                            8f,
+                            Mathf.Max(bufferSlotsFormacao[i].largura, bufferSlotsFormacao[i].profundidade) * 0.5f + 4f,
+                            agenteFormacao != null ? agenteFormacao.radius + 4f : 0f);
+                        if (!TentarResolverDestinoNaMargem(mundo, alvoCtrl.transform.position,
+                                posAlvo, margem, mascaraAmostragem, out posAlvo))
+                            continue;
+                    }
+                }
                 if (!unidadeAnfibia && !usarAmostragemLeve && UnityEngine.AI.NavMesh.SamplePosition(posAlvo, out hit, raioAmostraNavMesh, mascaraAmostragem))
                 {
                     posAlvo = hit.position;
@@ -1074,6 +1089,74 @@ public class GerenteSelecao : MonoBehaviour
 
             alvoCtrl.EmitirOrdemMover(posAlvo);
         }
+    }
+
+    private GlobalWorldDefinition ObterMundoGlobal()
+    {
+        if (mundoGlobalCache != null) return mundoGlobalCache;
+        GlobalTerrainStreamer streamer = FindFirstObjectByType<GlobalTerrainStreamer>();
+        mundoGlobalCache = streamer != null ? streamer.world : null;
+        return mundoGlobalCache;
+    }
+
+    private static bool TentarResolverDestinoNaMargem(
+        GlobalWorldDefinition mundo, Vector3 origem, Vector3 destino,
+        float margem, int mascaraNavMesh, out Vector3 ponto)
+    {
+        ponto = destino;
+        Vector2 inicio = new Vector2(origem.x, origem.z);
+        Vector2 fim = new Vector2(destino.x, destino.z);
+        Vector2 trajeto = fim - inicio;
+        float comprimento = trajeto.magnitude;
+        if (comprimento < 0.01f || mundo.SignedCoastDistanceAtWorld(inicio.x, inicio.y) <= 0f)
+            return false;
+
+        Vector2 direcao = trajeto / comprimento;
+        float ultimaTerra = 0f;
+        float primeiraAgua = comprimento;
+        bool encontrouAgua = false;
+        for (int tentativa = 0; tentativa < 256 && ultimaTerra < comprimento; tentativa++)
+        {
+            Vector2 amostra = inicio + direcao * ultimaTerra;
+            float distanciaCosta = mundo.SignedCoastDistanceAtWorld(amostra.x, amostra.y);
+            float proxima = Mathf.Min(comprimento, ultimaTerra + Mathf.Max(2f, distanciaCosta * 0.7f));
+            Vector2 proximaAmostra = inicio + direcao * proxima;
+            if (mundo.SignedCoastDistanceAtWorld(proximaAmostra.x, proximaAmostra.y) <= 0f)
+            {
+                primeiraAgua = proxima;
+                encontrouAgua = true;
+                break;
+            }
+            ultimaTerra = proxima;
+        }
+
+        if (!encontrouAgua) return false;
+        for (int tentativa = 0; tentativa < 12; tentativa++)
+        {
+            float meio = (ultimaTerra + primeiraAgua) * 0.5f;
+            Vector2 amostra = inicio + direcao * meio;
+            if (mundo.SignedCoastDistanceAtWorld(amostra.x, amostra.y) > 0f)
+                ultimaTerra = meio;
+            else
+                primeiraAgua = meio;
+        }
+
+        for (int tentativa = 0; tentativa < 6; tentativa++)
+        {
+            float recuo = margem * (1 << tentativa);
+            float distancia = Mathf.Max(0f, ultimaTerra - recuo);
+            Vector2 amostra = inicio + direcao * distancia;
+            if (mundo.SignedCoastDistanceAtWorld(amostra.x, amostra.y) <= 0f) continue;
+            Vector3 candidato = new Vector3(amostra.x, mundo.HeightAtWorld(amostra.x, amostra.y), amostra.y);
+            if (UnityEngine.AI.NavMesh.SamplePosition(candidato, out UnityEngine.AI.NavMeshHit hit, 20f, mascaraNavMesh)
+                && mundo.SignedCoastDistanceAtWorld(hit.position.x, hit.position.z) > 0f)
+            {
+                ponto = hit.position;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void EmitirOrdemNoMapa(Vector3 destino)

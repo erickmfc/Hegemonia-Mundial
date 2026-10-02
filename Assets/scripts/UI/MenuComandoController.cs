@@ -1748,8 +1748,8 @@ public class MenuComandoController : MonoBehaviour
         hudAlturaResolucao = Screen.height;
         if (barraComandoContextual == null) return;
 
-        float alturaDesejada = Mathf.Clamp(Screen.height * 0.11f, 76f, 124f);
-        float alturaMaximaDaTela = Screen.height * 0.12f;
+        float alturaDesejada = Mathf.Clamp(Screen.height * 0.19f, 160f, 200f);
+        float alturaMaximaDaTela = Screen.height * 0.26f;
         barraComandoContextual.style.height = Mathf.Min(alturaDesejada, alturaMaximaDaTela);
         barraComandoContextual.EnableInClassList(
             "hud-small-resolution",
@@ -3553,7 +3553,7 @@ public class MenuComandoController : MonoBehaviour
         if (obj.GetComponent<Heliporto>() != null) return "HELIPORTO";
         if (obj.GetComponent<PlataformaOffshore>() != null) return "PLATAFORMA";
         if (obj.GetComponent<PierMarinha>() != null) return "PIER";
-        if (obj.GetComponent<ComplexoGovernamental>() != null) return "PREFEITURA";
+        if (obj.GetComponent<ComplexoGovernamental>() != null) return "CENTRO ADMINISTRATIVO REGIONAL";
         if (obj.GetComponent<SiloNuclear>() != null) return "SILO";
         if (obj.GetComponent<Fabrica>() != null) return "FÁBRICA";
         if (obj.GetComponent<Fazenda>() != null) return "FAZENDA";

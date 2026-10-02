@@ -115,7 +115,7 @@ public class EstruturaEconomica : MonoBehaviour
         else if (chave.Contains("industria") || chave.Contains("fabrica") || chave.Contains("factory")) tipo = TipoEstruturaEconomica.Industria;
         else if (chave.Contains("petroleo") || chave.Contains("oil") || chave.Contains("plataforma")) tipo = TipoEstruturaEconomica.Petroleo;
         else if (chave.Contains("comercio") || chave.Contains("loja") || chave.Contains("shop")) tipo = TipoEstruturaEconomica.Comercio;
-        else if (chave.Contains("farm") || chave.Contains("fazenda") || chave.Contains("comida")) tipo = TipoEstruturaEconomica.Farm;
+        else if (chave.Contains("comida")) tipo = TipoEstruturaEconomica.IndustriaAlimentosNivel1;
         else if (chave.Contains("energia") || chave.Contains("power") || chave.Contains("usina")) tipo = TipoEstruturaEconomica.Energia;
     }
 
@@ -277,10 +277,7 @@ public class EstruturaEconomica : MonoBehaviour
                 if (dinheiroGerado <= 0f) dinheiroGerado = 6f;
                 if (energiaConsumida <= 0f) energiaConsumida = 1f;
                 break;
-            case TipoEstruturaEconomica.Farm:
-                if (empregosGerados <= 0) empregosGerados = 10;
-                if (comidaProduzida <= 0f) comidaProduzida = 5f;
-                if (energiaConsumida <= 0f) energiaConsumida = 0.7f;
+            case TipoEstruturaEconomica.LegacyReservedAgriculture:
                 break;
             case TipoEstruturaEconomica.Energia:
                 if (empregosGerados <= 0) empregosGerados = 8;

@@ -109,6 +109,18 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             LerAeroportos();
         }
 
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null)
+        {
+            IReadOnlyList<DadosPaisGoverno> paises = governo.Paises;
+            for (int i = 0; i < paises.Count; i++)
+            {
+                DadosPaisGoverno pais = paises[i];
+                if (pais == null || pais.producaoAgricolaDiaria <= 0) continue;
+                ObterOuCriar(pais.teamId).comidaProduzida += pais.producaoAgricolaDiaria;
+            }
+        }
+
         DistribuirEnergia();
         FinalizarSnapshots();
         OnEconomiaImoveisAtualizada?.Invoke();
@@ -200,7 +212,6 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         LerTag("Industria", TipoEstruturaEconomica.Industria);
         LerTag("Petroleo", TipoEstruturaEconomica.Petroleo);
         LerTag("Comercio", TipoEstruturaEconomica.Comercio);
-        LerTag("Farm", TipoEstruturaEconomica.Farm);
         LerTag("Energia", TipoEstruturaEconomica.Energia);
         LerTag("imovel", TipoEstruturaEconomica.Casa);
         LerTag("PesquisaMilitar", TipoEstruturaEconomica.PesquisaMilitar);
@@ -322,8 +333,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         float manutencaoExtra = 0f;
         switch (estrutura.tipo)
         {
-            case TipoEstruturaEconomica.Farm:
-                manutencaoExtra = Mathf.Max(0.45f, estrutura.comidaProduzida * 0.12f + estrutura.energiaConsumida * 0.08f);
+            case TipoEstruturaEconomica.LegacyReservedAgriculture:
                 break;
             case TipoEstruturaEconomica.Energia:
                 manutencaoExtra = Mathf.Max(0.35f, estrutura.energiaProduzida * 0.10f);
@@ -415,12 +425,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                 RegistrarFluxoEconomico(economia, tipo, 6f);
                 economia.energiaConsumida += 1f;
                 break;
-            case TipoEstruturaEconomica.Farm:
-                economia.empregosDisponiveis += 10;
-                economia.comidaProduzida += 5f;
-                RegistrarFluxoEconomico(economia, tipo, 3f);
-                RegistrarFluxoEconomico(economia, tipo, -1.3f);
-                economia.energiaConsumida += 0.7f;
+            case TipoEstruturaEconomica.LegacyReservedAgriculture:
                 break;
             case TipoEstruturaEconomica.Energia:
                 economia.empregosDisponiveis += 8;
@@ -681,7 +686,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             case TipoEstruturaEconomica.Industria: economia.industrias++; break;
             case TipoEstruturaEconomica.Petroleo: economia.pocosPetroleo++; break;
             case TipoEstruturaEconomica.Comercio: economia.comercios++; break;
-            case TipoEstruturaEconomica.Farm: economia.farms++; break;
+            case TipoEstruturaEconomica.LegacyReservedAgriculture: break;
             case TipoEstruturaEconomica.Energia: economia.usinas++; break;
             case TipoEstruturaEconomica.PesquisaMilitar: break;
             case TipoEstruturaEconomica.UsinaSolar: economia.usinas++; break;

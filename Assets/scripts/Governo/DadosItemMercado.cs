@@ -19,7 +19,8 @@ public enum RecursoMercado
     Duraluminio,
     LigaTitanio,
     ComponentesEletronicos,
-    UranioEnriquecido
+    UranioEnriquecido,
+    Agua
 }
 
 [Serializable]

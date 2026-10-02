@@ -57,7 +57,7 @@ public sealed class Fazenda : MonoBehaviour
         estrutura = GetComponent<EstruturaEconomica>();
         if (estrutura == null) estrutura = gameObject.AddComponent<EstruturaEconomica>();
 
-        estrutura.tipo = TipoEstruturaEconomica.Farm;
+        estrutura.tipo = TipoEstruturaEconomica.LegacyReservedAgriculture;
         estrutura.InferirTeamId();
         estrutura.AplicarPadraoPorTipo();
     }

@@ -242,7 +242,7 @@ public static class GlobalWorldSceneBuilder
         world.treeCandidateSpacing = 48f;
         // The runtime converts forest-mask area to an instance budget, using
         // this target density only inside suitable, non-arid forest regions.
-        world.forestTreesPerSquareKilometre = 1200f;
+        world.forestTreesPerSquareKilometre = 800f;
         EditorUtility.SetDirty(world);
         return world;
     }

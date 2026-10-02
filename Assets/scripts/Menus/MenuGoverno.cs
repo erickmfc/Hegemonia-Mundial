@@ -388,6 +388,36 @@ public class MenuGoverno : MonoBehaviour
         menuAnimation = StartCoroutine(AnimateMenu(abrir));
     }
 
+    public bool AbrirResumoRegional(ComplexoGovernamental centro)
+    {
+        if (centro == null) return false;
+
+        MarcadorTerritorio marcador = centro.GetComponent<MarcadorTerritorio>();
+        if (marcador == null) return false;
+
+        GerenciadorDivisaoTerritorial.GarantirInstancia();
+        GerenciadorDivisaoTerritorial divisao = GerenciadorDivisaoTerritorial.Instancia;
+        if (divisao == null) return false;
+
+        divisao.RegistrarCidade(marcador);
+        CidadeEstado regiao = divisao.cidades.FirstOrDefault(c => c != null && c.marcador == marcador);
+        if (regiao == null) return false;
+
+        if (MenuGovernoNovoController.GarantirInstancia()
+            && MenuGovernoNovoController.Instancia != null
+            && MenuGovernoNovoController.Instancia.AbrirResumoRegional(centro))
+        {
+            return true;
+        }
+
+        cidadeSelecionadaId = regiao.id;
+        categoriaAtual = CategoriaGoverno.Interior;
+        subAbaAtualIndex = 1;
+        AlternarMenu(true);
+        ShowCurrentPage();
+        return true;
+    }
+
     private IEnumerator AnimateMenu(bool abrir)
     {
         EstaAberto = abrir;
@@ -1386,7 +1416,9 @@ public class MenuGoverno : MonoBehaviour
 
         foreach (var c in lista)
         {
-            string tipoStr = c.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
+            string tipoStr = c.marcador != null && c.marcador.GetComponent<ComplexoGovernamental>() != null
+                ? "Centro Administrativo Regional"
+                : c.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
             string aeroStr = c.temAeroporto ? "Sim 🛫" : "Não";
             string donoStr = c.teamID == 1 ? "Jogador" : (c.teamID > 1 ? "IA (" + c.teamID + ")" : "Neutro");
 
@@ -1864,7 +1896,9 @@ public class MenuGoverno : MonoBehaviour
                     return;
                 }
 
-                string tipoStr = selecionada.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
+                string tipoStr = selecionada.marcador != null && selecionada.marcador.GetComponent<ComplexoGovernamental>() != null
+                    ? "Centro Administrativo Regional"
+                    : selecionada.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
                 string aeroStr = selecionada.temAeroporto ? "Sim" : "Nenhum";
                 string donoStr = selecionada.teamID == 1 ? "Jogador" : "IA";
 
@@ -1873,7 +1907,19 @@ public class MenuGoverno : MonoBehaviour
                     + "\nTipo: " + tipoStr
                     + "\nJurisdição: " + donoStr
                     + "\nPop. Civil: " + selecionada.populacaoCivil.ToString("N0")
-                    + "\nAeroporto: " + aeroStr
+                    + "\nEmpregos: " + selecionada.empregosTotais.ToString("N0")
+                    + " | Vagas abertas: " + selecionada.vagasDeEmpregoAbertas.ToString("N0")
+                    + "\nCapacidade habitacional: " + selecionada.capacidadeHabitacional.ToString("N0")
+                    + "\nPerfil produtivo local (indicadores): indústria " + selecionada.scoreIndustrial.ToString("0")
+                    + ", comércio " + selecionada.scoreComercial.ToString("0")
+                    + ", agricultura " + selecionada.scoreAgricola.ToString("0")
+                    + ", energia " + selecionada.scoreEnergia.ToString("0")
+                    + "\nInfraestrutura: aeroporto " + aeroStr + ", porto " + (selecionada.temPorto ? "Sim" : "Não")
+                    + ", logística " + selecionada.scoreLogistica.ToString("0")
+                    + "\nNecessidades: moradia " + Mathf.Max(0, selecionada.populacaoCivil - selecionada.capacidadeHabitacional).ToString("N0")
+                    + " vagas; empregos " + Mathf.Max(0, selecionada.populacaoCivil - selecionada.empregosTotais).ToString("N0")
+                    + " necessários"
+                    + "\nConsumo e impostos continuam consolidados no nível nacional; não há valores regionais existentes."
                     + "\nLocalização: " + selecionada.marcador.transform.position.ToString("F0");
 
                 CreateDescription(page.Root.transform, "Alterar nome do território:");
@@ -2295,6 +2341,76 @@ public class MenuGoverno : MonoBehaviour
             "Petroleo produzido: " + economia.petroleoProduzido.ToString("0.0") + " t"
             + "\nAco produzido: " + economia.industriaProduzida.ToString("0.0") + " t"
             + "\nDeficit principal: " + economia.DeficitPrincipal);
+
+        SistemaGovernoMundial gov = Government();
+        AgriculturaNacional agricultura = gov != null ? gov.GetComponent<AgriculturaNacional>() : null;
+        CreateSectionTitle(parent, "Agricultura e abastecimento");
+        CreateInfoBlock(parent,
+            "Produção agrícola diária: " + p.producaoAgricolaDiaria + " t"
+            + "\nEstoque alimentar nacional: " + p.comida + " t"
+            + "\nÁgua disponível: " + (gov != null ? gov.ObterEstoque(p.teamId, RecursoMercado.Agua) : p.agua) + " / " + p.aguaMaxima + " t"
+            + "\nCapacidade agrícola: " + p.capacidadeAgricola + " t/dia"
+            + "\nCapacidade de armazenamento agrícola: " + p.comida + " / " + p.capacidadeArmazenamentoAgricola + " t"
+            + "\nInvestimento semanal: $" + FormatNumber(p.investimentoAgricolaSemanal) + "M"
+            + "\nEficiência: " + (p.eficienciaAgricola * 100f).ToString("0") + "%"
+            + "\nSegurança hídrica: " + (p.eficienciaHidrica * 100f).ToString("0") + "%"
+            + "\nFertilizante: " + (gov != null ? gov.ObterEstoque(p.teamId, "fertilizante_organico") : 0)
+            + " | Sementes: " + (gov != null ? gov.ObterEstoque(p.teamId, "sementes") : 0)
+            + " | Agrotóxicos: " + (gov != null ? gov.ObterEstoque(p.teamId, "agrotoxicos") : 0)
+            + "\nAgrotóxicos: " + (agricultura != null && agricultura.TecnologiaAgrotoxicosDesbloqueada(p.teamId) ? "PRODUÇÃO NACIONAL DESBLOQUEADA" : "IMPORTADO — DEPENDÊNCIA EXTERNA")
+            + "\nProdução nacional de agrotóxicos: " + p.producaoAgrotoxicosDiaria + " t/dia"
+            + "\nPecuária: nível " + NivelAreaAgricola(p, AreaInvestimentoAgricola.Pecuaria) + " (integração de esterco futura; sem geração artificial)"
+            + "\nAgricultura calcula na virada do dia; culturas e insumos usam o mercado global existente.");
+        if (agricultura != null)
+        {
+            CreateActionButton(parent, "INVESTIR $250M EM AGRICULTURA", corVerde, () =>
+            {
+                if (agricultura.DefinirInvestimentoSemanal(p.teamId, 250)) Notificar("Agricultura", "Investimento aplicado. O novo nível de investimento será cobrado semanalmente.");
+                else Notificar("Agricultura", "Tesouro insuficiente para aplicar o investimento.");
+                RefreshDynamicData(true);
+            });
+            CreateSectionTitle(parent, "Áreas de investimento agrícola");
+            for (int i = 0; i < 12; i++)
+            {
+                AreaInvestimentoAgricola area = (AreaInvestimentoAgricola)i;
+                int nivel = NivelAreaAgricola(p, area);
+                int custo = 100 + nivel * 50;
+                CreateInfoBlock(parent, AgriculturaNacional.NomeArea(area) + " — nível " + nivel + "/10"
+                    + "\nPróximo investimento: $" + custo + "M"
+                    + "\n" + EfeitoAreaAgricola(area));
+                CreateActionButton(parent, "INVESTIR EM " + AgriculturaNacional.NomeArea(area).ToUpperInvariant(), corVerde, () =>
+                {
+                    if (agricultura.InvestirArea(p.teamId, area)) Notificar("Agricultura", "Investimento aplicado em " + AgriculturaNacional.NomeArea(area) + ".");
+                    else Notificar("Agricultura", "Tesouro insuficiente ou nível máximo atingido.");
+                    RefreshDynamicData(true);
+                });
+            }
+        }
+    }
+
+    private static int NivelAreaAgricola(DadosPaisGoverno pais, AreaInvestimentoAgricola area)
+    {
+        return pais != null && pais.niveisInvestimentoAgricola != null && pais.niveisInvestimentoAgricola.Length > (int)area
+            ? Mathf.Max(0, pais.niveisInvestimentoAgricola[(int)area]) : 0;
+    }
+
+    private static string EfeitoAreaAgricola(AreaInvestimentoAgricola area)
+    {
+        switch (area)
+        {
+            case AreaInvestimentoAgricola.Producao: return "+5 t/dia de capacidade por nível.";
+            case AreaInvestimentoAgricola.Mecanizacao: return "+2,5% de produtividade por nível.";
+            case AreaInvestimentoAgricola.Irrigacao: return "Reduz em 10% a demanda de água por nível.";
+            case AreaInvestimentoAgricola.Fertilizacao: return "+2% de eficiência de fertilização por nível.";
+            case AreaInvestimentoAgricola.SementesBiotecnologia: return "+1% de eficiência de sementes por nível.";
+            case AreaInvestimentoAgricola.Agrotoxicos: return "+2 unidades/dia de capacidade após pesquisa.";
+            case AreaInvestimentoAgricola.Pesquisa: return "+1,5% de eficiência agrícola por nível.";
+            case AreaInvestimentoAgricola.Agroindustria: return "+2 t/dia de capacidade de processamento por nível.";
+            case AreaInvestimentoAgricola.Logistica: return "+1% de eficiência logística por nível.";
+            case AreaInvestimentoAgricola.Armazenamento: return "+1.000 t de capacidade de armazenamento agrícola por nível.";
+            case AreaInvestimentoAgricola.RecursosHidricos: return "+500 t de capacidade de água por nível.";
+            default: return "Registra capacidade pecuária para futura integração; esterco só virá de um sistema real.";
+        }
     }
 
     private void CreateTaxOverviewRows(Transform parent, DadosPaisGoverno p)

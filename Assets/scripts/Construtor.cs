@@ -456,12 +456,6 @@ public class Construtor : MonoBehaviour
                     : "❌ FUNDAÇÃO INVÁLIDA:\nA região precisa estar sem país associado, ser neutra ou pertencer ao seu País.";
                 return;
             }
-            if (!gerenteTerritorio.PodeConstruirPrefeitura(ponto))
-            {
-                previewLocalInvalido = true;
-                motivoInvalido = "❌ JÁ EXISTE LEI AQUI:\nEsta ilha já possui uma Prefeitura.";
-                return;
-            }
         }
 
         if (ehBandeira && donoDoPonto != 0 && donoDoPonto != meuTime)

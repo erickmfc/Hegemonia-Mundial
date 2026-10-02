@@ -23,7 +23,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     private Text textoToast;
     private RectTransform painelToast;
     // A ajuda inicia visível para orientar os primeiros comandos; depois
-    // recolhe sozinha e continua disponível por F1/N.
+    // recolhe sozinha e continua disponível por F1/F10 (N fica com o minimapa).
     private bool expandido = true;
     private bool usarPainelAjudaLegado;
     private float recolherAutomaticamenteEm = -1f;
@@ -114,7 +114,8 @@ public sealed class HUDAjudaRTS : MonoBehaviour
         else if (usarPainelAjudaLegado
             && ((Input.GetKeyDown(KeyCode.F1) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.BarraContextualDisponivel))
                 || Input.GetKeyDown(teclaAlternar)
-                || Input.GetKeyDown(KeyCode.N)))
+                || (Input.GetKeyDown(KeyCode.N)
+                    && Object.FindFirstObjectByType<MiniMapa>(FindObjectsInactive.Include) == null)))
         {
             if (painel != null && !painel.gameObject.activeSelf)
             {

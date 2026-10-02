@@ -119,6 +119,7 @@ public static class IntegracaoMercadoIndustrial
         switch (recurso)
         {
             case RecursoMercado.Comida: return "comida";
+            case RecursoMercado.Agua: return "agua";
             case RecursoMercado.Petroleo: return IndustriaIds.PetroleoBruto;
             case RecursoMercado.Energia: return "energia";
             case RecursoMercado.Aco: return IndustriaIds.AcoEstrutural;

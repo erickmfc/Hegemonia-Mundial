@@ -32,6 +32,8 @@ public class CameraController : MonoBehaviour
     private float tempoShiftPressionado = 0f;
     private float tempoCtrlPressionado = 0f;
     private float tempoEspacoPressionado = 0f;
+    private Vector3 ultimaDirecaoPanAutomatica;
+    private bool panAutomaticoAtivo;
     private const float TempoAceleracaoZoomTeclado = 5f;
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao = 0f;
@@ -155,6 +157,7 @@ public class CameraController : MonoBehaviour
         bool moverD = podeMoverCamera && Input.GetKey(KeyCode.D);
         bool moverA = podeMoverCamera && Input.GetKey(KeyCode.A);
         bool moverCamera = moverW || moverS || moverD || moverA;
+        Vector3 direcaoManual = Vector3.zero;
         if (moverCamera)
         {
             Vector3 forward = transform.forward;
@@ -173,14 +176,43 @@ public class CameraController : MonoBehaviour
             right.y = 0;
             right.Normalize();
 
+            if (moverW) direcaoManual += forward;
+            if (moverS) direcaoManual -= forward;
+            if (moverD) direcaoManual += right;
+            if (moverA) direcaoManual -= right;
+            if (direcaoManual.sqrMagnitude > 0.0001f)
+            {
+                ultimaDirecaoPanAutomatica = direcaoManual.normalized;
+            }
+
             float escalaPan = alturaReferenciaEscalaControles > 0f
                 ? Mathf.Sqrt(Mathf.Max(1f, pos.y / alturaReferenciaEscalaControles))
                 : 1f;
             float velocidadePan = velAtual * escalaPan;
-            if (moverW) pos += forward * velocidadePan * Time.deltaTime;
-            if (moverS) pos -= forward * velocidadePan * Time.deltaTime;
-            if (moverD) pos += right * velocidadePan * Time.deltaTime;
-            if (moverA) pos -= right * velocidadePan * Time.deltaTime;
+            pos += direcaoManual * velocidadePan * Time.deltaTime;
+        }
+
+        bool teclaPanAutomaticoPressionada = Input.GetKeyDown(KeyCode.Alpha2)
+            || Input.GetKeyDown(KeyCode.Keypad2);
+        if (podeMoverCamera && teclaPanAutomaticoPressionada)
+        {
+            if (panAutomaticoAtivo)
+            {
+                panAutomaticoAtivo = false;
+            }
+            else if (ultimaDirecaoPanAutomatica.sqrMagnitude > 0.0001f)
+            {
+                panAutomaticoAtivo = true;
+            }
+        }
+
+        if (!moverCamera && podeMoverCamera && panAutomaticoAtivo
+            && ultimaDirecaoPanAutomatica.sqrMagnitude > 0.0001f)
+        {
+            float escalaPan = alturaReferenciaEscalaControles > 0f
+                ? Mathf.Sqrt(Mathf.Max(1f, pos.y / alturaReferenciaEscalaControles))
+                : 1f;
+            pos += ultimaDirecaoPanAutomatica * (velAtual * escalaPan) * Time.deltaTime;
         }
 
         // --- 3. Zoom (Rodinha do Mouse e Teclado) ---

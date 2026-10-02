@@ -33,7 +33,7 @@ namespace Hegemonia.AI.DEUSA
             }
             else if (comida != null && comida.PrecisaFazenda)
             {
-                PlanoEconomico = "ConstruirFarm";
+                PlanoEconomico = "AgriculturaNacional";
             }
             else if (habitacao != null && habitacao.PrecisaCasas)
             {

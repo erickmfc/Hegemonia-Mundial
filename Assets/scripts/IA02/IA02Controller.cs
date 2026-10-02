@@ -457,7 +457,7 @@ namespace Hegemonia.AI.IA02
             {
                 case IA02IntentType.EstablishCapital: return "ia02.local.prefeitura_01";
                 case IA02IntentType.BuildEnergy: return "ia02.local.energia_01";
-                case IA02IntentType.BuildFoodProduction: return "ia02.local.fazenda_01";
+                case IA02IntentType.BuildFoodProduction: return string.Empty; // Agricultura nacional não ocupa create físico.
                 case IA02IntentType.BuildStorage: return "ia02.local.armazem_01";
                 case IA02IntentType.BuildVehicleConstructor: return "ia02.local.construtor_veiculos";
                 case IA02IntentType.BuildMilitaryAirport: return "ia02.local.aeroporto_militar";

@@ -10,6 +10,30 @@ public sealed class NavalCombatModesPlayModeTests
 {
     private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
+    [UnityTest]
+    public IEnumerator MoveOrderDoesNotResetAutomaticCombatMode()
+    {
+        GameObject unit = new GameObject("MoveOrderKeepsAutomaticModePlayMode");
+        try
+        {
+            Component control = Add(unit, "ControleUnidade");
+            Set(control, "ehAereo", true);
+            yield return null;
+
+            control.GetType().GetMethod("DefinirModoCombate", Members)
+                .Invoke(control, new object[] { true });
+            Assert.IsTrue((bool)control.GetType().GetMethod("EmitirOrdemMover", Members)
+                .Invoke(control, new object[] { new Vector3(120f, 80f, 240f), true }));
+
+            Assert.IsTrue((bool)ReadProperty(control, "ModoCombateAtivo"),
+                "Dar uma ordem de movimento cancela comportamentos de ordem, mas deve preservar o modo automático de combate.");
+        }
+        finally
+        {
+            UnityEngine.Object.Destroy(unit);
+        }
+    }
+
     [Test]
     public void E3ContactAgeIsSharedAndExpiredTracksCannotEnterAutomaticFire()
     {

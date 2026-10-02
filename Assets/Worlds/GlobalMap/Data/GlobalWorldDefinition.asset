@@ -41,4 +41,4 @@ MonoBehaviour:
   - {fileID: 8299649049716483077, guid: 96e93abcb76d54448a9ff8ff6a67db85, type: 3}
   forestClusterPrototypeCount: 0
   treeCandidateSpacing: 48
-  forestTreesPerSquareKilometre: 1200
+  forestTreesPerSquareKilometre: 800

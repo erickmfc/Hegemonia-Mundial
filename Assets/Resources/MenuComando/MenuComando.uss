@@ -1215,8 +1215,8 @@
     left: 8px;
     right: 8px;
     bottom: 0;
-    height: 96px;
-    max-height: 96px;
+    height: 160px;
+    max-height: 200px;
     min-height: 0;
     padding-left: 0;
     padding-right: 0;
@@ -1235,7 +1235,7 @@
 }
 
 .contexto-modulos {
-    height: 76%;
+    height: 82%;
     flex-grow: 0;
     flex-shrink: 0;
     flex-direction: row;
@@ -1308,10 +1308,10 @@
 .identity-titles { flex-direction: column; min-width: 0; flex-grow: 1; }
 .identity-info {
     flex-direction: row;
-    flex-grow: 1;
-    min-height: 0;
-    align-items: center;
-    overflow: hidden;
+    flex-grow: 0;
+    min-height: 72px;
+    align-items: flex-start;
+    overflow: visible;
 }
 .identity-meters { flex-direction: column; flex-grow: 1; min-width: 0; }
 .unit-preview {
@@ -1325,7 +1325,8 @@
     -unity-background-scale-mode: scale-to-fit;
 }
 .unit-preview-photo { background-color: rgba(5, 12, 18, 0.9); }
-.vital-row { height: 12px; flex-shrink: 0; flex-direction: row; align-items: center; min-width: 0; }
+.vital-row { height: 18px; flex-shrink: 0; flex-direction: row; align-items: center; min-width: 0; }
+.vital-row .card-copy { height: 16px; min-height: 16px; overflow: visible; }
 .card-title {
     color: rgb(145, 181, 198);
     font-size: 8px;
@@ -1363,6 +1364,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+#hud-counter-state,
+#hud-waypoint-detail,
+#hud-ai-status,
+#hud-formation-hint,
+#hud-condition-detail {
+    white-space: normal;
+    text-overflow: clip;
+    flex-shrink: 0;
 }
 .meter { height: 3px; flex-grow: 1; min-width: 8px; margin-left: 4px; background-color: rgba(76, 105, 119, 0.35); }
 .meter-fill { height: 100%; width: 0%; }
@@ -1434,8 +1444,8 @@
 #formation-slot-5 { left: 50%; bottom: 0; margin-left: -8px; }
 .formation-leader { color: rgb(7, 17, 26); background-color: rgb(25, 189, 235); border-top-color: rgb(107, 167, 189); border-right-color: rgb(107, 167, 189); border-bottom-color: rgb(107, 167, 189); border-left-color: rgb(107, 167, 189); }
 .roe-option,.system-row {
-    min-height: 10px;
-    height: 10px;
+    min-height: 14px;
+    height: 14px;
     margin-top: 1px;
     padding-top: 0;
     padding-right: 2px;
@@ -1481,7 +1491,7 @@
 }
 
 .contexto-quick-row {
-    height: 24%;
+    height: 18%;
     min-height: 0;
     flex-shrink: 0;
     flex-direction: row;

@@ -860,10 +860,6 @@ public class ControleUnidade : MonoBehaviour
 
         if (foiIdempotente)
         {
-            if (cancelarComportamentos)
-            {
-                DefinirModoCombate(false);
-            }
             return true;
         }
 
@@ -872,13 +868,6 @@ public class ControleUnidade : MonoBehaviour
         {
             ordemControleAtual = OrdemControleUnidade.Movendo;
             DefinirAlvoPrioritario(null);
-            if (cancelarComportamentos)
-            {
-                // Um deslocamento manual/administrativo com cancelamento
-                // solicitado não pode continuar sendo desviado por um modo de
-                // combate antigo do mesmo controlador.
-                DefinirModoCombate(false);
-            }
         }
 
         if (!ExecutarMoverParaPonto(destino, cancelarComportamentos))

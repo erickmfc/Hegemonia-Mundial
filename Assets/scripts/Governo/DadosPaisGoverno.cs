@@ -247,6 +247,25 @@ public class DadosPaisGoverno
 
     [Header("Estoque")]
     public int comida = 500;
+    [Header("Agricultura nacional")]
+    [Min(0)] public int capacidadeAgricola = 30;
+    [Min(0)] public int investimentoAgricolaSemanal = 100;
+    public bool investimentoAgricolaSemRecursos;
+    [Min(0)] public int producaoAgricolaDiaria;
+    [Min(0)] public int estoqueAgricolaTotal;
+    [Min(0)] public int capacidadeArmazenamentoAgricola = 5000;
+    [Range(0.5f, 1.8f)] public float eficienciaAgricola = 1f;
+    [Range(0f, 1f)] public float eficienciaHidrica = 0.8f;
+    [Range(0f, 1f)] public float eficienciaLogisticaAgricola = 0.9f;
+    [Range(0f, 0.5f)] public float nivelMecanizacaoAgricola;
+    [Min(0)] public int agua;
+    [Min(0)] public int aguaMaxima = 5000;
+    public bool estoqueHidricoInicializado;
+    public int[] niveisInvestimentoAgricola = new int[12];
+    public float[] mixCulturaAgricola = { 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
+    public float[] saldoFracionarioCulturas = new float[15];
+    [Min(0)] public int producaoAgrotoxicosDiaria;
+    [Min(0)] public int estercoDisponivel;
     public int petroleo = 500;
     public int energia = 200;
     public int aco = 300;

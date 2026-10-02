@@ -400,7 +400,6 @@ namespace Hegemonia.AI.DEUSA
             prioridadesAtuais.Clear();
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaHQ, DeusaTipoPrioridade.ConstruirHQ, 100, "Garantir prefeitura/HQ operacional.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaEnergia, DeusaTipoPrioridade.ConstruirEnergia, 99, "Deficit energetico bloqueando crescimento.");
-            AdicionarPrioridade(_construcao != null && _construcao.PrecisaFazenda, DeusaTipoPrioridade.ConstruirFarm, 97, "Comida em risco ou reserva abaixo do ideal.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaCasas, DeusaTipoPrioridade.ConstruirCasa, 96, "Pressao populacional pede novas casas.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaQuartel, DeusaTipoPrioridade.ConstruirQuartel, 92, "Abrir quartel para defesa e espionagem.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaIndustria, DeusaTipoPrioridade.ConstruirIndustria, 90, "Base industrial ainda insuficiente.");
@@ -533,11 +532,6 @@ namespace Hegemonia.AI.DEUSA
             }
 
             if (_construcao.PrecisaEnergia && TentarEnfileirarConstrucao("deusa_energia", 98, 10f, IA_ZoneType.Economy, "energia", "usina", "solar", "gerador"))
-            {
-                return;
-            }
-
-            if (_construcao.PrecisaFazenda && TentarEnfileirarConstrucao("deusa_farm", 97, 10f, IA_ZoneType.Economy, "fazenda", "farm"))
             {
                 return;
             }
@@ -849,7 +843,7 @@ namespace Hegemonia.AI.DEUSA
 
             if (_construcao.PrecisaFazenda)
             {
-                return "Farm";
+                return "Agricultura Nacional";
             }
 
             if (_construcao.PrecisaCasas)

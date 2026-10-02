@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Hegemonia.RTS;
 
 /// <summary>
-/// MiniMapa Circular — Estilo Scope/Radar no canto inferior direito.
+/// MiniMapa retangular no canto direito, acima da barra tática.
 /// Cria automaticamente a câmera, RenderTexture e UI.
 /// Basta adicionar este componente em qualquer GameObject na cena.
 /// </summary>
@@ -59,6 +59,8 @@ public class MiniMapa : MonoBehaviour
     private bool _inicializado;
     private bool _camObjCriadaPorEsteComponente;
     private bool _canvasObjCriadaPorEsteComponente;
+    private bool _visivelPorAtalho = true;
+    private int _ultimaAlturaTela;
 
     // Ícones de unidades
     private readonly List<MapaIcone> _icones = new List<MapaIcone>();
@@ -93,12 +95,24 @@ public class MiniMapa : MonoBehaviour
     void OnEnable()
     {
         InicializarSeNecessario();
-        DefinirAtivoRuntime(true);
+        DefinirAtivoRuntime(_visivelPorAtalho);
     }
 
     void OnDisable()
     {
         DefinirAtivoRuntime(false);
+    }
+
+    void Update()
+    {
+        if (!Input.GetKeyDown(KeyCode.N)) return;
+        UnityEngine.EventSystems.EventSystem eventos = UnityEngine.EventSystems.EventSystem.current;
+        GameObject selecionado = eventos != null ? eventos.currentSelectedGameObject : null;
+        if (selecionado != null && (selecionado.GetComponent<InputField>() != null
+            || selecionado.GetComponent("TMP_InputField") != null)) return;
+
+        _visivelPorAtalho = !_visivelPorAtalho;
+        DefinirAtivoRuntime(_visivelPorAtalho);
     }
 
     void LateUpdate()
@@ -107,6 +121,9 @@ public class MiniMapa : MonoBehaviour
         {
             InicializarSeNecessario();
         }
+
+        AtualizarPosicaoPainel();
+        if (!_visivelPorAtalho) return;
 
         if (alvoJogador == null)
         {
@@ -153,7 +170,7 @@ public class MiniMapa : MonoBehaviour
         CriarUI();
 
         _inicializado = true;
-        DefinirAtivoRuntime(isActiveAndEnabled);
+        DefinirAtivoRuntime(isActiveAndEnabled && _visivelPorAtalho);
     }
 
     void TentarResolverAlvoJogador()
@@ -211,7 +228,7 @@ public class MiniMapa : MonoBehaviour
         _camObj.transform.localScale = Vector3.one;
 
         int resolucao = Mathf.Clamp(resolucaoRender, 128, 512);
-        _rt = new RenderTexture(resolucao, resolucao, 16, RenderTextureFormat.ARGB32);
+        _rt = new RenderTexture(Mathf.RoundToInt(resolucao * 1.2f), resolucao, 16, RenderTextureFormat.ARGB32);
         _rt.name = "RT_MiniMapa";
         _rt.useMipMap = false;
         _rt.autoGenerateMips = false;
@@ -221,6 +238,7 @@ public class MiniMapa : MonoBehaviour
         _camMapa.orthographic = true;
         _camMapa.orthographicSize = tamanhoOrtografico;
         _camMapa.targetTexture = _rt;
+        _camMapa.aspect = (float)_rt.width / _rt.height;
         _camMapa.clearFlags = CameraClearFlags.SolidColor;
         _camMapa.backgroundColor = new Color(0.85f, 0.78f, 0.58f, 1f); // Areia
         _camMapa.allowHDR = false;
@@ -291,15 +309,14 @@ public class MiniMapa : MonoBehaviour
         _containerCirculo.anchorMin = new Vector2(1f, 0f);
         _containerCirculo.anchorMax = new Vector2(1f, 0f);
         _containerCirculo.pivot = new Vector2(1f, 0f);
-        _containerCirculo.anchoredPosition = new Vector2(-margemBorda, margemBorda);
-        _containerCirculo.sizeDelta = new Vector2(tamanhoUI, tamanhoUI);
+        _containerCirculo.sizeDelta = new Vector2(Mathf.RoundToInt(tamanhoUI * 1.2f), tamanhoUI);
+        AtualizarPosicaoPainel();
 
-        // --- Borda circular (usa imagem com máscara circular) ---
-        GameObject bordaObj = CriarCirculo("Borda", _containerObj.transform, corBorda,
-            new Vector2(tamanhoUI, tamanhoUI));
+        // --- Borda e recorte retangulares ---
+        GameObject bordaObj = CriarBordaRetangular("Borda", _containerObj.transform, corBorda,
+            _containerCirculo.sizeDelta);
 
         // --- Imagem do mapa dentro da borda ---
-        int tamanhoInterno = tamanhoUI - (int)(espessuraBorda * 2);
         GameObject mapaObj = new GameObject("MapaImagem");
         mapaObj.transform.SetParent(bordaObj.transform, false);
 
@@ -309,12 +326,7 @@ public class MiniMapa : MonoBehaviour
         mapaRect.offsetMin = new Vector2(espessuraBorda, espessuraBorda);
         mapaRect.offsetMax = new Vector2(-espessuraBorda, -espessuraBorda);
 
-        // Máscara circular para o mapa
-        Mask mascara = mapaObj.AddComponent<Mask>();
-        mascara.showMaskGraphic = false;
-        Image imgMascara = mapaObj.AddComponent<Image>();
-        imgMascara.sprite = ObterSpriteCirculo(256);
-        imgMascara.color = Color.white;
+        mapaObj.AddComponent<RectMask2D>();
 
         // Imagem da RenderTexture
         GameObject imgObj = new GameObject("RT_Image");
@@ -328,6 +340,7 @@ public class MiniMapa : MonoBehaviour
         _imagemMapa = imgObj.AddComponent<RawImage>();
         _imagemMapa.texture = _rt;
         _imagemMapa.color = Color.white;
+        _imagemMapa.raycastTarget = false;
 
         // --- Triângulo do Jogador (centro do mapa) ---
         _trianguloJogador = CriarTriangulo("Jogador_Triangulo", mapaObj.transform,
@@ -356,6 +369,7 @@ public class MiniMapa : MonoBehaviour
         TrianguloUI tri = obj.AddComponent<TrianguloUI>();
         tri.corTriangulo = cor;
         tri.corBorda = Color.black;
+        tri.raycastTarget = false;
 
         return obj;
     }
@@ -429,8 +443,8 @@ public class MiniMapa : MonoBehaviour
             }
 
             Vector3 posRelativa = _camMapa.WorldToViewportPoint(posicao);
-            float x = (posRelativa.x - 0.5f) * tamanhoUI;
-            float y = (posRelativa.y - 0.5f) * tamanhoUI;
+            float x = (posRelativa.x - 0.5f) * Mathf.Max(1f, _containerCirculo.sizeDelta.x - espessuraBorda * 2f);
+            float y = (posRelativa.y - 0.5f) * Mathf.Max(1f, _containerCirculo.sizeDelta.y - espessuraBorda * 2f);
             ic.rect.anchoredPosition = new Vector2(x, y);
             ic.img.color = ic.ehInimigo
                 ? (visivel ? new Color(1f, 0.2f, 0.2f) : new Color(1f, 0.45f, 0.18f, 0.45f))
@@ -478,6 +492,7 @@ public class MiniMapa : MonoBehaviour
         rt.sizeDelta = new Vector2(6f, 6f);
 
         Image img = iconObj.AddComponent<Image>();
+        img.raycastTarget = false;
         img.color = ehInimigo ? new Color(1f, 0.2f, 0.2f) : new Color(0.2f, 0.8f, 0.3f);
         img.sprite = ObterSpriteCirculo(16);
 
@@ -520,7 +535,15 @@ public class MiniMapa : MonoBehaviour
     // =========================================================
     // UTILITÁRIOS DE UI
     // =========================================================
-    GameObject CriarCirculo(string nome, Transform pai, Color cor, Vector2 tamanho)
+    private void AtualizarPosicaoPainel()
+    {
+        if (_containerCirculo == null || _ultimaAlturaTela == Screen.height) return;
+        _ultimaAlturaTela = Screen.height;
+        float alturaHud = Mathf.Min(Mathf.Clamp(Screen.height * 0.19f, 160f, 200f), Screen.height * 0.26f);
+        _containerCirculo.anchoredPosition = new Vector2(-margemBorda, margemBorda + alturaHud + 24f);
+    }
+
+    GameObject CriarBordaRetangular(string nome, Transform pai, Color cor, Vector2 tamanho)
     {
         GameObject obj = new GameObject(nome);
         obj.transform.SetParent(pai, false);
@@ -533,9 +556,9 @@ public class MiniMapa : MonoBehaviour
         rt.sizeDelta = tamanho;
 
         Image img = obj.AddComponent<Image>();
-        img.sprite = ObterSpriteCirculo(256);
         img.color = cor;
         img.type = Image.Type.Simple;
+        img.raycastTarget = false;
 
         return obj;
     }

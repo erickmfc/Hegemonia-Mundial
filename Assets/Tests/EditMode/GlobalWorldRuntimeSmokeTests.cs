@@ -153,9 +153,11 @@ public sealed class GlobalWorldRuntimeSmokeTests
         float deadline = Time.realtimeSinceStartup + 180f;
         int activeTiles = 0;
         int desiredTiles = 0;
+        System.Collections.Generic.List<float> streamingFrameMilliseconds = new System.Collections.Generic.List<float>(2048);
         while (Time.realtimeSinceStartup < deadline)
         {
             yield return null;
+            streamingFrameMilliseconds.Add(Time.unscaledDeltaTime * 1000f);
             activeTiles = (int)activeTilesProperty.GetValue(streamer);
             desiredTiles = (int)desiredTilesProperty.GetValue(streamer);
             if (desiredTiles > 0 && activeTiles == desiredTiles)
@@ -193,9 +195,30 @@ public sealed class GlobalWorldRuntimeSmokeTests
             averageFrameMilliseconds += frameMilliseconds[i];
         averageFrameMilliseconds /= frameMilliseconds.Length;
         float p95FrameMilliseconds = frameMilliseconds[(int)(frameMilliseconds.Length * 0.95f)];
+        streamingFrameMilliseconds.Sort();
+        float streamingP95FrameMilliseconds = streamingFrameMilliseconds.Count > 0
+            ? streamingFrameMilliseconds[(int)(streamingFrameMilliseconds.Count * 0.95f)]
+            : 0f;
+        float streamingMaxFrameMilliseconds = streamingFrameMilliseconds.Count > 0
+            ? streamingFrameMilliseconds[streamingFrameMilliseconds.Count - 1]
+            : 0f;
         int sceneObjectCount = CountSceneObjects(scene);
+        float maximumTreeDistance = 0f;
+        Terrain[] terrains = Terrain.activeTerrains;
+        for (int i = 0; i < terrains.Length; i++)
+            if (terrains[i] != null && terrains[i].gameObject.scene == scene)
+                maximumTreeDistance = Mathf.Max(maximumTreeDistance, terrains[i].treeDistance);
+        Assert.That(maximumTreeDistance, Is.LessThanOrEqualTo(500f),
+            "Árvores locais devem ser ocultadas antes de ultrapassar 0,5 km da câmera.");
+        int generationMilliseconds = (int)streamerType.GetProperty("LastGenerationMilliseconds").GetValue(streamer);
+        int navMeshMilliseconds = (int)streamerType.GetProperty("LastLocalNavMeshBuildMilliseconds").GetValue(streamer);
         Debug.Log("[GlobalMapPerfSmoke] loadedTiles=" + activeTiles + "/" + desiredTiles
             + " trees=" + activeTrees
+            + " treeDistanceMax=" + maximumTreeDistance.ToString("F0") + "m"
+            + " terrainGeneration=" + generationMilliseconds + "ms"
+            + " localNavMesh=" + navMeshMilliseconds + "ms"
+            + " streamFrames(p95/max)=" + streamingP95FrameMilliseconds.ToString("F2") + "/"
+            + streamingMaxFrameMilliseconds.ToString("F2") + "ms"
             + " FPS(avg)=" + (1000f / Mathf.Max(0.001f, averageFrameMilliseconds)).ToString("F1")
             + " frameMs(avg/p95)=" + averageFrameMilliseconds.ToString("F2") + "/" + p95FrameMilliseconds.ToString("F2")
             + " CPU-main-peak=" + (peakMainThreadNanoseconds / 1000000f).ToString("F2") + " ms"

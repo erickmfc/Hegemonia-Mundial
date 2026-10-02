@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Production controller for farms and factories. A purchased building is
-/// immediately productive; farms select a food internally and never expose a
-/// crop-selection UI.
+/// Legacy automatic production component. Only legacy factories remain active;
+/// food production is owned by AgriculturaNacional.
 /// </summary>
 [DisallowMultipleComponent]
 public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
@@ -16,24 +15,14 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
         Fabrica
     }
 
-    private static readonly string[] SaidasAgricolas =
-    {
-        "comida_milho", "comida_batata", "comida_feijao", "comida_trigo",
-        "comida_arroz", "comida_cana", "comida_soja",
-        "comida_cafe", "comida_cacau"
-    };
-
     [SerializeField] private TipoInstalacao tipo;
-    [SerializeField] private float intervaloFazenda = 18f;
     [SerializeField] private float intervaloFabrica = 24f;
-    [SerializeField] private int energiaPorCicloFazenda = 2;
     [SerializeField] private bool mostrarLogs;
 
     private int teamId;
     private System.Random aleatorio;
     private bool avisouGovernoAusente;
     private bool avisouIndustriaAusente;
-    private bool avisouEnergiaAusente;
     private int ciclosConcluidos;
     private string ultimoDestaque = "-";
     private int ultimaQuantidade;
@@ -71,7 +60,8 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
     private void Start()
     {
         teamId = ResolverTeamId();
-        float intervalo = tipo == TipoInstalacao.Fazenda ? intervaloFazenda : intervaloFabrica;
+        if (tipo == TipoInstalacao.Fazenda) return;
+        float intervalo = intervaloFabrica;
         float primeiroCiclo = Mathf.Clamp(intervalo * 0.35f, 2f, 8f);
         float repeticao = Mathf.Max(5f, intervalo);
         InvokeRepeating(nameof(ProcessarCiclo), primeiroCiclo, repeticao);
@@ -79,7 +69,7 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
 
     private void ProcessarCiclo()
     {
-        if (!isActiveAndEnabled || Time.timeScale <= 0f)
+        if (!isActiveAndEnabled || Time.timeScale <= 0f || tipo == TipoInstalacao.Fazenda)
         {
             return;
         }
@@ -90,62 +80,7 @@ public sealed class ProducaoAutomaticaEdificio : MonoBehaviour
             return;
         }
 
-        if (tipo == TipoInstalacao.Fazenda)
-        {
-            ProduzirFazenda();
-        }
-        else
-        {
-            ProduzirFabrica();
-        }
-    }
-
-    private void ProduzirFazenda()
-    {
-        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
-        SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
-        if (governo == null)
-        {
-            AvisarUmaVez(ref avisouGovernoAusente, "governo ainda nao esta pronto");
-            return;
-        }
-
-        if (!ConsumirEnergiaFazenda(governo))
-        {
-            AvisarUmaVez(ref avisouEnergiaAusente, "energia insuficiente; producao aguardando abastecimento");
-            return;
-        }
-
-        int dominante = aleatorio.Next(0, SaidasAgricolas.Length);
-        float fator = Mathf.Lerp(0.85f, 1.25f, (float)aleatorio.NextDouble());
-        int totalComida = Mathf.Max(1, Mathf.RoundToInt(42f * fator));
-        AtualizarOfertaMercado(mercado, SaidasAgricolas[dominante], totalComida);
-
-        governo.AdicionarEstoque(teamId, RecursoMercado.Comida, totalComida);
-        ciclosConcluidos++;
-        ultimoDestaque = SaidasAgricolas[dominante];
-        ultimaQuantidade = totalComida;
-        RegistrarResumo("fazenda", totalComida);
-    }
-
-    private bool ConsumirEnergiaFazenda(SistemaGovernoMundial governo)
-    {
-        int custo = Mathf.Max(0, energiaPorCicloFazenda);
-        if (custo == 0) return true;
-
-        int timeJogador = governo != null ? governo.teamJogador : 1;
-        if (teamId == timeJogador && GerenciadorRecursos.Instancia != null)
-        {
-            return GerenciadorRecursos.Instancia.TentarGastar(custoEnergia: custo);
-        }
-
-        if (governo == null || governo.ObterEstoque(teamId, RecursoMercado.Energia) < custo)
-        {
-            return false;
-        }
-
-        governo.RemoverEstoque(teamId, RecursoMercado.Energia, custo);
-        return true;
+        ProduzirFabrica();
     }
 
     private void ProduzirFabrica()
