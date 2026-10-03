@@ -136,8 +136,57 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         }
     }
 
+    [TestCase("Sucesso")]
+    [TestCase("Fracasso")]
+    [TestCase("Cancelada")]
+    [TestCase("Expirada")]
+    public void EncerrarMissaoLiberaCreatyEGrupoReservado(string resultadoNome)
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type resultType = ResolverTipo("Hegemonia.AI.IA03.IA03ResultadoMissao");
+        GameObject strategistObject = new GameObject("IA03 lifecycle test");
+        GameObject creatyObject = new GameObject("Creaty lifecycle test");
+        strategistObject.SetActive(false);
+        creatyObject.SetActive(false);
+        ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component creaty = creatyObject.AddComponent(creatyType);
+            GameObject unit = new GameObject("Reserved unit lifecycle test");
+            unit.SetActive(false);
+
+            SetField(strategist, "missaoAtiva", mission);
+            SetField(strategist, "creatyAtivo", creaty);
+            SetField(strategist, "unidadesReservadas", 1);
+            ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+            SetField(creaty, "unidadesReservadas", 1);
+
+            MethodInfo finalizar = strategistType.GetMethod("FinalizarMissao", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(finalizar, Is.Not.Null);
+            finalizar.Invoke(strategist, new[] { Enum.Parse(resultType, resultadoNome), (object)"teste de ciclo de vida" });
+
+            Assert.That(Field(strategist, "missaoAtiva"), Is.Null);
+            Assert.That(Field(strategist, "creatyAtivo"), Is.Null);
+            Assert.That(Field(strategist, "unidadesReservadas"), Is.EqualTo(0));
+            Assert.That(((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Count, Is.EqualTo(0));
+            Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo(resultadoNome));
+            Assert.That(creatyType.GetProperty("UnidadesReservadas").GetValue(creaty), Is.EqualTo(0));
+
+            UnityEngine.Object.DestroyImmediate(unit);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(creatyObject);
+            UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
     [Test]
-    public void TermosTemporariosPersistemNoJsonSemAlterarEnumAntigo()
+    public void TermosTerritoriaisLegadosMantemCompatibilidadeDeSave()
     {
         Type propostaType = ResolverTipo("PropostaInternacional");
         object original = Activator.CreateInstance(propostaType);
@@ -154,6 +203,8 @@ public sealed class IA03AvaliadorMissaoEditModeTests
 
         Type tipoProposta = ResolverTipo("TipoPropostaInternacional");
         Assert.That(Convert.ToInt32(Enum.Parse(tipoProposta, "CessaoTerritorial")), Is.EqualTo(13));
+        Assert.That(Convert.ToInt32(Enum.Parse(tipoProposta, "CessaoTerritorialTemporaria")), Is.EqualTo(14));
+        Assert.That(Convert.ToInt32(Enum.Parse(tipoProposta, "Desmilitarizacao")), Is.EqualTo(15));
         Assert.That(Field(restaurada, "tipo").ToString(), Is.EqualTo("CessaoTerritorialTemporaria"));
         Assert.That(Field(restaurada, "duracaoDias"), Is.EqualTo(30));
         Assert.That(Field(restaurada, "terminaEmDiaDeJogo"), Is.EqualTo(41));

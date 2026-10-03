@@ -120,6 +120,9 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
     {
         AdicionarRegiao("cessao-permanente", 3, capturable: true);
         object proposta = CriarProposta("CessaoTerritorial", 2, 3, 0, new[] { "cessao-permanente" }, false);
+        SetField(proposta, "id", "teste-cessao-permanente");
+        SetField(proposta, "status", Enum.Parse(ResolverTipo("StatusPropostaInternacional"), "Pendente"));
+        DefinirPropostas(proposta);
         bool recebeuMudanca = false;
         int donoAnterior = -1;
         int novoDono = -1;
@@ -139,11 +142,16 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
 
         try
         {
-            MethodInfo executar = governoType.GetMethod("ExecutarProposta", AllInstance);
-            object[] argumentos = { proposta, null };
-            bool sucesso = (bool)executar.Invoke(governo, argumentos);
+            MethodInfo resolver = governoType.GetMethod("ResolverProposta", AllInstance);
+            object[] argumentos =
+            {
+                "teste-cessao-permanente",
+                Enum.Parse(ResolverTipo("StatusPropostaInternacional"), "Aceita"),
+                null
+            };
+            bool sucesso = (bool)resolver.Invoke(governo, argumentos);
 
-            Assert.That(sucesso, Is.True, argumentos[1] as string);
+            Assert.That(sucesso, Is.True, argumentos[2] as string);
             Assert.That(recebeuMudanca, Is.True);
             Assert.That(donoAnterior, Is.EqualTo(3));
             Assert.That(novoDono, Is.EqualTo(2));
@@ -155,6 +163,7 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
             object regiaoBase = regioes.Cast<object>().First(item => (string)Field(item, "territorioId") == "cessao-permanente");
             Assert.That(Field(regiaoBase, "ownerCountryTeamId"), Is.EqualTo(3), "O asset mantém a posse inicial; o runtime/save usa o proprietário capturado.");
             Assert.That(recebeuNoticia, Is.True);
+            Assert.That(Field(proposta, "status").ToString(), Is.EqualTo("Executada"));
         }
         finally
         {
