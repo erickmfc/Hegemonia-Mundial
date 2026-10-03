@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Hegemonia.AI.DEUSA;
+using Hegemonia.AI.IA03;
 using Hegemonia.AI.Shared;
 using Hegemonia.AI.Sovereign;
 using UnityEngine;
@@ -150,6 +151,7 @@ namespace Hegemonia.AI.BrainMaster
         private IA_DefenseDirector _defenseDirector;
         private IA_TaskForceCoordinator _taskForceCoordinator;
         private IA_DeusaBrain _deusaBrain;
+        private IA03EstrategaNacional _ia03Estratega;
         private readonly List<IdentidadeUnidade> _backendUnitBuffer = new List<IdentidadeUnidade>(128);
 
         private float _incomeTimer;
@@ -923,6 +925,10 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _scheduler.Register(_deusaBrain, now, 0.182f);
             }
+            if (_ia03Estratega != null && _ia03Estratega.isActiveAndEnabled && _ia03Estratega.TemPerfilConfigurado)
+            {
+                _scheduler.Register(_ia03Estratega, now, 0.187f);
+            }
             _scheduler.Register(_economyDirector, now, 0.185f);
             _scheduler.Register(_syncNetwork, now, 0.20f);
             _scheduler.Register(_marketDirector, now, 0.205f);
@@ -1537,6 +1543,9 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _deusaBrain = gameObject.AddComponent<IA_DeusaBrain>();
             }
+
+            // IA03 is an optional strategic layer; existing behavior stays intact without it.
+            _ia03Estratega = GetComponent<IA03EstrategaNacional>();
 
             Context.Deusa = _deusaBrain;
 

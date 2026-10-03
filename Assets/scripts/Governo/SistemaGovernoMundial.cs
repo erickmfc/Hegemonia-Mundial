@@ -1920,6 +1920,68 @@ public class SistemaGovernoMundial : MonoBehaviour
             return true;
         }
 
+        if (proposta.tipo == TipoPropostaInternacional.Indenizacao)
+        {
+            DadosPaisGoverno credor = ObterPais(proposta.origemTeamId);
+            DadosPaisGoverno pagador = ObterPais(proposta.alvoTeamId);
+            long valor = Mathf.Max(0, proposta.quantidade);
+            if (credor == null || pagador == null || valor <= 0 || pagador.saldo < valor)
+            {
+                mensagem = "Indenização não executada: país pagador sem saldo suficiente.";
+                return false;
+            }
+
+            pagador.saldo -= valor;
+            credor.saldo += valor;
+            mensagem = NomePais(proposta.alvoTeamId) + " pagou indenização de " + valor + " a " + NomePais(proposta.origemTeamId) + ".";
+            RegistrarNoticia(mensagem);
+            return true;
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.CessaoTerritorial)
+        {
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+            if (gerente == null || mapa == null || proposta.territoriosConcedidos == null || proposta.territoriosConcedidos.Count == 0)
+            {
+                mensagem = "Cessão territorial não executada: não há regiões configuradas.";
+                return false;
+            }
+
+            HashSet<string> idsUnicos = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < proposta.territoriosConcedidos.Count; i++)
+            {
+                string territorioId = proposta.territoriosConcedidos[i];
+                RegiaoPolitica regiao = mapa.EncontrarRegiao(territorioId);
+                ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(territorioId);
+                if (string.IsNullOrWhiteSpace(territorioId)
+                    || !idsUnicos.Add(territorioId)
+                    || regiao == null
+                    || !regiao.capturable
+                    || regiao.tipo != TipoRegiaoPolitica.Terra
+                    || estado.neutral
+                    || estado.ownerCountryTeamId != proposta.alvoTeamId)
+                {
+                    mensagem = "Cessão territorial não executada: uma ou mais regiões não pertencem ao país pagador ou não podem ser concedidas.";
+                    return false;
+                }
+            }
+
+            for (int i = 0; i < proposta.territoriosConcedidos.Count; i++)
+            {
+                if (!gerente.TentarCapturarTerritorio(proposta.territoriosConcedidos[i], proposta.origemTeamId))
+                {
+                    mensagem = "Cessão territorial interrompida por uma alteração de propriedade.";
+                    return false;
+                }
+            }
+
+            mensagem = NomePais(proposta.alvoTeamId) + " cedeu permanentemente "
+                       + proposta.territoriosConcedidos.Count + " região(ões) a " + NomePais(proposta.origemTeamId) + ".";
+            RegistrarNoticia(mensagem);
+            return true;
+        }
+
         SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
         DadosItemMercado item = mercado != null ? mercado.ObterItem(IdRecurso(proposta.recurso)) : null;
 

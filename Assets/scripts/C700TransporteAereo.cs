@@ -95,6 +95,14 @@ public class C700TransporteAereo : MonoBehaviour
     public float distanciaDesembarque = 50f;
     public float raioBloqueioPortaAvioes = 25f;
 
+    [Header("Compatibilidade C-400")]
+    [Tooltip("Ativa pouso em terreno seco, sem exigir uma Mini Pista Logistica. Desativado preserva o comportamento original do C700.")]
+    public bool permitirPousoTerrestreSeco;
+    [Tooltip("No pouso do C-400, tenta embarcar automaticamente infantaria e veiculos aliados proximos.")]
+    public bool embarcarAutomaticamenteEmPouso;
+    [Tooltip("Quando ativo, o transporte so aceita unidades aliadas do tipo Infantaria ou Veiculo.")]
+    public bool aceitarSomenteInfantariaEVeiculos;
+
     [Header("Manifesto")]
     public List<EntradaManifesto> manifestoConfigurado = new List<EntradaManifesto>();
     public float espacamentoManifestoInfantaria = 3.2f;
@@ -126,6 +134,10 @@ public class C700TransporteAereo : MonoBehaviour
     private bool taxiExterno;
     private bool emRotaSaida;
     private MiniPistaLogistica pistaSaidaAtual;
+    private MiniPistaLogistica pistaPousoLivreInterna;
+    private readonly List<MiniPistaLogistica> pistasLivresRuntime = new List<MiniPistaLogistica>(4);
+    private bool pousoTerrestreLivreAtivo;
+    private bool acaoAutomaticaPousoConcluida;
     private bool temDestinoVisual;
     private Vector3 destinoVisualAtual;
     private Vector3 destinoBase;
@@ -176,6 +188,15 @@ public class C700TransporteAereo : MonoBehaviour
     {
         landingController?.Release();
         pistaOperacional?.ReleaseParking(this);
+    }
+
+    private void OnDestroy()
+    {
+        for (int i = 0; i < pistasLivresRuntime.Count; i++)
+        {
+            if (pistasLivresRuntime[i] != null) Destroy(pistasLivresRuntime[i].gameObject);
+        }
+        pistasLivresRuntime.Clear();
     }
 
     private void Update()
@@ -258,14 +279,43 @@ public class C700TransporteAereo : MonoBehaviour
         }
         int teamId = ObterTeamId();
         MiniPistaLogistica pista = MiniPistaLogistica.LocalizarMaisProxima(destino, 300f, teamId, false);
-        if (pista == null || !pista.PodeReceber(this, destino))
+        bool destinoPertenceAPista = pista != null
+            && pista.PistaValida
+            && Vector3.Distance(pista.transform.position, destino) <= Mathf.Max(1f, pista.raioAceitacaoDestino);
+        bool pousoLivre = false;
+
+        if (destinoPertenceAPista && !pista.PodeReceber(this, destino))
         {
-            MostrarMensagem("C700 recusou o destino: nenhuma Mini Pista Logistica operacional foi encontrada.");
+            MostrarMensagem("Transporte recusou o destino: a Mini Pista Logistica esta ocupada ou inoperante.");
             return;
+        }
+
+        if (!destinoPertenceAPista)
+        {
+            if (!permitirPousoTerrestreSeco)
+            {
+                MostrarMensagem("Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.");
+                return;
+            }
+            if (!TryResolverPontoTerrestreSeco(destino, out Vector3 pontoSeguro))
+            {
+                MostrarMensagem("Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.");
+                return;
+            }
+            destino = pontoSeguro;
+            pista = PrepararPistaTerrestreLivre(destino);
+            pousoLivre = pista != null && pista.PistaValida;
+            if (!pousoLivre)
+            {
+                MostrarMensagem("Transporte recusou o destino: nao foi possivel preparar uma aproximacao segura.");
+                return;
+            }
         }
 
         missao = null;
         retornoBase = false;
+        pousoTerrestreLivreAtivo = pousoLivre;
+        acaoAutomaticaPousoConcluida = false;
         pistaSaidaAtual = pistaOperacional;
         pistaOperacional?.ReleaseParking(this);
         pistaOperacional = null;
@@ -295,6 +345,8 @@ public class C700TransporteAereo : MonoBehaviour
         }
 
         missao = new TransportMission(pickup, delivery);
+        pousoTerrestreLivreAtivo = false;
+        acaoAutomaticaPousoConcluida = false;
         if (!pickup.PistaValida || !delivery.PistaValida)
         {
             MostrarMensagem("TransportMission recusada: uma das pistas esta invalida.");
@@ -334,6 +386,7 @@ public class C700TransporteAereo : MonoBehaviour
         pistaOperacional = null;
         missao = null;
         pistaDestino = null;
+        pousoTerrestreLivreAtivo = false;
         retornoBase = true;
         aguardandoDestinoAereo = false;
         destinoBase = ObterDestinoBase();
@@ -376,6 +429,10 @@ public class C700TransporteAereo : MonoBehaviour
     public void PuxarUnidadesProximas()
     {
         if (!EstaNoSolo || rotinaCarga != null) return;
+        if (estadoAtual == EstadoC700.Estacionado && embarcarAutomaticamenteEmPouso)
+        {
+            DefinirEstado(EstadoC700.Carregando);
+        }
         rotinaCarga = StartCoroutine(RotinaPuxarUnidades());
     }
 
@@ -547,7 +604,9 @@ public class C700TransporteAereo : MonoBehaviour
                 if (emRotaSaida)
                 {
                     emRotaSaida = false;
+                    MiniPistaLogistica pistaSaidaConcluida = pistaSaidaAtual;
                     pistaSaidaAtual = null;
+                    DestruirPistaLivreRuntimeSeExistir(pistaSaidaConcluida);
                     MarcarFase(pistaDestino.approachPoint.position, velocidadeCruzeiro);
                     return;
                 }
@@ -615,6 +674,30 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void ProcessarPistaEstacionado()
     {
+        if (pousoTerrestreLivreAtivo)
+        {
+            if (pistaOperacional != pistaDestino)
+            {
+                pistaOperacional?.ReleaseParking(this);
+                pistaOperacional = pistaDestino;
+                landingController.Release();
+            }
+
+            if (!acaoAutomaticaPousoConcluida)
+            {
+                acaoAutomaticaPousoConcluida = true;
+                if (embarcarAutomaticamenteEmPouso && QuantidadeCargaAtual <= 0)
+                {
+                    PuxarUnidadesProximas();
+                }
+                else if (embarcarAutomaticamenteEmPouso && QuantidadeCargaAtual > 0)
+                {
+                    DesembarcarTudo();
+                }
+            }
+            return;
+        }
+
         if (pistaOperacional == pistaDestino) return;
         pistaOperacional = pistaDestino;
         landingController.Release();
@@ -782,12 +865,96 @@ public class C700TransporteAereo : MonoBehaviour
             if (Vector3.Distance(transform.position, unidade.transform.position) > raioBuscaCarga) continue;
             IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>();
             if (identidade != null && identidade.teamID != ObterTeamId()) continue;
+            if (aceitarSomenteInfantariaEVeiculos
+                && (identidade == null
+                    || (identidade.tipoUnidade != TipoUnidade.Infantaria
+                        && identidade.tipoUnidade != TipoUnidade.Veiculo))) continue;
             cargaFisica.Add(new CargaFisica { unidade = unidade.gameObject });
             unidade.gameObject.SetActive(false);
             yield return new WaitForSeconds(Mathf.Max(0f, atrasoEntreEmbarques));
         }
         rotinaCarga = null;
+        if (embarcarAutomaticamenteEmPouso
+            && estadoAtual == EstadoC700.Carregando
+            && pistaDestino == pistaPousoLivreInterna)
+        {
+            DefinirEstado(EstadoC700.Estacionado);
+        }
         MostrarMensagem("Embarque concluido: " + QuantidadeCargaAtual + "/" + CapacidadeCargaAtual);
+    }
+
+    private MiniPistaLogistica PrepararPistaTerrestreLivre(Vector3 ponto)
+    {
+        if (pistaPousoLivreInterna == null || pistaPousoLivreInterna == pistaOperacional)
+        {
+            GameObject raiz = new GameObject(name + "_PousoLivre_Runtime");
+            raiz.SetActive(false);
+            pistaPousoLivreInterna = raiz.AddComponent<MiniPistaLogistica>();
+            pistaPousoLivreInterna.registrarNoCatalogo = false;
+            pistaPousoLivreInterna.criarPontosPadraoSeAusentes = false;
+            pistaPousoLivreInterna.raioAceitacaoDestino = 0f;
+            pistaPousoLivreInterna.approachPoint = CriarPontoPistaInterna(raiz.transform, "ApproachPoint", new Vector3(0f, 70f, -250f));
+            pistaPousoLivreInterna.landingPoint = CriarPontoPistaInterna(raiz.transform, "LandingPoint", new Vector3(0f, 18f, -150f));
+            pistaPousoLivreInterna.runwayStart = CriarPontoPistaInterna(raiz.transform, "RunwayStart", new Vector3(0f, 0f, -80f));
+            pistaPousoLivreInterna.runwayEnd = CriarPontoPistaInterna(raiz.transform, "RunwayEnd", Vector3.zero);
+            pistaPousoLivreInterna.parkingPoint = CriarPontoPistaInterna(raiz.transform, "ParkingPoint", Vector3.zero);
+            pistaPousoLivreInterna.takeoffPoint = CriarPontoPistaInterna(raiz.transform, "TakeoffPoint", new Vector3(0f, 0f, -80f));
+            pistaPousoLivreInterna.exitPoint = CriarPontoPistaInterna(raiz.transform, "ExitPoint", new Vector3(0f, 70f, 260f));
+            pistaPousoLivreInterna.troopBoardingPoint = CriarPontoPistaInterna(raiz.transform, "TroopBoardingPoint", new Vector3(8f, 0f, 0f));
+            pistaPousoLivreInterna.troopUnloadPoint = CriarPontoPistaInterna(raiz.transform, "TroopUnloadPoint", new Vector3(8f, 0f, 0f));
+            pistaPousoLivreInterna.goAroundPoint = CriarPontoPistaInterna(raiz.transform, "GoAroundPoint", new Vector3(0f, 70f, -320f));
+            raiz.SetActive(true);
+            pistasLivresRuntime.Add(pistaPousoLivreInterna);
+        }
+
+        Vector3 frente = ponto - transform.position;
+        frente.y = 0f;
+        if (frente.sqrMagnitude < 1f) frente = transform.forward;
+        pistaPousoLivreInterna.transform.SetPositionAndRotation(ponto, Quaternion.LookRotation(frente.normalized, Vector3.up));
+        pistaPousoLivreInterna.teamId = ObterTeamId();
+        pistaPousoLivreInterna.operacional = true;
+        pistaPousoLivreInterna.ReleaseAll(this);
+        return pistaPousoLivreInterna;
+    }
+
+    private void DestruirPistaLivreRuntimeSeExistir(MiniPistaLogistica pista)
+    {
+        if (pista == null || pista.registrarNoCatalogo) return;
+        pistasLivresRuntime.Remove(pista);
+        if (pistaPousoLivreInterna == pista) pistaPousoLivreInterna = null;
+        Destroy(pista.gameObject);
+    }
+
+    private static Transform CriarPontoPistaInterna(Transform raiz, string nomePonto, Vector3 posicaoLocal)
+    {
+        GameObject ponto = new GameObject(nomePonto);
+        ponto.transform.SetParent(raiz, false);
+        ponto.transform.localPosition = posicaoLocal;
+        ponto.transform.localRotation = Quaternion.identity;
+        return ponto.transform;
+    }
+
+    private static bool TryResolverPontoTerrestreSeco(Vector3 solicitado, out Vector3 pontoSeguro)
+    {
+        pontoSeguro = solicitado;
+        if (RegistroSuperficieMapa.TryClassify(solicitado, out ClassificacaoSuperficieMapa classe, out float altura, 2f, 4f))
+        {
+            if (classe != ClassificacaoSuperficieMapa.Chao) return false;
+            pontoSeguro.y = altura;
+            return true;
+        }
+
+        Vector3 origem = solicitado + Vector3.up * 500f;
+        if (!Physics.Raycast(origem, Vector3.down, out RaycastHit hit, 1000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            return false;
+
+        string camada = LayerMask.LayerToName(hit.collider.gameObject.layer);
+        if (string.Equals(camada, "Agua", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(camada, "Water", System.StringComparison.OrdinalIgnoreCase)
+            || NavalPlacementResolver.IsWaterAtPosition(hit.point)) return false;
+
+        pontoSeguro = hit.point;
+        return true;
     }
 
     private void CarregarDaPista(MiniPistaLogistica pista)

@@ -16,6 +16,8 @@ public sealed class MiniPistaLogistica : MonoBehaviour
     public bool operacional = true;
     public bool permitirTerritorioInimigo = false;
     public bool criarPontosPadraoSeAusentes = true;
+    [Tooltip("Use apenas em um destino interno de aeronave, sem aparecer no catálogo de pistas do mapa.")]
+    public bool registrarNoCatalogo = true;
     [Min(1)] public int capacidadeTropas = 1000;
     [Min(0)] public int tropasEsperando;
     [Min(50f)] public float raioAceitacaoDestino = 250f;
@@ -67,7 +69,7 @@ public sealed class MiniPistaLogistica : MonoBehaviour
 
     private void OnEnable()
     {
-        Registro.Add(this);
+        if (registrarNoCatalogo) Registro.Add(this);
     }
 
     private void OnDisable()

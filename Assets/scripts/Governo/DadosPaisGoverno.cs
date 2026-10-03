@@ -39,7 +39,9 @@ public enum TipoPropostaInternacional
     PedidoAjuda,
     PactoDefensivo,
     Alianca,
-    CessarFogo
+    CessarFogo,
+    Indenizacao,
+    CessaoTerritorial
 }
 
 public enum StatusPropostaInternacional
@@ -336,6 +338,7 @@ public class PropostaInternacional
     public int quantidade;
     public int precoUnitario;
     public int prioridade = 50;
+    public List<string> territoriosConcedidos = new List<string>();
     public float criadaEm;
     public float expiraEm;
     public string motivo;

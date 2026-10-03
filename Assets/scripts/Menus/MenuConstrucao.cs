@@ -617,6 +617,8 @@ public class MenuConstrucao : MonoBehaviour
             "Construcoes/DS_Liberal",
             "Construcoes/Ministral",
             "Construcoes/C700",
+            "Construcoes/C400",
+            "Construcoes/AeroportoTemporarioC400",
             "Construcoes/UH60GuardaCosteira",
             "Construcoes/NavioGuardaCosteira",
             "Construcoes/FragataOliverHazardPerryFFG7",

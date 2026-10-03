@@ -236,6 +236,10 @@ public class SaveEntityData
     public List<SaveVector3> pontosPatrulha = new List<SaveVector3>();
     public int indicePatrulha;
     public string seguirAlvoId;
+    public bool possuiPrazoAeroportoTemporario;
+    public bool prazoAeroportoTemporarioAtivo;
+    public int diasAeroportoTemporario;
+    public int diaExpiracaoAeroportoTemporario;
 }
 
 [Serializable]
@@ -1828,6 +1832,15 @@ public class SistemaSaveGame : MonoBehaviour
             modoCombateAtivo = true
         };
 
+        AeroportoTemporarioC400 aeroportoTemporario = obj.GetComponent<AeroportoTemporarioC400>();
+        if (aeroportoTemporario != null)
+        {
+            data.possuiPrazoAeroportoTemporario = true;
+            data.prazoAeroportoTemporarioAtivo = aeroportoTemporario.prazoAtivo;
+            data.diasAeroportoTemporario = aeroportoTemporario.diasAteDestruir;
+            data.diaExpiracaoAeroportoTemporario = aeroportoTemporario.diaExpiracao;
+        }
+
         if (controle != null)
         {
             EstadoControleUnidadeSnapshot estado = controle.ObterEstadoControle();
@@ -1927,6 +1940,15 @@ public class SistemaSaveGame : MonoBehaviour
         SaveableEntity saveable = SaveableEntity.Garantir(obj, data.prefabKey);
         saveable.UniqueId = data.uniqueId;
         saveablesPorId[data.uniqueId] = saveable;
+
+        AeroportoTemporarioC400 aeroportoTemporario = obj.GetComponent<AeroportoTemporarioC400>();
+        if (aeroportoTemporario != null && data.possuiPrazoAeroportoTemporario)
+        {
+            aeroportoTemporario.RestaurarPrazo(
+                data.prazoAeroportoTemporarioAtivo,
+                data.diasAeroportoTemporario,
+                data.diaExpiracaoAeroportoTemporario);
+        }
 
         IdentidadeUnidade identidade = obj.GetComponent<IdentidadeUnidade>();
         if (identidade != null)
