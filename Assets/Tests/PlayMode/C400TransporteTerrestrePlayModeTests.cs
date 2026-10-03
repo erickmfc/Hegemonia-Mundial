@@ -69,7 +69,7 @@ public sealed class C400TransporteTerrestrePlayModeTests
             Assert.That(Vector3.Distance(aeronaveObjeto.transform.position, Campo<Transform>(pista, "parkingPoint").position), Is.LessThan(6f));
 
             Vector3 pontoBusca = new Vector3(xBusca, 0f, zBusca);
-            Assert.That(Classificar(pontoBusca), Is.EqualTo("Chao"), "O ponto de coleta deve ser classificado como terreno seco.");
+            Assert.That(Classificar(pontoBusca), Is.EqualTo("Chao"), "O ponto de coleta deve ser classificado como terreno seco. " + DiagnosticoSuperficies(pontoBusca));
             Chamar(transporte, "ReceberOrdemMover", pontoBusca);
             Vector3 destinoBuscaEsperado = Propriedade<Vector3>(transporte, "DestinoVisualAtual");
             Assert.That(Vector3.Distance(destinoBuscaEsperado, pontoBusca), Is.LessThan(1f), "A ordem terrestre do C400 precisa ser aceita.");
@@ -112,6 +112,7 @@ public sealed class C400TransporteTerrestrePlayModeTests
         superficie.name = nome;
         superficie.transform.position = posicao;
         superficie.transform.localScale = escala;
+        Physics.SyncTransforms();
         Type tipoMarcador = Type.GetType("MarcadorSuperficieMapa, Assembly-CSharp");
         Type enumSuperficie = Type.GetType("TipoSuperficieMapa, Assembly-CSharp");
         Component marcador = superficie.AddComponent(tipoMarcador);
@@ -147,6 +148,28 @@ public sealed class C400TransporteTerrestrePlayModeTests
         object[] args = { ponto, Enum.ToObject(tipoClassificacao, 0), 0f, 2f, 4f };
         bool classificou = (bool)metodo.Invoke(null, args);
         return classificou ? args[1].ToString() : "Desconhecida";
+    }
+
+    private static string DiagnosticoSuperficies(Vector3 ponto)
+    {
+        Type tipoMarcador = Type.GetType("MarcadorSuperficieMapa, Assembly-CSharp");
+        UnityEngine.Object[] marcadores = Resources.FindObjectsOfTypeAll(tipoMarcador);
+        string detalhe = "; marcadores=" + marcadores.Length;
+        for (int i = 0; i < marcadores.Length; i++)
+        {
+            Component marcador = marcadores[i] as Component;
+            if (marcador == null) continue;
+            object bounds = tipoMarcador.GetProperty("Bounds").GetValue(marcador);
+            bool dentro = (bool)tipoMarcador.GetMethod("ContainsXZ").Invoke(marcador, new object[] { ponto, 4f });
+            detalhe += " [" + marcador.name + ", tipo=" + tipoMarcador.GetProperty("TipoSuperficie").GetValue(marcador)
+                + ", ativo=" + (((Behaviour)marcador).isActiveAndEnabled) + ", bounds=" + bounds + ", dentro=" + dentro + "]";
+        }
+        Type tipoRegistro = Type.GetType("RegistroSuperficieMapa, Assembly-CSharp");
+        Type enumSuperficie = Type.GetType("TipoSuperficieMapa, Assembly-CSharp");
+        object[] args = { ponto, Enum.Parse(enumSuperficie, "Chao"), 0f, 4f };
+        bool temChao = (bool)tipoRegistro.GetMethod("TryGetAltura").Invoke(null, args);
+        float alturaChao = (float)args[2];
+        return detalhe + "; registroChao=" + temChao + "; altura=" + alturaChao;
     }
 
     private static GameObject PrefabDaFicha(ScriptableObject ficha)
