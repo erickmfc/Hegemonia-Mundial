@@ -452,7 +452,7 @@ MonoBehaviour:
   - {fileID: 0}
   prefabTorpedo: {fileID: 0}
   torpedosDisponiveis: 4
-  alcanceTorpedos: 600
+  alcanceTorpedos: 3000
   cooldownTorpedo: 5
   anguloMaximoLancamento: 90
   torpedosNoModoAtivo: 1
@@ -484,8 +484,8 @@ MonoBehaviour:
   prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 0
-  municaoTotal: 20
-  municaoMaxima: 20
+  municaoTotal: 10
+  municaoMaxima: 10
   torpedosTotal: 8
   torpedosMaximos: 8
   tirosPorSalva: 1
