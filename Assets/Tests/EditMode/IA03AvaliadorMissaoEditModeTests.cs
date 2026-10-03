@@ -38,7 +38,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     public void PermanenciaConcluiEAbandonoDoPontoFalha()
     {
         Assert.That(Avaliar("PermanecerNoDestino", permaneceu: true), Is.EqualTo("Sucesso"));
-        Assert.That(Avaliar("PermanecerNoDestino", saiu: true), Is.EqualTo("Fracasso"));
+        Assert.That(Avaliar("ChegarAoDestino", falha: "PermanecerNoDestino", saiu: true), Is.EqualTo("Fracasso"));
     }
 
     [Test]

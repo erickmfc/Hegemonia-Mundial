@@ -29,10 +29,22 @@ O alvo pode ser atribuído diretamente no perfil da IA. Se ficar em zero, IA03 u
 
 Os relatórios são emitidos durante uma crise no intervalo configurável (5 minutos por padrão). O relatório combina o total de forças do cache, inimigos conhecidos, estoques nacionais e eventos acumulados de perdas/destruições. Os limiares de vitórias, dano econômico, baixas e pressão sobre reservas podem iniciar uma proposta de cessar-fogo após 25 minutos em conflito limitado; uma crise que continue pode escalar conforme agressividade. A avaliação de uma hora usa a pontuação acumulada para justificar uma proposta de cessar-fogo ou continuar a guerra.
 
-O projeto publica evento de destruição de unidade, mas ainda não fornece um produtor comum de resultado de batalha, dano econômico ou captura/perda de objetivo. Esses valores começam em zero até que o sistema responsável chame `RegistrarResultadoCombate`, `RegistrarPrejuizoEconomico` ou `RegistrarObjetivoCapturado`. IA03 não infere vitórias, danos ou territórios sem evidência.
+Destruições confirmadas continuam vindo de `CartaCombateRegistro`. Capturas e perdas de regiões entre os dois países são atualizadas por `GerenteDeTerritorio.OnTerritoryOwnerChanged`. Dano a estruturas marcadas é medido a partir de `SistemaDeDanos.OnDanoGlobal` e fica separado em pontos de vida estrutural, sem ser convertido artificialmente em dinheiro. Resultado de batalha e prejuízo financeiro continuam exigindo um produtor autoritativo que chame `RegistrarResultadoCombate` e `RegistrarPrejuizoEconomico`; o jogo ainda não publica um evento geral de fim de batalha nem um valor monetário causado por dano militar.
+
+## Condições de missão
+
+O ciclo da missão avalia as condições do `MissaoEstrategicaSO`: chegada ao Creaty; permanência contínua pelo `TempoMinimoDePermanenciaSegundos`; destruição confirmada do alvo observado; sobrevivência de todo o grupo original até o prazo; confirmação externa; e captura da região política na posição do Creaty. A condição de fracasso usa a contraparte configurada (perda de unidade, saída da zona, território perdido ou confirmação externa), e qualquer prazo máximo encerra a missão que não atingiu sucesso.
+
+Sistemas externos podem concluir missões configuradas para confirmação externa chamando `RegistrarResultadoMissaoExterno(idMissao, sucesso, motivo)` na IA03. IDs de missão devem ser únicos por perfil.
+
+## Termos territoriais
+
+As propostas diplomáticas aceitas podem ceder regiões terrestres permanentemente ou por um número de dias de jogo, e criar uma zona desmilitarizada temporária. A cessão temporária devolve cada região ao país original no vencimento apenas se ainda estiver sob o controle do beneficiário. Os termos e datas finais usam o estado de propostas já gravado pelo sistema de save, preservando saves antigos.
+
+Ordens de movimento, patrulha e seguimento de infantaria e veículos das partes são recusadas quando seu destino entra em uma zona desmilitarizada. Essa aplicação não evacua automaticamente forças que já estavam lá quando o tratado foi aceito. A IA03 oferece cessão temporária de 30 dias no conflito limitado com pontuação de guerra a partir de 80, zona desmilitarizada de 45 dias na faixa 100–249 e mantém cessão permanente para pontuações maiores.
 
 ## Limites atuais de integração
 
-O acordo territorial transfere permanentemente somente regiões terrestres marcadas como concedíveis pelo mapa político; o backend ainda não implementa concessão temporária nem desmilitarização. A exigência de 100% requer pontuação alta, quantidade mínima de batalhas e domínio registrado de pelo menos 90%. As missões com porta-aviões, transporte anfíbio ou presidente selecionam e enviam grupos de unidades reais pelo comando existente; embarque/desembarque de passageiros e uma visita presidencial completa dependem dos fluxos específicos desses sistemas e não são acionados por este módulo.
+As cessões permanentes e temporárias continuam limitadas a regiões terrestres configuradas como capturáveis. Uma desmilitarização se aplica às regiões terrestres incluídas na proposta. A exigência de 100% requer pontuação alta, quantidade mínima de batalhas e domínio registrado de pelo menos 90%. As missões com porta-aviões, transporte anfíbio ou presidente selecionam e enviam grupos de unidades reais pelo comando existente; embarque/desembarque de passageiros e uma visita presidencial completa dependem dos fluxos específicos desses sistemas e não são acionados por este módulo.
 
-Os campos `CondicaoDeSucesso` e `CondicaoDeFracasso` documentam a missão; no runtime atual, chegada ao ponto, prazo e sobrevivência do grupo controlam o encerramento. Missões que exigem confirmação de destruição ou ocupação precisam de eventos desses produtores para serem concluídas com precisão.
+Vitórias por batalha, valor econômico destruído em dinheiro e retirada automática de unidades que já ocupam uma zona desmilitarizada ainda dependem de integrações autoritativas específicas. Os indicadores não presumem esses resultados.
