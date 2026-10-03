@@ -87,12 +87,22 @@ namespace Hegemonia.AI.BrainMaster
 
         public IA_PerformanceStateData GetGovernorStateSnapshot()
         {
-            return _performanceGovernor.CreateStateSnapshot();
+            return GetGovernorStateSnapshot(null);
+        }
+
+        public IA_PerformanceStateData GetGovernorStateSnapshot(IA_PerformanceStateData reusable)
+        {
+            return _performanceGovernor.CreateStateSnapshot(reusable);
         }
 
         public IA_BattleGovernorDecision BuildBattleDecision()
         {
-            IA_BattleGovernorDecision decision = _performanceGovernor.CreateBattleDecision(ActiveCount);
+            return BuildBattleDecision(null);
+        }
+
+        public IA_BattleGovernorDecision BuildBattleDecision(IA_BattleGovernorDecision reusable)
+        {
+            IA_BattleGovernorDecision decision = _performanceGovernor.CreateBattleDecision(ActiveCount, reusable);
             PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
             if (perfil != null)
             {
@@ -111,7 +121,12 @@ namespace Hegemonia.AI.BrainMaster
 
         public IA_EngagementBudget BuildEngagementBudget()
         {
-            IA_EngagementBudget budget = _performanceGovernor.CreateEngagementBudget();
+            return BuildEngagementBudget(null);
+        }
+
+        public IA_EngagementBudget BuildEngagementBudget(IA_EngagementBudget reusable)
+        {
+            IA_EngagementBudget budget = _performanceGovernor.CreateEngagementBudget(reusable);
             PerfilDificuldadeJogo perfil = GameDifficultyManager.PerfilAtual;
             if (perfil != null)
             {

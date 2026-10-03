@@ -286,6 +286,91 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     }
 
     [Test]
+    public void MissaoUrgenteFicaNoTopoEPreservaMissaoInterrompidaSemDuplicar()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
+        Type queueType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandQueue");
+        Type requestType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandRequest");
+        Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
+        Type commandType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandType");
+        GameObject strategistObject = new GameObject("IA03 urgent mission queue test");
+        GameObject creatyObject = new GameObject("IA03 urgent mission Creaty test");
+        strategistObject.SetActive(false);
+        creatyObject.SetActive(false);
+        ScriptableObject interruptedMission = ScriptableObject.CreateInstance(missionType);
+        ScriptableObject urgentMission = ScriptableObject.CreateInstance(missionType);
+        GameObject unit = null;
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component brain = strategistObject.GetComponent(brainType);
+            Component creaty = creatyObject.AddComponent(creatyType);
+            object context = Activator.CreateInstance(contextType);
+            object queue = Activator.CreateInstance(queueType);
+            SetField(context, "CommandQueue", queue);
+            brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "nivelDeConflito", Enum.Parse(levelType, "ConflitoLimitado"));
+
+            SetField(interruptedMission, "idMissao", "patrulha-prioritaria-baixa");
+            SetField(interruptedMission, "nomeMissao", "Patrulha interrompida");
+            SetField(interruptedMission, "prioridade", 1000);
+            SetField(urgentMission, "idMissao", "defender-estaleiro");
+            SetField(urgentMission, "nomeMissao", "Defender estaleiro");
+            SetField(urgentMission, "prioridade", 1);
+
+            const string orderId = "ia03-urgent-interrupted-order";
+            object request = Activator.CreateInstance(requestType);
+            SetField(request, "Id", orderId);
+            SetField(request, "Origin", "IA03EstrategaNacional");
+            SetField(request, "Domain", "tactical");
+            SetField(request, "Reason", "patrulha interrompida pelo teste");
+            SetField(request, "Family", "tactical");
+            SetField(request, "Type", Enum.Parse(commandType, "Move"));
+            SetField(request, "Priority", 1000);
+            SetField(request, "DedupKey", orderId);
+            object[] enqueueArguments = { request, 1f, null };
+            Assert.That(queueType.GetMethod("Enqueue").Invoke(queue, enqueueArguments), Is.EqualTo(true));
+
+            unit = new GameObject("IA03 urgent mission reserved unit");
+            unit.SetActive(false);
+            SetField(strategist, "missaoAtiva", interruptedMission);
+            SetField(strategist, "creatyAtivo", creaty);
+            SetField(strategist, "unidadesReservadas", 1);
+            SetField(strategist, "idOrdemAtivaDaMissao", orderId);
+            ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+            SetField(creaty, "unidadesReservadas", 1);
+
+            MethodInfo requestMission = strategistType.GetMethod("SolicitarMissaoEstrategica");
+            Assert.That(requestMission, Is.Not.Null);
+            Assert.That(requestMission.Invoke(strategist, new object[] { urgentMission, "estaleiro atacado", true }), Is.EqualTo(true));
+
+            MethodInfo refreshQueue = strategistType.GetMethod("AtualizarFilaMissoes", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(refreshQueue, Is.Not.Null);
+            refreshQueue.Invoke(strategist, null);
+
+            System.Collections.IList missions = (System.Collections.IList)Field(strategist, "filaMissoes");
+            Assert.That(missions.Count, Is.EqualTo(2));
+            Assert.That(missions[0], Is.SameAs(urgentMission), "A missão urgente deve ultrapassar até uma missão de prioridade maior.");
+            Assert.That(missions[1], Is.SameAs(interruptedMission), "A missão interrompida deve permanecer disponível para retomar depois.");
+            Assert.That(requestMission.Invoke(strategist, new object[] { urgentMission, "duplicação de teste", true }), Is.EqualTo(false));
+            Assert.That(missions.Count, Is.EqualTo(2));
+        }
+        finally
+        {
+            if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(creatyObject);
+            UnityEngine.Object.DestroyImmediate(interruptedMission);
+            UnityEngine.Object.DestroyImmediate(urgentMission);
+        }
+    }
+
+    [Test]
     public void TimeoutRealExpiraMissaoELiberaFilaReservaECelulaDeGrupo()
     {
         Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");

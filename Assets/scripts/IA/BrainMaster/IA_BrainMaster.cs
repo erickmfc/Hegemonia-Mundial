@@ -262,9 +262,9 @@ namespace Hegemonia.AI.BrainMaster
                 SyncNationStateWithGovernment();
                 Context.CombatPressure = _worldState.CombatPressure;
                 Context.ForceSnapshot = _worldState.ForceSnapshot;
-                Context.PerformanceGovernorState = coordinator.GetGovernorStateSnapshot();
-                Context.BattleDecision = coordinator.BuildBattleDecision();
-                Context.EngagementBudget = coordinator.BuildEngagementBudget();
+                Context.PerformanceGovernorState = coordinator.GetGovernorStateSnapshot(Context.PerformanceGovernorState);
+                Context.BattleDecision = coordinator.BuildBattleDecision(Context.BattleDecision);
+                Context.EngagementBudget = coordinator.BuildEngagementBudget(Context.EngagementBudget);
                 Context.TransportPlan = Context.TransportPlan ?? new IA_TransportPlan();
             }
 

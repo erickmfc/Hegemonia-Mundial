@@ -95,104 +95,136 @@ namespace Hegemonia.AI.BrainMaster
 
         public IA_PerformanceStateData CreateStateSnapshot()
         {
-            return _state.Clone();
+            return CreateStateSnapshot(null);
+        }
+
+        public IA_PerformanceStateData CreateStateSnapshot(IA_PerformanceStateData reusable)
+        {
+            if (reusable == null)
+            {
+                reusable = new IA_PerformanceStateData();
+            }
+
+            reusable.FpsSmoothed = _state.FpsSmoothed;
+            reusable.CpuMainSmoothed = _state.CpuMainSmoothed;
+            reusable.GcPressure = _state.GcPressure;
+            reusable.Band = _state.Band;
+            reusable.StableHealthySeconds = _state.StableHealthySeconds;
+            reusable.LastUpdatedTime = _state.LastUpdatedTime;
+            return reusable;
         }
 
         public IA_EngagementBudget CreateEngagementBudget()
         {
-            IA_EngagementBudget budget = new IA_EngagementBudget();
+            return CreateEngagementBudget(null);
+        }
+
+        public IA_EngagementBudget CreateEngagementBudget(IA_EngagementBudget reusable)
+        {
+            if (reusable == null)
+            {
+                reusable = new IA_EngagementBudget();
+            }
+
             switch (_state.Band)
             {
                 case IA_PerformanceGovernorBand.Critico:
-                    budget.TotalPoints = 20;
-                    budget.LandPoints = 12;
-                    budget.AirPoints = 8;
-                    budget.NavalPoints = 8;
+                    reusable.TotalPoints = 20;
+                    reusable.LandPoints = 12;
+                    reusable.AirPoints = 8;
+                    reusable.NavalPoints = 8;
                     break;
 
                 case IA_PerformanceGovernorBand.Pressao:
-                    budget.TotalPoints = 36;
-                    budget.LandPoints = 20;
-                    budget.AirPoints = 14;
-                    budget.NavalPoints = 16;
+                    reusable.TotalPoints = 36;
+                    reusable.LandPoints = 20;
+                    reusable.AirPoints = 14;
+                    reusable.NavalPoints = 16;
                     break;
 
                 default:
-                    budget.TotalPoints = 56;
-                    budget.LandPoints = 32;
-                    budget.AirPoints = 20;
-                    budget.NavalPoints = 24;
+                    reusable.TotalPoints = 56;
+                    reusable.LandPoints = 32;
+                    reusable.AirPoints = 20;
+                    reusable.NavalPoints = 24;
                     break;
             }
 
-            budget.ResetUsage();
-            return budget;
+            reusable.ResetUsage();
+            return reusable;
         }
 
         public IA_BattleGovernorDecision CreateBattleDecision(int activeBrains)
         {
-            IA_BattleGovernorDecision decision = new IA_BattleGovernorDecision
+            return CreateBattleDecision(activeBrains, null);
+        }
+
+        public IA_BattleGovernorDecision CreateBattleDecision(int activeBrains, IA_BattleGovernorDecision reusable)
+        {
+            if (reusable == null)
             {
-                Band = _state.Band
-            };
+                reusable = new IA_BattleGovernorDecision();
+            }
+
+            reusable.Band = _state.Band;
 
             switch (_state.Band)
             {
                 case IA_PerformanceGovernorBand.Critico:
-                    decision.AllowBuild = false;
-                    decision.AllowProduce = true;
-                    decision.AllowHeavyBuild = false;
-                    decision.SuppressEconomicExpansion = true;
-                    decision.MaxActiveFronts = 1;
-                    decision.MaxAirPackages = 1;
-                    decision.MaxNavalPackages = 1;
-                    decision.MaxLandAttackers = 16;
-                    decision.MaxAirAttackers = 6;
-                    decision.MaxNavalAttackers = 4;
-                    decision.MaxProductionCommandsPerCycle = 1;
-                    decision.ProductionCooldownSeconds = 4f;
-                    decision.RetargetCooldownMultiplier = 2f;
-                    decision.PathReplanCooldownMultiplier = 2f;
+                    reusable.AllowBuild = false;
+                    reusable.AllowProduce = true;
+                    reusable.AllowHeavyBuild = false;
+                    reusable.SuppressEconomicExpansion = true;
+                    reusable.MaxActiveFronts = 1;
+                    reusable.MaxAirPackages = 1;
+                    reusable.MaxNavalPackages = 1;
+                    reusable.MaxLandAttackers = 16;
+                    reusable.MaxAirAttackers = 6;
+                    reusable.MaxNavalAttackers = 4;
+                    reusable.MaxProductionCommandsPerCycle = 1;
+                    reusable.ProductionCooldownSeconds = 4f;
+                    reusable.RetargetCooldownMultiplier = 2f;
+                    reusable.PathReplanCooldownMultiplier = 2f;
                     break;
 
                 case IA_PerformanceGovernorBand.Pressao:
                     // Em pressão, ainda permitimos builds leves/essenciais; o que trava o jogo é build pesado
                     // e spam de expansão no meio da batalha.
-                    decision.AllowBuild = true;
-                    decision.AllowProduce = true;
-                    decision.AllowHeavyBuild = false;
-                    decision.SuppressEconomicExpansion = true;
-                    decision.MaxActiveFronts = 1;
-                    decision.MaxAirPackages = 1;
-                    decision.MaxNavalPackages = 1;
-                    decision.MaxLandAttackers = 24;
-                    decision.MaxAirAttackers = 8;
-                    decision.MaxNavalAttackers = 6;
-                    decision.MaxProductionCommandsPerCycle = 1;
-                    decision.ProductionCooldownSeconds = 1.5f;
-                    decision.RetargetCooldownMultiplier = 1.45f;
-                    decision.PathReplanCooldownMultiplier = 1.5f;
+                    reusable.AllowBuild = true;
+                    reusable.AllowProduce = true;
+                    reusable.AllowHeavyBuild = false;
+                    reusable.SuppressEconomicExpansion = true;
+                    reusable.MaxActiveFronts = 1;
+                    reusable.MaxAirPackages = 1;
+                    reusable.MaxNavalPackages = 1;
+                    reusable.MaxLandAttackers = 24;
+                    reusable.MaxAirAttackers = 8;
+                    reusable.MaxNavalAttackers = 6;
+                    reusable.MaxProductionCommandsPerCycle = 1;
+                    reusable.ProductionCooldownSeconds = 1.5f;
+                    reusable.RetargetCooldownMultiplier = 1.45f;
+                    reusable.PathReplanCooldownMultiplier = 1.5f;
                     break;
 
                 default:
-                    decision.AllowBuild = true;
-                    decision.AllowProduce = true;
-                    decision.AllowHeavyBuild = activeBrains <= 2;
-                    decision.SuppressEconomicExpansion = false;
-                    decision.MaxActiveFronts = activeBrains >= 4 ? 1 : 2;
-                    decision.MaxAirPackages = activeBrains >= 5 ? 1 : 2;
-                    decision.MaxNavalPackages = activeBrains >= 5 ? 1 : 2;
-                    decision.MaxLandAttackers = 48;
-                    decision.MaxAirAttackers = 16;
-                    decision.MaxNavalAttackers = 12;
-                    decision.MaxProductionCommandsPerCycle = 2;
-                    decision.ProductionCooldownSeconds = 0f;
-                    decision.RetargetCooldownMultiplier = 1f;
-                    decision.PathReplanCooldownMultiplier = 1f;
+                    reusable.AllowBuild = true;
+                    reusable.AllowProduce = true;
+                    reusable.AllowHeavyBuild = activeBrains <= 2;
+                    reusable.SuppressEconomicExpansion = false;
+                    reusable.MaxActiveFronts = activeBrains >= 4 ? 1 : 2;
+                    reusable.MaxAirPackages = activeBrains >= 5 ? 1 : 2;
+                    reusable.MaxNavalPackages = activeBrains >= 5 ? 1 : 2;
+                    reusable.MaxLandAttackers = 48;
+                    reusable.MaxAirAttackers = 16;
+                    reusable.MaxNavalAttackers = 12;
+                    reusable.MaxProductionCommandsPerCycle = 2;
+                    reusable.ProductionCooldownSeconds = 0f;
+                    reusable.RetargetCooldownMultiplier = 1f;
+                    reusable.PathReplanCooldownMultiplier = 1f;
                     break;
             }
 
-            return decision;
+            return reusable;
         }
 
         public float GetBudgetMultiplier()
