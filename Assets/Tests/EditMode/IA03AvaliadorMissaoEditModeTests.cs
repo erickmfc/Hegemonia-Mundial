@@ -72,6 +72,149 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     }
 
     [Test]
+    public void PermanenciaFalhaQuandoGrupoSaiMesmoComOrdemConcluida()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        GameObject strategistObject = new GameObject("IA03 residence exit test");
+        GameObject creatyObject = new GameObject("IA03 residence exit Creaty");
+        strategistObject.SetActive(false);
+        creatyObject.SetActive(false);
+        ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        GameObject unit = null;
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component brain = strategistObject.GetComponent(brainType);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            Component creaty = creatyObject.AddComponent(creatyType);
+
+            SetField(mission, "condicaoDeSucesso", Enum.Parse(conditionType, "PermanecerNoDestino"));
+            SetField(mission, "condicaoDeFracasso", Enum.Parse(conditionType, "PermanecerNoDestino"));
+            SetField(mission, "tempoMinimoDePermanenciaSegundos", 30f);
+            SetField(mission, "tempoMaximoSegundos", 600f);
+
+            unit = new GameObject("IA03 unit that left destination");
+            unit.transform.position = creaty.transform.position + Vector3.right * 100f;
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "missaoAtiva", mission);
+            SetField(strategist, "creatyAtivo", creaty);
+            SetField(strategist, "inicioMissaoEm", 0f);
+            SetField(strategist, "inicioPermanenciaNoDestinoEm", 0f);
+            SetField(strategist, "unidadesOriginaisNaMissao", 1);
+            SetField(strategist, "grupoChegouAoDestino", true);
+            ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+            ((HashSet<int>)Field(strategist, "unidadesComOrdemConcluidaNaMissao")).Add(unit.GetInstanceID());
+
+            MethodInfo process = strategistType.GetMethod("ProcessarMissaoAtiva", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(process, Is.Not.Null);
+            process.Invoke(strategist, new object[] { 31f });
+
+            Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo("Fracasso"));
+            Assert.That(Field(strategist, "missaoAtiva"), Is.Null);
+        }
+        finally
+        {
+            if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(creatyObject);
+            UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
+    [Test]
+    public void ProximoTrechoEsperaNovaChegadaAposConfirmacaoAnterior()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
+        Type queueType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandQueue");
+        Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        GameObject strategistObject = new GameObject("IA03 chained route test");
+        GameObject firstObject = new GameObject("IA03 first route Creaty");
+        GameObject nextObject = new GameObject("IA03 second route Creaty");
+        strategistObject.SetActive(false);
+        firstObject.SetActive(false);
+        nextObject.SetActive(false);
+        ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        GameObject unit = null;
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component brain = strategistObject.GetComponent(brainType);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            SetField(brain, "TeamId", 1);
+
+            object context = Activator.CreateInstance(contextType);
+            object queue = Activator.CreateInstance(queueType);
+            SetField(context, "CommandQueue", queue);
+            brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
+            SetField(strategist, "brain", brain);
+
+            Component first = firstObject.AddComponent(creatyType);
+            Component next = nextObject.AddComponent(creatyType);
+            ConfigureRouteCreaty(first, "route-first", 1, 2);
+            ConfigureRouteCreaty(next, "route-second", 1, 2);
+            nextObject.transform.position = Vector3.right * 500f;
+            SetField(first, "proximoPonto", next);
+            firstObject.SetActive(true);
+            nextObject.SetActive(true);
+
+            SetField(mission, "idMissao", "route-arrival-test");
+            SetField(mission, "condicaoDeSucesso", Enum.Parse(conditionType, "ChegarAoDestino"));
+            SetField(mission, "condicaoDeFracasso", Enum.Parse(conditionType, "SobreviverAteOPrazo"));
+            SetField(mission, "tempoMaximoSegundos", 600f);
+
+            unit = new GameObject("IA03 route unit");
+            unit.transform.position = first.transform.position;
+            SetField(strategist, "missaoAtiva", mission);
+            SetField(strategist, "creatyAtivo", first);
+            SetField(strategist, "equipeAlvoAtiva", 2);
+            SetField(strategist, "inicioMissaoEm", 0f);
+            SetField(strategist, "unidadesReservadas", 1);
+            SetField(strategist, "unidadesOriginaisNaMissao", 1);
+            SetField(first, "unidadesReservadas", 1);
+            ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+
+            MethodInfo process = strategistType.GetMethod("ProcessarMissaoAtiva", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(process, Is.Not.Null);
+            process.Invoke(strategist, new object[] { 1f });
+            Assert.That(Field(strategist, "creatyAtivo"), Is.SameAs(next));
+            Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo("EmAndamento"));
+            Assert.That(((HashSet<int>)Field(strategist, "unidadesComOrdemConcluidaNaMissao")).Count, Is.EqualTo(0));
+            Assert.That(Field(strategist, "missaoAtiva"), Is.SameAs(mission), "avançar a rota não deve encerrar a missão");
+            Assert.That(Vector3.Distance(unit.transform.position, next.transform.position), Is.GreaterThan(30f));
+
+            process.Invoke(strategist, new object[] { 2f });
+            Assert.That(Field(strategist, "missaoAtiva"), Is.SameAs(mission), "a missão foi encerrada antes da chegada ao segundo Creaty");
+            Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo("EmAndamento"), "estado após o segundo trecho");
+        }
+        finally
+        {
+            if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(firstObject);
+            UnityEngine.Object.DestroyImmediate(nextObject);
+            UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
+    private static void ConfigureRouteCreaty(Component creaty, string id, int ownerTeamId, int targetTeamId)
+    {
+        SetField(creaty, "id", id);
+        SetField(creaty, "paisProprietarioTeamId", ownerTeamId);
+        SetField(creaty, "paisAlvoTeamId", targetTeamId);
+        SetField(creaty, "maximoDeUnidades", 12);
+    }
+
+    [Test]
     public void SobrevivenciaNoPrazoDependeDeTodoOGrupoOriginal()
     {
         Assert.That(Avaliar("SobreviverAteOPrazo", prazo: true, sobreviveu: true), Is.EqualTo("Sucesso"));

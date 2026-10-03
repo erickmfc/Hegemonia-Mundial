@@ -1329,6 +1329,7 @@ namespace Hegemonia.AI.IA03
 
             int vivos = 0;
             int chegaram = 0;
+            int noDestinoAgora = 0;
             bool rastrearChegada = missaoAtiva == null
                                    || missaoAtiva.CondicaoDeSucesso == IA03CondicaoMissao.ChegarAoDestino
                                    || missaoAtiva.CondicaoDeSucesso == IA03CondicaoMissao.PermanecerNoDestino
@@ -1352,12 +1353,19 @@ namespace Hegemonia.AI.IA03
                 }
 
                 vivos++;
-                if (rastrearChegada
-                    && (unidadesComOrdemConcluidaNaMissao.Contains(unidadeId)
-                        || Vector3.SqrMagnitude(unidade.transform.position - creatyAtivo.transform.position) <= raio * raio))
+                if (rastrearChegada)
                 {
-                    unidadesComOrdemConcluidaNaMissao.Add(unidadeId);
-                    chegaram++;
+                    bool estaNoDestino = Vector3.SqrMagnitude(unidade.transform.position - creatyAtivo.transform.position) <= raio * raio;
+                    if (estaNoDestino)
+                    {
+                        noDestinoAgora++;
+                        unidadesComOrdemConcluidaNaMissao.Add(unidadeId);
+                    }
+
+                    if (estaNoDestino || unidadesComOrdemConcluidaNaMissao.Contains(unidadeId))
+                    {
+                        chegaram++;
+                    }
                 }
             }
 
@@ -1372,14 +1380,23 @@ namespace Hegemonia.AI.IA03
             if (todosChegaram)
             {
                 grupoChegouAoDestino = true;
+            }
+
+            bool todosNoDestinoAgora = rastrearChegada && noDestinoAgora == vivos;
+            if (todosNoDestinoAgora)
+            {
                 if (inicioPermanenciaNoDestinoEm < 0f)
                 {
                     inicioPermanenciaNoDestinoEm = now;
                 }
             }
-            else if (grupoChegouAoDestino)
+            else
             {
-                grupoSaiuDoDestino = true;
+                inicioPermanenciaNoDestinoEm = -1f;
+                if (grupoChegouAoDestino)
+                {
+                    grupoSaiuDoDestino = true;
+                }
             }
 
             if ((missaoAtiva != null &&
@@ -1400,7 +1417,7 @@ namespace Hegemonia.AI.IA03
             float tempoPermanenciaMinimo = missaoAtiva != null
                 ? Mathf.Max(0f, missaoAtiva.TempoMinimoDePermanenciaSegundos)
                 : 0f;
-            bool permaneceuNoDestino = todosChegaram
+            bool permaneceuNoDestino = todosNoDestinoAgora
                                        && inicioPermanenciaNoDestinoEm >= 0f
                                        && now - inicioPermanenciaNoDestinoEm >= tempoPermanenciaMinimo;
             bool grupoSobreviveuAteOPrazo = prazoEncerrado
@@ -1458,10 +1475,12 @@ namespace Hegemonia.AI.IA03
                     unidadesReservadas = unidadesAtivasNaMissao.Count;
                     inicioMissaoEm = now;
                     inicioPermanenciaNoDestinoEm = -1f;
+                    unidadesComOrdemConcluidaNaMissao.Clear();
                     grupoChegouAoDestino = false;
                     grupoSaiuDoDestino = false;
                     territorioDoObjetivoCapturado = false;
                     territorioDoObjetivoPerdido = false;
+                    estadoDaMissao = IA03ResultadoMissao.EmAndamento;
                     ultimaDecisao = "rota estratégica avançou para " + proximo.Id;
                     return;
                 }
