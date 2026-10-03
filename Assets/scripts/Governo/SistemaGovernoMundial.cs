@@ -102,6 +102,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     {
         if (Time.unscaledTime < proximoTick) return;
         proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloEconomia);
+        ProcessarAcordosTemporarios();
         if (SistemaEconomiaImoveis.Instancia != null) SistemaEconomiaImoveis.Instancia.Recalcular();
         SincronizarJogador();
         DescobrirIAsDaCena();
@@ -1232,13 +1233,164 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (proposta.expiraEm <= now) proposta.expiraEm = now + 90f;
         proposta.status = StatusPropostaInternacional.Pendente;
         propostas.Insert(0, proposta);
-        while (propostas.Count > 40) propostas.RemoveAt(propostas.Count - 1);
+        ApararPropostasSemRemoverAcordosAtivos();
         ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId).pedidoPendente = true;
 
         RegistrarNoticia(NomePais(proposta.origemTeamId) + " enviou proposta: " + proposta.motivo);
         OnPropostaCriada?.Invoke(proposta);
         OnGovernoAtualizado?.Invoke();
         return true;
+    }
+
+    public bool EstaRegiaoDesmilitarizada(int teamId, string territorioId)
+    {
+        if (teamId <= 0 || string.IsNullOrWhiteSpace(territorioId) || propostas == null)
+        {
+            return false;
+        }
+
+        int diaAtual = ObterDiaDeJogoAtual();
+        for (int i = 0; i < propostas.Count; i++)
+        {
+            PropostaInternacional proposta = propostas[i];
+            if (proposta == null
+                || proposta.status != StatusPropostaInternacional.Executada
+                || proposta.tipo != TipoPropostaInternacional.Desmilitarizacao
+                || proposta.terminaEmDiaDeJogo <= diaAtual
+                || (proposta.origemTeamId != teamId && proposta.alvoTeamId != teamId)
+                || proposta.territoriosDesmilitarizados == null)
+            {
+                continue;
+            }
+
+            if (proposta.territoriosDesmilitarizados.Contains(territorioId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool EstaPosicaoDesmilitarizada(int teamId, Vector3 posicao)
+    {
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        if (gerente == null)
+        {
+            return false;
+        }
+
+        ResultadoConsultaTerritorio territorio = gerente.ObterTerritorioNaPosicao(posicao);
+        return territorio.encontrouRegiao
+               && territorio.tipo == TipoRegiaoPolitica.Terra
+               && EstaRegiaoDesmilitarizada(teamId, territorio.territorioId);
+    }
+
+    /// <summary>
+    /// Expira acordos pelo calendário da partida. Uma cessão temporária só é
+    /// revertida se o beneficiário ainda possuir a região, preservando uma
+    /// mudança de controle posterior feita por outro sistema.
+    /// </summary>
+    public void ProcessarAcordosTemporarios()
+    {
+        if (propostas == null || propostas.Count == 0)
+        {
+            return;
+        }
+
+        int diaAtual = ObterDiaDeJogoAtual();
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        bool alterou = false;
+        for (int i = propostas.Count - 1; i >= 0; i--)
+        {
+            PropostaInternacional proposta = propostas[i];
+            if (proposta == null
+                || proposta.status != StatusPropostaInternacional.Executada
+                || (proposta.tipo != TipoPropostaInternacional.CessaoTerritorialTemporaria
+                    && proposta.tipo != TipoPropostaInternacional.Desmilitarizacao)
+                || proposta.terminaEmDiaDeJogo <= 0
+                || diaAtual < proposta.terminaEmDiaDeJogo)
+            {
+                continue;
+            }
+
+            if (proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria)
+            {
+                if (gerente == null || proposta.territoriosConcedidos == null)
+                {
+                    continue;
+                }
+
+                bool reversaoCompleta = true;
+                for (int territorioIndex = 0; territorioIndex < proposta.territoriosConcedidos.Count; territorioIndex++)
+                {
+                    string territorioId = proposta.territoriosConcedidos[territorioIndex];
+                    ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(territorioId);
+                    if (estado.ownerCountryTeamId == proposta.origemTeamId
+                        && !gerente.TentarCapturarTerritorio(territorioId, proposta.alvoTeamId))
+                    {
+                        reversaoCompleta = false;
+                    }
+                }
+
+                if (!reversaoCompleta)
+                {
+                    continue;
+                }
+            }
+
+            proposta.status = StatusPropostaInternacional.Expirada;
+            RegistrarNoticia(proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria
+                ? "A concessão territorial temporária entre " + NomePais(proposta.origemTeamId) + " e " + NomePais(proposta.alvoTeamId) + " expirou."
+                : "A zona desmilitarizada acordada entre " + NomePais(proposta.origemTeamId) + " e " + NomePais(proposta.alvoTeamId) + " expirou.");
+            alterou = true;
+        }
+
+        if (alterou)
+        {
+            OnGovernoAtualizado?.Invoke();
+        }
+    }
+
+    public void ReconciliarAcordosTemporarios()
+    {
+        ProcessarAcordosTemporarios();
+    }
+
+    private int ObterDiaDeJogoAtual()
+    {
+        GerenciadorTempo.GarantirInstancia();
+        return GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+    }
+
+    private void ApararPropostasSemRemoverAcordosAtivos()
+    {
+        int diaAtual = ObterDiaDeJogoAtual();
+        while (propostas.Count > 40)
+        {
+            int indiceRemovivel = -1;
+            for (int i = propostas.Count - 1; i >= 0; i--)
+            {
+                PropostaInternacional proposta = propostas[i];
+                bool acordoAtivo = proposta != null
+                    && proposta.status == StatusPropostaInternacional.Executada
+                    && (proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria
+                        || proposta.tipo == TipoPropostaInternacional.Desmilitarizacao)
+                    && proposta.terminaEmDiaDeJogo > diaAtual;
+                if (!acordoAtivo)
+                {
+                    indiceRemovivel = i;
+                    break;
+                }
+            }
+
+            if (indiceRemovivel < 0)
+            {
+                break;
+            }
+
+            propostas.RemoveAt(indiceRemovivel);
+        }
     }
 
     public bool ResolverProposta(string propostaId, StatusPropostaInternacional novoStatus, out string mensagem)
@@ -1978,6 +2130,94 @@ public class SistemaGovernoMundial : MonoBehaviour
 
             mensagem = NomePais(proposta.alvoTeamId) + " cedeu permanentemente "
                        + proposta.territoriosConcedidos.Count + " região(ões) a " + NomePais(proposta.origemTeamId) + ".";
+            RegistrarNoticia(mensagem);
+            return true;
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria)
+        {
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+            if (gerente == null || mapa == null || proposta.territoriosConcedidos == null || proposta.territoriosConcedidos.Count == 0)
+            {
+                mensagem = "Cessão temporária não executada: não há regiões configuradas.";
+                return false;
+            }
+
+            int duracaoDias = Mathf.Clamp(proposta.duracaoDias, 1, 3650);
+            HashSet<string> idsUnicos = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < proposta.territoriosConcedidos.Count; i++)
+            {
+                string territorioId = proposta.territoriosConcedidos[i];
+                RegiaoPolitica regiao = mapa.EncontrarRegiao(territorioId);
+                ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(territorioId);
+                if (string.IsNullOrWhiteSpace(territorioId)
+                    || !idsUnicos.Add(territorioId)
+                    || regiao == null
+                    || !regiao.capturable
+                    || regiao.tipo != TipoRegiaoPolitica.Terra
+                    || estado.neutral
+                    || estado.ownerCountryTeamId != proposta.alvoTeamId)
+                {
+                    mensagem = "Cessão temporária não executada: uma ou mais regiões não pertencem ao país pagador ou não podem ser concedidas.";
+                    return false;
+                }
+            }
+
+            for (int i = 0; i < proposta.territoriosConcedidos.Count; i++)
+            {
+                if (!gerente.TentarCapturarTerritorio(proposta.territoriosConcedidos[i], proposta.origemTeamId))
+                {
+                    mensagem = "Cessão temporária interrompida por uma alteração de propriedade.";
+                    return false;
+                }
+            }
+
+            proposta.duracaoDias = duracaoDias;
+            proposta.terminaEmDiaDeJogo = ObterDiaDeJogoAtual() + duracaoDias;
+            mensagem = NomePais(proposta.alvoTeamId) + " cedeu temporariamente "
+                       + proposta.territoriosConcedidos.Count + " região(ões) a " + NomePais(proposta.origemTeamId)
+                       + " por " + duracaoDias + " dia(s) de jogo.";
+            RegistrarNoticia(mensagem);
+            return true;
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.Desmilitarizacao)
+        {
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+            List<string> territorios = proposta.territoriosDesmilitarizados;
+            if (gerente == null || mapa == null || territorios == null || territorios.Count == 0)
+            {
+                mensagem = "Desmilitarização não executada: não há regiões configuradas.";
+                return false;
+            }
+
+            int duracaoDias = Mathf.Clamp(proposta.duracaoDias, 1, 3650);
+            HashSet<string> idsUnicos = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < territorios.Count; i++)
+            {
+                string territorioId = territorios[i];
+                RegiaoPolitica regiao = mapa.EncontrarRegiao(territorioId);
+                ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(territorioId);
+                bool pertenceAParte = estado.ownerCountryTeamId == proposta.origemTeamId
+                                      || estado.ownerCountryTeamId == proposta.alvoTeamId;
+                if (string.IsNullOrWhiteSpace(territorioId)
+                    || !idsUnicos.Add(territorioId)
+                    || regiao == null
+                    || regiao.tipo != TipoRegiaoPolitica.Terra
+                    || estado.neutral
+                    || !pertenceAParte)
+                {
+                    mensagem = "Desmilitarização não executada: cada região deve ser terrestre, ter proprietário e pertencer a uma das partes.";
+                    return false;
+                }
+            }
+
+            proposta.duracaoDias = duracaoDias;
+            proposta.terminaEmDiaDeJogo = ObterDiaDeJogoAtual() + duracaoDias;
+            mensagem = NomePais(proposta.origemTeamId) + " e " + NomePais(proposta.alvoTeamId)
+                       + " desmilitarizaram " + territorios.Count + " região(ões) por " + duracaoDias + " dia(s) de jogo.";
             RegistrarNoticia(mensagem);
             return true;
         }

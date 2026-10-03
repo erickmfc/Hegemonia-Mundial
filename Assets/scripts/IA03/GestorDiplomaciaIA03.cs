@@ -208,6 +208,194 @@ namespace Hegemonia.AI.IA03
             return criada;
         }
 
+        public bool TentarProporCessaoTerritorialTemporaria(
+            SistemaGovernoMundial governo,
+            int paisCredorTeamId,
+            int paisPagadorTeamId,
+            float fracaoDeTerritorio,
+            int duracaoDias,
+            string nomePresidente,
+            string motivo,
+            string dedupKey,
+            out string mensagem)
+        {
+            mensagem = string.Empty;
+            if (!ValidarPartes(governo, paisCredorTeamId, paisPagadorTeamId, out mensagem))
+            {
+                return false;
+            }
+
+            List<string> concedidos = SelecionarTerritoriosTerrestres(
+                governo,
+                paisPagadorTeamId,
+                fracaoDeTerritorio,
+                true,
+                out mensagem);
+            if (concedidos == null)
+            {
+                return false;
+            }
+
+            int duracao = Mathf.Clamp(duracaoDias, 1, 3650);
+            DadosPaisGoverno credor = governo.ObterPais(paisCredorTeamId);
+            string presidente = ResolverPresidente(governo, credor, nomePresidente, paisCredorTeamId);
+            string texto = "Presidente " + presidente + " propõe uma cessão territorial temporária de "
+                           + concedidos.Count + " região(ões) por " + duracao + " dia(s) de jogo a "
+                           + governo.NomePais(paisPagadorTeamId)
+                           + (string.IsNullOrWhiteSpace(motivo) ? "." : ": " + motivo.Trim());
+            bool criada = governo.TentarCriarProposta(new PropostaInternacional
+            {
+                tipo = TipoPropostaInternacional.CessaoTerritorialTemporaria,
+                origemTeamId = paisCredorTeamId,
+                alvoTeamId = paisPagadorTeamId,
+                quantidade = concedidos.Count,
+                duracaoDias = duracao,
+                territoriosConcedidos = concedidos,
+                prioridade = 88,
+                motivo = texto,
+                expiraEm = Time.unscaledTime + 180f,
+                dedupKey = string.IsNullOrWhiteSpace(dedupKey)
+                    ? "ia03_territorio_temporario:" + paisCredorTeamId + ":" + paisPagadorTeamId
+                    : dedupKey
+            });
+
+            mensagem = criada ? texto : "Já existe uma proposta territorial temporária pendente.";
+            return criada;
+        }
+
+        public bool TentarProporDesmilitarizacao(
+            SistemaGovernoMundial governo,
+            int paisProponenteTeamId,
+            int outroPaisTeamId,
+            float fracaoDeTerritorio,
+            int duracaoDias,
+            string nomePresidente,
+            string motivo,
+            string dedupKey,
+            out string mensagem)
+        {
+            mensagem = string.Empty;
+            if (!ValidarPartes(governo, paisProponenteTeamId, outroPaisTeamId, out mensagem))
+            {
+                return false;
+            }
+
+            List<string> zona = SelecionarTerritoriosTerrestres(
+                governo,
+                outroPaisTeamId,
+                fracaoDeTerritorio,
+                false,
+                out mensagem);
+            if (zona == null)
+            {
+                return false;
+            }
+
+            int duracao = Mathf.Clamp(duracaoDias, 1, 3650);
+            DadosPaisGoverno proponente = governo.ObterPais(paisProponenteTeamId);
+            string presidente = ResolverPresidente(governo, proponente, nomePresidente, paisProponenteTeamId);
+            string texto = "Presidente " + presidente + " propõe desmilitarizar " + zona.Count
+                           + " região(ões) de " + governo.NomePais(outroPaisTeamId) + " por "
+                           + duracao + " dia(s) de jogo"
+                           + (string.IsNullOrWhiteSpace(motivo) ? "." : ": " + motivo.Trim());
+            bool criada = governo.TentarCriarProposta(new PropostaInternacional
+            {
+                tipo = TipoPropostaInternacional.Desmilitarizacao,
+                origemTeamId = paisProponenteTeamId,
+                alvoTeamId = outroPaisTeamId,
+                quantidade = zona.Count,
+                duracaoDias = duracao,
+                territoriosDesmilitarizados = zona,
+                prioridade = 86,
+                motivo = texto,
+                expiraEm = Time.unscaledTime + 180f,
+                dedupKey = string.IsNullOrWhiteSpace(dedupKey)
+                    ? "ia03_desmilitarizacao:" + paisProponenteTeamId + ":" + outroPaisTeamId
+                    : dedupKey
+            });
+
+            mensagem = criada ? texto : "Já existe uma proposta de desmilitarização pendente.";
+            return criada;
+        }
+
+        private static bool ValidarPartes(
+            SistemaGovernoMundial governo,
+            int origemTeamId,
+            int alvoTeamId,
+            out string mensagem)
+        {
+            mensagem = string.Empty;
+            if (governo == null || origemTeamId <= 0 || alvoTeamId <= 0 || origemTeamId == alvoTeamId)
+            {
+                mensagem = "Países inválidos para propor um termo territorial.";
+                return false;
+            }
+
+            if (GerenteDeTerritorio.Instancia == null || GerenteDeTerritorio.Instancia.MapaPolitico == null)
+            {
+                mensagem = "O mapa político não está disponível para negociar territórios.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static List<string> SelecionarTerritoriosTerrestres(
+            SistemaGovernoMundial governo,
+            int proprietarioTeamId,
+            float fracao,
+            bool exigirCapturavel,
+            out string mensagem)
+        {
+            mensagem = string.Empty;
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+            List<string> candidatos = new List<string>();
+            IReadOnlyList<RegiaoPolitica> regioes = mapa != null ? mapa.Regioes : null;
+            if (regioes != null)
+            {
+                for (int i = 0; i < regioes.Count; i++)
+                {
+                    RegiaoPolitica regiao = regioes[i];
+                    if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra
+                        || (exigirCapturavel && !regiao.capturable))
+                    {
+                        continue;
+                    }
+
+                    ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(regiao.territorioId);
+                    if (estado.ownerCountryTeamId == proprietarioTeamId && !estado.neutral)
+                    {
+                        candidatos.Add(regiao.territorioId);
+                    }
+                }
+            }
+
+            if (candidatos.Count == 0)
+            {
+                mensagem = "O país não possui regiões terrestres adequadas para esse termo.";
+                return null;
+            }
+
+            candidatos.Sort(System.StringComparer.Ordinal);
+            int quantidade = Mathf.Clamp(
+                Mathf.CeilToInt(candidatos.Count * Mathf.Clamp(fracao, 0.05f, 1f)),
+                1,
+                candidatos.Count);
+            return candidatos.GetRange(0, quantidade);
+        }
+
+        private static string ResolverPresidente(
+            SistemaGovernoMundial governo,
+            DadosPaisGoverno pais,
+            string nomePresidente,
+            int teamId)
+        {
+            if (!string.IsNullOrWhiteSpace(nomePresidente)) return nomePresidente.Trim();
+            if (pais != null && !string.IsNullOrWhiteSpace(pais.nomePresidente)) return pais.nomePresidente;
+            return governo.NomePais(teamId);
+        }
+
         public void RegistrarPresidenteAbatido(
             SistemaGovernoMundial governo,
             int paisVitimaTeamId,

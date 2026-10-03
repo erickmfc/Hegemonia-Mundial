@@ -91,7 +91,8 @@ namespace Hegemonia.AI.IA03
         PermanecerNoDestino,
         DestruirAlvo,
         SobreviverAteOPrazo,
-        ConfirmacaoExterna
+        ConfirmacaoExterna,
+        CapturarTerritorio
     }
 
     public enum IA03NivelEconomico

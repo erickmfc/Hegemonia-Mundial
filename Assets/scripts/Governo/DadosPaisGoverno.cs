@@ -41,7 +41,9 @@ public enum TipoPropostaInternacional
     Alianca,
     CessarFogo,
     Indenizacao,
-    CessaoTerritorial
+    CessaoTerritorial,
+    CessaoTerritorialTemporaria,
+    Desmilitarizacao
 }
 
 public enum StatusPropostaInternacional
@@ -339,6 +341,9 @@ public class PropostaInternacional
     public int precoUnitario;
     public int prioridade = 50;
     public List<string> territoriosConcedidos = new List<string>();
+    public List<string> territoriosDesmilitarizados = new List<string>();
+    public int duracaoDias;
+    public int terminaEmDiaDeJogo;
     public float criadaEm;
     public float expiraEm;
     public string motivo;

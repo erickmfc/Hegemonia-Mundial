@@ -2247,7 +2247,7 @@ public class MenuGoverno : MonoBehaviour
             v.childControlWidth = true;
             v.childControlHeight = true;
             CreateLayoutText(row.transform, CountryName(proposta.origemTeamId).ToUpperInvariant() + " | " + proposta.tipo.ToString().ToUpperInvariant(), 11, corTextoPrimario, TextAnchor.MiddleLeft, FontStyle.Bold, 18f);
-            CreateLayoutText(row.transform, proposta.motivo + " | " + proposta.quantidade + " " + proposta.recurso + " | $" + FormatNumber(proposta.precoUnitario), 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 18f);
+            CreateLayoutText(row.transform, ResumoPropostaInternacional(proposta), 10, corTextoSecundario, TextAnchor.MiddleLeft, FontStyle.Normal, 18f);
 
             if (!includeActions) continue;
 
@@ -2261,6 +2261,31 @@ public class MenuGoverno : MonoBehaviour
             CreateSmallButton(actions.transform, "Negociar", corAzulBotao, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Negociando, "Proposta"));
             CreateSmallButton(actions.transform, "Recusar", corVermelho, () => ResolverPropostaUI(proposta.id, StatusPropostaInternacional.Recusada, "Proposta"));
         }
+    }
+
+    private string ResumoPropostaInternacional(PropostaInternacional proposta)
+    {
+        if (proposta == null) return string.Empty;
+
+        if (proposta.tipo == TipoPropostaInternacional.CessaoTerritorial
+            || proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria)
+        {
+            List<string> regioes = proposta.territoriosConcedidos ?? new List<string>();
+            string duracao = proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria
+                ? " | prazo: " + Mathf.Max(1, proposta.duracaoDias) + " dia(s) de jogo"
+                : " | transferência permanente";
+            return proposta.motivo + " | regiões: " + string.Join(", ", regioes) + duracao;
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.Desmilitarizacao)
+        {
+            List<string> regioes = proposta.territoriosDesmilitarizados ?? new List<string>();
+            return proposta.motivo + " | zona terrestre: " + string.Join(", ", regioes)
+                   + " | prazo: " + Mathf.Max(1, proposta.duracaoDias) + " dia(s) de jogo";
+        }
+
+        return proposta.motivo + " | " + proposta.quantidade + " " + proposta.recurso
+               + " | $" + FormatNumber(proposta.precoUnitario);
     }
 
     private void BuildSanctionRows(Transform parent, bool onlySanctioned)

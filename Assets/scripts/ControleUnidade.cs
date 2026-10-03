@@ -808,6 +808,14 @@ public class ControleUnidade : MonoBehaviour
         string dono,
         TipoOrdemMovimento tipo)
     {
+        if (DestinoTerrestreBloqueadoPorDesmilitarizacao(destino))
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "OrdemRecusada",
+                $"{name}: ordem terrestre recusada para uma zona desmilitarizada");
+            return false;
+        }
+
         if (c17Transporte != null)
         {
             Debug.LogWarning($"[C17] Movimento generico recusado para {name}; ordem deve vir do aeroporto.");
@@ -983,6 +991,14 @@ public class ControleUnidade : MonoBehaviour
         if (pontosPatrulha == null || pontosPatrulha.Count == 0)
         {
             return RecusarPatrulha("rota sem pontos");
+        }
+
+        for (int i = 0; i < pontosPatrulha.Count; i++)
+        {
+            if (DestinoTerrestreBloqueadoPorDesmilitarizacao(pontosPatrulha[i]))
+            {
+                return RecusarPatrulha("rota inclui região desmilitarizada");
+            }
         }
 
         if (NavalPlacementResolver.IsLogisticsVessel(gameObject))
@@ -1235,6 +1251,14 @@ public class ControleUnidade : MonoBehaviour
             return false;
         }
 
+        if (DestinoTerrestreBloqueadoPorDesmilitarizacao(alvo.position))
+        {
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "OrdemRecusada",
+                $"{name}: seguir recusado para uma zona desmilitarizada");
+            return false;
+        }
+
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
@@ -1256,6 +1280,18 @@ public class ControleUnidade : MonoBehaviour
         ordemControleAtual = OrdemControleUnidade.Seguindo;
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
         return true;
+    }
+
+    private bool DestinoTerrestreBloqueadoPorDesmilitarizacao(Vector3 destino)
+    {
+        IdentidadeUnidade identidade = identidadeUnidade != null
+            ? identidadeUnidade
+            : SistemaDeDanos.ResolverIdentidade(this);
+        bool unidadeTerrestre = identidade != null
+                                && (identidade.tipoUnidade == TipoUnidade.Infantaria
+                                    || identidade.tipoUnidade == TipoUnidade.Veiculo);
+        return unidadeTerrestre
+               && ContextoTerritorialDiplomatico.DestinoProibidoPorDesmilitarizacao(identidade.teamID, destino);
     }
 
     public void DefinirAlvoPrioritario(Transform alvo)

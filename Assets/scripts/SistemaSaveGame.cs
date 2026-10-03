@@ -802,6 +802,7 @@ public class SistemaSaveGame : MonoBehaviour
         RestaurarFilaProducao();
         AplicarEstadoGovernoMundial();
         AplicarEstadoTerritorial();
+        SistemaGovernoMundial.Instancia?.ReconciliarAcordosTemporarios();
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
         RestaurarEstadoIA01();

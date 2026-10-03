@@ -34,6 +34,8 @@ namespace Hegemonia.AI.IA03
         [Header("Condição")]
         [SerializeField] private IA03CondicaoMissao condicaoDeSucesso = IA03CondicaoMissao.ChegarAoDestino;
         [SerializeField] private IA03CondicaoMissao condicaoDeFracasso = IA03CondicaoMissao.SobreviverAteOPrazo;
+        [SerializeField, Min(0f), Tooltip("Tempo contínuo que o grupo deve permanecer no Creaty para cumprir PermanecerNoDestino.")]
+        private float tempoMinimoDePermanenciaSegundos = 30f;
 
         public string IdMissao => idMissao;
         public string NomeMissao => nomeMissao;
@@ -56,6 +58,7 @@ namespace Hegemonia.AI.IA03
         public int MinimoAeronaves => minimoAeronaves;
         public IA03CondicaoMissao CondicaoDeSucesso => condicaoDeSucesso;
         public IA03CondicaoMissao CondicaoDeFracasso => condicaoDeFracasso;
+        public float TempoMinimoDePermanenciaSegundos => tempoMinimoDePermanenciaSegundos;
 
         public bool Aceita(IA03NivelConflito nivel, IA03TipoCreaty tipoCreaty)
         {

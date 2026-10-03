@@ -31,6 +31,8 @@ public struct ContextoPresencaTerritorial
     public bool alianca;
     public bool emGuerra;
     public bool violacaoTerritorial;
+    public bool zonaDesmilitarizada;
+    public bool violacaoDesmilitarizacao;
     public AcaoRegrasEngajamento acao;
 }
 
@@ -123,6 +125,21 @@ public static class ContextoTerritorialDiplomatico
         ResultadoConsultaTerritorio territorio = AtualizarTerritorioUnidade(unidade);
         if (!territorio.encontrouRegiao) return contexto;
 
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (territorio.tipo == TipoRegiaoPolitica.Terra
+            && governo != null
+            && governo.EstaRegiaoDesmilitarizada(unidade.teamID, territorio.territorioId))
+        {
+            RemoverViolacaoAtual(unidade);
+            contexto.territorioConhecido = true;
+            contexto.territorioId = territorio.territorioId;
+            contexto.paisDoTerritorio = territorio.ownerCountryTeamId;
+            contexto.zonaDesmilitarizada = true;
+            contexto.violacaoDesmilitarizacao = true;
+            contexto.acao = AcaoRegrasEngajamento.Alertar;
+            return contexto;
+        }
+
         contexto.territorioConhecido = true;
         contexto.territorioId = territorio.territorioId;
         contexto.paisDoTerritorio = territorio.ownerCountryTeamId;
@@ -140,7 +157,6 @@ public static class ContextoTerritorialDiplomatico
             return contexto;
         }
 
-        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         RelacaoPaisGoverno relacao = governo != null && unidade.teamID > 0
             ? governo.ObterRelacao(unidade.teamID, territorio.ownerCountryTeamId)
             : null;
@@ -211,6 +227,13 @@ public static class ContextoTerritorialDiplomatico
     public static bool PodeDispararEmGuerra(int teamAtacante, IdentidadeUnidade alvo)
     {
         if (alvo == null) return false;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null
+            && governo.EstaPosicaoDesmilitarizada(alvo.teamID, alvo.transform.position))
+        {
+            return false;
+        }
+
         MeioPassagemTerritorial meio = InferirMeio(alvo);
         ContextoPresencaTerritorial contexto = AvaliarPresenca(
             alvo,
@@ -221,6 +244,12 @@ public static class ContextoTerritorialDiplomatico
         // A entrada sem passagem gera contexto/alerta, mas só a guerra já
         // autorizada pode permitir o disparo automático por este gate legado.
         return contexto.paisDaUnidade == alvo.teamID && PodeDispararEmGuerra(teamAtacante, alvo.teamID);
+    }
+
+    public static bool DestinoProibidoPorDesmilitarizacao(int teamId, Vector3 destino)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        return governo != null && governo.EstaPosicaoDesmilitarizada(teamId, destino);
     }
 
     private static MeioPassagemTerritorial InferirMeio(IdentidadeUnidade unidade)

@@ -14,6 +14,8 @@ namespace Hegemonia.AI.IA03
         public int BatalhasPerdidas;
         public float PrejuizoEconomicoInimigo;
         public float PrejuizoEconomicoProprio;
+        public float DanoEstruturalInimigo;
+        public float DanoEstruturalProprio;
         public long SaldoNacional;
         public int EstoqueComida;
         public int EstoquePetroleo;
@@ -59,6 +61,8 @@ namespace Hegemonia.AI.IA03
             acumulado.BatalhasPerdidas = 0;
             acumulado.PrejuizoEconomicoInimigo = 0f;
             acumulado.PrejuizoEconomicoProprio = 0f;
+            acumulado.DanoEstruturalInimigo = 0f;
+            acumulado.DanoEstruturalProprio = 0f;
             acumulado.SaldoNacional = 0L;
             acumulado.EstoqueComida = 0;
             acumulado.EstoquePetroleo = 0;
@@ -114,6 +118,23 @@ namespace Hegemonia.AI.IA03
             }
         }
 
+        /// <summary>
+        /// Registra pontos de vida estrutural efetivamente removidos. Este
+        /// indicador permanece separado de dinheiro/prejuízo econômico.
+        /// </summary>
+        public void RegistrarDanoEstrutural(bool inimigo, float dano)
+        {
+            float valor = Mathf.Max(0f, dano);
+            if (inimigo)
+            {
+                acumulado.DanoEstruturalInimigo += valor;
+            }
+            else
+            {
+                acumulado.DanoEstruturalProprio += valor;
+            }
+        }
+
         public void RegistrarObjetivoCapturado(bool proprio)
         {
             if (proprio)
@@ -160,6 +181,8 @@ namespace Hegemonia.AI.IA03
                 BatalhasPerdidas = acumulado.BatalhasPerdidas,
                 PrejuizoEconomicoInimigo = acumulado.PrejuizoEconomicoInimigo,
                 PrejuizoEconomicoProprio = acumulado.PrejuizoEconomicoProprio,
+                DanoEstruturalInimigo = acumulado.DanoEstruturalInimigo,
+                DanoEstruturalProprio = acumulado.DanoEstruturalProprio,
                 SaldoNacional = acumulado.SaldoNacional,
                 EstoqueComida = acumulado.EstoqueComida,
                 EstoquePetroleo = acumulado.EstoquePetroleo,
