@@ -1431,7 +1431,8 @@ namespace Hegemonia.AI.IA03
             bool final = resultado == IA03ResultadoMissao.Sucesso
                          || resultado == IA03ResultadoMissao.Fracasso
                          || resultado == IA03ResultadoMissao.Expirada;
-            bool cancelarOrdens = resultado == IA03ResultadoMissao.Fracasso
+            bool cancelarOrdens = resultado == IA03ResultadoMissao.Sucesso
+                                  || resultado == IA03ResultadoMissao.Fracasso
                                   || resultado == IA03ResultadoMissao.Expirada
                                   || resultado == IA03ResultadoMissao.Cancelada;
 

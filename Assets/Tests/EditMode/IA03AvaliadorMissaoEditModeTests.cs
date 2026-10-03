@@ -146,21 +146,47 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
         Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
         Type resultType = ResolverTipo("Hegemonia.AI.IA03.IA03ResultadoMissao");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
+        Type queueType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandQueue");
+        Type requestType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandRequest");
         GameObject strategistObject = new GameObject("IA03 lifecycle test");
         GameObject creatyObject = new GameObject("Creaty lifecycle test");
         strategistObject.SetActive(false);
         creatyObject.SetActive(false);
         ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        GameObject unit = null;
         try
         {
             Component strategist = strategistObject.AddComponent(strategistType);
             Component creaty = creatyObject.AddComponent(creatyType);
-            GameObject unit = new GameObject("Reserved unit lifecycle test");
+            Component brain = strategistObject.GetComponent(brainType);
+            object context = Activator.CreateInstance(contextType);
+            object queue = Activator.CreateInstance(queueType);
+            SetField(context, "CommandQueue", queue);
+            brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
+            SetField(strategist, "brain", brain);
+
+            string orderId = "ia03-lifecycle-" + resultadoNome;
+            object request = Activator.CreateInstance(requestType);
+            SetField(request, "Id", orderId);
+            SetField(request, "Origin", "IA03EstrategaNacional");
+            SetField(request, "Domain", "tactical");
+            SetField(request, "Reason", "missão de teste");
+            SetField(request, "Family", "tactical");
+            SetField(request, "Type", Enum.Parse(ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandType"), "Move"));
+            SetField(request, "Priority", 10);
+            SetField(request, "DedupKey", orderId);
+            object[] enqueueArguments = { request, 1f, null };
+            Assert.That(queueType.GetMethod("Enqueue").Invoke(queue, enqueueArguments), Is.EqualTo(true));
+
+            unit = new GameObject("Reserved unit lifecycle test");
             unit.SetActive(false);
 
             SetField(strategist, "missaoAtiva", mission);
             SetField(strategist, "creatyAtivo", creaty);
             SetField(strategist, "unidadesReservadas", 1);
+            SetField(strategist, "idOrdemAtivaDaMissao", orderId);
             ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
             SetField(creaty, "unidadesReservadas", 1);
 
@@ -174,11 +200,13 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Assert.That(((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Count, Is.EqualTo(0));
             Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo(resultadoNome));
             Assert.That(creatyType.GetProperty("UnidadesReservadas").GetValue(creaty), Is.EqualTo(0));
+            Assert.That(queueType.GetProperty("PendingCount").GetValue(queue), Is.EqualTo(0));
+            Assert.That(queueType.GetMethod("GetStatus").Invoke(queue, new object[] { orderId }).ToString(), Is.EqualTo("Cancelled"));
 
-            UnityEngine.Object.DestroyImmediate(unit);
         }
         finally
         {
+            if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
             UnityEngine.Object.DestroyImmediate(strategistObject);
             UnityEngine.Object.DestroyImmediate(creatyObject);
             UnityEngine.Object.DestroyImmediate(mission);
