@@ -515,6 +515,18 @@ namespace Hegemonia.AI.IA03
                                 "ia03_n2_indenizacao:" + brain.TeamId + ":" + paisAlvoTeamId,
                                 out _);
                         }
+                        if (enviada && resultado.PontuacaoDeGuerra >= 80f)
+                        {
+                            diplomacia.TentarProporCessaoTerritorial(
+                                governo,
+                                brain.TeamId,
+                                paisAlvoTeamId,
+                                0.3f,
+                                perfilPais.NomePresidente,
+                                "termos territoriais de um acordo após o conflito limitado",
+                                "ia03_n2_territorio:" + brain.TeamId + ":" + paisAlvoTeamId,
+                                out _);
+                        }
                     }
                 }
                 else
@@ -568,6 +580,25 @@ namespace Hegemonia.AI.IA03
                             perfilPais.NomePresidente,
                             "termos econômicos após a avaliação de uma hora",
                             "ia03_n1_indenizacao:" + brain.TeamId + ":" + paisAlvoTeamId,
+                            out _);
+                    }
+                    if (pontuacao >= 100f)
+                    {
+                        bool vitoriaPraticamenteCompleta = pontuacao >= 1000f
+                            && resultado.TotalDeBatalhas >= perfilPais.MinimoDeBatalhasParaAvaliar
+                            && resultado.Dominio >= 0.9f;
+                        float fracaoTerritorial = vitoriaPraticamenteCompleta ? 1f
+                            : pontuacao >= 500f ? 0.75f
+                            : pontuacao >= 250f ? 0.5f
+                            : 0.3f;
+                        diplomacia.TentarProporCessaoTerritorial(
+                            governo,
+                            brain.TeamId,
+                            paisAlvoTeamId,
+                            fracaoTerritorial,
+                            perfilPais.NomePresidente,
+                            "termos territoriais após a avaliação de uma hora",
+                            "ia03_n1_territorio:" + brain.TeamId + ":" + paisAlvoTeamId,
                             out _);
                     }
                 }

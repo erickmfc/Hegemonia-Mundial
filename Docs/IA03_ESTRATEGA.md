@@ -19,7 +19,7 @@ O alvo pode ser atribuído diretamente no perfil da IA. Se ficar em zero, IA03 u
 - Pesos nacionais e metas de força alimentam os diretores já existentes de economia, mercado, diplomacia, produção, marinha e aviação. IA03 não altera saldos nem cria recursos.
 - `GestorEconomiaIA03` lê saldo, comida, petróleo, energia e déficits do governo e ajusta pesos dos diretores de BrainMaster para proteger reservas e estoques essenciais.
 - Relações, notícias e propostas são lidas ou registradas em `SistemaGovernoMundial`. O adaptador IA03 envia propostas de cessar-fogo, que o serviço existente pode aceitar ou recusar.
-- Se o relatório apontar vantagem militar, IA03 também pode propor uma indenização; o serviço central transfere saldo apenas quando o país pagador aceita e tem fundos.
+- Se o relatório apontar vantagem militar, IA03 pode propor uma indenização e pedir regiões terrestres configuradas como concedíveis. O serviço central só transfere saldo ou posse depois da aceitação.
 - Perdas confirmadas usam `CartaCombateRegistro.EventoRegistrado`; uma unidade presidencial marcada por `IA03MarcaPresidencial` emite um evento a partir da notificação de morte do sistema de dano, sem consulta periódica.
 - Dano a uma estrutura nacional é recebido pelo evento de dano existente. Se houver missão `DefesaDeObjetivo` compatível configurada, ela é colocada à frente da fila sem procurar unidades ou prédios na cena.
 - Creatys registram-se no ciclo de vida do componente. O registro bloqueia IDs duplicados até que reste apenas uma instância.
@@ -33,6 +33,6 @@ O projeto publica evento de destruição de unidade, mas ainda não fornece um p
 
 ## Limites atuais de integração
 
-O backend diplomático existente executa cessar-fogo, indenização, comércio e pactos já suportados pelo jogo. Cessão territorial, desmilitarização e contratos completos de rendição ainda não têm execução no serviço central, por isso esta camada não os simula. As missões com porta-aviões, transporte anfíbio ou presidente selecionam e enviam grupos de unidades reais pelo comando existente; embarque/desembarque de passageiros e uma visita presidencial completa dependem dos fluxos específicos desses sistemas e não são acionados por este módulo.
+O acordo territorial transfere permanentemente somente regiões terrestres marcadas como concedíveis pelo mapa político; o backend ainda não implementa concessão temporária nem desmilitarização. A exigência de 100% requer pontuação alta, quantidade mínima de batalhas e domínio registrado de pelo menos 90%. As missões com porta-aviões, transporte anfíbio ou presidente selecionam e enviam grupos de unidades reais pelo comando existente; embarque/desembarque de passageiros e uma visita presidencial completa dependem dos fluxos específicos desses sistemas e não são acionados por este módulo.
 
 Os campos `CondicaoDeSucesso` e `CondicaoDeFracasso` documentam a missão; no runtime atual, chegada ao ponto, prazo e sobrevivência do grupo controlam o encerramento. Missões que exigem confirmação de destruição ou ocupação precisam de eventos desses produtores para serem concluídas com precisão.

@@ -54,7 +54,11 @@ public sealed class C400TransporteTerrestrePlayModeTests
             Campo(transporte, "altitudeCruzeiro", 35f);
             Campo(transporte, "distanciaAproximacao", 65f);
             Campo(transporte, "raioBuscaCarga", 45f);
+            Campo(transporte, "velocidadeTaxi", 35f);
+            Campo(transporte, "giroSolo", 180f);
+            Campo(transporte, "raioChegadaSolo", 6f);
             Campo(transporte, "timeoutPorPontoAereo", 120f);
+            Campo(transporte, "debugLogs", true);
             Assert.That(Campo<bool>(transporte, "permitirPousoTerrestreSeco"), Is.True);
             Assert.That(Campo<bool>(transporte, "embarcarAutomaticamenteEmPouso"), Is.True);
             Assert.That(Campo<bool>(transporte, "aceitarSomenteInfantariaEVeiculos"), Is.True);
@@ -64,8 +68,13 @@ public sealed class C400TransporteTerrestrePlayModeTests
             yield return EsperarEstado(transporte, "Estacionado", 120f);
             Assert.That(Vector3.Distance(aeronaveObjeto.transform.position, Campo<Transform>(pista, "parkingPoint").position), Is.LessThan(6f));
 
-            Chamar(transporte, "ReceberOrdemMover", new Vector3(xBusca, 0f, zBusca));
-            yield return EsperarQuantidadeCarga(transporte, 2, 120f);
+            Vector3 pontoBusca = new Vector3(xBusca, 0f, zBusca);
+            Assert.That(Classificar(pontoBusca), Is.EqualTo("Chao"), "O ponto de coleta deve ser classificado como terreno seco.");
+            Chamar(transporte, "ReceberOrdemMover", pontoBusca);
+            Vector3 destinoBuscaEsperado = Propriedade<Vector3>(transporte, "DestinoVisualAtual");
+            Assert.That(Vector3.Distance(destinoBuscaEsperado, pontoBusca), Is.LessThan(1f), "A ordem terrestre do C400 precisa ser aceita.");
+            yield return EsperarEstado(transporte, "Estacionado", 120f);
+            yield return EsperarQuantidadeCarga(transporte, 2, 90f);
             Assert.That(carga[0].activeSelf, Is.False, "A infantaria aliada deve ser embarcada.");
             Assert.That(carga[1].activeSelf, Is.False, "O veiculo aliado deve ser embarcado.");
             Assert.That(carga[2].activeSelf, Is.True, "Estruturas nao podem entrar no manifesto fisico.");
@@ -130,6 +139,16 @@ public sealed class C400TransporteTerrestrePlayModeTests
         return Enum.Parse(Type.GetType("TipoUnidade, Assembly-CSharp"), nome);
     }
 
+    private static string Classificar(Vector3 ponto)
+    {
+        Type tipoRegistro = Type.GetType("RegistroSuperficieMapa, Assembly-CSharp");
+        Type tipoClassificacao = Type.GetType("ClassificacaoSuperficieMapa, Assembly-CSharp");
+        MethodInfo metodo = tipoRegistro.GetMethod("TryClassify", BindingFlags.Static | BindingFlags.Public);
+        object[] args = { ponto, Enum.ToObject(tipoClassificacao, 0), 0f, 2f, 4f };
+        bool classificou = (bool)metodo.Invoke(null, args);
+        return classificou ? args[1].ToString() : "Desconhecida";
+    }
+
     private static GameObject PrefabDaFicha(ScriptableObject ficha)
     {
         PropertyInfo propriedade = ficha != null ? ficha.GetType().GetProperty("PrefabDaUnidade", BindingFlags.Instance | BindingFlags.Public) : null;
@@ -153,7 +172,9 @@ public sealed class C400TransporteTerrestrePlayModeTests
         while (transporte != null && Propriedade<int>(transporte, "QuantidadeCargaAtual") < quantidade)
         {
             if (Time.realtimeSinceStartup >= fim)
-                Assert.Fail("O C400 nao embarcou a quantidade esperada; embarcada=" + Propriedade<int>(transporte, "QuantidadeCargaAtual"));
+                Assert.Fail("O C400 nao embarcou a quantidade esperada; embarcada=" + Propriedade<int>(transporte, "QuantidadeCargaAtual")
+                    + "; estado=" + Estado(transporte) + "; pos=" + transporte.transform.position
+                    + "; destino=" + Propriedade<Vector3>(transporte, "DestinoVisualAtual"));
             yield return null;
         }
     }

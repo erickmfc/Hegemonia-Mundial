@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Hegemonia.AI.IA03
@@ -126,6 +127,84 @@ namespace Hegemonia.AI.IA03
             });
 
             mensagem = criada ? texto : "Já existe uma proposta de indenização pendente.";
+            return criada;
+        }
+
+        public bool TentarProporCessaoTerritorial(
+            SistemaGovernoMundial governo,
+            int paisCredorTeamId,
+            int paisPagadorTeamId,
+            float fracaoDeTerritorio,
+            string nomePresidente,
+            string motivo,
+            string dedupKey,
+            out string mensagem)
+        {
+            mensagem = string.Empty;
+            if (governo == null || paisCredorTeamId <= 0 || paisPagadorTeamId <= 0 || paisCredorTeamId == paisPagadorTeamId)
+            {
+                mensagem = "Países inválidos para propor cessão territorial.";
+                return false;
+            }
+
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+            if (mapa == null)
+            {
+                mensagem = "O mapa político não está disponível para negociar territórios.";
+                return false;
+            }
+
+            List<string> candidatos = new List<string>();
+            IReadOnlyList<RegiaoPolitica> regioes = mapa.Regioes;
+            for (int i = 0; i < regioes.Count; i++)
+            {
+                RegiaoPolitica regiao = regioes[i];
+                if (regiao == null || !regiao.capturable || regiao.tipo != TipoRegiaoPolitica.Terra)
+                {
+                    continue;
+                }
+
+                ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(regiao.territorioId);
+                if (estado.ownerCountryTeamId == paisPagadorTeamId && !estado.neutral)
+                {
+                    candidatos.Add(regiao.territorioId);
+                }
+            }
+
+            if (candidatos.Count == 0)
+            {
+                mensagem = "O país pagador não possui regiões concedíveis configuradas.";
+                return false;
+            }
+
+            candidatos.Sort(System.StringComparer.Ordinal);
+            int quantidade = Mathf.Clamp(Mathf.CeilToInt(candidatos.Count * Mathf.Clamp(fracaoDeTerritorio, 0.3f, 1f)), 1, candidatos.Count);
+            List<string> concedidos = candidatos.GetRange(0, quantidade);
+            DadosPaisGoverno credor = governo.ObterPais(paisCredorTeamId);
+            string presidente = !string.IsNullOrWhiteSpace(nomePresidente)
+                ? nomePresidente.Trim()
+                : credor != null ? credor.nomePresidente : governo.NomePais(paisCredorTeamId);
+            string texto = "Presidente " + presidente + " solicita a cessão permanente de " + quantidade + " região(ões) de "
+                           + governo.NomePais(paisPagadorTeamId)
+                           + (string.IsNullOrWhiteSpace(motivo) ? "." : ": " + motivo.Trim());
+
+            bool criada = governo.TentarCriarProposta(new PropostaInternacional
+            {
+                tipo = TipoPropostaInternacional.CessaoTerritorial,
+                origemTeamId = paisCredorTeamId,
+                alvoTeamId = paisPagadorTeamId,
+                quantidade = quantidade,
+                prioridade = 90,
+                motivo = texto,
+                expiraEm = Time.unscaledTime + 180f,
+                dedupKey = string.IsNullOrWhiteSpace(dedupKey)
+                    ? "ia03_territorio:" + paisCredorTeamId + ":" + paisPagadorTeamId
+                    : dedupKey,
+                territoriosConcedidos = concedidos
+            });
+
+            mensagem = criada ? texto : "Já existe uma proposta territorial pendente.";
             return criada;
         }
 
