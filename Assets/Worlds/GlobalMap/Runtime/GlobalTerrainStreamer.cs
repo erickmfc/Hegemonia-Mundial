@@ -4,6 +4,7 @@ using System.Text;
 using PackageNavMeshSurface = Unity.AI.Navigation.NavMeshSurface;
 using UnityEngine;
 using UnityEngine.AI;
+using Unity.Profiling;
 
 /// <summary>
 /// Keeps a coarse, collidable world Terrain available everywhere and streams
@@ -15,6 +16,23 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private const int LocalNavMeshAgentTypeId = 0;
     private const int LocalNavMeshTileSize = 256;
     private const float LocalNavMeshVoxelSize = 4f;
+
+    private static readonly ProfilerMarker BuildDesiredSetMarker = new ProfilerMarker("GlobalTerrainStreamer.BuildDesiredSet");
+    private static readonly ProfilerMarker ApplyVisibleTilesMarker = new ProfilerMarker("GlobalTerrainStreamer.ApplyVisibleTiles");
+    private static readonly ProfilerMarker ScheduleNavMeshUpdateMarker = new ProfilerMarker("GlobalTerrainStreamer.ScheduleNavMeshUpdate");
+    private static readonly ProfilerMarker SwapNavMeshDataMarker = new ProfilerMarker("GlobalTerrainStreamer.SwapNavMeshData");
+    private static readonly ProfilerMarker ValidateNavMeshMarker = new ProfilerMarker("GlobalTerrainStreamer.ValidateNavMesh");
+    private static readonly ProfilerMarker GenerateHeightRowsMarker = new ProfilerMarker("GlobalTerrainStreamer.GenerateHeightRows");
+    private static readonly ProfilerMarker ApplyHeightRowsMarker = new ProfilerMarker("GlobalTerrainStreamer.ApplyHeightRows");
+    private static readonly ProfilerMarker SyncHeightmapMarker = new ProfilerMarker("GlobalTerrainStreamer.SyncHeightmap");
+    private static readonly ProfilerMarker GenerateAlphamapRowsMarker = new ProfilerMarker("GlobalTerrainStreamer.GenerateAlphamapRows");
+    private static readonly ProfilerMarker ApplyAlphamapRowsMarker = new ProfilerMarker("GlobalTerrainStreamer.ApplyAlphamapRows");
+    private static readonly ProfilerMarker GenerateVegetationRowMarker = new ProfilerMarker("GlobalTerrainStreamer.GenerateVegetationRow");
+    private static readonly ProfilerMarker BuildVegetationInstancesMarker = new ProfilerMarker("GlobalTerrainStreamer.BuildVegetationInstances");
+    private static readonly ProfilerMarker ApplyVegetationInstancesMarker = new ProfilerMarker("GlobalTerrainStreamer.ApplyVegetationInstances");
+    private static readonly ProfilerMarker CreateTerrainObjectMarker = new ProfilerMarker("GlobalTerrainStreamer.CreateTerrainObject");
+    private static readonly ProfilerMarker ConfigureTerrainObjectMarker = new ProfilerMarker("GlobalTerrainStreamer.ConfigureTerrainObject");
+    private static readonly ProfilerMarker RemoveStaleTilesMarker = new ProfilerMarker("GlobalTerrainStreamer.RemoveStaleTiles");
 
     public GlobalWorldDefinition world;
     public Terrain globalTerrain;
@@ -191,7 +209,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
             if (Time.unscaledTime >= nextRefresh)
             {
-                BuildDesiredSet(camera.transform.position);
+                using (BuildDesiredSetMarker.Auto())
+                    BuildDesiredSet(camera.transform.position);
                 nextRefresh = Time.unscaledTime + refreshInterval;
             }
 
@@ -291,15 +310,18 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             yield break;
         }
 
-        foreach (KeyValuePair<Vector2Int, Terrain> pair in loadedTiles)
+        using (ApplyVisibleTilesMarker.Auto())
         {
-            bool visible = desiredTiles.Contains(pair.Key);
-            Terrain terrain = pair.Value;
-            if (terrain == null) continue;
-            TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
-            if (collider != null) collider.enabled = visible;
-            terrain.enabled = visible;
-            terrain.gameObject.SetActive(visible);
+            foreach (KeyValuePair<Vector2Int, Terrain> pair in loadedTiles)
+            {
+                bool visible = desiredTiles.Contains(pair.Key);
+                Terrain terrain = pair.Value;
+                if (terrain == null) continue;
+                TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
+                if (collider != null) collider.enabled = visible;
+                terrain.enabled = visible;
+                terrain.gameObject.SetActive(visible);
+            }
         }
 
         // Keep the coarse Terrain as the visual/collider fallback while the
@@ -371,7 +393,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         long started = System.Diagnostics.Stopwatch.GetTimestamp();
         try
         {
-            buildOperation = localNavMeshSurface.UpdateNavMesh(nextData);
+            using (ScheduleNavMeshUpdateMarker.Auto())
+                buildOperation = localNavMeshSurface.UpdateNavMesh(nextData);
         }
         catch (System.Exception exception)
         {
@@ -393,23 +416,28 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0
             / System.Diagnostics.Stopwatch.Frequency);
 
-        NavMeshData previousGeneratedData = runtimeLocalNavMeshData;
-        if (localNavMeshSurface.enabled)
-            localNavMeshSurface.RemoveData();
+        using (SwapNavMeshDataMarker.Auto())
+        {
+            NavMeshData previousGeneratedData = runtimeLocalNavMeshData;
+            if (localNavMeshSurface.enabled)
+                localNavMeshSurface.RemoveData();
 
-        localNavMeshSurface.navMeshData = nextData;
-        if (!localNavMeshSurface.enabled)
-            localNavMeshSurface.enabled = true;
-        else
-            localNavMeshSurface.AddData();
+            localNavMeshSurface.navMeshData = nextData;
+            if (!localNavMeshSurface.enabled)
+                localNavMeshSurface.enabled = true;
+            else
+                localNavMeshSurface.AddData();
 
-        runtimeLocalNavMeshData = nextData;
-        if (previousGeneratedData != null && previousGeneratedData != nextData)
-            Destroy(previousGeneratedData);
+            runtimeLocalNavMeshData = nextData;
+            if (previousGeneratedData != null && previousGeneratedData != nextData)
+                Destroy(previousGeneratedData);
+        }
 
         // Let NavMeshSurface register the completed data before checking it.
         yield return null;
-        bool hasNavigableLand = HasNavigableLand();
+        bool hasNavigableLand;
+        using (ValidateNavMeshMarker.Auto())
+            hasNavigableLand = HasNavigableLand();
         if (!hasNavigableLand)
             Debug.LogError("[GlobalMap] O NavMesh local terminou vazio para " + tileSet + ".", this);
 
@@ -496,25 +524,30 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 int rowCount = Mathf.Min(rowsPerFrame, resolution - rowStart);
                 float[,] heightRows = new float[rowCount, resolution];
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
-                for (int localZ = 0; localZ < rowCount; localZ++)
+                using (GenerateHeightRowsMarker.Auto())
                 {
-                    int z = rowStart + localZ;
-                    float worldZ = minZ + size * z / (resolution - 1f);
-                    for (int x = 0; x < resolution; x++)
+                    for (int localZ = 0; localZ < rowCount; localZ++)
                     {
-                        float worldX = minX + size * x / (resolution - 1f);
-                        float height = world.HeightAtWorld(worldX, worldZ);
-                        float normalizedHeight = Mathf.Clamp01((height - world.terrainBaseY) / world.terrainVerticalSize);
-                        heights[z, x] = normalizedHeight;
-                        heightRows[localZ, x] = normalizedHeight;
+                        int z = rowStart + localZ;
+                        float worldZ = minZ + size * z / (resolution - 1f);
+                        for (int x = 0; x < resolution; x++)
+                        {
+                            float worldX = minX + size * x / (resolution - 1f);
+                            float height = world.HeightAtWorld(worldX, worldZ);
+                            float normalizedHeight = Mathf.Clamp01((height - world.terrainBaseY) / world.terrainVerticalSize);
+                            heights[z, x] = normalizedHeight;
+                            heightRows[localZ, x] = normalizedHeight;
+                        }
                     }
                 }
-                data.SetHeightsDelayLOD(0, rowStart, heightRows);
+                using (ApplyHeightRowsMarker.Auto())
+                    data.SetHeightsDelayLOD(0, rowStart, heightRows);
                 addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
                 yield return null;
             }
             long syncStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-            data.SyncHeightmap();
+            using (SyncHeightmapMarker.Auto())
+                data.SyncHeightmap();
             addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - syncStarted);
 
             int alphaResolution = data.alphamapResolution;
@@ -524,57 +557,68 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 int rowCount = Mathf.Min(rowsPerFrame, alphaResolution - rowStart);
                 float[,,] alphaRows = new float[rowCount, alphaResolution, layerCount];
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
-                for (int localZ = 0; localZ < rowCount; localZ++)
+                using (GenerateAlphamapRowsMarker.Auto())
                 {
-                    int z = rowStart + localZ;
-                    float worldZ = minZ + size * z / (alphaResolution - 1f);
-                    float normalizedZ = z / (alphaResolution - 1f);
-                    int heightZ = Mathf.RoundToInt(normalizedZ * (resolution - 1));
-                    for (int x = 0; x < alphaResolution; x++)
+                    for (int localZ = 0; localZ < rowCount; localZ++)
                     {
-                        float worldX = minX + size * x / (alphaResolution - 1f);
-                        float normalizedX = x / (alphaResolution - 1f);
-                        int heightX = Mathf.RoundToInt(normalizedX * (resolution - 1));
-                        float surfaceHeight = heights[heightZ, heightX] * world.terrainVerticalSize
-                            + world.terrainBaseY - world.seaLevel;
-                        float slope = data.GetSteepness(normalizedX, normalizedZ);
-                        world.BiomeWeightsAtWorld(worldX, worldZ, alphaWeights, slope, surfaceHeight);
-                        for (int layer = 0; layer < layerCount; layer++)
-                            alphaRows[localZ, x, layer] = alphaWeights[layer];
+                        int z = rowStart + localZ;
+                        float worldZ = minZ + size * z / (alphaResolution - 1f);
+                        float normalizedZ = z / (alphaResolution - 1f);
+                        int heightZ = Mathf.RoundToInt(normalizedZ * (resolution - 1));
+                        for (int x = 0; x < alphaResolution; x++)
+                        {
+                            float worldX = minX + size * x / (alphaResolution - 1f);
+                            float normalizedX = x / (alphaResolution - 1f);
+                            int heightX = Mathf.RoundToInt(normalizedX * (resolution - 1));
+                            float surfaceHeight = heights[heightZ, heightX] * world.terrainVerticalSize
+                                + world.terrainBaseY - world.seaLevel;
+                            float slope = data.GetSteepness(normalizedX, normalizedZ);
+                            world.BiomeWeightsAtWorld(worldX, worldZ, alphaWeights, slope, surfaceHeight);
+                            for (int layer = 0; layer < layerCount; layer++)
+                                alphaRows[localZ, x, layer] = alphaWeights[layer];
+                        }
                     }
                 }
-                data.SetAlphamaps(0, rowStart, alphaRows);
+                using (ApplyAlphamapRowsMarker.Auto())
+                    data.SetAlphamaps(0, rowStart, alphaRows);
                 addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
                 yield return null;
             }
             yield return ConfigureVegetationIncremental(data, minX, minZ, size, addWorkTicks);
 
             long terrainStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-            GameObject tileObject = Terrain.CreateTerrainGameObject(data);
-            tileObject.name = "TerrainTile_" + coordinate.x.ToString("D2") + "_" + coordinate.y.ToString("D2");
-            tileObject.transform.SetParent(transform, true);
-            tileObject.transform.position = new Vector3(minX, world.terrainBaseY, minZ);
-            tileObject.layer = LayerMask.NameToLayer("Chao") >= 0 ? LayerMask.NameToLayer("Chao") : 0;
+            GameObject tileObject;
+            using (CreateTerrainObjectMarker.Auto())
+                tileObject = Terrain.CreateTerrainGameObject(data);
+            Terrain terrainComponent;
+            using (ConfigureTerrainObjectMarker.Auto())
+            {
+                tileObject.name = "TerrainTile_" + coordinate.x.ToString("D2") + "_" + coordinate.y.ToString("D2");
+                tileObject.transform.SetParent(transform, true);
+                tileObject.transform.position = new Vector3(minX, world.terrainBaseY, minZ);
+                tileObject.layer = LayerMask.NameToLayer("Chao") >= 0 ? LayerMask.NameToLayer("Chao") : 0;
 
-            Terrain terrainComponent = tileObject.GetComponent<Terrain>();
-            TerrainCollider colliderComponent = tileObject.GetComponent<TerrainCollider>();
-            terrainComponent.drawInstanced = true;
-            terrainComponent.materialTemplate = globalTerrain.materialTemplate;
-            // Keep the initial radius conservative until LateUpdate applies
-            // the camera-altitude target. The prefab LODGroup supplies its
-            // authored distant impostor; Unity's generated Terrain billboard
-            // starts at the cull edge so its blue fallback is never visible.
-            terrainComponent.treeDistance = 450f;
-            terrainComponent.treeBillboardDistance = 450f;
-            terrainComponent.treeCrossFadeLength = 0f;
-            terrainComponent.detailObjectDistance = 0f;
-            // Keep local field/forest terrain layers active through the requested 5–20 km band.
-            terrainComponent.basemapDistance = 20000f;
-            terrainComponent.enabled = false;
-            if (colliderComponent != null) colliderComponent.enabled = false;
+                terrainComponent = tileObject.GetComponent<Terrain>();
+                TerrainCollider colliderComponent = tileObject.GetComponent<TerrainCollider>();
+                terrainComponent.drawInstanced = true;
+                terrainComponent.materialTemplate = globalTerrain.materialTemplate;
+                // Keep the initial radius conservative until LateUpdate applies
+                // the camera-altitude target. Nearby trees stay visible while
+                // their authored prefab LODGroup supplies the distant impostor.
+                // Keep Unity's generated billboard at the cull edge to avoid
+                // its blue fallback.
+                terrainComponent.treeDistance = 350f;
+                terrainComponent.treeBillboardDistance = 350f;
+                terrainComponent.treeCrossFadeLength = 0f;
+                terrainComponent.detailObjectDistance = 0f;
+                // Keep local field/forest terrain layers active through the requested 5–20 km band.
+                terrainComponent.basemapDistance = 20000f;
+                terrainComponent.enabled = false;
+                if (colliderComponent != null) colliderComponent.enabled = false;
 
-            MarcadorSuperficieMapa marker = tileObject.AddComponent<MarcadorSuperficieMapa>();
-            marker.DefinirTipo(TipoSuperficieMapa.Chao);
+                MarcadorSuperficieMapa marker = tileObject.AddComponent<MarcadorSuperficieMapa>();
+                marker.DefinirTipo(TipoSuperficieMapa.Chao);
+            }
             dataTransferredToTerrain = true;
             addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - terrainStarted);
             onComplete(terrainComponent);
@@ -639,91 +683,94 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
         {
             long rowStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-            for (int cellX = minCellX; cellX <= maxCellX; cellX++)
+            using (GenerateVegetationRowMarker.Auto())
             {
-                int cellSeed = unchecked(cellX * 73856093 ^ cellZ * 19349663 ^ 0x2C9277B5);
-                System.Random random = new System.Random(cellSeed);
-                float worldX = (cellX + 0.5f + ((float)random.NextDouble() - 0.5f) * 0.58f) * cell;
-                float worldZ = (cellZ + 0.5f + ((float)random.NextDouble() - 0.5f) * 0.58f) * cell;
-                if (worldX < minX || worldX >= minX + size || worldZ < minZ || worldZ >= minZ + size)
-                    continue;
-
-                float forest = world.ForestWeightAtWorld(worldX, worldZ);
-                if (forest < 0.045f)
-                    continue;
-                forestEquivalentAreaSquareKilometres += cell * cell * Mathf.Clamp01(forest) / 1000000f;
-                if (forest > strongestForestWeight)
+                for (int cellX = minCellX; cellX <= maxCellX; cellX++)
                 {
-                    strongestForestWeight = forest;
-                    fallbackWorldX = worldX;
-                    fallbackWorldZ = worldZ;
-                }
-
-                // Dense forest cells become groves of individual tree meshes.
-                // The oversized backdrop patch meshes read as giant umbrellas
-                // at gameplay height, so keep them out of the local vegetation.
-                float densityChance = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.06f, 0.58f, forest));
-                if ((float)random.NextDouble() > densityChance)
-                    continue;
-
-                bool usePatch = clusterPrototypeCount > 0
-                    && (firstIndividualPrototype == prototypes.Count
-                        || forest >= 0.28f
-                        || (float)random.NextDouble() < Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.12f, 0.38f, forest)));
-                int prototypeIndex = usePatch
-                    ? random.Next(clusterPrototypeCount)
-                    : (firstIndividualPrototype < prototypes.Count
-                        ? random.Next(firstIndividualPrototype, prototypes.Count)
-                        : random.Next(prototypes.Count));
-
-                int members = forest >= 0.25f ? random.Next(30, 43) : 1;
-                List<TreeInstance> cluster = new List<TreeInstance>(members);
-                for (int member = 0; member < members; member++)
-                {
-                    float memberX = worldX;
-                    float memberZ = worldZ;
-                    if (member > 0)
-                    {
-                        float angle = (float)random.NextDouble() * Mathf.PI * 2f;
-                        float radius = Mathf.Lerp(18f, 58f, Mathf.Sqrt((float)random.NextDouble()));
-                        memberX += Mathf.Cos(angle) * radius;
-                        memberZ += Mathf.Sin(angle) * radius;
-                    }
-
-                    float memberForest = member == 0 ? forest : world.ForestWeightAtWorld(memberX, memberZ);
-                    if (memberForest < 0.045f)
+                    int cellSeed = unchecked(cellX * 73856093 ^ cellZ * 19349663 ^ 0x2C9277B5);
+                    System.Random random = new System.Random(cellSeed);
+                    float worldX = (cellX + 0.5f + ((float)random.NextDouble() - 0.5f) * 0.58f) * cell;
+                    float worldZ = (cellZ + 0.5f + ((float)random.NextDouble() - 0.5f) * 0.58f) * cell;
+                    if (worldX < minX || worldX >= minX + size || worldZ < minZ || worldZ >= minZ + size)
                         continue;
 
-                    float normalizedX = Mathf.Clamp01((memberX - minX) / size);
-                    float normalizedZ = Mathf.Clamp01((memberZ - minZ) / size);
-                    float worldHeight = world.HeightAtWorld(memberX, memberZ);
-                    float normalizedY = Mathf.Clamp01((worldHeight - world.terrainBaseY) / world.terrainVerticalSize);
-                    bool patchPrototype = member == 0 && usePatch;
-                    int memberPrototypeIndex = patchPrototype
-                        ? prototypeIndex
-                        : (members > 1 && firstIndividualPrototype < prototypes.Count
-                            ? random.Next(firstIndividualPrototype, prototypes.Count)
-                            : prototypeIndex);
-                    cluster.Add(new TreeInstance
+                    float forest = world.ForestWeightAtWorld(worldX, worldZ);
+                    if (forest < 0.045f)
+                        continue;
+                    forestEquivalentAreaSquareKilometres += cell * cell * Mathf.Clamp01(forest) / 1000000f;
+                    if (forest > strongestForestWeight)
                     {
-                        position = new Vector3(normalizedX, normalizedY, normalizedZ),
-                        prototypeIndex = memberPrototypeIndex,
-                        widthScale = patchPrototype
-                            ? Mathf.Lerp(1.8f, 2.35f, (float)random.NextDouble())
-                            : Mathf.Lerp(1.35f, 1.9f, (float)random.NextDouble()),
-                        heightScale = patchPrototype
-                            ? Mathf.Lerp(1.05f, 1.3f, (float)random.NextDouble())
-                            : Mathf.Lerp(1f, 1.35f, (float)random.NextDouble()),
-                        rotation = (float)random.NextDouble() * Mathf.PI * 2f,
-                        color = Color.white,
-                        lightmapColor = Color.white
-                    });
-                }
+                        strongestForestWeight = forest;
+                        fallbackWorldX = worldX;
+                        fallbackWorldZ = worldZ;
+                    }
 
-                if (cluster.Count == 0)
-                    continue;
-                totalCandidateTrees += cluster.Count;
-                placements.Add(new TreeClusterPlacement(cellSeed, cluster.ToArray()));
+                    // Dense forest cells become groves of individual tree meshes.
+                    // The oversized backdrop patch meshes read as giant umbrellas
+                    // at gameplay height, so keep them out of the local vegetation.
+                    float densityChance = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.06f, 0.58f, forest));
+                    if ((float)random.NextDouble() > densityChance)
+                        continue;
+
+                    bool usePatch = clusterPrototypeCount > 0
+                        && (firstIndividualPrototype == prototypes.Count
+                            || forest >= 0.28f
+                            || (float)random.NextDouble() < Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.12f, 0.38f, forest)));
+                    int prototypeIndex = usePatch
+                        ? random.Next(clusterPrototypeCount)
+                        : (firstIndividualPrototype < prototypes.Count
+                            ? random.Next(firstIndividualPrototype, prototypes.Count)
+                            : random.Next(prototypes.Count));
+
+                    int members = forest >= 0.25f ? random.Next(30, 43) : 1;
+                    List<TreeInstance> cluster = new List<TreeInstance>(members);
+                    for (int member = 0; member < members; member++)
+                    {
+                        float memberX = worldX;
+                        float memberZ = worldZ;
+                        if (member > 0)
+                        {
+                            float angle = (float)random.NextDouble() * Mathf.PI * 2f;
+                            float radius = Mathf.Lerp(18f, 58f, Mathf.Sqrt((float)random.NextDouble()));
+                            memberX += Mathf.Cos(angle) * radius;
+                            memberZ += Mathf.Sin(angle) * radius;
+                        }
+
+                        float memberForest = member == 0 ? forest : world.ForestWeightAtWorld(memberX, memberZ);
+                        if (memberForest < 0.045f)
+                            continue;
+
+                        float normalizedX = Mathf.Clamp01((memberX - minX) / size);
+                        float normalizedZ = Mathf.Clamp01((memberZ - minZ) / size);
+                        float worldHeight = world.HeightAtWorld(memberX, memberZ);
+                        float normalizedY = Mathf.Clamp01((worldHeight - world.terrainBaseY) / world.terrainVerticalSize);
+                        bool patchPrototype = member == 0 && usePatch;
+                        int memberPrototypeIndex = patchPrototype
+                            ? prototypeIndex
+                            : (members > 1 && firstIndividualPrototype < prototypes.Count
+                                ? random.Next(firstIndividualPrototype, prototypes.Count)
+                                : prototypeIndex);
+                        cluster.Add(new TreeInstance
+                        {
+                            position = new Vector3(normalizedX, normalizedY, normalizedZ),
+                            prototypeIndex = memberPrototypeIndex,
+                            widthScale = patchPrototype
+                                ? Mathf.Lerp(1.8f, 2.35f, (float)random.NextDouble())
+                                : Mathf.Lerp(1.35f, 1.9f, (float)random.NextDouble()),
+                            heightScale = patchPrototype
+                                ? Mathf.Lerp(1.05f, 1.3f, (float)random.NextDouble())
+                                : Mathf.Lerp(1f, 1.35f, (float)random.NextDouble()),
+                            rotation = (float)random.NextDouble() * Mathf.PI * 2f,
+                            color = Color.white,
+                            lightmapColor = Color.white
+                        });
+                    }
+
+                    if (cluster.Count == 0)
+                        continue;
+                    totalCandidateTrees += cluster.Count;
+                    placements.Add(new TreeClusterPlacement(cellSeed, cluster.ToArray()));
+                }
             }
 
             addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - rowStarted);
@@ -733,41 +780,46 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
         // If an unusually dense tile exceeds its instance budget, sample whole
         // packs by a stable hash. This retains clumps and avoids scan-order bias.
-        placements.Sort();
-        int treeBudget = Mathf.CeilToInt(
-            forestEquivalentAreaSquareKilometres * world.forestTreesPerSquareKilometre * 1.1f);
-        List<TreeInstance> trees = new List<TreeInstance>(Mathf.Min(totalCandidateTrees, treeBudget));
-        for (int i = 0; i < placements.Count; i++)
+        List<TreeInstance> trees;
+        using (BuildVegetationInstancesMarker.Auto())
         {
-            TreeInstance[] cluster = placements[i].instances;
-            if (trees.Count + cluster.Length > treeBudget)
-                continue;
-            trees.AddRange(cluster);
-        }
-
-        // A forest cell can be missed by chance on a small island; keep its
-        // strongest valid masked point represented without adding desert trees.
-        if (trees.Count == 0 && strongestForestWeight >= 0.045f)
-        {
-            int prototypeIndex = clusterPrototypeCount > 0 ? 0 : 0;
-            float height = world.HeightAtWorld(fallbackWorldX, fallbackWorldZ);
-            trees.Add(new TreeInstance
+            placements.Sort();
+            int treeBudget = Mathf.CeilToInt(
+                forestEquivalentAreaSquareKilometres * world.forestTreesPerSquareKilometre * 1.1f);
+            trees = new List<TreeInstance>(Mathf.Min(totalCandidateTrees, treeBudget));
+            for (int i = 0; i < placements.Count; i++)
             {
-                position = new Vector3(
-                    Mathf.Clamp01((fallbackWorldX - minX) / size),
-                    Mathf.Clamp01((height - world.terrainBaseY) / world.terrainVerticalSize),
-                    Mathf.Clamp01((fallbackWorldZ - minZ) / size)),
-                prototypeIndex = prototypeIndex,
-                widthScale = 1f,
-                heightScale = 1f,
-                rotation = 0f,
-                color = Color.white,
-                lightmapColor = Color.white
-            });
+                TreeInstance[] cluster = placements[i].instances;
+                if (trees.Count + cluster.Length > treeBudget)
+                    continue;
+                trees.AddRange(cluster);
+            }
+
+            // A forest cell can be missed by chance on a small island; keep its
+            // strongest valid masked point represented without adding desert trees.
+            if (trees.Count == 0 && strongestForestWeight >= 0.045f)
+            {
+                int prototypeIndex = clusterPrototypeCount > 0 ? 0 : 0;
+                float height = world.HeightAtWorld(fallbackWorldX, fallbackWorldZ);
+                trees.Add(new TreeInstance
+                {
+                    position = new Vector3(
+                        Mathf.Clamp01((fallbackWorldX - minX) / size),
+                        Mathf.Clamp01((height - world.terrainBaseY) / world.terrainVerticalSize),
+                        Mathf.Clamp01((fallbackWorldZ - minZ) / size)),
+                    prototypeIndex = prototypeIndex,
+                    widthScale = 1f,
+                    heightScale = 1f,
+                    rotation = 0f,
+                    color = Color.white,
+                    lightmapColor = Color.white
+                });
+            }
         }
 
         long setTreesStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-        data.SetTreeInstances(trees.ToArray(), true);
+        using (ApplyVegetationInstancesMarker.Auto())
+            data.SetTreeInstances(trees.ToArray(), true);
         totalTreeInstances += trees.Count;
         addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - setTreesStarted);
     }
@@ -791,23 +843,26 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
     private void RemoveStaleTiles()
     {
-        removalBuffer.Clear();
-        foreach (KeyValuePair<Vector2Int, Terrain> pair in loadedTiles)
-            if (!desiredTiles.Contains(pair.Key)) removalBuffer.Add(pair.Key);
-
-        for (int i = 0; i < removalBuffer.Count; i++)
+        using (RemoveStaleTilesMarker.Auto())
         {
-            Terrain terrain = loadedTiles[removalBuffer[i]];
-            if (terrain != null)
+            removalBuffer.Clear();
+            foreach (KeyValuePair<Vector2Int, Terrain> pair in loadedTiles)
+                if (!desiredTiles.Contains(pair.Key)) removalBuffer.Add(pair.Key);
+
+            for (int i = 0; i < removalBuffer.Count; i++)
             {
-                totalTreeInstances -= terrain.terrainData != null ? terrain.terrainData.treeInstanceCount : 0;
-                TerrainData data = terrain.terrainData;
-                Destroy(terrain.gameObject);
-                if (data != null) Destroy(data);
+                Terrain terrain = loadedTiles[removalBuffer[i]];
+                if (terrain != null)
+                {
+                    totalTreeInstances -= terrain.terrainData != null ? terrain.terrainData.treeInstanceCount : 0;
+                    TerrainData data = terrain.terrainData;
+                    Destroy(terrain.gameObject);
+                    if (data != null) Destroy(data);
+                }
+                loadedTiles.Remove(removalBuffer[i]);
             }
-            loadedTiles.Remove(removalBuffer[i]);
+            totalTreeInstances = Mathf.Max(0, totalTreeInstances);
         }
-        totalTreeInstances = Mathf.Max(0, totalTreeInstances);
     }
 
     private void RemoveAllTiles()
@@ -852,8 +907,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     {
         if (terrain == null) return;
         terrain.drawInstanced = true;
-        terrain.treeDistance = vegetation ? 450f : 0f;
-        terrain.treeBillboardDistance = vegetation ? 450f : 3500f;
+        terrain.treeDistance = vegetation ? 350f : 0f;
+        terrain.treeBillboardDistance = vegetation ? 350f : 3500f;
         terrain.treeCrossFadeLength = 0f;
         terrain.detailObjectDistance = 0f;
         terrain.basemapDistance = 20000f;
@@ -871,7 +926,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         // its fallback tint was visibly blue in the previous Play capture.
         float altitudeBlend = Mathf.SmoothStep(0f, 1f,
             Mathf.InverseLerp(500f, 3000f, camera.transform.position.y));
-        float treeDistance = Mathf.Lerp(450f, 150f, altitudeBlend);
+        float treeDistance = Mathf.Lerp(350f, 125f, altitudeBlend);
         float billboardDistance = treeDistance;
         foreach (Terrain terrain in loadedTiles.Values)
         {
