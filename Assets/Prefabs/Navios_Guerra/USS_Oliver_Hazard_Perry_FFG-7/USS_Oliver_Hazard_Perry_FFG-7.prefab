@@ -688,6 +688,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7608186084770089252}
     m_Modifications:
+    - target: {fileID: 1109670852497118349, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
+      propertyPath: alcance
+      value: 5000
+      objectReference: {fileID: 0}
+    - target: {fileID: 1109670852497118349, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
+      propertyPath: limitarRotacao
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1388456230983846784, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: m_Name
       value: torreta
@@ -702,19 +710,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1652555017968927179, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: m_LocalScale.z
-      value: 1.5200001
+      value: 250
       objectReference: {fileID: 0}
     - target: {fileID: 1652555017968927179, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 3911.5283
+      value: 4321
       objectReference: {fileID: 0}
     - target: {fileID: 1652555017968927179, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 4765.901
+      value: 3842
       objectReference: {fileID: 0}
     - target: {fileID: 1652555017968927179, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2043.112
+      value: 61
       objectReference: {fileID: 0}
     - target: {fileID: 1652555017968927179, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: m_LocalRotation.w
