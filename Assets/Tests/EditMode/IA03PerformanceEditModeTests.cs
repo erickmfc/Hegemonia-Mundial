@@ -11,6 +11,7 @@ public sealed class IA03PerformanceEditModeTests
 {
     private const int NumeroDePaises = 15;
     private const int QuadrosSimulados = 1800;
+    private const int QuadrosAquecimento = 900;
     private const float Delta = 1f / 60f;
 
     [Test]
@@ -26,8 +27,8 @@ public sealed class IA03PerformanceEditModeTests
         Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
 
         var baseTicks = new List<Action<float, float>>(NumeroDePaises);
-        var ia03Ticks = new List<Action<float, float>>(NumeroDePaises);
-        var schedulers = new List<object>(NumeroDePaises);
+        var aquecimentoTicks = new List<Action<float, float>>(NumeroDePaises);
+        var strategists = new List<Component>(NumeroDePaises);
         var objetos = new List<GameObject>(NumeroDePaises);
         var perfis = new List<ScriptableObject>(NumeroDePaises);
         MethodInfo schedulerTick = schedulerType.GetMethod("Tick", BindingFlags.Instance | BindingFlags.Public);
@@ -46,7 +47,6 @@ public sealed class IA03PerformanceEditModeTests
                 baseTicks.Add((Action<float, float>)Delegate.CreateDelegate(typeof(Action<float, float>), schedulerBase, schedulerTick));
 
                 object scheduler = Activator.CreateInstance(schedulerType);
-                schedulers.Add(scheduler);
 
                 var objeto = new GameObject("IA03 perf harness " + teamId);
                 objeto.SetActive(false);
@@ -55,6 +55,7 @@ public sealed class IA03PerformanceEditModeTests
                 Component brain = objeto.AddComponent(brainType);
                 SetField(brain, "TeamId", teamId);
                 Component strategist = objeto.AddComponent(strategistType);
+                strategists.Add(strategist);
                 ScriptableObject profile = ScriptableObject.CreateInstance(profileType);
                 perfis.Add(profile);
                 SetField(profile, "intervaloDecisaoSegundos", 5f);
@@ -78,14 +79,28 @@ public sealed class IA03PerformanceEditModeTests
 
                 float delay = (float)strategistType.GetProperty("DelayInicialEscalonado").GetValue(strategist);
                 schedulerRegister.Invoke(scheduler, new object[] { strategist, 0f, delay });
-                ia03Ticks.Add((Action<float, float>)Delegate.CreateDelegate(typeof(Action<float, float>), scheduler, schedulerTick));
+                aquecimentoTicks.Add((Action<float, float>)Delegate.CreateDelegate(typeof(Action<float, float>), scheduler, schedulerTick));
             }
 
-            Medicao baseline = Medir(baseTicks, null, null);
-            Medicao comIA03 = Medir(ia03Ticks, schedulers, schedulerType);
+            Aquecer(aquecimentoTicks);
+
+            var measuredSchedulers = new List<object>(NumeroDePaises);
+            var measuredTicks = new List<Action<float, float>>(NumeroDePaises);
+            for (int indice = 0; indice < strategists.Count; indice++)
+            {
+                object scheduler = Activator.CreateInstance(schedulerType);
+                Component strategist = strategists[indice];
+                float delay = (float)strategistType.GetProperty("DelayInicialEscalonado").GetValue(strategist);
+                schedulerRegister.Invoke(scheduler, new object[] { strategist, 15f, delay });
+                measuredSchedulers.Add(scheduler);
+                measuredTicks.Add((Action<float, float>)Delegate.CreateDelegate(typeof(Action<float, float>), scheduler, schedulerTick));
+            }
+
+            Medicao baseline = Medir(baseTicks, null, null, 15f);
+            Medicao comIA03 = Medir(measuredTicks, measuredSchedulers, schedulerType, 15f);
 
             TestContext.WriteLine(Formatar("baseline: 15 agendadores sem módulos", baseline));
-            TestContext.WriteLine(Formatar("15 IA03 em N1, sem unidades ou cena de campanha", comIA03));
+            TestContext.WriteLine(Formatar("15 IA03 em N1, aquecidas, sem unidades ou cena de campanha", comIA03));
 
             Assert.That(baseline.Quadros, Is.EqualTo(QuadrosSimulados));
             Assert.That(comIA03.Quadros, Is.EqualTo(QuadrosSimulados));
@@ -104,10 +119,23 @@ public sealed class IA03PerformanceEditModeTests
         }
     }
 
+    private static void Aquecer(List<Action<float, float>> ticks)
+    {
+        for (int quadro = 0; quadro < QuadrosAquecimento; quadro++)
+        {
+            float agora = quadro * Delta;
+            for (int i = 0; i < ticks.Count; i++)
+            {
+                ticks[i](agora, Delta);
+            }
+        }
+    }
+
     private static Medicao Medir(
         List<Action<float, float>> ticks,
         List<object> schedulers,
-        Type schedulerType)
+        Type schedulerType,
+        float inicioSimulacao)
     {
         var temposPorQuadro = new double[QuadrosSimulados];
         GC.Collect();
@@ -116,7 +144,7 @@ public sealed class IA03PerformanceEditModeTests
 
         for (int quadro = 0; quadro < QuadrosSimulados; quadro++)
         {
-            float agora = quadro * Delta;
+            float agora = inicioSimulacao + quadro * Delta;
             long inicioQuadro = Stopwatch.GetTimestamp();
             for (int i = 0; i < ticks.Count; i++)
             {
