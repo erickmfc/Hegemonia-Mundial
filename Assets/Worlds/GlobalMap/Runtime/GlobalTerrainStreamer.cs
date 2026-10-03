@@ -640,8 +640,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 // their authored prefab LODGroup supplies the distant impostor.
                 // Keep Unity's generated billboard at the cull edge to avoid
                 // its blue fallback.
-                terrainComponent.treeDistance = 350f;
-                terrainComponent.treeBillboardDistance = 350f;
+                terrainComponent.treeDistance = 250f;
+                terrainComponent.treeBillboardDistance = 250f;
                 terrainComponent.treeCrossFadeLength = 0f;
                 terrainComponent.detailObjectDistance = 0f;
                 // Keep local field/forest terrain layers active through the requested 5–20 km band.
@@ -945,8 +945,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     {
         if (terrain == null) return;
         terrain.drawInstanced = true;
-        terrain.treeDistance = vegetation ? 350f : 0f;
-        terrain.treeBillboardDistance = vegetation ? 350f : 3500f;
+        terrain.treeDistance = vegetation ? 250f : 0f;
+        terrain.treeBillboardDistance = vegetation ? 250f : 3500f;
         terrain.treeCrossFadeLength = 0f;
         terrain.detailObjectDistance = 0f;
         terrain.basemapDistance = 20000f;
@@ -964,7 +964,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         // its fallback tint was visibly blue in the previous Play capture.
         float altitudeBlend = Mathf.SmoothStep(0f, 1f,
             Mathf.InverseLerp(500f, 3000f, camera.transform.position.y));
-        float treeDistance = Mathf.Lerp(350f, 125f, altitudeBlend);
+        float treeDistance = Mathf.Lerp(250f, 125f, altitudeBlend);
         float billboardDistance = treeDistance;
         foreach (Terrain terrain in loadedTiles.Values)
         {

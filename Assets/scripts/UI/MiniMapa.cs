@@ -29,6 +29,8 @@ public class MiniMapa : MonoBehaviour
     [Header("Desempenho")]
     [Tooltip("Resolucao da RenderTexture do mini-mapa. 256 atende o painel de 220 pixels sem renderizar quatro vezes mais pixels do que o necessario.")]
     [Range(128, 512)] public int resolucaoRender = 256;
+    [Tooltip("Intervalo entre atualizacoes da camera do mini-mapa. 0.1 s limita o render a 10 Hz sem atrasar perceptivelmente o acompanhamento.")]
+    [Min(0.02f)] public float intervaloRenderCamera = 0.1f;
     [Tooltip("Reconciliacao de seguranca para conteudo legado que nao se registrou no RegistroEntidadesJogo.")]
     [Min(0.25f)] public float intervaloReconciliacaoSeguranca = 2f;
 
@@ -61,6 +63,7 @@ public class MiniMapa : MonoBehaviour
     private bool _canvasObjCriadaPorEsteComponente;
     private bool _visivelPorAtalho = true;
     private int _ultimaAlturaTela;
+    private float _proximoRenderMapa;
 
     // Ícones de unidades
     private readonly List<MapaIcone> _icones = new List<MapaIcone>();
@@ -141,6 +144,12 @@ public class MiniMapa : MonoBehaviour
 
         // Rotaciona o mapa para que "frente" fique sempre no topo
         _camMapa.transform.rotation = Quaternion.Euler(90f, alvoJogador.eulerAngles.y, 0f);
+
+        bool renderizarMapa = Time.unscaledTime >= _proximoRenderMapa;
+        if (renderizarMapa)
+            _proximoRenderMapa = Time.unscaledTime + Mathf.Max(0.02f, intervaloRenderCamera);
+        if (_camMapa.enabled != renderizarMapa)
+            _camMapa.enabled = renderizarMapa;
 
         // Atualiza triângulo do jogador (centralizado, apontando para cima)
         if (_trianguloJogador != null)
