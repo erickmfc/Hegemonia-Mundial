@@ -34,6 +34,7 @@ public class MisselCaca : MonoBehaviour
     private bool jaExplodiu = false; // Impede explosão dupla
     private Vector3 ultimaPosicaoGuiagem;
     private bool possuiUltimaPosicaoGuiagem;
+    private MisselClasseSVFX efeitosClasseS;
 
     // --- CACHE: Buffer reutilizável para OverlapSphere (reduz GC) ---
     private static readonly Collider[] _explosaoBuffer = new Collider[32];
@@ -69,6 +70,7 @@ public class MisselCaca : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
+        efeitosClasseS = GetComponent<MisselClasseSVFX>();
         
         rb.useGravity = false; 
         rb.isKinematic = false;
@@ -109,6 +111,7 @@ public class MisselCaca : MonoBehaviour
         rb.useGravity = false;
         motorLigado = true;
         if (sistemaFumaca != null) sistemaFumaca.Play();
+        if (efeitosClasseS != null) efeitosClasseS.IniciarPropulsao();
     }
 
     void FixedUpdate()

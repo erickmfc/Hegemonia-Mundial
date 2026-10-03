@@ -92,6 +92,7 @@ public class MisselBombardeiro : MonoBehaviour
     private float velocidadeAtual;
     private bool emArco = true;    // Fase 1: subir no arco
     private GameObject dono;
+    private MisselClasseSVFX efeitosClasseS;
     private readonly Collider[] bufferExplosao = new Collider[96];
     private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
 
@@ -131,12 +132,14 @@ public class MisselBombardeiro : MonoBehaviour
 
     private void IniciarVoo()
     {
+        if (efeitosClasseS == null) efeitosClasseS = GetComponent<MisselClasseSVFX>();
         StopAllCoroutines();
         CancelInvoke(nameof(AutodestruirPorTempo));
         velocidadeAtual = velocidadeInicial;
         lancado         = true;
         tempoVivo       = 0f;
         emArco          = true;
+        if (efeitosClasseS != null) efeitosClasseS.IniciarPropulsao();
 
         // Desativa colisão por um momento para não bater no próprio avião
         Collider col = GetComponent<Collider>();

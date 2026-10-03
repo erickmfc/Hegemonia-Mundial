@@ -33,6 +33,13 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private static readonly ProfilerMarker CreateTerrainObjectMarker = new ProfilerMarker("GlobalTerrainStreamer.CreateTerrainObject");
     private static readonly ProfilerMarker ConfigureTerrainObjectMarker = new ProfilerMarker("GlobalTerrainStreamer.ConfigureTerrainObject");
     private static readonly ProfilerMarker RemoveStaleTilesMarker = new ProfilerMarker("GlobalTerrainStreamer.RemoveStaleTiles");
+    private static readonly ProfilerMarker BuildTileSetSignatureMarker = new ProfilerMarker("GlobalTerrainStreamer.BuildTileSetSignature");
+    private static readonly ProfilerMarker PrepareNavMeshUpdateMarker = new ProfilerMarker("GlobalTerrainStreamer.PrepareNavMeshUpdate");
+    private static readonly ProfilerMarker InitializeTerrainDataMarker = new ProfilerMarker("GlobalTerrainStreamer.InitializeTerrainData");
+    private static readonly ProfilerMarker AllocateHeightBufferMarker = new ProfilerMarker("GlobalTerrainStreamer.AllocateHeightBuffer");
+    private static readonly ProfilerMarker AllocateHeightRowBufferMarker = new ProfilerMarker("GlobalTerrainStreamer.AllocateHeightRowBuffer");
+    private static readonly ProfilerMarker AllocateAlphamapRowBufferMarker = new ProfilerMarker("GlobalTerrainStreamer.AllocateAlphamapRowBuffer");
+    private static readonly ProfilerMarker PrepareVegetationPrototypesMarker = new ProfilerMarker("GlobalTerrainStreamer.PrepareVegetationPrototypes");
 
     public GlobalWorldDefinition world;
     public Terrain globalTerrain;
@@ -375,20 +382,32 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
     private string BuildDesiredTileSetSignature()
     {
-        List<Vector2Int> sorted = new List<Vector2Int>(desiredTiles);
-        sorted.Sort((a, b) => a.y == b.y ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+        using (BuildTileSetSignatureMarker.Auto())
+        {
+            List<Vector2Int> sorted = new List<Vector2Int>(desiredTiles);
+            sorted.Sort((a, b) => a.y == b.y ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
 
-        StringBuilder signature = new StringBuilder(sorted.Count * 8);
-        for (int i = 0; i < sorted.Count; i++)
-            signature.Append(sorted[i].x).Append(',').Append(sorted[i].y).Append(';');
-        return signature.ToString();
+            StringBuilder signature = new StringBuilder(sorted.Count * 8);
+            for (int i = 0; i < sorted.Count; i++)
+                signature.Append(sorted[i].x).Append(',').Append(sorted[i].y).Append(';');
+            return signature.ToString();
+        }
     }
 
     private IEnumerator BuildLocalNavMeshAsync(string tileSet, System.Action<bool> completed)
     {
-        EnsureLocalNavMeshSurface();
-
-        NavMeshData nextData = new NavMeshData(LocalNavMeshAgentTypeId);
+        bool reusingExistingData = runtimeLocalNavMeshData != null;
+        NavMeshData nextData;
+        using (PrepareNavMeshUpdateMarker.Auto())
+        {
+            EnsureLocalNavMeshSurface();
+            // NavMeshBuilder hashes the prior sources stored in this data and
+            // can rebuild only changed regions. A fresh NavMeshData forces a
+            // full build every time the streamed tile set changes.
+            nextData = reusingExistingData
+                ? runtimeLocalNavMeshData
+                : new NavMeshData(LocalNavMeshAgentTypeId);
+        }
         AsyncOperation buildOperation = null;
         long started = System.Diagnostics.Stopwatch.GetTimestamp();
         try
@@ -403,7 +422,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
         if (buildOperation == null)
         {
-            Destroy(nextData);
+            if (!reusingExistingData)
+                Destroy(nextData);
             Debug.LogError("[GlobalMap] Não foi possível iniciar o NavMesh local para " + tileSet + ".", this);
             completed(false);
             yield break;
@@ -418,19 +438,22 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
         using (SwapNavMeshDataMarker.Auto())
         {
-            NavMeshData previousGeneratedData = runtimeLocalNavMeshData;
-            if (localNavMeshSurface.enabled)
-                localNavMeshSurface.RemoveData();
+            if (!reusingExistingData)
+            {
+                NavMeshData previousGeneratedData = runtimeLocalNavMeshData;
+                if (localNavMeshSurface.enabled)
+                    localNavMeshSurface.RemoveData();
 
-            localNavMeshSurface.navMeshData = nextData;
-            if (!localNavMeshSurface.enabled)
-                localNavMeshSurface.enabled = true;
-            else
-                localNavMeshSurface.AddData();
+                localNavMeshSurface.navMeshData = nextData;
+                if (!localNavMeshSurface.enabled)
+                    localNavMeshSurface.enabled = true;
+                else
+                    localNavMeshSurface.AddData();
 
-            runtimeLocalNavMeshData = nextData;
-            if (previousGeneratedData != null && previousGeneratedData != nextData)
-                Destroy(previousGeneratedData);
+                runtimeLocalNavMeshData = nextData;
+                if (previousGeneratedData != null && previousGeneratedData != nextData)
+                    Destroy(previousGeneratedData);
+            }
         }
 
         // Let NavMeshSurface register the completed data before checking it.
@@ -502,27 +525,35 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         float size = world.terrainTileSize;
         float minX = world.MapMinX + coordinate.x * size;
         float minZ = world.MapMinZ + coordinate.y * size;
-        TerrainData data = new TerrainData
+        TerrainData data;
+        using (InitializeTerrainDataMarker.Auto())
         {
-            name = "GlobalMap_TerrainData_" + coordinate.x + "_" + coordinate.y,
-            heightmapResolution = world.localHeightResolution,
-            alphamapResolution = world.localAlphamapResolution,
-            // 8 km tiles at 1024 px keep the medium-range base map near 8 m/texel.
-            baseMapResolution = 1024,
-            size = new Vector3(size, world.terrainVerticalSize, size),
-            terrainLayers = world.terrainLayers
-        };
+            data = new TerrainData
+            {
+                name = "GlobalMap_TerrainData_" + coordinate.x + "_" + coordinate.y,
+                heightmapResolution = world.localHeightResolution,
+                alphamapResolution = world.localAlphamapResolution,
+                // 8 km tiles at 1024 px keep the medium-range base map near 8 m/texel.
+                baseMapResolution = 1024,
+                size = new Vector3(size, world.terrainVerticalSize, size),
+                terrainLayers = world.terrainLayers
+            };
+        }
 
         bool dataTransferredToTerrain = false;
         try
         {
             int resolution = data.heightmapResolution;
-            float[,] heights = new float[resolution, resolution];
+            float[,] heights;
+            using (AllocateHeightBufferMarker.Auto())
+                heights = new float[resolution, resolution];
             int rowsPerFrame = Mathf.Max(1, terrainRowsPerFrame);
             for (int rowStart = 0; rowStart < resolution; rowStart += rowsPerFrame)
             {
                 int rowCount = Mathf.Min(rowsPerFrame, resolution - rowStart);
-                float[,] heightRows = new float[rowCount, resolution];
+                float[,] heightRows;
+                using (AllocateHeightRowBufferMarker.Auto())
+                    heightRows = new float[rowCount, resolution];
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 using (GenerateHeightRowsMarker.Auto())
                 {
@@ -555,7 +586,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             for (int rowStart = 0; rowStart < alphaResolution; rowStart += rowsPerFrame)
             {
                 int rowCount = Mathf.Min(rowsPerFrame, alphaResolution - rowStart);
-                float[,,] alphaRows = new float[rowCount, alphaResolution, layerCount];
+                float[,,] alphaRows;
+                using (AllocateAlphamapRowBufferMarker.Auto())
+                    alphaRows = new float[rowCount, alphaResolution, layerCount];
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 using (GenerateAlphamapRowsMarker.Auto())
                 {
@@ -640,17 +673,22 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         if (world.treePrefabs == null || world.treePrefabs.Length == 0 || world.forestTreesPerSquareKilometre <= 0f)
             yield break;
 
-        List<TreePrototype> prototypes = new List<TreePrototype>();
+        List<TreePrototype> prototypes;
         int clusterPrototypeCount = 0;
-        for (int i = 0; i < world.treePrefabs.Length; i++)
+        using (PrepareVegetationPrototypesMarker.Auto())
         {
-            if (world.treePrefabs[i] == null) continue;
-            prototypes.Add(new TreePrototype { prefab = world.treePrefabs[i], bendFactor = 0.04f });
-            if (i < world.forestClusterPrototypeCount)
-                clusterPrototypeCount++;
+            prototypes = new List<TreePrototype>();
+            for (int i = 0; i < world.treePrefabs.Length; i++)
+            {
+                if (world.treePrefabs[i] == null) continue;
+                prototypes.Add(new TreePrototype { prefab = world.treePrefabs[i], bendFactor = 0.04f });
+                if (i < world.forestClusterPrototypeCount)
+                    clusterPrototypeCount++;
+            }
+            if (prototypes.Count > 0)
+                data.treePrototypes = prototypes.ToArray();
         }
         if (prototypes.Count == 0) yield break;
-        data.treePrototypes = prototypes.ToArray();
 
         // Forest patches use a world-anchored lattice. The mask decides which
         // cells grow vegetation, so field/desert tiles stay open and adjacent

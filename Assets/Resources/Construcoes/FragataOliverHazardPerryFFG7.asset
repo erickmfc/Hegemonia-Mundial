@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: FragataOliverHazardPerryFFG7
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Fragata Oliver Hazard Perry (FFG-7)
+  descricao: "Fragata de m\xEDsseis guiados da classe Oliver Hazard Perry (FFG-7),
+    para patrulha e escolta naval."
+  icone: {fileID: 0}
+  itemId: FFG7_OLIVER_HAZARD_PERRY
+  aliases: USS Oliver Hazard Perry; FFG-7; classe Oliver Hazard Perry; fragata Perry
+  capacidades: 0
+  prefabDaUnidade: {fileID: 4491478996197137091, guid: 3dfa357b351437b44a16427fb16608c0, type: 3}
+  preco: 100
+  precoDefinitivo: 0
+  categoria: 1
+  escalaPoder: 3
+  strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []
