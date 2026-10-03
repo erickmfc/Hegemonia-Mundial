@@ -621,7 +621,7 @@ public class MenuConstrucao : MonoBehaviour
             "Construcoes/NavioGuardaCosteira",
             "Construcoes/FragataOliverHazardPerryFFG7",
             "Construcoes/DestroyerHangzhou136",
-            "Construcoes/DestroyerHangzhouUnidade2"
+            "Construcoes/DestroyerNagoya"
         };
 
         for (int i = 0; i < caminhos.Length; i++)

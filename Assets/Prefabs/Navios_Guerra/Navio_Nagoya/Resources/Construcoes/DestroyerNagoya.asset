@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
-  m_Name: DestroyerHangzhouUnidade2
+  m_Name: DestroyerNagoya
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Destroyer Hangzhou - Unidade II
-  descricao: "Unidade naval de jogo baseada no mesmo modelo visual Hangzhou; destroyer
-    de m\xEDsseis guiados."
+  nomeItem: Destroyer Nagoya
+  descricao: Destroyer Nagoya, unidade naval pronta para combate e patrulha.
   icone: {fileID: 0}
   itemId: DDG_HANGZHOU_UNIT_2
-  aliases: Hangzhou II; Hangzhou unidade 2; destroyer naval unidade II
+  aliases: Nagoya; Destroyer Nagoya; Navio_Nagoya; Hangzhou II; Hangzhou unidade
+    2; Chinese PLAN Hangzhou Ship
   capacidades: 0
   prefabDaUnidade: {fileID: 9166956983205951707, guid: 06f044d13682c294d9fa36cd2760e0e2, type: 3}
   preco: 100

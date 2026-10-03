@@ -391,7 +391,7 @@ MonoBehaviour:
   militaresConsumidos: 0
   combustivelPorHora: 0
   energiaConsumida: 0
-  nomeDeBatismo: Navio Personalizado 03
+  nomeDeBatismo: Destroyer Nagoya
 --- !u!114 &4889643238573396009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -404,7 +404,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86bf21ae7ce6f5a47b74d272af475dc8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IdentidadeNaval
-  nomeDoNavio: Destroyer Hangzhou - Unidade II
+  nomeDoNavio: Destroyer Nagoya
   categoriaNavio: 1
   estaAtracado: 0
   velocidadeDeRe: 5
