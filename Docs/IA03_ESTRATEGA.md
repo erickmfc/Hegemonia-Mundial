@@ -14,9 +14,9 @@ O alvo pode ser atribuído diretamente no perfil da IA. Se ficar em zero, IA03 u
 
 ## Integrações
 
-- Decisões usam `IIAUpdateModule` e o scheduler de BrainMaster; não existe `Update` próprio nem busca global de objetos.
+- Decisões usam `IIAUpdateModule` e o scheduler de BrainMaster; não existe `Update` próprio nem busca global feita pela IA03. Os atrasos iniciais variam 0,5 s por teamId (até 7 s para 15 países). O `IA_WorldState` reutiliza seu registro central e só usa busca global como fallback quando o registro está vazio, limitada a uma tentativa por 20 s.
 - As listas de forças vêm do `IA_WorldState` e do registro central já usado por BrainMaster. Ordens passam pela `IA_CommandQueue` existente e são ignoradas em `ShadowReadOnly`.
-- Pesos nacionais e metas de força alimentam os diretores já existentes de economia, mercado, diplomacia, produção, marinha e aviação. IA03 não altera saldos nem cria recursos.
+- Pesos nacionais e metas de força alimentam os diretores já existentes de economia, mercado, diplomacia, produção, marinha e aviação. O BrainMaster recalcula seu plano a cada 4 s; depois desse cálculo, reaplica as metas militares do perfil IA03. IA03 não altera saldos nem cria recursos.
 - `GestorEconomiaIA03` lê saldo, comida, petróleo, energia e déficits do governo e ajusta pesos dos diretores de BrainMaster para proteger reservas e estoques essenciais.
 - Relações, notícias e propostas são lidas ou registradas em `SistemaGovernoMundial`. O adaptador IA03 envia propostas de cessar-fogo, que o serviço existente pode aceitar ou recusar.
 - Se o relatório apontar vantagem militar, IA03 pode propor uma indenização e pedir regiões terrestres configuradas como concedíveis. O serviço central só transfere saldo ou posse depois da aceitação.
@@ -24,12 +24,13 @@ O alvo pode ser atribuído diretamente no perfil da IA. Se ficar em zero, IA03 u
 - Dano a uma estrutura nacional é recebido pelo evento de dano existente. Se houver missão `DefesaDeObjetivo` compatível configurada, ela é colocada à frente da fila sem procurar unidades ou prédios na cena.
 - Creatys registram-se no ciclo de vida do componente. O registro bloqueia IDs duplicados até que reste apenas uma instância.
 - Missões pré-configuradas entram numa fila por prioridade. Sistemas de incidentes podem chamar `SolicitarMissaoEstrategica` para colocar uma missão urgente à frente da fila.
+- Na guerra total, o efetivo máximo de uma missão é configurável em `PerfilPaisSO.ContingenteMaximoPorMissaoN1` (0,5 por padrão), além do teto geral de mobilização (0,9 por padrão) e da reserva defensiva. O restante não é anexado a esse grupo de ataque.
 
 ## Relatórios e escalada
 
-Os relatórios são emitidos durante uma crise no intervalo configurável (5 minutos por padrão). O relatório combina o total de forças do cache, inimigos conhecidos, estoques nacionais e eventos acumulados de perdas/destruições. Os limiares de vitórias, dano econômico, baixas e pressão sobre reservas podem iniciar uma proposta de cessar-fogo após 25 minutos em conflito limitado; uma crise que continue pode escalar conforme agressividade. A avaliação de uma hora usa a pontuação acumulada para justificar uma proposta de cessar-fogo ou continuar a guerra.
+Os relatórios são emitidos durante uma crise no intervalo configurável (5 minutos por padrão). O relatório combina o total de forças do cache, inimigos conhecidos, estoques nacionais e eventos acumulados de perdas/destruições. Limiares de baixas, custo de reposição conhecido e pressão sobre reservas podem iniciar uma proposta de cessar-fogo após 25 minutos em conflito limitado; uma crise que continue pode escalar conforme agressividade. A condição baseada em vitórias e domínio depende de um resultado autoritativo de batalha, que o jogo ainda não publica. A avaliação de uma hora usa a pontuação acumulada para justificar uma proposta de cessar-fogo ou continuar a guerra.
 
-Destruições confirmadas continuam vindo de `CartaCombateRegistro`. Capturas e perdas de regiões entre os dois países são atualizadas por `GerenteDeTerritorio.OnTerritoryOwnerChanged`. Dano a estruturas marcadas é medido a partir de `SistemaDeDanos.OnDanoGlobal` e fica separado em pontos de vida estrutural, sem ser convertido artificialmente em dinheiro. Resultado de batalha e prejuízo financeiro continuam exigindo um produtor autoritativo que chame `RegistrarResultadoCombate` e `RegistrarPrejuizoEconomico`; o jogo ainda não publica um evento geral de fim de batalha nem um valor monetário causado por dano militar.
+Destruições confirmadas vêm de `CartaCombateRegistro`, alimentado pela notificação de morte de `SistemaDeDanos`. Para unidades e estruturas com preço de reposição conhecido por `IA_ConstructionMetadata` ou por correspondência única no catálogo, o relatório acumula esse preço como estimativa de prejuízo; valores ambíguos ou ausentes ficam desconhecidos. Essa estimativa não é o custo econômico total do conflito: interrupção de produção, recursos e territórios ainda não têm valoração monetária conectada. Capturas e perdas de regiões entre os dois países são atualizadas por `GerenteDeTerritorio.OnTerritoryOwnerChanged`. Dano estrutural recebido por `SistemaDeDanos.OnDanoGlobal` permanece em pontos de vida e não é convertido artificialmente em dinheiro. O jogo ainda não publica um resultado autoritativo de fim de batalha para alimentar `RegistrarResultadoCombate`.
 
 ## Condições de missão
 
@@ -47,4 +48,12 @@ Ordens de movimento, patrulha e seguimento de infantaria e veículos das partes 
 
 As cessões permanentes e temporárias continuam limitadas a regiões terrestres configuradas como capturáveis. Uma desmilitarização se aplica às regiões terrestres incluídas na proposta. A exigência de 100% requer pontuação alta, quantidade mínima de batalhas e domínio registrado de pelo menos 90%. As missões com porta-aviões, transporte anfíbio ou presidente selecionam e enviam grupos de unidades reais pelo comando existente; embarque/desembarque de passageiros e uma visita presidencial completa dependem dos fluxos específicos desses sistemas e não são acionados por este módulo.
 
-Vitórias por batalha, valor econômico destruído em dinheiro e retirada automática de unidades que já ocupam uma zona desmilitarizada ainda dependem de integrações autoritativas específicas. Os indicadores não presumem esses resultados.
+Vitórias por batalha e valoração monetária completa do prejuízo (além dos custos de reposição conhecidos de unidades e estruturas destruídas) ainda dependem de integrações autoritativas específicas. A retirada automática de unidades que já ocupam uma zona desmilitarizada também não está conectada. Os indicadores não presumem esses resultados.
+
+O BrainMaster mantém apenas uma missão IA03 ativa por estrategista; o teto N1 impede concentrar 90% do exército numa única missão, mas ainda não distribui grupos simultâneos de ataque/defesa por vários Creatys. A defesa restante e a reposição continuam sob os diretores existentes do BrainMaster. O jogo também não publica início/fim de batalha com vencedor; não se inferem vitórias a partir de baixas.
+
+## Validação técnica da etapa 2
+
+Unity 6000.2.15f1 compilou sem erros. Os 25 testes EditMode IA03 e o teste PlayMode de morte/eventos passaram. O teste PlayMode usa uma `InitTestScene` temporária sem câmera; durante esse trecho a Game View mostra `No cameras rendering`. Ao encerrar o teste, o Editor voltou para `GlobalMapRTS`, cuja `Main Camera` estava ativa e renderizou a cena. Esse estado temporário explica as capturas do Test Runner; não foi necessário desativar componentes do mapa.
+
+O microbenchmark sintético mais recente com 15 módulos IA03, sem exército nem campanha, mediu média de 0,000974 ms por frame, p95 0,001000 ms, pico 0,032400 ms, pico de módulo 0,031300 ms, 85 execuções e GC Alloc 0; o cenário de schedulers vazios mediu média 0,000226 ms, p95 0,000200 ms, pico 0,030700 ms e GC Alloc 0. Esses números medem só o harness isolado, não FPS/CPU de uma guerra longa no mapa. Ainda falta profiling A/B do runtime completo em uma partida controlada com dois países e depois 15 cérebros.

@@ -116,10 +116,52 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     {
         Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
         MethodInfo calculate = strategistType.GetMethod("CalcularLimiteDeMobilizacao", BindingFlags.Public | BindingFlags.Static);
+        MethodInfo calculateMission = strategistType.GetMethod("CalcularLimitePorMissaoN1", BindingFlags.Public | BindingFlags.Static);
         Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
         object war = Enum.Parse(levelType, "GuerraTotal");
         Assert.That(calculate.Invoke(null, new[] { (object)100, 12, war, 0.1f, 0.9f }), Is.EqualTo(12));
         Assert.That(calculate.Invoke(null, new[] { (object)100, 100, war, 0.1f, 0.9f }), Is.EqualTo(90));
+        Assert.That(calculateMission.Invoke(null, new[] { (object)100, 100, war, 0.1f, 0.9f, 0.5f }), Is.EqualTo(50));
+        Assert.That(calculateMission.Invoke(null, new[] { (object)100, 12, war, 0.1f, 0.9f, 0.5f }), Is.EqualTo(12));
+        Assert.That(calculateMission.Invoke(null, new[] { (object)100, 100, war, 0.1f, 0.9f, 0f }), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void MetasMilitaresDoPerfilPodemSerReaplicadasAposAlteracaoDasMetas()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type profileType = ResolverTipo("Hegemonia.AI.IA03.PerfilPaisSO");
+        Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelEconomico");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        GameObject owner = new GameObject("IA03 profile target refresh test");
+        owner.SetActive(false);
+        ScriptableObject profile = ScriptableObject.CreateInstance(profileType);
+        try
+        {
+            Component strategist = owner.AddComponent(strategistType);
+            Component brain = owner.GetComponent(brainType);
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "perfilPais", profile);
+            SetField(profile, "nivelEconomico", Enum.Parse(levelType, "Fraco"));
+
+            MethodInfo applyTargets = strategistType.GetMethod("AplicarMetasMilitaresDoPerfil");
+            Assert.That(applyTargets, Is.Not.Null);
+
+            applyTargets.Invoke(strategist, null);
+            Assert.That(brainType.GetField("TargetFleet").GetValue(brain), Is.EqualTo(2));
+            Assert.That(brainType.GetField("TargetAircraft").GetValue(brain), Is.EqualTo(4));
+
+            brainType.GetField("TargetFleet").SetValue(brain, 32);
+            brainType.GetField("TargetAircraft").SetValue(brain, 32);
+            applyTargets.Invoke(strategist, null);
+            Assert.That(brainType.GetField("TargetFleet").GetValue(brain), Is.EqualTo(2));
+            Assert.That(brainType.GetField("TargetAircraft").GetValue(brain), Is.EqualTo(4));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(profile);
+            UnityEngine.Object.DestroyImmediate(owner);
+        }
     }
 
     [Test]

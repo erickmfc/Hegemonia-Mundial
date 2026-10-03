@@ -149,6 +149,40 @@ namespace Hegemonia.AI.IA03
             return limite;
         }
 
+        public static int CalcularLimitePorMissaoN1(
+            int totalDeCombate,
+            int capacidadeCreatyDisponivel,
+            IA03NivelConflito nivel,
+            float reservaDefesa,
+            float contingenteMaximo,
+            float contingenteMaximoPorMissao)
+        {
+            int limiteDeMobilizacao = CalcularLimiteDeMobilizacao(
+                totalDeCombate,
+                capacidadeCreatyDisponivel,
+                nivel,
+                reservaDefesa,
+                contingenteMaximo);
+            if (nivel != IA03NivelConflito.GuerraTotal || limiteDeMobilizacao <= 0)
+            {
+                return limiteDeMobilizacao;
+            }
+
+            float proporcaoPorMissao = Mathf.Clamp(contingenteMaximoPorMissao, 0f, 0.9f);
+            if (proporcaoPorMissao <= 0f)
+            {
+                return 0;
+            }
+
+            int limiteDaMissao = Mathf.FloorToInt(Mathf.Max(0, totalDeCombate) * proporcaoPorMissao);
+            if (limiteDaMissao == 0 && totalDeCombate > 0 && capacidadeCreatyDisponivel > 0)
+            {
+                limiteDaMissao = 1;
+            }
+
+            return Mathf.Min(limiteDeMobilizacao, limiteDaMissao);
+        }
+
         private void Awake()
         {
             brain = GetComponent<IA_BrainMaster>();
@@ -408,6 +442,43 @@ namespace Hegemonia.AI.IA03
             brain.MilitarismWeight = perfilPais.PrioridadeMilitar;
             brain.AggressionWeight = perfilPais.Agressividade;
 
+            AplicarMetasMilitaresDoPerfil();
+
+            if (SistemaGovernoMundial.Instancia != null
+                && !string.IsNullOrWhiteSpace(perfilPais.NomePais)
+                && !string.IsNullOrWhiteSpace(perfilPais.NomePresidente))
+            {
+                DadosPaisGoverno dados = SistemaGovernoMundial.Instancia.ObterPais(brain.TeamId);
+                if (dados != null)
+                {
+                    SistemaGovernoMundial.Instancia.AtualizarIdentidadeNacional(
+                        brain.TeamId,
+                        perfilPais.NomePais,
+                        perfilPais.NomePresidente,
+                        dados.nomeMoeda);
+                }
+            }
+
+            perfilAplicado = true;
+        }
+
+        public void AplicarMetasMilitaresDoPerfil()
+        {
+            if (perfilPais == null)
+            {
+                return;
+            }
+
+            if (brain == null)
+            {
+                brain = GetComponent<IA_BrainMaster>();
+            }
+
+            if (brain == null)
+            {
+                return;
+            }
+
             int fleetGoal;
             int airGoal;
             switch (perfilPais.NivelEconomico)
@@ -438,23 +509,6 @@ namespace Hegemonia.AI.IA03
             brain.TargetAircraft = airGoal;
             brain.TargetOilTankers = perfilPais.NivelEconomico >= IA03NivelEconomico.Forte ? 2 : 1;
             brain.TargetCoastalDefenseShips = Mathf.Max(1, perfilPais.MinimoNaviosEscolta);
-
-            if (SistemaGovernoMundial.Instancia != null
-                && !string.IsNullOrWhiteSpace(perfilPais.NomePais)
-                && !string.IsNullOrWhiteSpace(perfilPais.NomePresidente))
-            {
-                DadosPaisGoverno dados = SistemaGovernoMundial.Instancia.ObterPais(brain.TeamId);
-                if (dados != null)
-                {
-                    SistemaGovernoMundial.Instancia.AtualizarIdentidadeNacional(
-                        brain.TeamId,
-                        perfilPais.NomePais,
-                        perfilPais.NomePresidente,
-                        dados.nomeMoeda);
-                }
-            }
-
-            perfilAplicado = true;
         }
 
         private void AtualizarConflito(SistemaGovernoMundial governo, DadosPaisGoverno pais, float now)
@@ -997,12 +1051,13 @@ namespace Hegemonia.AI.IA03
             int totalDeCombate = Mathf.Max(0, mundo.OwnCombatUnits.Count);
             float reserva = perfilPais != null ? perfilPais.ReservaDefesaNacional : 0.1f;
             float tetoDeGuerra = perfilPais != null ? perfilPais.ContingenteMaximoDeGuerra : 0.9f;
-            int limiteUnidades = CalcularLimiteDeMobilizacao(
+            int limiteUnidades = CalcularLimitePorMissaoN1(
                 totalDeCombate,
                 capacidadeCreatyDisponivel,
                 nivelDeConflito,
                 reserva,
-                tetoDeGuerra);
+                tetoDeGuerra,
+                perfilPais != null ? perfilPais.ContingenteMaximoPorMissaoN1 : 0.5f);
 
             bool exigePortaAvioes = missao != null && missao.ExigePortaAvioes;
             bool exigeSubmarino = missao != null && missao.ExigeSubmarino;

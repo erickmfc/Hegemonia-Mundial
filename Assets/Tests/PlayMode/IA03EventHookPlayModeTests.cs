@@ -131,12 +131,17 @@ public sealed class IA03EventHookPlayModeTests
             Assert.That(ReportFloat(strategist, strategistType, "PrejuizoEconomicoInimigo"), Is.EqualTo(9700f));
             Assert.That(ReportFloat(strategist, strategistType, "PrejuizoEconomicoProprio"), Is.EqualTo(1500f));
 
+            GameObject enemyUnitWithoutCost = CreateEntity(objects, identityType, damageType, 2, false, "IA03 unknown cost target");
+            NotifyDeath(notifyDeath, enemyUnitWithoutCost, damageType, friendlyAttacker);
+            Assert.That(ReportValue(strategist, strategistType, "InimigosDestruidos"), Is.EqualTo(2));
+            Assert.That(ReportFloat(strategist, strategistType, "PrejuizoEconomicoInimigo"), Is.EqualTo(9700f));
+
             observer.SetActive(false);
             yield return null;
             GameObject enemyAfterDisable = CreateEntity(objects, identityType, damageType, 2, false, "Enemy unit after disable");
             yield return null;
             NotifyDeath(notifyDeath, enemyAfterDisable, damageType, friendlyAttacker);
-            Assert.That(ReportValue(strategist, strategistType, "InimigosDestruidos"), Is.EqualTo(1));
+            Assert.That(ReportValue(strategist, strategistType, "InimigosDestruidos"), Is.EqualTo(2));
         }
         finally
         {

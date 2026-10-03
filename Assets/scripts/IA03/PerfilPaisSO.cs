@@ -31,6 +31,7 @@ namespace Hegemonia.AI.IA03
         [Header("Limites de mobilização")]
         [SerializeField, Range(0f, 1f)] private float reservaDefesaNacional = 0.1f;
         [SerializeField, Range(0f, 1f)] private float contingenteMaximoDeGuerra = 0.9f;
+        [SerializeField, Range(0f, 0.9f)] private float contingenteMaximoPorMissaoN1 = 0.5f;
         [SerializeField, Min(1)] private int minimoNaviosEscolta = 2;
         [SerializeField, Min(1)] private int minimoAeronavesPortaAvioes = 4;
 
@@ -61,6 +62,7 @@ namespace Hegemonia.AI.IA03
         public float TendenciaDeExportacao => tendenciaDeExportacao;
         public float ReservaDefesaNacional => reservaDefesaNacional;
         public float ContingenteMaximoDeGuerra => contingenteMaximoDeGuerra;
+        public float ContingenteMaximoPorMissaoN1 => contingenteMaximoPorMissaoN1;
         public int MinimoNaviosEscolta => minimoNaviosEscolta;
         public int MinimoAeronavesPortaAvioes => minimoAeronavesPortaAvioes;
         public float IntervaloDecisaoSegundos => intervaloDecisaoSegundos;

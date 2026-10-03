@@ -447,6 +447,14 @@ namespace Hegemonia.AI.BrainMaster
                 TargetAircraft = Mathf.Max(TargetAircraft, Mathf.Min(balancedAirMinimum, airCapacity));
             }
 
+            // O plano imperial recalcula as metas periodicamente. Reaplicar aqui
+            // mantém o perfil opcional da IA03 como fonte das metas nacionais,
+            // sem adicionar atualização própria por frame.
+            if (_ia03Estratega != null)
+            {
+                _ia03Estratega.AplicarMetasMilitaresDoPerfil();
+            }
+
             bool oilGap = snapshot.PlatformCount < TargetPlatforms
                           || snapshot.PierCount < TargetPiers
                           || snapshot.ShipyardCount < TargetShipyards
