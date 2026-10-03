@@ -49,6 +49,7 @@ namespace Hegemonia.AI.BrainMaster
         [SerializeField] private string _sourcePrefabName = string.Empty;
         [SerializeField] private DadosConstrucao.CategoriaItem _category;
         [SerializeField] private IA_ConstructionCapability _capabilities = IA_ConstructionCapability.Auto;
+        [SerializeField] private long _estimatedReplacementCost;
 
         public string ItemId => _itemId;
         public string DisplayName => _displayName;
@@ -56,6 +57,7 @@ namespace Hegemonia.AI.BrainMaster
         public string SourcePrefabName => _sourcePrefabName;
         public DadosConstrucao.CategoriaItem Category => _category;
         public IA_ConstructionCapability Capabilities => _capabilities;
+        public long EstimatedReplacementCost => Math.Max(0L, _estimatedReplacementCost);
 
         public bool IsStructure => HasCapability(IA_ConstructionCapability.Structure);
         public bool IsUnit => HasCapability(IA_ConstructionCapability.Unit);
@@ -111,6 +113,7 @@ namespace Hegemonia.AI.BrainMaster
                 _sourcePrefabName = string.Empty;
                 _category = default(DadosConstrucao.CategoriaItem);
                 _capabilities = IA_ConstructionCapability.Auto;
+                _estimatedReplacementCost = 0L;
                 return;
             }
 
@@ -120,6 +123,7 @@ namespace Hegemonia.AI.BrainMaster
             _sourcePrefabName = data.PrefabDaUnidade != null ? data.PrefabDaUnidade.name : string.Empty;
             _category = data.categoria;
             _capabilities = data.GetResolvedCapabilities();
+            _estimatedReplacementCost = Math.Max(0L, data.ObterPrecoEfetivo());
         }
 
         private bool MatchesIdentity(params string[] needles)

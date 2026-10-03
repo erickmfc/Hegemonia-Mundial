@@ -1676,6 +1676,24 @@ namespace Hegemonia.AI.IA03
             if (paisAlvoTeamId > 0)
             {
                 relatorio.RegistrarEventoCombate(evento, brain.TeamId, paisAlvoTeamId);
+
+                if (evento.tipo == "UNIDADE DESTRUÍDA"
+                    && evento.custoReposicaoConhecido
+                    && evento.custoReposicaoEstimado > 0L)
+                {
+                    bool inimigoPerdeu = evento.equipeAlvo == paisAlvoTeamId
+                        && evento.equipeAtacante == brain.TeamId;
+                    bool proprioPaisPerdeu = evento.equipeAlvo == brain.TeamId
+                        && evento.equipeAtacante == paisAlvoTeamId;
+                    if (inimigoPerdeu)
+                    {
+                        relatorio.RegistrarPrejuizoEconomico(true, evento.custoReposicaoEstimado);
+                    }
+                    else if (proprioPaisPerdeu)
+                    {
+                        relatorio.RegistrarPrejuizoEconomico(false, evento.custoReposicaoEstimado);
+                    }
+                }
             }
 
             bool exigeDestruicaoDeAlvo = missaoAtiva != null

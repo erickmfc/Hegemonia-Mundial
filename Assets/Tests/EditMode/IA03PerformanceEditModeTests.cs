@@ -99,8 +99,8 @@ public sealed class IA03PerformanceEditModeTests
             Medicao baseline = Medir(baseTicks, null, null, 15f);
             Medicao comIA03 = Medir(measuredTicks, measuredSchedulers, schedulerType, 15f);
 
-            TestContext.WriteLine(Formatar("baseline: 15 agendadores sem módulos", baseline));
-            TestContext.WriteLine(Formatar("15 IA03 em N1, aquecidas, sem unidades ou cena de campanha", comIA03));
+            UnityEngine.Debug.Log(Formatar("baseline: 15 agendadores sem módulos", baseline));
+            UnityEngine.Debug.Log(Formatar("15 IA03 em N1, aquecidas, sem unidades ou cena de campanha", comIA03));
 
             Assert.That(baseline.Quadros, Is.EqualTo(QuadrosSimulados));
             Assert.That(comIA03.Quadros, Is.EqualTo(QuadrosSimulados));

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Hegemonia.AI.BrainMaster;
 
 /// <summary>
 /// Registro somente de observabilidade da Carta Náutica. Não executa dano,
@@ -26,6 +27,8 @@ public static class CartaCombateRegistro
         public int equipeAlvo = -1;
         public TipoUnidade tipoUnidadeAlvo;
         public bool alvoEhEstrutura;
+        public bool custoReposicaoConhecido;
+        public long custoReposicaoEstimado;
         public Vector3 posicao;
         public float momento;
     }
@@ -90,6 +93,8 @@ public static class CartaCombateRegistro
 
         IdentidadeUnidade alvoId = SistemaDeDanos.ResolverIdentidade(vitima);
         IdentidadeUnidade atacanteId = SistemaDeDanos.ResolverIdentidade(agressor != null ? agressor.transform : null);
+        long custoReposicaoEstimado;
+        bool custoReposicaoConhecido = TentarResolverCustoReposicao(alvoId, out custoReposicaoEstimado);
         MissileThreatTracker tracker = agressor != null
             ? agressor.GetComponentInParent<MissileThreatTracker>()
             : null;
@@ -111,8 +116,108 @@ public static class CartaCombateRegistro
             equipeAlvo = alvoId != null ? alvoId.teamID : -1,
             tipoUnidadeAlvo = alvoId != null ? alvoId.tipoUnidade : TipoUnidade.Estrutura,
             alvoEhEstrutura = vitima.ehEstrutura,
+            custoReposicaoConhecido = custoReposicaoConhecido,
+            custoReposicaoEstimado = custoReposicaoEstimado,
             posicao = vitima.transform.position
         });
+    }
+
+    private static bool TentarResolverCustoReposicao(IdentidadeUnidade alvo, out long custo)
+    {
+        custo = 0L;
+        if (alvo == null || alvo.gameObject == null)
+        {
+            return false;
+        }
+
+        IA_ConstructionMetadata metadata = alvo.GetComponent<IA_ConstructionMetadata>();
+        if (metadata == null)
+        {
+            metadata = alvo.GetComponentInChildren<IA_ConstructionMetadata>(true);
+        }
+
+        if (metadata != null && metadata.EstimatedReplacementCost > 0L)
+        {
+            custo = metadata.EstimatedReplacementCost;
+            return true;
+        }
+
+        List<DadosConstrucao> catalogo = MenuConstrucao.catalogoGlobal;
+        if (catalogo == null || catalogo.Count == 0)
+        {
+            return false;
+        }
+
+        string itemId = metadata != null ? metadata.ItemId : string.Empty;
+        string nomePrefab = metadata != null ? metadata.SourcePrefabName : string.Empty;
+        if (string.IsNullOrWhiteSpace(nomePrefab))
+        {
+            nomePrefab = RemoverSufixoClone(alvo.gameObject.name);
+        }
+
+        bool encontrou = false;
+        long custoEncontrado = 0L;
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao ficha = catalogo[i];
+            if (ficha == null)
+            {
+                continue;
+            }
+
+            bool correspondeId = !string.IsNullOrWhiteSpace(itemId)
+                && string.Equals(ficha.GetStableId(), itemId, StringComparison.OrdinalIgnoreCase);
+            GameObject prefab;
+            bool correspondePrefab = !string.IsNullOrWhiteSpace(nomePrefab)
+                && ficha.TryGetPrefabBasico(out prefab)
+                && prefab != null
+                && string.Equals(prefab.name, nomePrefab, StringComparison.Ordinal);
+            if (!correspondeId && !correspondePrefab)
+            {
+                continue;
+            }
+
+            long custoFicha = Math.Max(0L, ficha.ObterPrecoEfetivo());
+            if (custoFicha <= 0L)
+            {
+                continue;
+            }
+
+            if (encontrou && custoFicha != custoEncontrado)
+            {
+                // Nomes/IDs ambíguos não são suficientes para atribuir valor.
+                custo = 0L;
+                return false;
+            }
+
+            encontrou = true;
+            custoEncontrado = custoFicha;
+        }
+
+        if (!encontrou)
+        {
+            return false;
+        }
+
+        custo = custoEncontrado;
+        return true;
+    }
+
+    private static string RemoverSufixoClone(string nome)
+    {
+        const string cloneSuffix = "(Clone)";
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            return string.Empty;
+        }
+
+        string valor = nome.Trim();
+        if (valor.EndsWith(cloneSuffix, StringComparison.Ordinal))
+        {
+            valor = valor.Substring(0, valor.Length - cloneSuffix.Length).TrimEnd();
+        }
+
+        return valor;
     }
 
     private static void Adicionar(EventoCombate evento)

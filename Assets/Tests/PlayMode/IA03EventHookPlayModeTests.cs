@@ -66,7 +66,10 @@ public sealed class IA03EventHookPlayModeTests
         Type identityType = ResolveType("IdentidadeUnidade");
         Type missionType = ResolveType("Hegemonia.AI.IA03.MissaoEstrategicaSO");
         Type creatyType = ResolveType("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type metadataType = ResolveType("Hegemonia.AI.BrainMaster.IA_ConstructionMetadata");
+        Type constructionDataType = ResolveType("DadosConstrucao");
         var objects = new List<GameObject>();
+        var constructionData = new List<ScriptableObject>();
         GameObject observer = new GameObject("IA03 event listener PlayMode test");
         observer.SetActive(false);
         objects.Add(observer);
@@ -91,6 +94,9 @@ public sealed class IA03EventHookPlayModeTests
             GameObject enemyStructure = CreateEntity(objects, identityType, damageType, 2, true, "Enemy structure");
             GameObject enemyAttacker = CreateEntity(objects, identityType, damageType, 2, false, "Enemy attacker");
             GameObject friendlyUnit = CreateEntity(objects, identityType, damageType, 1, false, "Friendly unit");
+            AttachReplacementCost(constructionData, enemyUnit, constructionDataType, metadataType, 1200L);
+            AttachReplacementCost(constructionData, enemyStructure, constructionDataType, metadataType, 8500L);
+            AttachReplacementCost(constructionData, friendlyUnit, constructionDataType, metadataType, 1500L);
             GameObject missionUnit = new GameObject("Mission group unit");
             objects.Add(missionUnit);
             GameObject missionPoint = new GameObject("Mission Creaty");
@@ -122,6 +128,8 @@ public sealed class IA03EventHookPlayModeTests
             Assert.That(ReportValue(strategist, strategistType, "InimigosDestruidos"), Is.EqualTo(1));
             Assert.That(ReportValue(strategist, strategistType, "EstruturasInimigasDestruidas"), Is.EqualTo(1));
             Assert.That(ReportValue(strategist, strategistType, "UnidadesPropriasPerdidas"), Is.EqualTo(1));
+            Assert.That(ReportFloat(strategist, strategistType, "PrejuizoEconomicoInimigo"), Is.EqualTo(9700f));
+            Assert.That(ReportFloat(strategist, strategistType, "PrejuizoEconomicoProprio"), Is.EqualTo(1500f));
 
             observer.SetActive(false);
             yield return null;
@@ -135,6 +143,10 @@ public sealed class IA03EventHookPlayModeTests
             for (int i = 0; i < objects.Count; i++)
             {
                 if (objects[i] != null) UnityEngine.Object.Destroy(objects[i]);
+            }
+            for (int i = 0; i < constructionData.Count; i++)
+            {
+                if (constructionData[i] != null) UnityEngine.Object.Destroy(constructionData[i]);
             }
             if (mission != null) UnityEngine.Object.Destroy(mission);
         }
@@ -172,6 +184,29 @@ public sealed class IA03EventHookPlayModeTests
     {
         object snapshot = strategistType.GetProperty("RelatorioAtual").GetValue(strategist);
         return (int)snapshot.GetType().GetField(fieldName).GetValue(snapshot);
+    }
+
+    private static float ReportFloat(Component strategist, Type strategistType, string fieldName)
+    {
+        object snapshot = strategistType.GetProperty("RelatorioAtual").GetValue(strategist);
+        return (float)snapshot.GetType().GetField(fieldName).GetValue(snapshot);
+    }
+
+    private static void AttachReplacementCost(
+        List<ScriptableObject> constructionData,
+        GameObject entity,
+        Type constructionDataType,
+        Type metadataType,
+        long replacementCost)
+    {
+        ScriptableObject data = ScriptableObject.CreateInstance(constructionDataType);
+        data.name = entity.name + " data";
+        constructionData.Add(data);
+        constructionDataType.GetProperty("NomeItem").SetValue(data, entity.name);
+        constructionDataType.GetProperty("PrefabDaUnidade").SetValue(data, entity);
+        SetField(data, "precoDefinitivo", replacementCost);
+        Component metadata = entity.AddComponent(metadataType);
+        metadataType.GetMethod("ApplyFrom", Members).Invoke(metadata, new[] { data });
     }
 
     private static object ReadField(object target, string name)
