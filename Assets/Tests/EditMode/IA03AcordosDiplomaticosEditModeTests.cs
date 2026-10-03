@@ -115,6 +115,54 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         Assert.That(Field(proposta, "status").ToString(), Is.EqualTo("Expirada"));
     }
 
+    [Test]
+    public void CessaoPermanenteAtualizaProprietarioEPublicaMudancaTerritorial()
+    {
+        AdicionarRegiao("cessao-permanente", 3, capturable: true);
+        object proposta = CriarProposta("CessaoTerritorial", 2, 3, 0, new[] { "cessao-permanente" }, false);
+        bool recebeuMudanca = false;
+        int donoAnterior = -1;
+        int novoDono = -1;
+        Action<string, int, int> aoMudarDono = (id, anterior, atual) =>
+        {
+            if (id != "cessao-permanente") return;
+            recebeuMudanca = true;
+            donoAnterior = anterior;
+            novoDono = atual;
+        };
+        EventInfo eventoTerritorial = gerenteType.GetEvent("OnTerritoryOwnerChanged", BindingFlags.Instance | BindingFlags.Public);
+        eventoTerritorial.AddEventHandler(gerente, aoMudarDono);
+        bool recebeuNoticia = false;
+        Action<string> aoReceberNoticia = mensagem => recebeuNoticia |= mensagem.Contains("cedeu permanentemente");
+        EventInfo eventoNoticia = governoType.GetEvent("OnNoticia", BindingFlags.Instance | BindingFlags.Public);
+        eventoNoticia.AddEventHandler(governo, aoReceberNoticia);
+
+        try
+        {
+            MethodInfo executar = governoType.GetMethod("ExecutarProposta", AllInstance);
+            object[] argumentos = { proposta, null };
+            bool sucesso = (bool)executar.Invoke(governo, argumentos);
+
+            Assert.That(sucesso, Is.True, argumentos[1] as string);
+            Assert.That(recebeuMudanca, Is.True);
+            Assert.That(donoAnterior, Is.EqualTo(3));
+            Assert.That(novoDono, Is.EqualTo(2));
+            Assert.That(Field(Invocar(gerente, "ObterEstadoDaRegiao", "cessao-permanente"), "ownerCountryTeamId"), Is.EqualTo(2));
+            IList capturasSalvas = (IList)Invocar(gerente, "CopiarProprietariosCapturados");
+            object captura = capturasSalvas.Cast<object>().First(item => (string)Field(item, "territorioId") == "cessao-permanente");
+            Assert.That(Field(captura, "ownerCountryTeamId"), Is.EqualTo(2));
+            IList regioes = (IList)mapa.GetType().GetProperty("Regioes", PublicInstance).GetValue(mapa, null);
+            object regiaoBase = regioes.Cast<object>().First(item => (string)Field(item, "territorioId") == "cessao-permanente");
+            Assert.That(Field(regiaoBase, "ownerCountryTeamId"), Is.EqualTo(3), "O asset mantém a posse inicial; o runtime/save usa o proprietário capturado.");
+            Assert.That(recebeuNoticia, Is.True);
+        }
+        finally
+        {
+            eventoTerritorial.RemoveEventHandler(gerente, aoMudarDono);
+            eventoNoticia.RemoveEventHandler(governo, aoReceberNoticia);
+        }
+    }
+
     private object CriarProposta(string tipo, int origem, int alvo, int terminaDia, IEnumerable<string> regioes, bool dmz)
     {
         Type propostaType = ResolverTipo("PropostaInternacional");

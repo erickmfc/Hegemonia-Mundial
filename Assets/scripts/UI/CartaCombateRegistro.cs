@@ -24,6 +24,8 @@ public static class CartaCombateRegistro
         public string idAlvo;
         public int equipeAtacante = -1;
         public int equipeAlvo = -1;
+        public TipoUnidade tipoUnidadeAlvo;
+        public bool alvoEhEstrutura;
         public Vector3 posicao;
         public float momento;
     }
@@ -107,6 +109,8 @@ public static class CartaCombateRegistro
             idAlvo = alvoId != null ? ObterIdPersistente(alvoId.gameObject) : string.Empty,
             equipeAtacante = atacanteId != null ? atacanteId.teamID : tracker != null ? tracker.TeamOrigem : -1,
             equipeAlvo = alvoId != null ? alvoId.teamID : -1,
+            tipoUnidadeAlvo = alvoId != null ? alvoId.tipoUnidade : TipoUnidade.Estrutura,
+            alvoEhEstrutura = vitima.ehEstrutura,
             posicao = vitima.transform.position
         });
     }

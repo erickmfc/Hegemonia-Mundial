@@ -197,6 +197,36 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        public bool CancelPending(string requestId, float now, string reason)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                return false;
+            }
+
+            for (int i = _pending.Count - 1; i >= 0; i--)
+            {
+                IA_CommandRequest request = _pending[i];
+                if (request == null || !string.Equals(request.Id, requestId, System.StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                _pending.RemoveAt(i);
+                if (!string.IsNullOrEmpty(request.DedupKey))
+                {
+                    _dedupInQueue.Remove(request.DedupKey);
+                }
+
+                _statusById[request.Id] = IA_CommandStatus.Cancelled;
+                PushHistory(request, IA_CommandStatus.Cancelled, now, reason ?? "ordem cancelada");
+                IA_RuntimeTextTrace.LogCommand(TraceTeamId, "CommandQueue", "CANCEL_PENDING", request, reason ?? "ordem cancelada");
+                return true;
+            }
+
+            return false;
+        }
+
         public IA_CommandStatus GetStatus(string id)
         {
             IA_CommandStatus status;

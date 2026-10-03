@@ -58,6 +58,34 @@ namespace Hegemonia.AI.BrainMaster
             });
         }
 
+        public bool RequestEarlierTick(IIAUpdateModule module, float now, float delaySeconds = 0f)
+        {
+            if (module == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                Slot slot = _slots[i];
+                if (slot.Module != module)
+                {
+                    continue;
+                }
+
+                float requestedTime = now + Mathf.Max(0f, delaySeconds);
+                if (slot.SliceInProgress || requestedTime < slot.NextTick)
+                {
+                    slot.NextTick = requestedTime;
+                    return true;
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
         public void Tick(float now, float deltaTime)
         {
             if (_slots.Count == 0)

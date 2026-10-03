@@ -486,6 +486,7 @@ namespace Hegemonia.AI.BrainMaster
         public int ReadyAircraft;
         public int AirUnits;
         public int NavalUnits;
+        public int AircraftCarriers;
         public int Submarines;
         public int OilTankers;
         public int CoastalDefenseShips;

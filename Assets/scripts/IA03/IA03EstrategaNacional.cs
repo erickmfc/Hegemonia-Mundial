@@ -35,6 +35,9 @@ namespace Hegemonia.AI.IA03
         [Header("Relatório")]
         [SerializeField, Min(1f)] private float intervaloRelatorioSegundos = 300f;
 
+        [Header("Debug")]
+        [SerializeField] private bool debugIA03;
+
         [Header("Diagnóstico")]
         [SerializeField] private IA03NivelConflito nivelDeConflito = IA03NivelConflito.Paz;
         [SerializeField] private IA03EstadoNacional estadoNacional = IA03EstadoNacional.Paz;
@@ -45,11 +48,13 @@ namespace Hegemonia.AI.IA03
         private readonly GestorDiplomaciaIA03 diplomacia = new GestorDiplomaciaIA03();
         private readonly GestorEconomiaIA03 economia = new GestorEconomiaIA03();
         private readonly List<CreatyEstrategico> candidatos = new List<CreatyEstrategico>(32);
+        private readonly List<IA03TipoCreaty> tiposCreatyCandidatos = new List<IA03TipoCreaty>(8);
         private readonly List<GameObject> unidadesCandidatas = new List<GameObject>(48);
         private readonly List<GameObject> unidadesAtivasNaMissao = new List<GameObject>(32);
         private readonly List<CandidatoGrupo> candidatosGrupo = new List<CandidatoGrupo>(128);
         private readonly List<MissaoEstrategicaSO> filaMissoes = new List<MissaoEstrategicaSO>(32);
         private readonly HashSet<MissaoEstrategicaSO> missoesConcluidasNaCrise = new HashSet<MissaoEstrategicaSO>();
+        private readonly HashSet<string> chavesMissoesConcluidasNaCrise = new HashSet<string>();
         private GestorEconomiaIA03.Resumo economiaAtual;
 
         private IA_BrainMaster brain;
@@ -78,21 +83,69 @@ namespace Hegemonia.AI.IA03
         private float inicioMissaoEm = -1f;
         private float proximoRelatorioEm;
         private float proximaDecisaoDeMissaoEm;
+        private float proximaReanaliseAntecipadaEm;
         private long saldoAlvoNoInicio;
         private bool avaliouConflitoLimitado;
         private bool avaliouGuerraTotal;
         private bool perfilAplicado;
         private bool guerraObservada;
         private float ignorarTensaoAte;
+        private float ultimaAnaliseEm = -1f;
+        private string idOrdemAtivaDaMissao = string.Empty;
+        private IA03ResultadoMissao estadoDaMissao = IA03ResultadoMissao.Pendente;
+        private string ultimaLinhaDeDebug = string.Empty;
+#if UNITY_EDITOR
+        private bool nivelDebugForcado;
+#endif
 
         public string Name => "IA03EstrategaNacional";
-        public float Interval => perfilPais != null ? Mathf.Max(5f, perfilPais.IntervaloDecisaoSegundos) : 60f;
+        public float Interval => missaoAtiva != null ? 2f : perfilPais != null ? Mathf.Max(5f, perfilPais.IntervaloDecisaoSegundos) : 60f;
+        public float DelayInicialEscalonado => CalcularAtrasoInicialEscalonado(brain != null ? brain.TeamId : 0);
         public float BudgetMs => 0.35f;
         public bool TemPerfilConfigurado => ativo && perfilPais != null;
         public IA03NivelConflito NivelDeConflito => nivelDeConflito;
         public IA03EstadoNacional EstadoNacional => estadoNacional;
         public string UltimaDecisao => ultimaDecisao;
+        public string UltimaMissao => ultimaMissao;
+        public IA03ResultadoMissao EstadoDaMissao => estadoDaMissao;
+        public float UltimaAnaliseEm => ultimaAnaliseEm;
+        public float ProximaAnalisePrevistaEm => ultimaAnaliseEm < 0f ? Time.time + DelayInicialEscalonado : ultimaAnaliseEm + Interval;
+        public bool DebugHabilitado => debugIA03;
         public IA03RelatorioSnapshot RelatorioAtual => relatorio.Acumulado;
+
+        public static float CalcularAtrasoInicialEscalonado(int teamId)
+        {
+            int indice = Mathf.Max(0, teamId - 1) % 15;
+            return indice * 0.5f;
+        }
+
+        public static int CalcularLimiteDeMobilizacao(
+            int totalDeCombate,
+            int capacidadeCreatyDisponivel,
+            IA03NivelConflito nivel,
+            float reservaDefesa,
+            float contingenteMaximo)
+        {
+            float reserva = Mathf.Clamp(reservaDefesa, 0f, 0.49f);
+            float teto = Mathf.Clamp(contingenteMaximo, 0f, 0.9f);
+            float proporcao = nivel == IA03NivelConflito.GuerraTotal
+                ? Mathf.Min(teto, 1f - 2f * reserva)
+                : nivel == IA03NivelConflito.ConflitoLimitado ? 0.5f
+                : nivel == IA03NivelConflito.AvancoMilitar ? 0.25f
+                : nivel == IA03NivelConflito.Tensao ? 0.25f
+                : 0f;
+            int limite = Mathf.Min(
+                Mathf.Max(0, capacidadeCreatyDisponivel),
+                Mathf.FloorToInt(Mathf.Max(0, totalDeCombate) * Mathf.Clamp01(proporcao)));
+            if (limite == 0 && totalDeCombate > 0 && capacidadeCreatyDisponivel > 0
+                && nivel != IA03NivelConflito.GuerraTotal
+                && nivel != IA03NivelConflito.Paz)
+            {
+                return 1;
+            }
+
+            return limite;
+        }
 
         private void Awake()
         {
@@ -147,6 +200,8 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
+            ultimaAnaliseEm = now;
+
             GarantirAssinaturaTerritorial();
 
             if (!perfilAplicado)
@@ -162,7 +217,12 @@ namespace Hegemonia.AI.IA03
                 paisAlvoTeamId = pais.rivalTeamId;
             }
 
-            AtualizarConflito(governo, pais, now);
+#if UNITY_EDITOR
+            if (!nivelDebugForcado)
+#endif
+            {
+                AtualizarConflito(governo, pais, now);
+            }
             economia.TentarAplicarPesos(
                 governo,
                 brain,
@@ -183,6 +243,8 @@ namespace Hegemonia.AI.IA03
                 proximaDecisaoDeMissaoEm = now + Interval;
                 TentarIniciarMissao(now);
             }
+
+            RegistrarLogDebugSeNecessario();
         }
 
         public void DefinirPaisAlvo(int alvoTeamId, string motivo = "incidente diplomático")
@@ -219,12 +281,14 @@ namespace Hegemonia.AI.IA03
                 EncerrarMissao("hostilidades suspensas");
                 filaMissoes.Clear();
                 missoesConcluidasNaCrise.Clear();
+                chavesMissoesConcluidasNaCrise.Clear();
             }
             else if (nivelAnterior == IA03NivelConflito.Paz)
             {
                 proximoRelatorioEm = Time.time + Mathf.Max(30f, intervaloRelatorioSegundos);
                 filaMissoes.Clear();
                 missoesConcluidasNaCrise.Clear();
+                chavesMissoesConcluidasNaCrise.Clear();
                 relatorio.Resetar();
             }
 
@@ -240,6 +304,8 @@ namespace Hegemonia.AI.IA03
 
             estadoNacional = ConverterEstado(novoNivel);
             ultimaDecisao = "Nível " + (int)novoNivel + ": " + (motivo ?? string.Empty);
+            SolicitarReanaliseAntecipada();
+            RegistrarLogDebugSeNecessario();
 
             SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
             if (governo != null && paisAlvoTeamId > 0)
@@ -288,6 +354,7 @@ namespace Hegemonia.AI.IA03
             confirmacaoExternaDeSucesso = sucesso;
             confirmacaoExternaDeFracasso = !sucesso;
             motivoConfirmacaoExterna = string.IsNullOrWhiteSpace(motivo) ? "confirmação externa" : motivo.Trim();
+            SolicitarReanaliseAntecipada();
             return true;
         }
 
@@ -295,16 +362,28 @@ namespace Hegemonia.AI.IA03
         {
             if (missao == null || nivelDeConflito == IA03NivelConflito.Paz
                 || !missao.Aceita(nivelDeConflito, MissaoDefaultCreaty(missao))
-                || missoesConcluidasNaCrise.Contains(missao)
-                || missaoAtiva == missao
-                || filaMissoes.Contains(missao))
+                || MissaoFoiConcluidaNaCrise(missao)
+                || SaoMissoesEquivalentes(missaoAtiva, missao)
+                || ContemMissaoEquivalenteNaFila(missao))
             {
                 return false;
+            }
+
+            if (prioridadeUrgente && creatyAtivo != null)
+            {
+                MissaoEstrategicaSO interrompida = missaoAtiva;
+                FinalizarMissao(IA03ResultadoMissao.Cancelada, "interrompida por missão urgente " + missao.NomeMissao);
+                if (interrompida != null)
+                {
+                    InserirNaFila(interrompida, false);
+                }
             }
 
             InserirNaFila(missao, prioridadeUrgente);
             proximaDecisaoDeMissaoEm = Mathf.Min(proximaDecisaoDeMissaoEm, Time.time);
             ultimaDecisao = "missão enfileirada" + (string.IsNullOrWhiteSpace(motivo) ? string.Empty : ": " + motivo.Trim());
+            SolicitarReanaliseAntecipada();
+            RegistrarLogDebugSeNecessario();
             return true;
         }
 
@@ -487,7 +566,8 @@ namespace Hegemonia.AI.IA03
             int forcaInicial = Mathf.Max(unidadesProprias, relatorio.Acumulado.UnidadesPropriasDisponiveis + relatorio.Acumulado.UnidadesPropriasPerdidas);
 
             relatorio.RegistrarEconomia(economiaAtual);
-            IA03RelatorioSnapshot snapshot = relatorio.CriarRelatorio(unidadesProprias, inimigosConhecidos, forcaInicial, now);
+            Hegemonia.AI.BrainMaster.IA_ForceSnapshot forcaPropria = mundo != null ? mundo.ForceSnapshot : null;
+            IA03RelatorioSnapshot snapshot = relatorio.CriarRelatorio(unidadesProprias, inimigosConhecidos, forcaInicial, now, forcaPropria);
             if (governo != null)
             {
                 governo.RegistrarNoticia(
@@ -496,6 +576,19 @@ namespace Hegemonia.AI.IA03
                     + ", inimigos conhecidos=" + snapshot.UnidadesInimigasConhecidas
                     + ", próprias perdidas=" + snapshot.UnidadesPropriasPerdidas
                     + ", inimigos destruídos=" + snapshot.InimigosDestruidos
+                    + ", estruturas inimigas destruídas=" + snapshot.EstruturasInimigasDestruidas
+                    + ", forças próprias (inf/tan/avi/nav/sub/PA)=" + snapshot.InfantariaPropriaDisponivel
+                    + "/" + snapshot.TanquesPropriosDisponiveis + "/" + snapshot.AvioesPropriosDisponiveis
+                    + "/" + snapshot.NaviosPropriosDisponiveis + "/" + snapshot.SubmarinosPropriosDisponiveis
+                    + "/" + snapshot.PortaAvioesPropriosDisponiveis
+                    + ", reposição (quar/fáb/est/aero)=" + snapshot.QuarteisProprios
+                    + "/" + snapshot.FabricasProprias + "/" + snapshot.EstaleirosProprios
+                    + "/" + snapshot.AeroportosMilitaresProprios
+                    + ", estruturas próprias destruídas=" + snapshot.EstruturasPropriasDestruidas
+                    + ", dano estrutural (inimigo/próprio)=" + snapshot.DanoEstruturalInimigo
+                    + "/" + snapshot.DanoEstruturalProprio
+                    + ", prejuízo monetário estimado (inimigo/próprio)=" + snapshot.PrejuizoEconomicoInimigo
+                    + "/" + snapshot.PrejuizoEconomicoProprio
                     + ", batalhas=" + snapshot.BatalhasVencidas + "/" + snapshot.TotalDeBatalhas
                     + ", objetivos=" + snapshot.ObjetivosCapturados + "/" + snapshot.ObjetivosPerdidos
                     + ", capacidade restante=" + Mathf.RoundToInt(snapshot.CapacidadeMilitarRestante * 100f) + "%"
@@ -518,9 +611,11 @@ namespace Hegemonia.AI.IA03
             {
                 avaliouConflitoLimitado = true;
                 IA03RelatorioSnapshot resultado = relatorio.Acumulado;
-                bool venceuBatalhas = resultado.TotalDeBatalhas >= perfilPais.MinimoDeBatalhasParaAvaliar
-                                      && resultado.Dominio >= perfilPais.DominioMinimo;
-                bool causouPrejuizoAlto = CalcularPrejuizoEconomicoRelativo() >= perfilPais.PrejuizoEconomicoMinimoParaPaz;
+                bool venceuBatalhas = relatorio.AtingiuDominioMinimo(
+                    perfilPais.MinimoDeBatalhasParaAvaliar,
+                    perfilPais.DominioMinimo);
+                bool causouPrejuizoAlto = resultado.PrejuizoEconomicoInimigo > 0f
+                                          && CalcularPrejuizoEconomicoRelativo() >= perfilPais.PrejuizoEconomicoMinimoParaPaz;
                 bool baixaToleranciaPressionada = CalcularProporcaoBaixas(resultado)
                                                   >= Mathf.Lerp(0.1f, 0.65f, perfilPais.ToleranciaABaixas);
                 bool economiaSobPressao = economiaAtual.ReservaFinanceiraBaixa || economiaAtual.EstoqueEssencialBaixo;
@@ -649,8 +744,7 @@ namespace Hegemonia.AI.IA03
                         else
                         {
                             bool vitoriaPraticamenteCompleta = pontuacao >= 1000f
-                                && resultado.TotalDeBatalhas >= perfilPais.MinimoDeBatalhasParaAvaliar
-                                && resultado.Dominio >= 0.9f;
+                                && relatorio.AtingiuDominioMinimo(perfilPais.MinimoDeBatalhasParaAvaliar, 0.9f);
                             float fracaoTerritorial = vitoriaPraticamenteCompleta ? 1f
                                 : pontuacao >= 500f ? 0.75f
                                 : 0.5f;
@@ -732,27 +826,38 @@ namespace Hegemonia.AI.IA03
                 : ResolverDominioPreferido();
             int minimoUnidades = selecionada != null ? selecionada.QuantidadeMinimaDeUnidades : 1;
 
-            List<IA03TipoCreaty> tipos = new List<IA03TipoCreaty>();
+            tiposCreatyCandidatos.Clear();
             if (selecionada != null && selecionada.CreatysPermitidos != null && selecionada.CreatysPermitidos.Count > 0)
             {
                 for (int i = 0; i < selecionada.CreatysPermitidos.Count; i++)
                 {
-                    tipos.Add(selecionada.CreatysPermitidos[i]);
+                    IA03TipoCreaty tipo = selecionada.CreatysPermitidos[i];
+                    if (selecionada.Aceita(nivelDeConflito, tipo))
+                    {
+                        tiposCreatyCandidatos.Add(tipo);
+                    }
                 }
             }
             else
             {
-                tipos.Add(ResolverTipoCreaty(dominio, nivelDeConflito));
+                tiposCreatyCandidatos.Add(ResolverTipoCreaty(dominio, nivelDeConflito));
             }
 
-            CreatyEstrategico ponto = SelecionarCreaty(tipos, dominio, minimoUnidades);
+            if (tiposCreatyCandidatos.Count == 0)
+            {
+                ultimaDecisao = "missão não permitida no nível estratégico atual";
+                return;
+            }
+
+            CreatyEstrategico ponto = SelecionarCreaty(tiposCreatyCandidatos, dominio, minimoUnidades);
             if (ponto == null)
             {
                 ultimaDecisao = "nenhum Creaty manual compatível está disponível para " + estadoNacional;
                 return;
             }
 
-            if (!ConstruirGrupoUnidades(selecionada, dominio, minimoUnidades))
+            int capacidadeCreatyDisponivel = Mathf.Max(0, ponto.MaximoDeUnidades - ponto.UnidadesReservadas);
+            if (!ConstruirGrupoUnidades(selecionada, dominio, minimoUnidades, capacidadeCreatyDisponivel))
             {
                 ultimaDecisao = "unidades insuficientes para a missão " + (selecionada != null ? selecionada.NomeMissao : ponto.Tipo.ToString());
                 return;
@@ -784,8 +889,10 @@ namespace Hegemonia.AI.IA03
             unidadesAtivasNaMissao.AddRange(unidadesCandidatas);
             unidadesOriginaisNaMissao = unidadesAtivasNaMissao.Count;
             inicioMissaoEm = now;
+            estadoDaMissao = IA03ResultadoMissao.EmAndamento;
             ultimaMissao = selecionada != null ? selecionada.NomeMissao : ponto.Tipo.ToString();
             ultimaDecisao = "missão enviada: " + ultimaMissao + " -> " + ponto.Id;
+            RegistrarLogDebugSeNecessario();
         }
 
         private void AtualizarFilaMissoes()
@@ -795,7 +902,7 @@ namespace Hegemonia.AI.IA03
                 MissaoEstrategicaSO pendente = filaMissoes[i];
                 if (pendente == null
                     || !pendente.Aceita(nivelDeConflito, MissaoDefaultCreaty(pendente))
-                    || missoesConcluidasNaCrise.Contains(pendente))
+                    || MissaoFoiConcluidaNaCrise(pendente))
                 {
                     filaMissoes.RemoveAt(i);
                 }
@@ -811,8 +918,9 @@ namespace Hegemonia.AI.IA03
                 MissaoEstrategicaSO missao = missoesEstrategicas[i];
                 if (missao == null
                     || !missao.Aceita(nivelDeConflito, MissaoDefaultCreaty(missao))
-                    || missoesConcluidasNaCrise.Contains(missao)
-                    || filaMissoes.Contains(missao))
+                    || MissaoFoiConcluidaNaCrise(missao)
+                    || ContemMissaoEquivalenteNaFila(missao)
+                    || SaoMissoesEquivalentes(missaoAtiva, missao))
                 {
                     continue;
                 }
@@ -823,7 +931,7 @@ namespace Hegemonia.AI.IA03
 
         private void InserirNaFila(MissaoEstrategicaSO missao, bool prioridadeUrgente)
         {
-            if (missao == null || filaMissoes.Contains(missao))
+            if (missao == null || ContemMissaoEquivalenteNaFila(missao))
             {
                 return;
             }
@@ -898,7 +1006,11 @@ namespace Hegemonia.AI.IA03
             return lista[lista.Count - 1];
         }
 
-        private bool ConstruirGrupoUnidades(MissaoEstrategicaSO missao, IA03DominioEstrategico dominio, int minimoUnidades)
+        private bool ConstruirGrupoUnidades(
+            MissaoEstrategicaSO missao,
+            IA03DominioEstrategico dominio,
+            int minimoUnidades,
+            int capacidadeCreatyDisponivel)
         {
             unidadesCandidatas.Clear();
             candidatosGrupo.Clear();
@@ -906,14 +1018,12 @@ namespace Hegemonia.AI.IA03
             int totalDeCombate = Mathf.Max(0, mundo.OwnCombatUnits.Count);
             float reserva = perfilPais != null ? perfilPais.ReservaDefesaNacional : 0.1f;
             float tetoDeGuerra = perfilPais != null ? perfilPais.ContingenteMaximoDeGuerra : 0.9f;
-            float proporcao = nivelDeConflito == IA03NivelConflito.GuerraTotal
-                ? Mathf.Min(tetoDeGuerra, 1f - reserva)
-                : nivelDeConflito == IA03NivelConflito.ConflitoLimitado ? 0.5f : 0.25f;
-            int limiteUnidades = Mathf.FloorToInt(totalDeCombate * Mathf.Clamp01(proporcao));
-            if (totalDeCombate > 0 && limiteUnidades == 0 && nivelDeConflito != IA03NivelConflito.GuerraTotal)
-            {
-                limiteUnidades = 1;
-            }
+            int limiteUnidades = CalcularLimiteDeMobilizacao(
+                totalDeCombate,
+                capacidadeCreatyDisponivel,
+                nivelDeConflito,
+                reserva,
+                tetoDeGuerra);
 
             bool exigePortaAvioes = missao != null && missao.ExigePortaAvioes;
             bool exigeSubmarino = missao != null && missao.ExigeSubmarino;
@@ -1165,6 +1275,7 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
+            idOrdemAtivaDaMissao = pedido.Id;
             return true;
         }
 
@@ -1178,7 +1289,7 @@ namespace Hegemonia.AI.IA03
 
             if (creatyAtivo == null)
             {
-                FinalizarMissao(false, "Creaty indisponível");
+                FinalizarMissao(IA03ResultadoMissao.Fracasso, "Creaty indisponível");
                 return;
             }
 
@@ -1205,7 +1316,7 @@ namespace Hegemonia.AI.IA03
             float tempoMaximo = missaoAtiva != null ? missaoAtiva.TempoMaximoSegundos : 600f;
             if (vivos == 0)
             {
-                FinalizarMissao(false, "grupo indisponível");
+                FinalizarMissao(IA03ResultadoMissao.Fracasso, "grupo indisponível");
                 return;
             }
 
@@ -1269,13 +1380,16 @@ namespace Hegemonia.AI.IA03
                 confirmacaoExternaDeSucesso,
                 confirmacaoExternaDeFracasso);
 
-            if (resultado == IA03ResultadoMissao.Fracasso)
+            estadoDaMissao = resultado;
+            if (resultado == IA03ResultadoMissao.Fracasso || resultado == IA03ResultadoMissao.Expirada)
             {
                 string motivo = !string.IsNullOrWhiteSpace(motivoConfirmacaoExterna)
                     && confirmacaoExternaDeFracasso
                     ? motivoConfirmacaoExterna
-                    : prazoEncerrado ? "prazo da missão encerrado sem cumprir o objetivo" : "condição de fracasso atingida";
-                FinalizarMissao(false, motivo);
+                    : resultado == IA03ResultadoMissao.Expirada
+                        ? "tempo máximo da missão encerrado sem cumprir o objetivo"
+                        : "condição de fracasso atingida";
+                FinalizarMissao(resultado, motivo);
                 return;
             }
 
@@ -1308,27 +1422,55 @@ namespace Hegemonia.AI.IA03
                 ultimaDecisao = "ordem de rota não enfileirada: " + motivo;
             }
 
-            FinalizarMissao(true, motivoConfirmacaoExterna.Length > 0
+            FinalizarMissao(IA03ResultadoMissao.Sucesso, motivoConfirmacaoExterna.Length > 0
                 ? motivoConfirmacaoExterna
                 : "objetivo da missão alcançado");
         }
 
         private void EncerrarMissao(string motivo)
         {
-            FinalizarMissao(null, motivo);
+            FinalizarMissao(IA03ResultadoMissao.Cancelada, motivo);
         }
 
-        private void FinalizarMissao(bool? sucesso, string motivo)
+        private void FinalizarMissao(IA03ResultadoMissao resultado, string motivo)
         {
-            if (missaoAtiva != null && nivelDeConflito != IA03NivelConflito.Paz && sucesso.HasValue)
+            bool sucesso = resultado == IA03ResultadoMissao.Sucesso;
+            bool final = resultado == IA03ResultadoMissao.Sucesso
+                         || resultado == IA03ResultadoMissao.Fracasso
+                         || resultado == IA03ResultadoMissao.Expirada;
+            bool cancelarOrdens = resultado == IA03ResultadoMissao.Fracasso
+                                  || resultado == IA03ResultadoMissao.Expirada
+                                  || resultado == IA03ResultadoMissao.Cancelada;
+
+            if (missaoAtiva != null && nivelDeConflito != IA03NivelConflito.Paz && final)
             {
                 missoesConcluidasNaCrise.Add(missaoAtiva);
+                chavesMissoesConcluidasNaCrise.Add(CriarChaveEquivalencia(missaoAtiva));
             }
 
-            if (missaoAtiva != null && sucesso.HasValue)
+            if (missaoAtiva != null && resultado != IA03ResultadoMissao.EmAndamento)
             {
-                ultimaDecisao = (sucesso.Value ? "missão concluída: " : "missão falhou: ")
+                string verbo = resultado == IA03ResultadoMissao.Sucesso ? "missão concluída: "
+                    : resultado == IA03ResultadoMissao.Cancelada ? "missão cancelada: "
+                    : resultado == IA03ResultadoMissao.Expirada ? "missão expirada: "
+                    : "missão falhou: ";
+                ultimaDecisao = verbo
                                 + missaoAtiva.NomeMissao + " — " + (motivo ?? string.Empty);
+            }
+
+            if (cancelarOrdens && brain != null && brain.Context != null && brain.Context.CommandQueue != null
+                && !string.IsNullOrWhiteSpace(idOrdemAtivaDaMissao))
+            {
+                brain.Context.CommandQueue.CancelPending(idOrdemAtivaDaMissao, Time.time, motivo);
+                for (int i = 0; i < unidadesAtivasNaMissao.Count; i++)
+                {
+                    GameObject unidade = unidadesAtivasNaMissao[i];
+                    ControleUnidade controle = unidade != null ? unidade.GetComponent<ControleUnidade>() : null;
+                    if (controle != null)
+                    {
+                        controle.CancelarOrdemSePertenceA("IA03EstrategaNacional", idOrdemAtivaDaMissao);
+                    }
+                }
             }
 
             if (creatyAtivo != null && unidadesReservadas > 0)
@@ -1342,11 +1484,14 @@ namespace Hegemonia.AI.IA03
             unidadesReservadas = 0;
             unidadesAtivasNaMissao.Clear();
             inicioMissaoEm = -1f;
+            idOrdemAtivaDaMissao = string.Empty;
+            estadoDaMissao = resultado;
             ResetarRastreamentoMissao();
-            if (!sucesso.HasValue && !string.IsNullOrWhiteSpace(motivo) && ativo)
+            if (resultado == IA03ResultadoMissao.Cancelada && !string.IsNullOrWhiteSpace(motivo) && ativo)
             {
-                ultimaDecisao = "missão encerrada: " + motivo;
+                ultimaDecisao = "missão cancelada: " + motivo;
             }
+            RegistrarLogDebugSeNecessario();
         }
 
         private void ResetarRastreamentoMissao()
@@ -1492,6 +1637,7 @@ namespace Hegemonia.AI.IA03
                         && string.Equals(evento.alvo, alvoMissaoAtivo.name, System.StringComparison.Ordinal))))
             {
                 alvoMissaoDestruido = true;
+                SolicitarReanaliseAntecipada();
             }
         }
 
@@ -1549,6 +1695,8 @@ namespace Hegemonia.AI.IA03
                     SolicitarMissaoEstrategica(defesa, "ataque a " + alvo.name, true);
                 }
             }
+
+            SolicitarReanaliseAntecipada();
         }
 
         private void GarantirAssinaturaTerritorial()
@@ -1611,6 +1759,8 @@ namespace Hegemonia.AI.IA03
                 territorioDoObjetivoCapturado = false;
                 territorioDoObjetivoPerdido = true;
             }
+
+            SolicitarReanaliseAntecipada();
         }
 
         private static string ObterIdPersistenteAlvo(Transform alvo)
@@ -1688,6 +1838,7 @@ namespace Hegemonia.AI.IA03
             // O BrainMaster já consome o serviço. O evento apenas deixa explícito
             // que a próxima fatia estratégica deve conferir a relação em cache.
             proximaDecisaoDeMissaoEm = Mathf.Min(proximaDecisaoDeMissaoEm, Time.time);
+            SolicitarReanaliseAntecipada();
         }
 
         private void VincularEventosGoverno(SistemaGovernoMundial governo)
@@ -1726,6 +1877,7 @@ namespace Hegemonia.AI.IA03
                 ? IA03NivelConflito.GuerraTotal
                 : IA03NivelConflito.ConflitoLimitado,
                 "EventoPresidenteAbatido");
+            SolicitarReanaliseAntecipada();
         }
 
         private long ObterSaldoAlvo()
@@ -1768,10 +1920,124 @@ namespace Hegemonia.AI.IA03
         {
             if (missao != null && missao.CreatysPermitidos != null && missao.CreatysPermitidos.Count > 0)
             {
+                for (int i = 0; i < missao.CreatysPermitidos.Count; i++)
+                {
+                    IA03TipoCreaty tipo = missao.CreatysPermitidos[i];
+                    if (missao.Aceita(nivelDeConflito, tipo))
+                    {
+                        return tipo;
+                    }
+                }
+
                 return missao.CreatysPermitidos[0];
             }
             return ResolverTipoCreaty(missao != null ? missao.Dominio : ResolverDominioPreferido(), nivelDeConflito);
         }
+
+        private bool MissaoFoiConcluidaNaCrise(MissaoEstrategicaSO missao)
+        {
+            return missao != null
+                   && (missoesConcluidasNaCrise.Contains(missao)
+                       || chavesMissoesConcluidasNaCrise.Contains(CriarChaveEquivalencia(missao)));
+        }
+
+        private bool ContemMissaoEquivalenteNaFila(MissaoEstrategicaSO missao)
+        {
+            if (missao == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < filaMissoes.Count; i++)
+            {
+                if (SaoMissoesEquivalentes(filaMissoes[i], missao))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool SaoMissoesEquivalentes(MissaoEstrategicaSO a, MissaoEstrategicaSO b)
+        {
+            return a != null && b != null
+                   && string.Equals(CriarChaveEquivalencia(a), CriarChaveEquivalencia(b), System.StringComparison.Ordinal);
+        }
+
+        private static string CriarChaveEquivalencia(MissaoEstrategicaSO missao)
+        {
+            if (missao == null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(missao.IdMissao))
+            {
+                return "id:" + missao.IdMissao.Trim();
+            }
+
+            return missao.TipoMissao + "|" + missao.Dominio + "|" + missao.Alvo + "|"
+                   + missao.TipoOrdem + "|" + (missao.NomeMissao ?? string.Empty).Trim().ToUpperInvariant();
+        }
+
+        private void SolicitarReanaliseAntecipada()
+        {
+            if (Time.time < proximaReanaliseAntecipadaEm
+                || brain == null || brain.Context == null || brain.Context.Scheduler == null)
+            {
+                return;
+            }
+
+            proximaReanaliseAntecipadaEm = Time.time + 0.5f;
+            brain.Context.Scheduler.RequestEarlierTick(this, Time.time, DelayInicialEscalonado);
+        }
+
+        private void RegistrarLogDebugSeNecessario()
+        {
+            if (!debugIA03 || string.IsNullOrEmpty(ultimaDecisao)
+                || string.Equals(ultimaLinhaDeDebug, ultimaDecisao, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            ultimaLinhaDeDebug = ultimaDecisao;
+            string pais = brain != null && SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.NomePais(brain.TeamId)
+                : brain != null ? "Team " + brain.TeamId : "país não configurado";
+            Debug.Log("[IA03][" + pais + "] N" + (int)nivelDeConflito
+                      + " | missão=" + (string.IsNullOrEmpty(ultimaMissao) ? "nenhuma" : ultimaMissao)
+                      + " | grupo=" + unidadesAtivasNaMissao.Count
+                      + " | " + ultimaDecisao, this);
+        }
+
+        public string DebugNomePais => brain != null && SistemaGovernoMundial.Instancia != null
+            ? SistemaGovernoMundial.Instancia.NomePais(brain.TeamId)
+            : brain != null ? "Team " + brain.TeamId : "não configurado";
+        public int DebugTeamId => brain != null ? brain.TeamId : 0;
+        public int DebugPaisAlvoTeamId => paisAlvoTeamId;
+        public int DebugMissoesNaFila => filaMissoes.Count;
+        public int DebugUnidadesRegistradas => brain != null && brain.Context != null && brain.Context.WorldState != null
+            ? brain.Context.WorldState.OwnCombatUnits.Count
+            : 0;
+        public long DebugSaldo => economiaAtual.Saldo;
+
+#if UNITY_EDITOR
+        public void DebugForcarNivel(IA03NivelConflito nivel)
+        {
+            nivelDebugForcado = true;
+            DefinirNivelConflito(nivel, "nível forçado pelo painel de debug");
+            SolicitarReanaliseAntecipada();
+        }
+
+        public void DebugRetomarDiplomacia()
+        {
+            nivelDebugForcado = false;
+            ultimaDecisao = "retomando o estado diplomático real";
+            SolicitarReanaliseAntecipada();
+            RegistrarLogDebugSeNecessario();
+        }
+#endif
 
         private static IA03EstadoNacional ConverterEstado(IA03NivelConflito nivel)
         {

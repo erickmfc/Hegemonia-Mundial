@@ -4,13 +4,16 @@ namespace Hegemonia.AI.IA03
     {
         Pendente,
         Sucesso,
-        Fracasso
+        Fracasso,
+        Cancelada,
+        Expirada,
+        EmAndamento
     }
 
     /// <summary>
     /// Regras determinísticas para avaliar as condições configuradas no
-    /// ScriptableObject. O fracasso de uma condição positiva é sua contraparte
-    /// negativa (por exemplo, não chegar até o prazo).
+    /// ScriptableObject. Falhas observadas encerram a missão como Fracasso;
+    /// condições não concluídas até o limite encerram como Expirada.
     /// </summary>
     public static class IA03AvaliadorMissao
     {
@@ -44,14 +47,9 @@ namespace Hegemonia.AI.IA03
 
             if (CondicaoDeFracassoAtendida(
                     fracasso,
-                    chegouAoDestino,
-                    permaneceuNoDestino,
                     saiuDoDestino,
-                    alvoDestruido,
-                    territorioCapturado,
                     territorioPerdido,
                     grupoPerdeuUnidade,
-                    prazoEncerrado,
                     confirmacaoDeFracasso))
             {
                 return IA03ResultadoMissao.Fracasso;
@@ -61,10 +59,10 @@ namespace Hegemonia.AI.IA03
             // configurações que escolhem uma condição de fracasso externa.
             if (prazoEncerrado)
             {
-                return IA03ResultadoMissao.Fracasso;
+                return IA03ResultadoMissao.Expirada;
             }
 
-            return IA03ResultadoMissao.Pendente;
+            return IA03ResultadoMissao.EmAndamento;
         }
 
         private static bool CondicaoDeSucessoAtendida(
@@ -98,30 +96,21 @@ namespace Hegemonia.AI.IA03
 
         private static bool CondicaoDeFracassoAtendida(
             IA03CondicaoMissao condicao,
-            bool chegouAoDestino,
-            bool permaneceuNoDestino,
             bool saiuDoDestino,
-            bool alvoDestruido,
-            bool territorioCapturado,
             bool territorioPerdido,
             bool grupoPerdeuUnidade,
-            bool prazoEncerrado,
             bool confirmacaoDeFracasso)
         {
             switch (condicao)
             {
-                case IA03CondicaoMissao.ChegarAoDestino:
-                    return prazoEncerrado && !chegouAoDestino;
                 case IA03CondicaoMissao.PermanecerNoDestino:
-                    return saiuDoDestino || (prazoEncerrado && !permaneceuNoDestino);
-                case IA03CondicaoMissao.DestruirAlvo:
-                    return prazoEncerrado && !alvoDestruido;
+                    return saiuDoDestino;
                 case IA03CondicaoMissao.SobreviverAteOPrazo:
                     return grupoPerdeuUnidade;
                 case IA03CondicaoMissao.ConfirmacaoExterna:
                     return confirmacaoDeFracasso;
                 case IA03CondicaoMissao.CapturarTerritorio:
-                    return territorioPerdido || (prazoEncerrado && !territorioCapturado);
+                    return territorioPerdido;
                 default:
                     return false;
             }

@@ -20,7 +20,7 @@ namespace Hegemonia.AI.IA03
         [SerializeField] private IA03DominioEstrategico dominio = IA03DominioEstrategico.Terrestre;
         [SerializeField, Min(1)] private int quantidadeMinimaDeUnidades = 1;
         [SerializeField, Min(0)] private int prioridade = 50;
-        [SerializeField, Min(0f)] private float tempoMaximoSegundos = 600f;
+        [SerializeField, Min(1f)] private float tempoMaximoSegundos = 600f;
         [SerializeField] private List<IA03TipoCreaty> creatysPermitidos = new List<IA03TipoCreaty>();
         [SerializeField] private IA03AlvoPreferencial alvo = IA03AlvoPreferencial.Nenhum;
         [SerializeField] private IA03TipoOrdem tipoOrdem = IA03TipoOrdem.Mover;
@@ -46,7 +46,7 @@ namespace Hegemonia.AI.IA03
         public IA03DominioEstrategico Dominio => dominio;
         public int QuantidadeMinimaDeUnidades => quantidadeMinimaDeUnidades;
         public int Prioridade => prioridade;
-        public float TempoMaximoSegundos => tempoMaximoSegundos;
+        public float TempoMaximoSegundos => Mathf.Max(1f, tempoMaximoSegundos);
         public IReadOnlyList<IA03TipoCreaty> CreatysPermitidos => creatysPermitidos;
         public IA03AlvoPreferencial Alvo => alvo;
         public IA03TipoOrdem TipoOrdem => tipoOrdem;
@@ -67,7 +67,96 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
+            if (!OperacaoPermitidaNoNivel(nivel)
+                || !CreatyPermitidoNoNivel(nivel, tipoCreaty)
+                || exigePortaAvioes
+                || exigeTransporteNaval
+                || exigePresidente
+                || tipoCreaty == IA03TipoCreaty.ZonaPortaAvioes
+                || tipoCreaty == IA03TipoCreaty.EmbarqueTransporte
+                || tipoCreaty == IA03TipoCreaty.DesembarqueAnfibio
+                || tipoCreaty == IA03TipoCreaty.HelipontoDiplomatico
+                || tipoCreaty == IA03TipoCreaty.RecepcaoPresidencial)
+            {
+                return false;
+            }
+
+            if (tipoOrdem == IA03TipoOrdem.Atacar
+                && (nivel > IA03NivelConflito.ConflitoLimitado
+                    || (tipoMissao != IA03TipoMissao.AtaqueLimitado && tipoMissao != IA03TipoMissao.GuerraTotal)))
+            {
+                return false;
+            }
+
             return creatysPermitidos == null || creatysPermitidos.Count == 0 || creatysPermitidos.Contains(tipoCreaty);
+        }
+
+        private bool OperacaoPermitidaNoNivel(IA03NivelConflito nivel)
+        {
+            if (tipoMissao == IA03TipoMissao.GrupoPortaAvioes
+                || tipoMissao == IA03TipoMissao.InvasaoAnfibia
+                || tipoMissao == IA03TipoMissao.VisitaPresidencial)
+            {
+                return false;
+            }
+
+            switch (nivel)
+            {
+                case IA03NivelConflito.Tensao:
+                    return tipoMissao == IA03TipoMissao.Patrulha
+                           || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                case IA03NivelConflito.AvancoMilitar:
+                    return tipoMissao == IA03TipoMissao.Patrulha
+                           || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
+                           || tipoMissao == IA03TipoMissao.Avanco
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                case IA03NivelConflito.ConflitoLimitado:
+                    return tipoMissao == IA03TipoMissao.Patrulha
+                           || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
+                           || tipoMissao == IA03TipoMissao.Avanco
+                           || tipoMissao == IA03TipoMissao.AtaqueLimitado
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                case IA03NivelConflito.GuerraTotal:
+                    return tipoMissao == IA03TipoMissao.Patrulha
+                           || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
+                           || tipoMissao == IA03TipoMissao.Avanco
+                           || tipoMissao == IA03TipoMissao.AtaqueLimitado
+                           || tipoMissao == IA03TipoMissao.GuerraTotal
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool CreatyPermitidoNoNivel(IA03NivelConflito nivel, IA03TipoCreaty tipo)
+        {
+            bool creatyDePatrulha = tipo == IA03TipoCreaty.PatrulhaTerrestre
+                                    || tipo == IA03TipoCreaty.PatrulhaNaval
+                                    || tipo == IA03TipoCreaty.PatrulhaAerea
+                                    || tipo == IA03TipoCreaty.PatrulhaSubmarino
+                                    || tipo == IA03TipoCreaty.PontoGenerico;
+            switch (nivel)
+            {
+                case IA03NivelConflito.Tensao:
+                    return creatyDePatrulha || tipo == IA03TipoCreaty.TensaoN4;
+                case IA03NivelConflito.AvancoMilitar:
+                    return creatyDePatrulha || tipo == IA03TipoCreaty.TensaoN4 || tipo == IA03TipoCreaty.AvancoN3;
+                case IA03NivelConflito.ConflitoLimitado:
+                    return creatyDePatrulha || tipo == IA03TipoCreaty.TensaoN4
+                           || tipo == IA03TipoCreaty.AvancoN3 || tipo == IA03TipoCreaty.ConflitoN2;
+                case IA03NivelConflito.GuerraTotal:
+                    return creatyDePatrulha || tipo == IA03TipoCreaty.TensaoN4
+                           || tipo == IA03TipoCreaty.AvancoN3 || tipo == IA03TipoCreaty.ConflitoN2
+                           || tipo == IA03TipoCreaty.GuerraN1;
+                default:
+                    return false;
+            }
+        }
+
+        private void OnValidate()
+        {
+            tempoMaximoSegundos = Mathf.Max(1f, tempoMaximoSegundos);
         }
     }
 }

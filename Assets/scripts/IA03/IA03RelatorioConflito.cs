@@ -10,6 +10,18 @@ namespace Hegemonia.AI.IA03
         public int UnidadesInimigasConhecidas;
         public int UnidadesPropriasPerdidas;
         public int InimigosDestruidos;
+        public int EstruturasInimigasDestruidas;
+        public int EstruturasPropriasDestruidas;
+        public int InfantariaPropriaDisponivel;
+        public int TanquesPropriosDisponiveis;
+        public int AvioesPropriosDisponiveis;
+        public int NaviosPropriosDisponiveis;
+        public int SubmarinosPropriosDisponiveis;
+        public int PortaAvioesPropriosDisponiveis;
+        public int QuarteisProprios;
+        public int FabricasProprias;
+        public int EstaleirosProprios;
+        public int AeroportosMilitaresProprios;
         public int BatalhasVencidas;
         public int BatalhasPerdidas;
         public float PrejuizoEconomicoInimigo;
@@ -57,6 +69,18 @@ namespace Hegemonia.AI.IA03
             acumulado.UnidadesInimigasConhecidas = 0;
             acumulado.UnidadesPropriasPerdidas = 0;
             acumulado.InimigosDestruidos = 0;
+            acumulado.EstruturasInimigasDestruidas = 0;
+            acumulado.EstruturasPropriasDestruidas = 0;
+            acumulado.InfantariaPropriaDisponivel = 0;
+            acumulado.TanquesPropriosDisponiveis = 0;
+            acumulado.AvioesPropriosDisponiveis = 0;
+            acumulado.NaviosPropriosDisponiveis = 0;
+            acumulado.SubmarinosPropriosDisponiveis = 0;
+            acumulado.PortaAvioesPropriosDisponiveis = 0;
+            acumulado.QuarteisProprios = 0;
+            acumulado.FabricasProprias = 0;
+            acumulado.EstaleirosProprios = 0;
+            acumulado.AeroportosMilitaresProprios = 0;
             acumulado.BatalhasVencidas = 0;
             acumulado.BatalhasPerdidas = 0;
             acumulado.PrejuizoEconomicoInimigo = 0f;
@@ -83,6 +107,19 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
+            if (evento.alvoEhEstrutura)
+            {
+                if (evento.equipeAlvo == teamId && evento.equipeAtacante == alvoTeamId)
+                {
+                    acumulado.EstruturasPropriasDestruidas++;
+                }
+                else if (evento.equipeAlvo == alvoTeamId && evento.equipeAtacante == teamId)
+                {
+                    acumulado.EstruturasInimigasDestruidas++;
+                }
+                return;
+            }
+
             if (evento.equipeAlvo == teamId && evento.equipeAtacante == alvoTeamId)
             {
                 acumulado.UnidadesPropriasPerdidas++;
@@ -103,6 +140,12 @@ namespace Hegemonia.AI.IA03
             {
                 acumulado.BatalhasPerdidas++;
             }
+        }
+
+        public bool AtingiuDominioMinimo(int minimoDeBatalhas, float dominioMinimo)
+        {
+            return acumulado.TotalDeBatalhas >= Mathf.Max(1, minimoDeBatalhas)
+                   && acumulado.Dominio >= Mathf.Clamp01(dominioMinimo);
         }
 
         public void RegistrarPrejuizoEconomico(bool inimigo, float valor)
@@ -158,11 +201,31 @@ namespace Hegemonia.AI.IA03
             acumulado.PressaoEconomicaNacional = Mathf.Clamp01(economia.PressaoEconomica);
         }
 
+        public void RegistrarForcasProprias(Hegemonia.AI.BrainMaster.IA_ForceSnapshot forca)
+        {
+            if (forca == null)
+            {
+                return;
+            }
+
+            acumulado.InfantariaPropriaDisponivel = Mathf.Max(0, forca.InfantryUnits);
+            acumulado.TanquesPropriosDisponiveis = Mathf.Max(0, forca.TankUnits);
+            acumulado.AvioesPropriosDisponiveis = Mathf.Max(0, forca.FixedWingAircraft + forca.Helicopters);
+            acumulado.PortaAvioesPropriosDisponiveis = Mathf.Max(0, forca.AircraftCarriers);
+            acumulado.NaviosPropriosDisponiveis = Mathf.Max(0, forca.NavalUnits - forca.AircraftCarriers);
+            acumulado.SubmarinosPropriosDisponiveis = Mathf.Max(0, forca.Submarines);
+            acumulado.QuarteisProprios = Mathf.Max(0, forca.BarracksCount);
+            acumulado.FabricasProprias = Mathf.Max(0, forca.FactoryCount);
+            acumulado.EstaleirosProprios = Mathf.Max(0, forca.ShipyardCount);
+            acumulado.AeroportosMilitaresProprios = Mathf.Max(0, forca.MilitaryAirportCount);
+        }
+
         public IA03RelatorioSnapshot CriarRelatorio(
             int unidadesPropriasDisponiveis,
             int unidadesInimigasConhecidas,
             int forcaPropriaInicial,
-            float momento)
+            float momento,
+            Hegemonia.AI.BrainMaster.IA_ForceSnapshot forcaPropria)
         {
             acumulado.UnidadesPropriasDisponiveis = Mathf.Max(0, unidadesPropriasDisponiveis);
             acumulado.UnidadesInimigasConhecidas = Mathf.Max(0, unidadesInimigasConhecidas);
@@ -170,6 +233,7 @@ namespace Hegemonia.AI.IA03
                 ? Mathf.Clamp01(unidadesPropriasDisponiveis / (float)forcaPropriaInicial)
                 : 0f;
             acumulado.MomentoDoRelatorio = momento;
+            RegistrarForcasProprias(forcaPropria);
 
             return new IA03RelatorioSnapshot
             {
@@ -177,6 +241,18 @@ namespace Hegemonia.AI.IA03
                 UnidadesInimigasConhecidas = acumulado.UnidadesInimigasConhecidas,
                 UnidadesPropriasPerdidas = acumulado.UnidadesPropriasPerdidas,
                 InimigosDestruidos = acumulado.InimigosDestruidos,
+                EstruturasInimigasDestruidas = acumulado.EstruturasInimigasDestruidas,
+                EstruturasPropriasDestruidas = acumulado.EstruturasPropriasDestruidas,
+                InfantariaPropriaDisponivel = acumulado.InfantariaPropriaDisponivel,
+                TanquesPropriosDisponiveis = acumulado.TanquesPropriosDisponiveis,
+                AvioesPropriosDisponiveis = acumulado.AvioesPropriosDisponiveis,
+                NaviosPropriosDisponiveis = acumulado.NaviosPropriosDisponiveis,
+                SubmarinosPropriosDisponiveis = acumulado.SubmarinosPropriosDisponiveis,
+                PortaAvioesPropriosDisponiveis = acumulado.PortaAvioesPropriosDisponiveis,
+                QuarteisProprios = acumulado.QuarteisProprios,
+                FabricasProprias = acumulado.FabricasProprias,
+                EstaleirosProprios = acumulado.EstaleirosProprios,
+                AeroportosMilitaresProprios = acumulado.AeroportosMilitaresProprios,
                 BatalhasVencidas = acumulado.BatalhasVencidas,
                 BatalhasPerdidas = acumulado.BatalhasPerdidas,
                 PrejuizoEconomicoInimigo = acumulado.PrejuizoEconomicoInimigo,

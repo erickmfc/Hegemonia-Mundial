@@ -39,6 +39,7 @@ namespace Hegemonia.AI.BrainMaster
             public bool IsGroundTransport;
             public bool IsHoverTransport;
             public bool IsNavalTransport;
+            public bool IsAircraftCarrier;
             public bool IsSubmarine;
             public bool IsInfantry;
             public bool IsTank;
@@ -1359,6 +1360,7 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.ReadyFighters = 0;
             _forceSnapshot.AirUnits = 0;
             _forceSnapshot.NavalUnits = 0;
+            _forceSnapshot.AircraftCarriers = 0;
             _forceSnapshot.Submarines = 0;
             _forceSnapshot.OilTankers = 0;
             _forceSnapshot.CoastalDefenseShips = 0;
@@ -1410,6 +1412,11 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     _forceSnapshot.CoastalDefenseShips++;
                 }
+            }
+
+            if (entry.IsAircraftCarrier)
+            {
+                _forceSnapshot.AircraftCarriers++;
             }
             else if (entry.Domain == IA_Domain.Air)
             {
@@ -1668,6 +1675,7 @@ namespace Hegemonia.AI.BrainMaster
                 IsGroundTransport = (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte")) && domain == IA_Domain.Land,
                 IsHoverTransport = isHover,
                 IsNavalTransport = domain == IA_Domain.Naval && (isOilTanker || isNavalTransportComp || n.Contains("liberty") || n.Contains("transporte") || isHover || n.Contains("ww")),
+                IsAircraftCarrier = hasCarrierComponent,
                 IsSubmarine = hasSubmarine || n.Contains("sub"),
                 IsInfantry = n.Contains("sold") || n.Contains("rifle") || n.Contains("infan"),
                 IsTank = n.Contains("tank") || n.Contains("mbt") || n.Contains("south") || n.Contains("arthur") || n.Contains("c1"),

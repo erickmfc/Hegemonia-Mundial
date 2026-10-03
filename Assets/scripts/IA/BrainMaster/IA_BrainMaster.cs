@@ -927,7 +927,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             if (_ia03Estratega != null && _ia03Estratega.isActiveAndEnabled && _ia03Estratega.TemPerfilConfigurado)
             {
-                _scheduler.Register(_ia03Estratega, now, 0.187f);
+                _scheduler.Register(_ia03Estratega, now, 0.187f + _ia03Estratega.DelayInicialEscalonado);
             }
             _scheduler.Register(_economyDirector, now, 0.185f);
             _scheduler.Register(_syncNetwork, now, 0.20f);

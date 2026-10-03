@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Hegemonia.AI.IA01;
 using UnityEngine;
@@ -2603,7 +2604,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 Vector3 slotDestination = ComputeFormationDestination(unit, payload.Destination, i, total);
-                if (!TryIssueMove(unit, slotDestination))
+                if (!TryIssueMove(unit, slotDestination, request.Origin, request.Id))
                 {
                     continue;
                 }
@@ -2639,7 +2640,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 Vector3 slotDestination = ComputeAttackFormationDestination(unit, payload.Units, formationAnchor, target, i, total);
                 Vector3 movementDestination = unit.GetComponent<AviaoBombardeiro>() != null ? target : slotDestination;
-                bool issuedMove = TryIssueMove(unit, movementDestination);
+                bool issuedMove = TryIssueMove(unit, movementDestination, request.Origin, request.Id);
                 bool movimentoAereoRecusado = !issuedMove
                     && (unit.GetComponent<ControleAviao>() != null || unit.GetComponent<Helicoptero>() != null);
                 bool armed = !movimentoAereoRecusado
@@ -2685,7 +2686,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 Vector3 slotDestination = ComputeFormationDestination(unit, payload.PointA, i, total);
-                if (!TryIssueMove(unit, slotDestination))
+                if (!TryIssueMove(unit, slotDestination, request.Origin, request.Id))
                 {
                     continue;
                 }
@@ -2704,7 +2705,7 @@ namespace Hegemonia.AI.BrainMaster
             return ok;
         }
 
-        private bool TryIssueMove(GameObject unit, Vector3 destination)
+        private bool TryIssueMove(GameObject unit, Vector3 destination, string orderOwner = null, string orderId = null)
         {
             if (unit == null)
             {
@@ -2734,7 +2735,13 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (TryIssueSpecializedMove(unit, destination))
+            bool isIA03Order = string.Equals(orderOwner, "IA03EstrategaNacional", System.StringComparison.Ordinal)
+                               && !string.IsNullOrWhiteSpace(orderId);
+            if (TryIssueSpecializedMove(
+                    unit,
+                    destination,
+                    isIA03Order ? orderOwner : null,
+                    isIA03Order ? orderId : null))
             {
                 _lastDestinationByUnit[id] = destination;
                 _lastOrderTimeByUnit[id] = now;
@@ -2744,7 +2751,14 @@ namespace Hegemonia.AI.BrainMaster
             ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
             if (controleUnidade != null)
             {
-                if (!controleUnidade.EmitirOrdemMover(destination))
+                bool aceita = isIA03Order
+                    ? controleUnidade.EmitirOrdemMovimento(
+                        destination,
+                        orderOwner,
+                        true,
+                        orderId + ":" + id.ToString(CultureInfo.InvariantCulture))
+                    : controleUnidade.EmitirOrdemMover(destination);
+                if (!aceita)
                 {
                     return false;
                 }
@@ -2978,8 +2992,16 @@ namespace Hegemonia.AI.BrainMaster
             return false;
         }
 
-        private static bool TryIssueSpecializedMove(GameObject unit, Vector3 destination)
+        private static bool TryIssueSpecializedMove(
+            GameObject unit,
+            Vector3 destination,
+            string orderOwner = null,
+            string orderId = null)
         {
+            bool isIA03Order = !string.IsNullOrWhiteSpace(orderOwner) && !string.IsNullOrWhiteSpace(orderId);
+            string unitOrderId = isIA03Order
+                ? orderId + ":" + unit.GetInstanceID().ToString(CultureInfo.InvariantCulture)
+                : null;
             ControleAviao modernAircraft = unit.GetComponent<ControleAviao>();
             if (modernAircraft != null)
             {
@@ -2991,7 +3013,9 @@ namespace Hegemonia.AI.BrainMaster
 
                 ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
                 bool ordemAceita = controleUnidade != null
-                    ? controleUnidade.EmitirOrdemMover(airDestination, true)
+                    ? isIA03Order
+                        ? controleUnidade.EmitirOrdemMovimento(airDestination, orderOwner, true, unitOrderId)
+                        : controleUnidade.EmitirOrdemMover(airDestination, true)
                     : modernAircraft.ReceberOrdemManual(airDestination);
                 if (!ordemAceita)
                 {
@@ -3029,7 +3053,9 @@ namespace Hegemonia.AI.BrainMaster
                 ControleUnidade helicopterController = unit.GetComponent<ControleUnidade>();
                 if (helicopterController != null)
                 {
-                    return helicopterController.EmitirOrdemMover(destination, true);
+                    return isIA03Order
+                        ? helicopterController.EmitirOrdemMovimento(destination, orderOwner, true, unitOrderId)
+                        : helicopterController.EmitirOrdemMover(destination, true);
                 }
 
                 helicopter.Decolar(destination);
@@ -3048,7 +3074,9 @@ namespace Hegemonia.AI.BrainMaster
                 ControleUnidade legacyController = unit.GetComponent<ControleUnidade>();
                 if (legacyController != null)
                 {
-                    return legacyController.EmitirOrdemMover(airDestination, true);
+                    return isIA03Order
+                        ? legacyController.EmitirOrdemMovimento(airDestination, orderOwner, true, unitOrderId)
+                        : legacyController.EmitirOrdemMover(airDestination, true);
                 }
 
                 legacyAircraft.DefinirDestino(airDestination);

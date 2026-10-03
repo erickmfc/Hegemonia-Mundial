@@ -717,6 +717,28 @@ public class ControleUnidade : MonoBehaviour
         return EmitirOrdemMovimentoInterna(destino, cancelarComportamentos, id, dono, tipo);
     }
 
+    public bool EmitirOrdemMovimento(Vector3 destino, string dono, bool cancelarComportamentos, string id)
+    {
+        return EmitirOrdemMovimento(destino, dono, InferirTipoOrdemMovimento(), cancelarComportamentos, id);
+    }
+
+    public bool CancelarOrdemSePertenceA(string dono, string idPrefixo)
+    {
+        OrdemMovimento ordem = OrdemMovimentoAtual;
+        if (ordem == null
+            || string.IsNullOrWhiteSpace(dono)
+            || string.IsNullOrWhiteSpace(idPrefixo)
+            || string.IsNullOrWhiteSpace(ordem.Id)
+            || !string.Equals(ordem.Dono, dono, System.StringComparison.Ordinal)
+            || !ordem.Id.StartsWith(idPrefixo + ":", System.StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        EmitirOrdemParar();
+        return true;
+    }
+
     private bool TryExpandNavalPatrolRoute(
         IList<Vector3> pontos,
         out List<Vector3> rotaExpandida,
