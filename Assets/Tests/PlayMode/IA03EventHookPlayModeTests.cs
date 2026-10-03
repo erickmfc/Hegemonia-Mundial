@@ -5,11 +5,57 @@ using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 public sealed class IA03EventHookPlayModeTests
 {
     private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    // Keep the test assembly independent from Assembly-CSharp; this name matches IA_BrainMaster's existing guard.
+    private const string BrainMasterGuardSceneName = "cena19)";
+    private Scene sceneAtEntry;
+    private Scene sceneWithBrainInitializationGuard;
+    private bool createdBrainInitializationGuardScene;
+
+    [UnitySetUp]
+    public IEnumerator UseLightweightSceneForBrainMasterFixture()
+    {
+        sceneAtEntry = SceneManager.GetActiveScene();
+        sceneWithBrainInitializationGuard = SceneManager.GetSceneByName(BrainMasterGuardSceneName);
+        createdBrainInitializationGuardScene = !sceneWithBrainInitializationGuard.IsValid()
+                                               || !sceneWithBrainInitializationGuard.isLoaded;
+        if (createdBrainInitializationGuardScene)
+        {
+            sceneWithBrainInitializationGuard = SceneManager.CreateScene(BrainMasterGuardSceneName);
+        }
+
+        Assert.That(SceneManager.SetActiveScene(sceneWithBrainInitializationGuard), Is.True);
+        yield return null;
+    }
+
+    [UnityTearDown]
+    public IEnumerator RestoreSceneAfterBrainMasterFixture()
+    {
+        if (sceneAtEntry.IsValid() && sceneAtEntry.isLoaded)
+        {
+            SceneManager.SetActiveScene(sceneAtEntry);
+        }
+
+        if (createdBrainInitializationGuardScene
+            && sceneWithBrainInitializationGuard.IsValid()
+            && sceneWithBrainInitializationGuard.isLoaded)
+        {
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(sceneWithBrainInitializationGuard);
+            if (unload != null)
+            {
+                yield return unload;
+            }
+        }
+
+        sceneAtEntry = default;
+        sceneWithBrainInitializationGuard = default;
+        createdBrainInitializationGuardScene = false;
+    }
 
     [UnityTest]
     public IEnumerator RealUnitDeathUpdatesConflictReportAndDisableUnsubscribes()

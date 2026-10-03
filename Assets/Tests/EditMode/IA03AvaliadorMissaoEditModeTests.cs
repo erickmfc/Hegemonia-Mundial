@@ -119,7 +119,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
         object war = Enum.Parse(levelType, "GuerraTotal");
         Assert.That(calculate.Invoke(null, new[] { (object)100, 12, war, 0.1f, 0.9f }), Is.EqualTo(12));
-        Assert.That(calculate.Invoke(null, new[] { (object)100, 100, war, 0.1f, 0.9f }), Is.EqualTo(80));
+        Assert.That(calculate.Invoke(null, new[] { (object)100, 100, war, 0.1f, 0.9f }), Is.EqualTo(90));
     }
 
     [Test]

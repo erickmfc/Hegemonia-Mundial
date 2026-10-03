@@ -131,7 +131,7 @@ namespace Hegemonia.AI.IA03
             float reserva = Mathf.Clamp(reservaDefesa, 0f, 0.49f);
             float teto = Mathf.Clamp(contingenteMaximo, 0f, 0.9f);
             float proporcao = nivel == IA03NivelConflito.GuerraTotal
-                ? Mathf.Min(teto, 1f - 2f * reserva)
+                ? Mathf.Min(teto, 1f - reserva)
                 : nivel == IA03NivelConflito.ConflitoLimitado ? 0.5f
                 : nivel == IA03NivelConflito.AvancoMilitar ? 0.25f
                 : nivel == IA03NivelConflito.Tensao ? 0.25f
