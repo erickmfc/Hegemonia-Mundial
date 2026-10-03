@@ -8,6 +8,43 @@ using UnityEngine.TestTools;
 public sealed class C700TransporteAereoPlayModeTests
 {
     [UnityTest]
+    public IEnumerator C700AceitaPistaComRaioZeroComoAlcanceSemLimite()
+    {
+        GameObject transporteObjeto = null;
+        GameObject pistaObjeto = null;
+
+        try
+        {
+            ScriptableObject ficha = Resources.Load<ScriptableObject>("Construcoes/C700");
+            Assert.That(ficha, Is.Not.Null, "A ficha C700 precisa estar disponível no catálogo de Resources.");
+            PropertyInfo prefabPropriedade = ficha.GetType().GetProperty("PrefabDaUnidade", BindingFlags.Instance | BindingFlags.Public);
+            GameObject prefab = prefabPropriedade == null ? null : prefabPropriedade.GetValue(ficha) as GameObject;
+            Assert.That(prefab, Is.Not.Null, "A ficha C700 precisa apontar para o prefab do transporte.");
+
+            transporteObjeto = UnityEngine.Object.Instantiate(prefab, Vector3.zero, Quaternion.identity);
+            transporteObjeto.name = "C700_ZeroRunwayRadius_PlayMode_Test";
+            Type tipoTransporte = prefab.GetComponent("C700TransporteAereo").GetType();
+            Component transporte = transporteObjeto.GetComponentInChildren(tipoTransporte, true);
+            Assert.That(transporte, Is.Not.Null, "O prefab do C700 precisa ter C700TransporteAereo.");
+
+            pistaObjeto = CriarPista("MiniPista_C700_RaioZero", new Vector3(200f, 0f, 0f));
+            Component pista = pistaObjeto.GetComponent("MiniPistaLogistica");
+            Campo(pista, "raioAceitacaoDestino", 0f);
+            yield return null;
+
+            Chamar(transporte, "ReceberOrdemMover", new Vector3(400f, 0f, 0f));
+
+            Assert.That(Estado(transporte), Is.EqualTo("Decolando"),
+                "Raio zero significa sem limite de aceitação; a distância até a pista continua dentro da busca de 300 m.");
+        }
+        finally
+        {
+            if (transporteObjeto != null) UnityEngine.Object.Destroy(transporteObjeto);
+            if (pistaObjeto != null) UnityEngine.Object.Destroy(pistaObjeto);
+        }
+    }
+
+    [UnityTest]
     public IEnumerator C700CompletaPousoCargaDescargaEDecolagemNovamente()
     {
         GameObject piso = CriarPiso();

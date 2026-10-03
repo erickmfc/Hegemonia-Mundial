@@ -281,7 +281,8 @@ public class C700TransporteAereo : MonoBehaviour
         MiniPistaLogistica pista = MiniPistaLogistica.LocalizarMaisProxima(destino, 300f, teamId, false);
         bool destinoPertenceAPista = pista != null
             && pista.PistaValida
-            && Vector3.Distance(pista.transform.position, destino) <= Mathf.Max(1f, pista.raioAceitacaoDestino);
+            && (pista.raioAceitacaoDestino <= 0f
+                || Vector3.Distance(pista.transform.position, destino) <= Mathf.Max(1f, pista.raioAceitacaoDestino));
         bool pousoLivre = false;
 
         if (destinoPertenceAPista && !pista.PodeReceber(this, destino))
