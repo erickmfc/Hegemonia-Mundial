@@ -332,6 +332,7 @@ public class MenuConstrucao : MonoBehaviour
         GarantirUsinaCarvaoNoCatalogo();
         GarantirComerciosNoCatalogo();
         GarantirPrefeituraNoCatalogo();
+        GarantirCaminhaoAbastecimentoNoCatalogo();
         GarantirNaviosNovosNoCatalogo();
         GarantirF16BNoCatalogo();
         GarantirCidadeEgitoNoCatalogo();
@@ -717,6 +718,52 @@ public class MenuConstrucao : MonoBehaviour
             if (temPrefabFicha
                 && existente.TryGetPrefabBasico(out prefabExistente)
                 && prefabExistente == prefabFicha)
+            {
+                return;
+            }
+        }
+
+        catalogo.Add(ficha);
+        if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+        {
+            quantidadesPorItem.Add(ficha.NomeItem, 1);
+        }
+    }
+
+    /// <summary>
+    /// Mantem o caminhao abastecedor disponivel em cenas com catalogos antigos.
+    /// A ficha fica em Resources para funcionar tambem em builds sem AssetDatabase.
+    /// </summary>
+    private void GarantirCaminhaoAbastecimentoNoCatalogo()
+    {
+        DadosConstrucao ficha = Resources.Load<DadosConstrucao>("Construcoes/TruckAbastecimento");
+        if (ficha == null || catalogo.Contains(ficha))
+        {
+            return;
+        }
+
+        GameObject prefabFicha;
+        if (!ficha.TryGetPrefabBasico(out prefabFicha) || prefabFicha == null)
+        {
+            return;
+        }
+
+        string idFicha = ficha.GetStableId();
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao existente = catalogo[i];
+            if (existente == null)
+            {
+                continue;
+            }
+
+            if (string.Equals(existente.GetStableId(), idFicha, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            GameObject prefabExistente;
+            if (existente.TryGetPrefabBasico(out prefabExistente) && prefabExistente == prefabFicha)
             {
                 return;
             }

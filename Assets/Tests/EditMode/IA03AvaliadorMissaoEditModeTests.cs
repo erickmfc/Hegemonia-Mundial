@@ -393,11 +393,13 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     }
 
     [Test]
-    public void TorresEmPaisesSobUmaRaizCompartilhadaMantemAutoriaDoProjetil()
+    public void TorresEmPaisesSobUmaRaizCompartilhadaMantemAutoriaDeProjeteisEMisseis()
     {
         GameObject scenario = new GameObject("IA03_TestScenario");
         scenario.SetActive(false);
         GameObject projectileObject = new GameObject("TestProjectile");
+        GameObject missileObject = new GameObject("TestNavalMissile");
+        missileObject.SetActive(false);
         try
         {
             Component identidadeA = CriarUnidadeComTorre(scenario.transform, "Valdoria", "Tank_A", 1, out Component torreA);
@@ -415,6 +417,20 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             int[] teamIds = { 1, 3 };
             PropertyInfo projectileTeam = projectile.GetType().GetProperty("TeamDono", BindingFlags.Instance | BindingFlags.Public);
             Assert.That(projectileTeam, Is.Not.Null);
+            MethodInfo resolveIdentity = ResolverTipo("SistemaDeDanos").GetMethod(
+                "ResolverIdentidade",
+                BindingFlags.Public | BindingFlags.Static);
+            Assert.That(resolveIdentity, Is.Not.Null);
+            Component missile = missileObject.AddComponent(ResolverTipo("MisselNaval"));
+            MethodInfo resolveLauncher = missile.GetType().GetMethod("ResolverLancador", BindingFlags.Static | BindingFlags.NonPublic);
+            MethodInfo ignoreCollider = missile.GetType().GetMethod("DeveIgnorarTrigger", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(resolveLauncher, Is.Not.Null);
+            Assert.That(ignoreCollider, Is.Not.Null);
+            Collider[] unitColliders =
+            {
+                identidadeA.gameObject.AddComponent<BoxCollider>(),
+                identidadeB.gameObject.AddComponent<BoxCollider>()
+            };
 
             for (int i = 0; i < identities.Length; i++)
             {
@@ -426,17 +442,25 @@ public sealed class IA03AvaliadorMissaoEditModeTests
 
                 Assert.That(dono, Is.SameAs(identidade.gameObject));
                 Assert.That(projectileTeam.GetValue(projectile), Is.EqualTo(teamIds[i]));
-                IdentidadeUnidade identidadeResolvida = SistemaDeDanos.ResolverIdentidade(dono.transform);
+                Component identidadeResolvida = (Component)resolveIdentity.Invoke(null, new object[] { dono.transform });
                 Assert.That(identidadeResolvida, Is.SameAs(identidade));
-                Assert.That(identidadeResolvida.teamID, Is.EqualTo(teamIds[i]));
+                Assert.That(Field(identidadeResolvida, "teamID"), Is.EqualTo(teamIds[i]));
+
+                Transform lancadorMissel = (Transform)resolveLauncher.Invoke(null, new object[] { torre.transform });
+                Assert.That(lancadorMissel, Is.SameAs(identidade.transform));
+                SetField(missile, "lancador", lancadorMissel);
+                Assert.That(ignoreCollider.Invoke(missile, new object[] { unitColliders[i] }), Is.EqualTo(true));
+                Assert.That(ignoreCollider.Invoke(missile, new object[] { unitColliders[1 - i] }), Is.EqualTo(false));
             }
 
             SetField(torreB, "minhaIdentidade", null);
             Assert.That(obterDono.Invoke(torreB, null), Is.SameAs(scenario));
+            Assert.That(resolveLauncher.Invoke(null, new object[] { scenario.transform }), Is.SameAs(scenario.transform));
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(projectileObject);
+            UnityEngine.Object.DestroyImmediate(missileObject);
             UnityEngine.Object.DestroyImmediate(scenario);
         }
     }

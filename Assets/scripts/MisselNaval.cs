@@ -123,7 +123,7 @@ public class MisselNaval : MonoBehaviour
     public void IniciarAtaque(Vector3 alvo, Transform alvoT = null, Transform lancadorRef = null)
     {
         StopAllCoroutines();
-        lancador = lancadorRef != null ? lancadorRef.root : null;
+        lancador = ResolverLancador(lancadorRef);
         pontoAlvo = alvo;
         alvoTransform = alvoT;
         alvoEhAereo = DetectarAlvoAereo(alvoT, alvo);
@@ -136,6 +136,14 @@ public class MisselNaval : MonoBehaviour
         transform.rotation = RotacaoParaDirecao(Vector3.up);
         ReiniciarEfeitosVisuaisVoo();
         StartCoroutine(SequenciaDeVoo());
+    }
+
+    private static Transform ResolverLancador(Transform lancadorRef)
+    {
+        if (lancadorRef == null) return null;
+
+        IdentidadeUnidade identidade = lancadorRef.GetComponentInParent<IdentidadeUnidade>();
+        return identidade != null ? identidade.transform : lancadorRef.root;
     }
 
     private void ReiniciarEfeitosVisuaisVoo()
@@ -504,9 +512,15 @@ public class MisselNaval : MonoBehaviour
 
         // 1. Evita atirar na própria pool
         if (raizOutro == raizMinha) return true;
-        
+
         // 2. Evita explodir em quem atirou!
-        if (lancador != null && raizOutro == lancador) return true;
+        if (lancador != null)
+        {
+            IdentidadeUnidade identidadeLancador = lancador.GetComponent<IdentidadeUnidade>();
+            IdentidadeUnidade identidadeOutro = other.GetComponentInParent<IdentidadeUnidade>();
+            if (identidadeLancador != null && identidadeOutro == identidadeLancador) return true;
+            if (raizOutro == lancador) return true;
+        }
 
         return false;
     }

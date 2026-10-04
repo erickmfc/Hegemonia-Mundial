@@ -552,8 +552,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CombustivelUnidade
   usaCombustivel: 1
   classe: 1
-  capacidade: 250
-  combustivelAtual: 250
+  capacidade: 600
+  combustivelAtual: 600
   consumoPorSegundoMovendo: 0.42
   velocidadeMinimaParaConsumo: 0.05
   limiteBaixoPercentual: 0.25
@@ -577,7 +577,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CaminhaoTanqueAbastecimento
   capacidadeCarga: 600
   cargaAtual: 0
-  raioAbastecimento: 18
+  raioAbastecimento: 30
   taxaTransferencia: 30
   intervaloBusca: 1.5
   camadasUnidades:
