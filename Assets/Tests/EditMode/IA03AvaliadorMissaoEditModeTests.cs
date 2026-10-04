@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 public sealed class IA03AvaliadorMissaoEditModeTests
 {
@@ -462,6 +464,70 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             UnityEngine.Object.DestroyImmediate(projectileObject);
             UnityEngine.Object.DestroyImmediate(missileObject);
             UnityEngine.Object.DestroyImmediate(scenario);
+        }
+    }
+
+    [Test]
+    public void ProducaoAereaIAFalhaQuandoAeroportoBloqueiaSpawnEmAgua()
+    {
+        Vector3 spawn = new Vector3(50000f, 0f, 50000f);
+        GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        water.name = "IA03 water spawn blocker";
+        water.transform.position = spawn;
+        water.transform.localScale = new Vector3(1000f, 10f, 1000f);
+        water.AddComponent(ResolverTipo("MarcadorSuperficieMapa"));
+
+        GameObject airportObject = new GameObject("IA03 airport spawn rejection test");
+        airportObject.SetActive(false);
+        airportObject.transform.position = spawn;
+        GameObject prefab = new GameObject("IA03 fighter test prefab");
+        ScriptableObject item = ScriptableObject.CreateInstance(ResolverTipo("DadosConstrucao"));
+        Component airport = null;
+        object backend = null;
+        try
+        {
+            Component identity = airportObject.AddComponent(ResolverTipo("IdentidadeUnidade"));
+            SetField(identity, "teamID", 987654);
+            airport = airportObject.AddComponent(ResolverTipo("GerenciadorAeroporto"));
+            MethodInfo register = ResolverTipo("RegistroEntidadesJogo").GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(method => method.Name == "Register"
+                    && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == airport.GetType());
+            register.Invoke(null, new object[] { airport });
+
+            SetField(item, "nomeItem", "IA03 fighter test");
+            SetField(item, "prefabDaUnidade", prefab);
+
+            Type backendType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BackendBridge");
+            backend = Activator.CreateInstance(backendType, new object[] { 987654 });
+            object productionService = backendType.GetProperty("ProductionService").GetValue(backend);
+            MethodInfo produceAircraft = productionService.GetType().GetMethod(
+                "ProduceAircraft",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(produceAircraft, Is.Not.Null);
+
+            LogAssert.Expect(LogType.Error, new Regex("\\[Aeroporto\\] Spawn aéreo bloqueado em água: .*"));
+            object[] arguments = { item, null, "ia03-water-blocked-aircraft" };
+            GameObject produced = produceAircraft.Invoke(productionService, arguments) as GameObject;
+
+            Assert.That(produced, Is.Null);
+            Assert.That(arguments[1], Is.EqualTo("aeroporto recusou o spawn"));
+        }
+        finally
+        {
+            if (airport != null)
+            {
+                MethodInfo unregister = ResolverTipo("RegistroEntidadesJogo").GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .First(method => method.Name == "Unregister"
+                        && method.GetParameters().Length == 1
+                        && method.GetParameters()[0].ParameterType == airport.GetType());
+                unregister.Invoke(null, new object[] { airport });
+            }
+
+            UnityEngine.Object.DestroyImmediate(item);
+            UnityEngine.Object.DestroyImmediate(prefab);
+            UnityEngine.Object.DestroyImmediate(airportObject);
+            UnityEngine.Object.DestroyImmediate(water);
         }
     }
 

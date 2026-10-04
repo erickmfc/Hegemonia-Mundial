@@ -1318,6 +1318,15 @@ public class GerenciadorAeroporto : MonoBehaviour
     /// </summary>
     public void ComprarAviaoIAImediato(GameObject prefabDeAeronave, string productionOrderId = "")
     {
+        TryComprarAviaoIAImediato(prefabDeAeronave, productionOrderId);
+    }
+
+    /// <summary>
+    /// Tenta materializar uma aeronave da IA e informa se o aeroporto aceitou
+    /// o spawn. O wrapper void legado permanece para os chamadores existentes.
+    /// </summary>
+    public bool TryComprarAviaoIAImediato(GameObject prefabDeAeronave, string productionOrderId = "")
+    {
         // A IA pode encontrar fichas legadas com uma referência vazia/objeto
         // quebrado. Não encaminhe esse objeto para Instantiate: isso gerava o
         // erro de prefab sem nome e interrompia a fila militar.
@@ -1325,9 +1334,10 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogWarning("[Aeroporto] Ordem da IA ignorada: prefab de aeronave invalido.", this);
-            return;
+            return false;
         }
-        ComprarAviaoImediato(prefabDeAeronave, productionOrderId);
+
+        return ComprarAviaoImediato(prefabDeAeronave, productionOrderId);
     }
 
 

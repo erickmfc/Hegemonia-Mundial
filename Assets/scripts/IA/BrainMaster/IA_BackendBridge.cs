@@ -1944,7 +1944,13 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                airport.ComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId);
+                if (!airport.TryComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId))
+                {
+                    reason = "aeroporto recusou o spawn";
+                    RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
+                    return null;
+                }
+
                 RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
                 return data.PrefabDaUnidade;
             }
