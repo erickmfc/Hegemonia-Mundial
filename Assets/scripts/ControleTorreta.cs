@@ -1118,7 +1118,7 @@ public class ControleTorreta : MonoBehaviour
             
             if (scriptBala != null)
             {
-                scriptBala.SetDono(transform.root.gameObject);
+                scriptBala.SetDono(ObterDonoDoDisparo());
                 scriptBala.SetDirecao(direcaoDisparo);
                 if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f;
             }
@@ -1624,7 +1624,7 @@ public class ControleTorreta : MonoBehaviour
         if (direcao.sqrMagnitude <= 0.001f)
             direcao = saida.forward.sqrMagnitude > 0.001f ? saida.forward : transform.forward;
 
-        projetil.SetDono(transform.root.gameObject);
+        projetil.SetDono(ObterDonoDoDisparo());
         projetil.SetDirecao(direcao.normalized);
 
         if (alvo != null)
@@ -1632,6 +1632,13 @@ public class ControleTorreta : MonoBehaviour
             projetil.SetAlvo(alvo);
             if (projetil.curvaDePerseguicao <= 0f) projetil.curvaDePerseguicao = 90f;
         }
+    }
+
+    private GameObject ObterDonoDoDisparo()
+    {
+        return minhaIdentidade != null
+            ? minhaIdentidade.gameObject
+            : transform.root.gameObject;
     }
 
     void GarantirLocaisDeTiro()

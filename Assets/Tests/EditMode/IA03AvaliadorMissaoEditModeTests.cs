@@ -393,6 +393,74 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     }
 
     [Test]
+    public void TorresEmPaisesSobUmaRaizCompartilhadaMantemAutoriaDoProjetil()
+    {
+        GameObject scenario = new GameObject("IA03_TestScenario");
+        scenario.SetActive(false);
+        GameObject projectileObject = new GameObject("TestProjectile");
+        try
+        {
+            Component identidadeA = CriarUnidadeComTorre(scenario.transform, "Valdoria", "Tank_A", 1, out Component torreA);
+            Component identidadeB = CriarUnidadeComTorre(scenario.transform, "Karsovia", "Tank_B", 3, out Component torreB);
+            Assert.That(identidadeA.transform.root, Is.SameAs(scenario.transform));
+            Assert.That(identidadeB.transform.root, Is.SameAs(scenario.transform));
+
+            MethodInfo obterDono = torreA.GetType().GetMethod("ObterDonoDoDisparo", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(obterDono, Is.Not.Null);
+            MethodInfo setDono = ResolverTipo("Projetil").GetMethod("SetDono", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(setDono, Is.Not.Null);
+            Component projectile = projectileObject.AddComponent(ResolverTipo("Projetil"));
+            Component[] identities = { identidadeA, identidadeB };
+            Component[] turrets = { torreA, torreB };
+            int[] teamIds = { 1, 3 };
+            PropertyInfo projectileTeam = projectile.GetType().GetProperty("TeamDono", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(projectileTeam, Is.Not.Null);
+
+            for (int i = 0; i < identities.Length; i++)
+            {
+                Component identidade = identities[i];
+                Component torre = turrets[i];
+                SetField(torre, "minhaIdentidade", identidade);
+                GameObject dono = (GameObject)obterDono.Invoke(torre, null);
+                setDono.Invoke(projectile, new object[] { dono });
+
+                Assert.That(dono, Is.SameAs(identidade.gameObject));
+                Assert.That(projectileTeam.GetValue(projectile), Is.EqualTo(teamIds[i]));
+                IdentidadeUnidade identidadeResolvida = SistemaDeDanos.ResolverIdentidade(dono.transform);
+                Assert.That(identidadeResolvida, Is.SameAs(identidade));
+                Assert.That(identidadeResolvida.teamID, Is.EqualTo(teamIds[i]));
+            }
+
+            SetField(torreB, "minhaIdentidade", null);
+            Assert.That(obterDono.Invoke(torreB, null), Is.SameAs(scenario));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(projectileObject);
+            UnityEngine.Object.DestroyImmediate(scenario);
+        }
+    }
+
+    private static Component CriarUnidadeComTorre(
+        Transform root,
+        string pais,
+        string unidade,
+        int teamId,
+        out Component torre)
+    {
+        GameObject paisObject = new GameObject(pais);
+        paisObject.transform.SetParent(root, false);
+        GameObject unidadeObject = new GameObject(unidade);
+        unidadeObject.transform.SetParent(paisObject.transform, false);
+        Component identidade = unidadeObject.AddComponent(ResolverTipo("IdentidadeUnidade"));
+        SetField(identidade, "teamID", teamId);
+        GameObject torreObject = new GameObject("Torre");
+        torreObject.transform.SetParent(unidadeObject.transform, false);
+        torre = torreObject.AddComponent(ResolverTipo("ControleTorreta"));
+        return identidade;
+    }
+
+    [Test]
     public void MobilizacaoN1PreservaDefesaReservaERespeitaCapacidadeDoCreaty()
     {
         Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
