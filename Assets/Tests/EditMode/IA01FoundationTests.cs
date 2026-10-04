@@ -70,48 +70,55 @@ public sealed class IA01FoundationTests
     }
 
     [Test]
+    // Resolve os tipos do jogo por reflexão porque este asmdef de testes é isolado.
     public void GarantirNomesUnicosTerminaQuandoTodosOsPresidentesBaseEstaoEmUso()
     {
-        FieldInfo presidentesField = typeof(IA01NationNameRegistry).GetField(
+        Type registryType = ResolveType("IA01NationNameRegistry");
+        Type dadosPaisType = ResolveType("DadosPaisGoverno");
+        FieldInfo presidentesField = registryType.GetField(
             "PresidentNames",
             BindingFlags.Static | BindingFlags.NonPublic);
         Assert.That(presidentesField, Is.Not.Null);
         string[] presidentesBase = (string[])presidentesField.GetValue(null);
-        List<DadosPaisGoverno> paises = new List<DadosPaisGoverno>(presidentesBase.Length + 1);
+        Type listaPaisesType = typeof(List<>).MakeGenericType(dadosPaisType);
+        IList paises = (IList)Activator.CreateInstance(listaPaisesType, new object[] { presidentesBase.Length + 1 });
 
         for (int i = 0; i < presidentesBase.Length; i++)
         {
-            paises.Add(new DadosPaisGoverno
-            {
-                teamId = i + 1,
-                nomePais = "País de teste " + (i + 1),
-                nomePresidente = presidentesBase[i]
-            });
+            object pais = Activator.CreateInstance(dadosPaisType);
+            SetMemberValue(pais, "teamId", i + 1);
+            SetMemberValue(pais, "nomePais", "País de teste " + (i + 1));
+            SetMemberValue(pais, "nomePresidente", presidentesBase[i]);
+            paises.Add(pais);
         }
 
-        paises.Add(new DadosPaisGoverno
-        {
-            teamId = presidentesBase.Length + 1,
-            nomePais = "País de teste adicional",
-            nomePresidente = presidentesBase[0]
-        });
+        object paisAdicional = Activator.CreateInstance(dadosPaisType);
+        SetMemberValue(paisAdicional, "teamId", presidentesBase.Length + 1);
+        SetMemberValue(paisAdicional, "nomePais", "País de teste adicional");
+        SetMemberValue(paisAdicional, "nomePresidente", presidentesBase[0]);
+        paises.Add(paisAdicional);
 
-        Assert.DoesNotThrow(() => IA01NationNameRegistry.GarantirNomesUnicos(paises, 123));
+        MethodInfo garantirNomes = registryType.GetMethod(
+            "GarantirNomesUnicos",
+            BindingFlags.Public | BindingFlags.Static);
+        Assert.That(garantirNomes, Is.Not.Null);
+        Assert.DoesNotThrow(() => garantirNomes.Invoke(null, new object[] { paises, 123 }));
 
         HashSet<string> nomesPresidentes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (DadosPaisGoverno pais in paises)
+        foreach (object pais in paises)
         {
-            Assert.That(string.IsNullOrWhiteSpace(pais.nomePresidente), Is.False);
-            Assert.That(nomesPresidentes.Add(pais.nomePresidente), Is.True, "Presidentes precisam continuar únicos.");
+            string nomePresidente = (string)GetMemberValue(pais, "nomePresidente");
+            Assert.That(string.IsNullOrWhiteSpace(nomePresidente), Is.False);
+            Assert.That(nomesPresidentes.Add(nomePresidente), Is.True, "Presidentes precisam continuar únicos.");
         }
 
         for (int i = 0; i < presidentesBase.Length; i++)
         {
-            Assert.That(paises[i].nomePais, Is.EqualTo("País de teste " + (i + 1)));
-            Assert.That(paises[i].nomePresidente, Is.EqualTo(presidentesBase[i]));
+            Assert.That(GetMemberValue(paises[i], "nomePais"), Is.EqualTo("País de teste " + (i + 1)));
+            Assert.That(GetMemberValue(paises[i], "nomePresidente"), Is.EqualTo(presidentesBase[i]));
         }
 
-        Assert.That(paises[paises.Count - 1].nomePresidente, Is.Not.EqualTo(presidentesBase[0]));
+        Assert.That(GetMemberValue(paises[paises.Count - 1], "nomePresidente"), Is.Not.EqualTo(presidentesBase[0]));
     }
 
     [Test]

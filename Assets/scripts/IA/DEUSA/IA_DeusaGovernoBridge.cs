@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
 using UnityEngine;
@@ -20,21 +21,52 @@ namespace Hegemonia.AI.DEUSA
                 return null;
             }
 
-            governo.GarantirPaisIA(
-                identidade.teamID,
-                identidade.nomePais,
-                identidade.nomeMoeda,
-                GerarSimboloMoeda(identidade.nomeMoeda),
-                MapearPerfil(identidade.personalidade),
-                MapearModoInicial(config != null ? config.modoInicial : identidade.modoInicial));
+            PerfilPaisIA perfil = MapearPerfil(identidade.personalidade);
+            ModoInicialPaisIA modo = MapearModoInicial(config != null ? config.modoInicial : identidade.modoInicial);
+            string simboloMoeda = GerarSimboloMoeda(identidade.nomeMoeda);
+            DadosPaisGoverno pais = governo.ObterPais(identidade.teamID);
 
-            governo.AtualizarIdentidadeNacional(
-                identidade.teamID,
-                identidade.nomePais,
-                identidade.nomePresidente,
-                identidade.nomeMoeda);
+            bool identidadeDivergente = pais == null
+                || !string.Equals(pais.nomePais, identidade.nomePais, StringComparison.Ordinal)
+                || !string.Equals(pais.nomeMoeda, identidade.nomeMoeda, StringComparison.Ordinal)
+                || !string.Equals(pais.simboloMoeda, simboloMoeda, StringComparison.Ordinal)
+                || pais.perfilIA != perfil
+                || pais.modoInicialIA != modo;
 
-            return governo.ObterPais(identidade.teamID);
+            if (identidadeDivergente)
+            {
+                governo.GarantirPaisIA(
+                    identidade.teamID,
+                    identidade.nomePais,
+                    identidade.nomeMoeda,
+                    simboloMoeda,
+                    perfil,
+                    modo);
+
+                pais = governo.ObterPais(identidade.teamID);
+                if (pais == null)
+                {
+                    return null;
+                }
+
+                // O registro central pode resolver colisões de nomes/moedas.
+                // Adota o resultado canônico para não oscilar entre ticks da DEUSA.
+                identidade.nomePais = pais.nomePais;
+                identidade.nomeMoeda = pais.nomeMoeda;
+            }
+
+            if (!string.Equals(pais.nomePais, identidade.nomePais, StringComparison.Ordinal)
+                || !string.Equals(pais.nomePresidente, identidade.nomePresidente, StringComparison.Ordinal)
+                || !string.Equals(pais.nomeMoeda, identidade.nomeMoeda, StringComparison.Ordinal))
+            {
+                governo.AtualizarIdentidadeNacional(
+                    identidade.teamID,
+                    identidade.nomePais,
+                    identidade.nomePresidente,
+                    identidade.nomeMoeda);
+            }
+
+            return pais;
         }
 
         public DadosEconomiaPais ObterEconomia(int teamId)
