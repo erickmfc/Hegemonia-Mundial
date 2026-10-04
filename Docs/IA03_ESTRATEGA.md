@@ -318,16 +318,16 @@ Foi confirmado um risco de consistência: teamID e tipoUnidade são campos públ
 |---|---|---|---|
 | Hegemonia.RTS.RTSRuntimeBootstrap | RuntimeInitialize BeforeSceneLoad | Mantém RTS_CoreRuntime e garante Governo, Save, sessão RTS, relógio, ledger, visibilidade, objetivos e gerente territorial | Inicialização global para partida; em cena isolada também inicializa serviços do jogo |
 | SistemaGovernoMundial.Awake/InicializarDadosPadrao | Quando singleton nasce e lista de países está vazia | Registra cinco países padrão (teams 1–5) e sistemas nacionais associados | Em teste sem dados injetados, expande o universo além dos dois países do cenário |
-| AISovereignBootstrapper | RuntimeInitialize AfterSceneLoad; em Update a cada 5 s; retorna apenas em cena de menu | Para cada país com teamId maior que teamJogador e sem controlador, cria objeto persistente AISovereign_Team_{id} + AISovereignController | Com defaults 1–5 e teamJogador=1, potencialmente cria 4 controladores (2–5) mesmo no teste Valdoria/Karsovia; a checagem não limita por caminho da cena |
+| AISovereignBootstrapper | RuntimeInitialize AfterSceneLoad; em Update a cada 5 s; retorna em cena de menu; desde 04/10, também retorna no Editor para o caminho exato IA03_WarValidation.unity | Fora desse caminho, para cada país com teamId maior que teamJogador e sem controlador cria AISovereign_Team_{id} + AISovereignController | A cena de validação não recebe novos controladores soberanos. Países padrão 2–5 continuam podendo gerar quatro controladores em campanhas/outras cenas; controladores persistentes já existentes antes de entrar na cena não são removidos |
 | IA_ModeSwitch | AfterSceneLoad se não há instância | Cria switch persistente em BrainMaster por padrão e aplica o modo | IsStackAllowedInMode permite a pilha Sovereign também em modo BrainMaster; confirmar custo/autoridade durante campanha, não inferir comandos duplicados só pela existência |
 | IA_GlobalBrainCoordinator | Singleton lazy chamado pelo BrainMaster | Um coordenador compartilhado; registra países e arbitra módulos pesados/budget | Evita executar módulos pesados de vários cérebros no mesmo frame |
 | IA03ValidationDiplomacyBootstrap | Awake somente em Play no Editor e caminho exato IA03_WarValidation.unity | Garante governo e ajusta relação de teams 1/3 para Paz | Não adiciona BrainMasters, Sovereign controllers ou Creatys |
 
-Isso explica estaticamente como um cenário com dois países de teste pode inicializar dados/controladores para cinco times. Não prova que essa inicialização tenha sido o método que travou a Play: não foi obtido stack ativo da thread principal. Nenhum bootstrap foi desligado ou especial-cased.
+Antes da guarda, o cenário com dois países podia inicializar dados/controladores para cinco times. A guarda agora impede novos controladores Sovereign nessa cena quando o Editor executa Play, sem remover os cinco dados nacionais padrão. A causa do antigo travamento de Play continua sem stack ativo da thread principal; a correção reduz uma fonte comprovada de trabalho extra, mas não é prova de que ela causou o travamento.
 
 ##### Estado da cena e checklist manual dos 26 Creatys
 
-A cena IA03_WarValidation atual tem dois BrainMasters/IA03 (Team 1 Valdoria e Team 3 Karsovia), dois perfis nacionais e seis missões compartilhadas corretas para patrulha aérea/naval, avanço N3, ataque N2, guerra N1 e defesa de objetivo. Tem 26 GameObjects SLOT_MANUAL ativos, todos sem componente CreatyEstrategico. Portanto a cena ainda não pode registrar ponto nem iniciar missão real. Nenhum Creaty foi gerado nem configurado automaticamente.
+A cena IA03_WarValidation tem Main Camera, luz direcional, dois BrainMasters/IA03 (Team 1 Valdoria e Team 3 Karsovia), dois perfis, seis missões compartilhadas e quatro IdentidadeUnidade. Há 26 GameObjects SLOT_MANUAL ativos, todos sem componente CreatyEstrategico. Portanto a cena ainda não pode registrar ponto nem iniciar missão real. Nenhum Creaty foi gerado nem configurado automaticamente. A cena também contém um objeto serializado `__CodexAttachProbe` com somente Transform; ele foi preservado e não foi tocado nesta revisão.
 
 Campos comuns exigidos no componente CreatyEstrategico:
 
@@ -368,15 +368,15 @@ Os quatro slots de patrulha usam missão de domínio aéreo/naval; N4–N1 são 
 
 | Requisito | Evidência no código/testes existentes | Estado honesto |
 |---|---|---|
-| Scheduler compartilhado e escalonado | Registro no BrainMaster, delay por time, testes EditMode históricos para 15 times | Implementado no código; sem medida de campanha nesta continuação |
+| Scheduler compartilhado e escalonado | Registro no BrainMaster, delay por time; teste atual executou 15 schedulers e estratégia N1 escalonada por 1.800 quadros | Código e microbenchmark sintético aprovados; campanha não medida |
 | Creaty manual e busca leve | Registro por ciclo de vida, índice por time/tipo, 26 slots identificados sem componente | Código validado estaticamente; cenário real bloqueado até configuração manual |
-| N4–N1 e limite sem invasão no N4 | Filtros de MissaoEstrategicaSO e testes de lógica | Cobertura automatizada histórica; ainda sem ciclo de campanha |
-| Missões, timeout, cancelamento e liberação | Avaliador e encerramento limpam reserva do Creaty e grupo; testes de sucesso/falha/cancelar/expirar | Cobertura EditMode histórica; não reexecutada contra este estado |
+| N4–N1 e limite sem invasão no N4 | Filtros de MissaoEstrategicaSO; teste de lógica e 35 testes EditMode IA03 atuais passaram | Cobertura automatizada atual; ciclo de campanha pendente |
+| Missões, timeout, cancelamento e liberação | Avaliador e encerramento limpam reserva do Creaty e grupo; 35 testes IA03 atuais passaram, incluindo sucesso/falha/cancelamento/expiração/rota/permanência | Cobertura automatizada atual; fluxo de ordens com os 26 Creatys reais pendente |
 | Relatório de 5 min | Intervalo configurado, eventos de dano/morte/destruição/território | Coleta parcial real; vitória/derrota de batalha continua sem produtor |
 | Proporção 2/3 após mínimo | Perfil configura mínimo 3 e regra percentual; sem resultados autoritativos para alimentar | Lógica existe; campanha não validada e contador de batalhas não é confiável sem hook |
 | Contagem sem busca por relatório | Registry/snapshot compartilhado; fallback global condicionado | Sem scans por relatório; risco de snapshot velho após mutação direta de equipe/tipo |
-| Cessão permanente | API de transferência e notificações/eventos já existentes; testes EditMode históricos | Lógica coberta; UI/economia/captura ponta a ponta ainda pendentes |
-| Performance comparativa | harness sintético anterior 15 cérebros, sem mundo/campanha real | Não é profiling real; FPS, main thread, p95/p99 e GC não medidos |
+| Cessão permanente | API de transferência e evento territorial; testes diplomáticos IA03 atuais passaram junto aos 35 EditMode | Lógica coberta; UI/economia/captura ponta a ponta ainda pendentes |
+| Performance comparativa | Atual microbenchmark sintético: baseline mean 0,000239 ms/quadro; 15 IA03 escalonadas em N1 mean 0,000946 ms/quadro, p95 0,0008 ms, pico de módulo 0,0274 ms, 0 módulos acima do budget | Não é profiling de campanha; FPS real, Main Thread, GC Alloc e hitching continuam sem medida |
 
 ##### Execução e pendências desta revisão
 
@@ -403,3 +403,34 @@ A edição final do comentário também foi reimportada pelo Editor. O último T
 Além da compilação, executei quatro casos diretamente por reflexão sobre ShouldSkipBootstrapForScene carregado de Library/ScriptAssemblies/Assembly-CSharp.dll: (1) Editor + caminho da cena de validação = skip; (2) build + mesmo caminho = não skip; (3) Editor + GlobalMapRTS = não skip; (4) caminho vazio = não skip. Todos os quatro retornaram os valores esperados. Esse teste direto confirma a regra pura do método, mas não executa callbacks reais de cena, AISovereignBootstrapper.Update, NUnit Test Runner ou PlayMode.
 
 A compilação preservou CS0246 histórico no início do Editor.log, anterior à correção do teste IA01. Após a nova compilação houve Tundra build success sem novo diagnóstico CS; o erro histórico não deve ser interpretado como erro desta alteração. Ainda pendem execução no NUnit EditMode, PlayMode na cena, validação de ausência dos objetos runtime extra e medição de performance com/sem IA03.
+
+
+#### Reexecução controlada da IA03 no Editor atual (04/10/2026, 13:04 BRT)
+
+O Unity CLI conectou-se ao Editor já aberto (Unity 6.2.15f1, PID 19072, projeto correto, estado `ready`). Não foi iniciada segunda instância. A listagem do Test Runner encontrou 185 testes EditMode.
+
+Resultados executados agora:
+
+| Execução | Resultado |
+|---|---|
+| EditMode filtrado por IA03 | 35/35 passaram em 2,12 s, zero falhas. Inclui missões, timeout, liberação de grupos/Creatys, escala Paz→N4→N3→N2→N1 por lógica, mínimo para domínio, cessão/diplomacia e microbenchmark sintético. |
+| Classe completa AISovereignBootstrapperTests | 4/4 passaram em 0,02 s (validação Editor/cena IA03, build/cena IA03, mapa principal e caminho vazio). |
+| PlayMode IA03EventHookPlayModeTests | 1/1 passou em 0,53 s. O teste provocou morte real de entidade, confirmou baixa/prejuízo/objetivo e missão por hook, e confirmou que desativar o estrategista remove a assinatura. |
+
+O microbenchmark executado comparou 15 schedulers vazios com 15 IA03 escalonadas em N1, após aquecimento e por 1.800 quadros simulados. Baseline: mean 0,000239 ms/quadro, p95 0,0003 ms e pico 0,0344 ms. Com IA03: mean 0,000946 ms/quadro, p95 0,0008 ms, pico de módulo 0,0274 ms e zero módulos acima do budget. O cenário não continha unidades em operação nem campanha; isso não mede FPS, Main Thread ou GC Alloc do mapa real.
+
+Após os testes, `editor_status` confirmou `ready`, compilação e domain reload inativos, Play Mode parado. `IA03_WarValidation.unity` permaneceu ativa e `isDirty=false`. A inspeção da hierarquia da cena encontrou Main Camera com `m_Enabled=true`, luz, 2 BrainMasters, 2 IA03, 4 IdentidadeUnidade, 26 slots manuais e 0 componentes CreatyEstrategico. Portanto a cena tem câmera habilitada no asset, mas o sintoma anterior “No cameras rendering” durante Play não foi reproduzido nem explicado por esta inspeção estática. Há também `__CodexAttachProbe` serializado, contendo somente Transform; preservado sem edição.
+
+Não iniciei Play direto da cena inteira. Havia 2,39 GB de RAM física livres e o processo Unity ocupava 2,91 GB; além disso o usuário já havia relatado congelamento nessa entrada. O teste PlayMode isolado acima terminou normalmente. Essa decisão evita aumentar pressão de memória, mas mantém pendente a reprodução controlada do início de campanha.
+
+O Pipeline do Unity ainda retém erros de operações anteriores que não pertencem aos testes IA03 desta rodada: `package_add` expirou em 60 s; chamadas `/api/exec` expiraram em 5 s e 30 s; uma suíte de quartel não carregou um TerrainData; e uma tentativa `save_prefab_contents` pediu um filho ausente do prefab `Liberty Prime `. A captura mais recente mostrou `compilationFailed=false` e nenhum teste IA03 atual falhou. Esses timeouts do Editor/Pipeline, Asset Pipeline e erro de ferramenta devem ser separados do custo da IA03; não provam a causa do travamento de Play. A câmera habilitada e a cena limpa também não identificam ainda o que desativou/renderizou a câmera durante a captura antiga.
+
+##### Estado honesto após os testes
+
+Está validado por código e pelos testes EditMode/PlayMode descritos acima: o scheduler e escalonamento sintético; condições/timeout/liberação de missão; filtros N4–N1; coleta de fatos por eventos; morte/unidade destruída e desligamento de assinatura; cessão territorial lógica; e guarda do bootstrap no cenário IA03. Continuam pendentes: inserir manualmente os 26 Creatys (todos os GameObjects ainda só têm Transform), completar campanha real N4→N1, medir duração/regras em guerra de 25 minutos, testar produção/reposição real, obter produtor autoritativo de vitória/derrota de batalha, validar mutações de teamID/tipoUnidade sem snapshot obsoleto, testar cessão completa em cena/UI/economia e medir FPS/Main Thread/GC Alloc em A/B real com 15 países. A regra 2/3 tem mínimo configurável, mas não pode dar resultado confiável até o evento de batalha receber um produtor real.
+
+##### Estado do worktree durante o encerramento desta auditoria
+
+O HEAD avançou para `a8d9c265` (`Isola bootstrap soberano no cenário IA03`), que contém o guard e a regressão EditMode. A documentação desta continuação permanece como edição local. O `git status` final também mostra um diff local novo em `Assets/Prefabs/Navios_Guerra/Nav_Liberty_Prime/Liberty Prime .prefab`, que surgiu durante a sessão mas não foi alvo de comandos desta auditoria. O diff inclui renderers desativados e uma instância visual USS America LHA-6; confirmei que `RadarUnidadeTatica` continua anexado ao prefab (o bloco mudou de posição no YAML), portanto não foi removido. O console também reteve falha de `save_prefab_contents` por um filho inexistente nesse prefab. Foi preservado sem tentativa de reparo/reversão, pois é alteração de prefab fora do escopo IA03 e pode pertencer a outro trabalho. As alterações locais preexistentes em cenas, assets, pacotes e recuperação também foram preservadas.
+
+O `git diff --check` do worktree completo retorna 1 por espaços finais em YAML serializado nas alterações locais de `Barco cartel.prefab`, `Liberty Prime .prefab`, `IA03_WarValidation.unity` e `PackageManagerSettings.asset` (linhas de campos vazios como `m_Name:`). Esses avisos não são erros C# nem falhas dos testes. A checagem focada em `Docs/IA03_ESTRATEGA.md` não apontou espaço final; apenas alerta que Git normalizará LF para CRLF.

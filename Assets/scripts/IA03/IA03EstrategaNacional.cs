@@ -226,7 +226,17 @@ namespace Hegemonia.AI.IA03
 
         public void Tick(float now, float deltaTime)
         {
-            if (!ativo || perfilPais == null)
+            if (!ativo)
+            {
+                if (missaoAtiva != null)
+                {
+                    EncerrarMissao("IA03 desativada");
+                }
+
+                return;
+            }
+
+            if (perfilPais == null)
             {
                 return;
             }
@@ -1016,6 +1026,36 @@ namespace Hegemonia.AI.IA03
             return null;
         }
 
+        private bool ProximoPontoCompativel(MissaoEstrategicaSO missao, CreatyEstrategico ponto, int quantidade)
+        {
+            if (missao == null || ponto == null || brain == null
+                || !missao.Aceita(nivelDeConflito, ponto.Tipo)
+                || !ponto.PodeReservar(brain.TeamId, equipeAlvoAtiva, quantidade))
+            {
+                return false;
+            }
+
+            // Use o mesmo índice e os mesmos filtros da seleção inicial:
+            // equipe, alvo permitido, nível, domínio, ativação e ID único.
+            RegistroCreatysEstrategicos.PreencherCandidatos(
+                candidatos,
+                brain.TeamId,
+                equipeAlvoAtiva,
+                ponto.Tipo,
+                nivelDeConflito,
+                missao.Dominio);
+
+            for (int i = 0; i < candidatos.Count; i++)
+            {
+                if (candidatos[i] == ponto)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private CreatyEstrategico SelecionarPonderado(List<CreatyEstrategico> lista)
         {
             float pesoTotal = 0f;
@@ -1466,7 +1506,9 @@ namespace Hegemonia.AI.IA03
             bool sucessoPorPresenca = condicaoSucesso == IA03CondicaoMissao.ChegarAoDestino
                                       || condicaoSucesso == IA03CondicaoMissao.PermanecerNoDestino;
             CreatyEstrategico proximo = sucessoPorPresenca ? creatyAtivo.ProximoPonto : null;
-            if (proximo != null && proximo.TentarReservar(brain.TeamId, equipeAlvoAtiva, unidadesAtivasNaMissao.Count))
+            if (proximo != null
+                && ProximoPontoCompativel(missaoAtiva, proximo, unidadesAtivasNaMissao.Count)
+                && proximo.TentarReservar(brain.TeamId, equipeAlvoAtiva, unidadesAtivasNaMissao.Count))
             {
                 if (EnfileirarOrdem(missaoAtiva, proximo, unidadesAtivasNaMissao, out string motivo))
                 {
@@ -1526,6 +1568,8 @@ namespace Hegemonia.AI.IA03
                                 + missaoAtiva.NomeMissao + " — " + (motivo ?? string.Empty);
             }
 
+            RegistrarResultadoMissaoMilitar(missaoAtiva, resultado);
+
             if (cancelarOrdens && brain != null && brain.Context != null && brain.Context.CommandQueue != null
                 && !string.IsNullOrWhiteSpace(idOrdemAtivaDaMissao))
             {
@@ -1560,6 +1604,29 @@ namespace Hegemonia.AI.IA03
                 ultimaDecisao = "missão cancelada: " + motivo;
             }
             RegistrarLogDebugSeNecessario();
+        }
+
+        private void RegistrarResultadoMissaoMilitar(MissaoEstrategicaSO missao, IA03ResultadoMissao resultado)
+        {
+            if (missao == null
+                || (missao.TipoMissao != IA03TipoMissao.AtaqueLimitado
+                    && missao.TipoMissao != IA03TipoMissao.GuerraTotal)
+                || (missao.CondicaoDeSucesso != IA03CondicaoMissao.DestruirAlvo
+                    && missao.CondicaoDeSucesso != IA03CondicaoMissao.CapturarTerritorio))
+            {
+                return;
+            }
+
+            // Vitória/derrota vêm do resultado terminal da missão ofensiva.
+            // Timeout e cancelamento são inconclusivos; morte isolada não conta como vitória.
+            if (resultado == IA03ResultadoMissao.Sucesso)
+            {
+                RegistrarResultadoCombate(true);
+            }
+            else if (resultado == IA03ResultadoMissao.Fracasso)
+            {
+                RegistrarResultadoCombate(false);
+            }
         }
 
         private void ResetarRastreamentoMissao()

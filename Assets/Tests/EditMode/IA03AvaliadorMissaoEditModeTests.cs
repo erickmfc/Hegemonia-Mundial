@@ -157,6 +157,9 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
         Type queueType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandQueue");
         Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        Type creatyKindType = ResolverTipo("Hegemonia.AI.IA03.IA03TipoCreaty");
+        Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
+        Type domainType = ResolverTipo("Hegemonia.AI.IA03.IA03DominioEstrategico");
         GameObject strategistObject = new GameObject("IA03 chained route test");
         GameObject firstObject = new GameObject("IA03 first route Creaty");
         GameObject nextObject = new GameObject("IA03 second route Creaty");
@@ -172,6 +175,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             FieldInfo integrationMode = brainType.GetField("IntegrationMode");
             SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
             SetField(brain, "TeamId", 1);
+            SetField(strategist, "nivelDeConflito", Enum.Parse(levelType, "Tensao"));
 
             object context = Activator.CreateInstance(contextType);
             object queue = Activator.CreateInstance(queueType);
@@ -183,12 +187,20 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Component next = nextObject.AddComponent(creatyType);
             ConfigureRouteCreaty(first, "route-first", 1, 2);
             ConfigureRouteCreaty(next, "route-second", 1, 2);
+            SetField(first, "tipo", Enum.Parse(creatyKindType, "PontoGenerico"));
+            SetField(next, "tipo", Enum.Parse(creatyKindType, "PontoGenerico"));
+            SetField(first, "nivelDeConflito", Enum.Parse(levelType, "Tensao"));
+            SetField(next, "nivelDeConflito", Enum.Parse(levelType, "Tensao"));
+            SetField(first, "dominio", Enum.Parse(domainType, "Terrestre"));
+            SetField(next, "dominio", Enum.Parse(domainType, "Terrestre"));
             nextObject.transform.position = Vector3.right * 500f;
             SetField(first, "proximoPonto", next);
             firstObject.SetActive(true);
             nextObject.SetActive(true);
 
             SetField(mission, "idMissao", "route-arrival-test");
+            SetField(mission, "tipoMissao", Enum.Parse(ResolverTipo("Hegemonia.AI.IA03.IA03TipoMissao"), "Patrulha"));
+            SetField(mission, "dominio", Enum.Parse(domainType, "Terrestre"));
             SetField(mission, "condicaoDeSucesso", Enum.Parse(conditionType, "ChegarAoDestino"));
             SetField(mission, "condicaoDeFracasso", Enum.Parse(conditionType, "SobreviverAteOPrazo"));
             SetField(mission, "tempoMaximoSegundos", 600f);
@@ -203,6 +215,11 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             SetField(strategist, "unidadesOriginaisNaMissao", 1);
             SetField(first, "unidadesReservadas", 1);
             ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+
+            Assert.That(missionType.GetMethod("Aceita").Invoke(mission, new object[] { Enum.Parse(levelType, "Tensao"), Enum.Parse(creatyKindType, "PontoGenerico") }), Is.EqualTo(true));
+            MethodInfo validateNextPoint = strategistType.GetMethod("ProximoPontoCompativel", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(validateNextPoint, Is.Not.Null);
+            Assert.That(validateNextPoint.Invoke(strategist, new object[] { mission, next, 1 }), Is.EqualTo(true), "O Creaty de rota está configurado para a mesma missão e precisa ser aceito.");
 
             MethodInfo process = strategistType.GetMethod("ProcessarMissaoAtiva", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(process, Is.Not.Null);
@@ -446,6 +463,224 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             UnityEngine.Object.DestroyImmediate(strategistObject);
             UnityEngine.Object.DestroyImmediate(creatyObject);
             UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
+    [Test]
+    public void RotaNaoDespachaParaCreatyDeOutroNivel()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
+        Type queueType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandQueue");
+        Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        Type creatyKindType = ResolverTipo("Hegemonia.AI.IA03.IA03TipoCreaty");
+        Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
+        Type resultType = ResolverTipo("Hegemonia.AI.IA03.IA03ResultadoMissao");
+        GameObject strategistObject = new GameObject("IA03 incompatible route test");
+        GameObject firstObject = new GameObject("IA03 compatible route start");
+        GameObject nextObject = new GameObject("IA03 incompatible route target");
+        strategistObject.SetActive(false);
+        firstObject.SetActive(false);
+        nextObject.SetActive(false);
+        ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        GameObject unit = null;
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component brain = strategistObject.GetComponent(brainType);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            SetField(brain, "TeamId", 1);
+            object context = Activator.CreateInstance(contextType);
+            object queue = Activator.CreateInstance(queueType);
+            SetField(context, "CommandQueue", queue);
+            brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "nivelDeConflito", Enum.Parse(levelType, "Tensao"));
+
+            Component first = firstObject.AddComponent(creatyType);
+            Component next = nextObject.AddComponent(creatyType);
+            ConfigureRouteCreaty(first, "route-compatible-start", 1, 2);
+            ConfigureRouteCreaty(next, "route-incompatible-next", 1, 2);
+            SetField(next, "tipo", Enum.Parse(creatyKindType, "AvancoN3"));
+            SetField(next, "nivelDeConflito", Enum.Parse(levelType, "AvancoMilitar"));
+            firstObject.SetActive(true);
+            nextObject.SetActive(true);
+            SetField(first, "proximoPonto", next);
+
+            SetField(mission, "idMissao", "route-incompatible-level-test");
+            SetField(mission, "condicaoDeSucesso", Enum.Parse(conditionType, "ChegarAoDestino"));
+            SetField(mission, "condicaoDeFracasso", Enum.Parse(conditionType, "SobreviverAteOPrazo"));
+            SetField(mission, "tempoMaximoSegundos", 600f);
+
+            unit = new GameObject("IA03 unit at valid route start");
+            unit.transform.position = first.transform.position;
+            SetField(strategist, "missaoAtiva", mission);
+            SetField(strategist, "creatyAtivo", first);
+            SetField(strategist, "equipeAlvoAtiva", 2);
+            SetField(strategist, "inicioMissaoEm", 0f);
+            SetField(strategist, "unidadesReservadas", 1);
+            SetField(strategist, "unidadesOriginaisNaMissao", 1);
+            SetField(first, "unidadesReservadas", 1);
+            ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+
+            MethodInfo process = strategistType.GetMethod("ProcessarMissaoAtiva", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(process, Is.Not.Null);
+            process.Invoke(strategist, new object[] { 1f });
+
+            Assert.That(Field(strategist, "missaoAtiva"), Is.Null, "A missão deve ser concluída no ponto válido alcançado.");
+            Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo("Sucesso"));
+            Assert.That(creatyType.GetProperty("UnidadesReservadas").GetValue(first), Is.EqualTo(0));
+            Assert.That(creatyType.GetProperty("UnidadesReservadas").GetValue(next), Is.EqualTo(0));
+            Assert.That(queueType.GetProperty("PendingCount").GetValue(queue), Is.EqualTo(0), "Nenhuma ordem deve ser enviada ao ponto incompatível.");
+        }
+        finally
+        {
+            if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(firstObject);
+            UnityEngine.Object.DestroyImmediate(nextObject);
+            UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
+    [Test]
+    public void DesativarIA03NoProximoTickLiberaMissaoEPreservaOrdemExterna()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
+        Type queueType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandQueue");
+        Type requestType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandRequest");
+        Type commandType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_CommandType");
+        GameObject strategistObject = new GameObject("IA03 disable cleanup test");
+        GameObject creatyObject = new GameObject("IA03 disable cleanup Creaty");
+        strategistObject.SetActive(false);
+        creatyObject.SetActive(false);
+        ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        GameObject unit = null;
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component brain = strategistObject.GetComponent(brainType);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            object context = Activator.CreateInstance(contextType);
+            object queue = Activator.CreateInstance(queueType);
+            SetField(context, "CommandQueue", queue);
+            brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
+            SetField(strategist, "brain", brain);
+
+            string ia03OrderId = "ia03-disable-cleanup";
+            object ia03Request = Activator.CreateInstance(requestType);
+            SetField(ia03Request, "Id", ia03OrderId);
+            SetField(ia03Request, "Origin", "IA03EstrategaNacional");
+            SetField(ia03Request, "Domain", "tactical");
+            SetField(ia03Request, "Reason", "missão de teste");
+            SetField(ia03Request, "Family", "tactical");
+            SetField(ia03Request, "Type", Enum.Parse(commandType, "Move"));
+            SetField(ia03Request, "Priority", 10);
+            SetField(ia03Request, "DedupKey", ia03OrderId);
+            object externalRequest = Activator.CreateInstance(requestType);
+            SetField(externalRequest, "Id", "external-disable-cleanup");
+            SetField(externalRequest, "Origin", "OtherSystem");
+            SetField(externalRequest, "Domain", "tactical");
+            SetField(externalRequest, "Reason", "ordem de outro sistema");
+            SetField(externalRequest, "Family", "tactical");
+            SetField(externalRequest, "Type", Enum.Parse(commandType, "Move"));
+            SetField(externalRequest, "Priority", 10);
+            SetField(externalRequest, "DedupKey", "external-disable-cleanup");
+            Assert.That(queueType.GetMethod("Enqueue").Invoke(queue, new object[] { ia03Request, 1f, null }), Is.EqualTo(true));
+            Assert.That(queueType.GetMethod("Enqueue").Invoke(queue, new object[] { externalRequest, 1f, null }), Is.EqualTo(true));
+
+            Component creaty = creatyObject.AddComponent(creatyType);
+            ConfigureRouteCreaty(creaty, "disable-cleanup-creaty", 1, 2);
+            SetField(creaty, "unidadesReservadas", 1);
+            SetField(mission, "idMissao", ia03OrderId);
+            unit = new GameObject("IA03 unit released from mission");
+            SetField(strategist, "missaoAtiva", mission);
+            SetField(strategist, "creatyAtivo", creaty);
+            SetField(strategist, "unidadesReservadas", 1);
+            SetField(strategist, "idOrdemAtivaDaMissao", ia03OrderId);
+            ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
+            SetField(strategist, "ativo", false);
+
+            MethodInfo tick = strategistType.GetMethod("Tick", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(tick, Is.Not.Null);
+            tick.Invoke(strategist, new object[] { 2f, 0.02f });
+
+            Assert.That(Field(strategist, "missaoAtiva"), Is.Null);
+            Assert.That(Field(strategist, "creatyAtivo"), Is.Null);
+            Assert.That(Field(strategist, "unidadesReservadas"), Is.EqualTo(0));
+            Assert.That(((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Count, Is.EqualTo(0));
+            Assert.That(creatyType.GetProperty("UnidadesReservadas").GetValue(creaty), Is.EqualTo(0));
+            Assert.That(queueType.GetProperty("PendingCount").GetValue(queue), Is.EqualTo(1));
+            Assert.That(queueType.GetMethod("GetStatus").Invoke(queue, new object[] { ia03OrderId }).ToString(), Is.EqualTo("Cancelled"));
+            Assert.That(queueType.GetMethod("GetStatus").Invoke(queue, new object[] { "external-disable-cleanup" }).ToString(), Is.EqualTo("Queued"));
+        }
+        finally
+        {
+            if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(creatyObject);
+            UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
+    [Test]
+    public void SomenteResultadoTerminalDeMissaoOfensivaContaBatalha()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type missionKindType = ResolverTipo("Hegemonia.AI.IA03.IA03TipoMissao");
+        Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        Type resultType = ResolverTipo("Hegemonia.AI.IA03.IA03ResultadoMissao");
+        GameObject strategistObject = new GameObject("IA03 mission battle result test");
+        strategistObject.SetActive(false);
+        var missions = new List<ScriptableObject>();
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            MethodInfo finalize = strategistType.GetMethod("FinalizarMissao", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(finalize, Is.Not.Null);
+
+            Finalizar("AtaqueLimitado", "Sucesso");
+            object report = strategistType.GetProperty("RelatorioAtual").GetValue(strategist);
+            Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1));
+            Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(0));
+
+            Finalizar("GuerraTotal", "Fracasso");
+            Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1));
+            Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(1));
+
+            Finalizar("AtaqueLimitado", "Expirada");
+            Finalizar("GuerraTotal", "Cancelada");
+            Finalizar("Patrulha", "Sucesso");
+            Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1), "Timeout, cancelamento e patrulha são inconclusivos para batalhas.");
+            Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(1));
+
+            void Finalizar(string tipo, string resultado)
+            {
+                ScriptableObject activeMission = ScriptableObject.CreateInstance(missionType);
+                missions.Add(activeMission);
+                SetField(activeMission, "tipoMissao", Enum.Parse(missionKindType, tipo));
+                SetField(activeMission, "condicaoDeSucesso", Enum.Parse(conditionType, "DestruirAlvo"));
+                SetField(strategist, "missaoAtiva", activeMission);
+                finalize.Invoke(strategist, new object[] { Enum.Parse(resultType, resultado), "teste controlado" });
+            }
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            for (int i = 0; i < missions.Count; i++)
+            {
+                UnityEngine.Object.DestroyImmediate(missions[i]);
+            }
         }
     }
 
