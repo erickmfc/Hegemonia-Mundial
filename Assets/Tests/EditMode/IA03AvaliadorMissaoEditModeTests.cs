@@ -160,6 +160,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         Type creatyKindType = ResolverTipo("Hegemonia.AI.IA03.IA03TipoCreaty");
         Type levelType = ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito");
         Type domainType = ResolverTipo("Hegemonia.AI.IA03.IA03DominioEstrategico");
+        Type registryType = ResolverTipo("Hegemonia.AI.IA03.RegistroCreatysEstrategicos");
         GameObject strategistObject = new GameObject("IA03 chained route test");
         GameObject firstObject = new GameObject("IA03 first route Creaty");
         GameObject nextObject = new GameObject("IA03 second route Creaty");
@@ -197,6 +198,8 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             SetField(first, "proximoPonto", next);
             firstObject.SetActive(true);
             nextObject.SetActive(true);
+            RegistrarCreatyParaTeste(first);
+            RegistrarCreatyParaTeste(next);
 
             SetField(mission, "idMissao", "route-arrival-test");
             SetField(mission, "tipoMissao", Enum.Parse(ResolverTipo("Hegemonia.AI.IA03.IA03TipoMissao"), "Patrulha"));
@@ -217,9 +220,34 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             ((List<GameObject>)Field(strategist, "unidadesAtivasNaMissao")).Add(unit);
 
             Assert.That(missionType.GetMethod("Aceita").Invoke(mission, new object[] { Enum.Parse(levelType, "Tensao"), Enum.Parse(creatyKindType, "PontoGenerico") }), Is.EqualTo(true));
+            Assert.That(creatyType.GetProperty("Ativo").GetValue(next), Is.EqualTo(true), "O ponto de rota precisa estar ativo.");
+            Assert.That(creatyType.GetMethod("PodeReservar").Invoke(next, new object[] { 1, 2, 1 }), Is.EqualTo(true), "O ponto de rota precisa aceitar a reserva do grupo.");
+
+            var routeCandidates = (System.Collections.IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(creatyType));
+            object ownerTeamId = Field(brain, "TeamId");
+            object targetTeamId = Field(strategist, "equipeAlvoAtiva");
+            object currentLevel = Field(strategist, "nivelDeConflito");
+            object currentDomain = missionType.GetProperty("Dominio").GetValue(mission);
+            registryType.GetMethod("PreencherCandidatos").Invoke(null, new[]
+            {
+                routeCandidates,
+                ownerTeamId,
+                targetTeamId,
+                Enum.Parse(creatyKindType, "PontoGenerico"),
+                currentLevel,
+                currentDomain
+            });
+            Assert.That(routeCandidates.Contains(next), Is.EqualTo(true), "O Creaty ativo precisa estar indexado como candidato para os filtros atuais.");
+
             MethodInfo validateNextPoint = strategistType.GetMethod("ProximoPontoCompativel", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(validateNextPoint, Is.Not.Null);
-            Assert.That(validateNextPoint.Invoke(strategist, new object[] { mission, next, 1 }), Is.EqualTo(true), "O Creaty de rota está configurado para a mesma missão e precisa ser aceito.");
+            Assert.That(validateNextPoint.Invoke(strategist, new object[] { mission, next, 1 }), Is.EqualTo(true),
+                "Creaty compatível foi recusado. ativo=" + creatyType.GetProperty("Ativo").GetValue(next)
+                + ", podeReservar=" + creatyType.GetMethod("PodeReservar").Invoke(next, new object[] { 1, 2, 1 })
+                + ", candidatos=" + routeCandidates.Count
+                + ", registrados=" + registryType.GetProperty("QuantidadeRegistrada").GetValue(null)
+                + ", proprietário=" + ownerTeamId + ", alvo=" + targetTeamId
+                + ", nível=" + currentLevel + ", domínio=" + currentDomain);
 
             MethodInfo process = strategistType.GetMethod("ProcessarMissaoAtiva", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(process, Is.Not.Null);
@@ -238,9 +266,64 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         {
             if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
             UnityEngine.Object.DestroyImmediate(strategistObject);
+            RemoverCreatyParaTeste(firstObject.GetComponent(creatyType));
+            RemoverCreatyParaTeste(nextObject.GetComponent(creatyType));
             UnityEngine.Object.DestroyImmediate(firstObject);
             UnityEngine.Object.DestroyImmediate(nextObject);
             UnityEngine.Object.DestroyImmediate(mission);
+        }
+    }
+
+    [Test]
+    public void AlteracaoDeTeamIdNotificadaReconstruiSnapshotDoBrainMaster()
+    {
+        Type worldStateType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_WorldState");
+        Type identityType = ResolverTipo("IdentidadeUnidade");
+        Type entityRegistryType = ResolverTipo("RegistroEntidadesJogo");
+        GameObject unit = new GameObject("IA03 snapshot version invalidation test");
+        Component identity = unit.AddComponent(identityType);
+        object worldState = Activator.CreateInstance(worldStateType, new object[] { 912301 });
+        MethodInfo register = worldStateType.GetMethod("Register", BindingFlags.Public | BindingFlags.Static);
+        MethodInfo unregister = worldStateType.GetMethod("Unregister", BindingFlags.Public | BindingFlags.Static);
+        MethodInfo rebuild = worldStateType.GetMethod("RebuildRegistrySnapshotIfNeeded", BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo notifyChanged = entityRegistryType.GetMethod("NotificarAlteracao", BindingFlags.Public | BindingFlags.Static);
+
+        try
+        {
+            SetField(identity, "teamID", 912301);
+            Assert.That(register, Is.Not.Null);
+            Assert.That(unregister, Is.Not.Null);
+            Assert.That(rebuild, Is.Not.Null);
+            Assert.That(notifyChanged, Is.Not.Null);
+            register.Invoke(null, new object[] { identity });
+            rebuild.Invoke(worldState, new object[] { 0f });
+            Assert.That(ReadSnapshotTeamId(), Is.EqualTo(912301));
+
+            SetField(identity, "teamID", 912302);
+            notifyChanged.Invoke(null, null);
+            rebuild.Invoke(worldState, new object[] { 1f });
+
+            Assert.That(ReadSnapshotTeamId(), Is.EqualTo(912302), "a versão de RegistroEntidadesJogo deve invalidar o snapshot mesmo sem mudar o registry interno do BrainMaster");
+        }
+        finally
+        {
+            unregister.Invoke(null, new object[] { identity });
+            entityRegistryType.GetMethod("Unregister", BindingFlags.Public | BindingFlags.Static, null, new[] { identityType }, null).Invoke(null, new object[] { identity });
+            UnityEngine.Object.DestroyImmediate(unit);
+        }
+
+        int ReadSnapshotTeamId()
+        {
+            foreach (object entry in (System.Collections.IEnumerable)Field(worldState, "_registrySnapshot"))
+            {
+                if (ReferenceEquals(Field(entry, "Identity"), identity))
+                {
+                    return (int)Field(entry, "TeamId");
+                }
+            }
+
+            Assert.Fail("A identidade registrada não apareceu no snapshot do BrainMaster.");
+            return -1;
         }
     }
 
@@ -250,6 +333,23 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         SetField(creaty, "paisProprietarioTeamId", ownerTeamId);
         SetField(creaty, "paisAlvoTeamId", targetTeamId);
         SetField(creaty, "maximoDeUnidades", 12);
+    }
+
+    private static void RegistrarCreatyParaTeste(Component creaty)
+    {
+        Type registryType = ResolverTipo("Hegemonia.AI.IA03.RegistroCreatysEstrategicos");
+        registryType.GetMethod("Registrar").Invoke(null, new object[] { creaty });
+    }
+
+    private static void RemoverCreatyParaTeste(Component creaty)
+    {
+        if (creaty == null)
+        {
+            return;
+        }
+
+        Type registryType = ResolverTipo("Hegemonia.AI.IA03.RegistroCreatysEstrategicos");
+        registryType.GetMethod("Remover").Invoke(null, new object[] { creaty });
     }
 
     [Test]
@@ -470,6 +570,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     public void RotaNaoDespachaParaCreatyDeOutroNivel()
     {
         Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type registryType = ResolverTipo("Hegemonia.AI.IA03.RegistroCreatysEstrategicos");
         Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
         Type creatyType = ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico");
         Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
@@ -509,6 +610,8 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             SetField(next, "nivelDeConflito", Enum.Parse(levelType, "AvancoMilitar"));
             firstObject.SetActive(true);
             nextObject.SetActive(true);
+            RegistrarCreatyParaTeste(first);
+            RegistrarCreatyParaTeste(next);
             SetField(first, "proximoPonto", next);
 
             SetField(mission, "idMissao", "route-incompatible-level-test");
@@ -541,6 +644,8 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         {
             if (unit != null) UnityEngine.Object.DestroyImmediate(unit);
             UnityEngine.Object.DestroyImmediate(strategistObject);
+            RemoverCreatyParaTeste(firstObject.GetComponent(creatyType));
+            RemoverCreatyParaTeste(nextObject.GetComponent(creatyType));
             UnityEngine.Object.DestroyImmediate(firstObject);
             UnityEngine.Object.DestroyImmediate(nextObject);
             UnityEngine.Object.DestroyImmediate(mission);

@@ -889,7 +889,9 @@ namespace Hegemonia.AI.BrainMaster
 
         private void RebuildRegistrySnapshotIfNeeded(float now)
         {
-            if (!_snapshotDirty && _lastSeenRegistryVersion == _registryVersion)
+            if (!_snapshotDirty
+                && _lastSeenRegistryVersion == _registryVersion
+                && _lastSeenEntityRegistryVersion == RegistroEntidadesJogo.Version)
             {
                 return;
             }

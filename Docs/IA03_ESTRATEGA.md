@@ -434,3 +434,55 @@ Está validado por código e pelos testes EditMode/PlayMode descritos acima: o s
 O HEAD avançou para `a8d9c265` (`Isola bootstrap soberano no cenário IA03`), que contém o guard e a regressão EditMode. A documentação desta continuação permanece como edição local. O `git status` final também mostra um diff local novo em `Assets/Prefabs/Navios_Guerra/Nav_Liberty_Prime/Liberty Prime .prefab`, que surgiu durante a sessão mas não foi alvo de comandos desta auditoria. O diff inclui renderers desativados e uma instância visual USS America LHA-6; confirmei que `RadarUnidadeTatica` continua anexado ao prefab (o bloco mudou de posição no YAML), portanto não foi removido. O console também reteve falha de `save_prefab_contents` por um filho inexistente nesse prefab. Foi preservado sem tentativa de reparo/reversão, pois é alteração de prefab fora do escopo IA03 e pode pertencer a outro trabalho. As alterações locais preexistentes em cenas, assets, pacotes e recuperação também foram preservadas.
 
 O `git diff --check` do worktree completo retorna 1 por espaços finais em YAML serializado nas alterações locais de `Barco cartel.prefab`, `Liberty Prime .prefab`, `IA03_WarValidation.unity` e `PackageManagerSettings.asset` (linhas de campos vazios como `m_Name:`). Esses avisos não são erros C# nem falhas dos testes. A checagem focada em `Docs/IA03_ESTRATEGA.md` não apontou espaço final; apenas alerta que Git normalizará LF para CRLF.
+
+### Continuação da auditoria IA03 — 04/10/2026, 13:58 BRT
+
+Esta atualização é a referência mais recente e substitui afirmações anteriores de que não houve testes nesta continuação. As alterações locais anteriores foram preservadas; esta rodada não editou cenas, prefabs, pacotes ou o mapa.
+
+#### Correções feitas
+
+- Em `IA_WorldState.RebuildRegistrySnapshotIfNeeded`, a condição de retorno antecipado agora compara também `RegistroEntidadesJogo.Version`. Antes, uma alteração notificada de `teamID` podia acionar refresh externo, mas o método manteria o snapshot antigo porque só comparava a versão interna do BrainMaster. A comparação nova ocorre durante a reconstrução, sem consulta por frame.
+- O teste `AlteracaoDeTeamIdNotificadaReconstruiSnapshotDoBrainMaster` reproduz a falha da guarda antiga e passou após o ajuste.
+- O teste de rota agora registra e remove seus Creatys explicitamente por `RegistroCreatysEstrategicos` via reflexão. Os GameObjects de teste eram criados inativos em EditMode, onde `OnEnable` não preenche o registro de runtime. A produção continua usando o ciclo de vida normal dos Creatys.
+- A assembly de testes não referencia diretamente os tipos IA03 internos. Referências C# diretas nos testes causaram `CS0103`/`CS0246`, e `isActiveAndEnabled` não existe em uma referência tipada como `Component` (`CS1061`). As referências inválidas foram substituídas por reflexão; nenhuma lógica de runtime foi removida.
+- O primeiro resultado `30/28` não correspondia ao fonte/assembly então atual: a falha da fila esperava `Pending`, enquanto o fonte atualizado esperava `Queued`. Após recompilar, a classe passou integralmente. A falha de rota foi setup incompleto de registro em EditMode, corrigido no teste.
+
+#### Validação executada no Editor conectado
+
+| Execução | Resultado |
+|---|---|
+| Unity 6.2.15f1, recompilação | concluída; `failed=false`, `errors=[]`, `compilationFailed=false` |
+| Invalidação do snapshot por alteração notificada de `teamID` | 1/1 passou |
+| Rota encadeada de Creaty | 1/1 passou |
+| `IA03AvaliadorMissaoEditModeTests` | 30/30 passaram |
+| Filtro amplo IA03 em EditMode | 39/39 passaram em 1,18 s |
+| Microbenchmark sintético de 15 schedulers/IA03 | passou; a execução atual não publicou métricas brutas novas |
+
+Os 39 testes cobrem liberação após sucesso/fracasso/cancelamento/expiração, timeout, preservação de ordem externa, prioridade/deduplicação, filtros N4, mobilização N1, escalonamento sintético de 15 países, acordos territoriais, guarda de bootstrap e benchmark. Isso valida EditMode/lógica; não equivale a campanha completa.
+
+O Editor terminou `ready`, `compiling=false`, `domainReloadInProgress=false` e Play Mode `stopped`. Não rodei PlayMode nem guerra longa: havia cerca de 1,88 GB livres e o projeto tem histórico de travamento ao iniciar a Play.
+
+#### Eventos, contagem e limites confirmados
+
+| Produtor existente | Evento/registro | Consumidor IA03 | Limite |
+|---|---|---|---|
+| `SistemaDeDanos.ReceberDano` | `SistemaDeDanos.OnDanoGlobal` | Dano estrutural e defesa urgente | Dano em HP não vira dinheiro |
+| `SistemaDeDanos.NotificarMorte` / `CartaCombateRegistro` | `CartaCombateRegistro.EventoRegistrado` e `OnMorteGlobal` | Unidade/infraestrutura destruída, alvo confirmado e baixa própria | `CartaCombateRegistro` não decide vencedor |
+| `GerenteDeTerritorio` | `OnTerritoryOwnerChanged` | Captura/perda territorial e objetivo de missão | Não é resultado de batalha |
+| `OrquestradorGlobalOrdens` | `OrdemConcluida` | Chegada e avanço de rota | Concluir ordem não prova vitória |
+
+A IA03 obtém forças pelo cache/snapshot central; não varre a cena por relatório. Os totais não são contadores delta universais `+1/-1`. A alteração notificada de `teamID` agora invalida o snapshot; ainda há escritas diretas de `teamID`/`tipoUnidade` sem notificadores centralizados, que podem deixar uma classificação velha até outra reconstrução. Não fiz refactor em massa.
+
+Ainda não foi encontrado produtor autoritativo de batalha encerrada com vencedor/derrota. Contar como vitória/derrota o fim de missão ofensiva é um proxy e pode marcar falsamente uma derrota quando a missão falha por Creaty/grupo indisponível. O mínimo para a regra 2/3 continua necessário, mas os resultados não são um registro definitivo de batalhas.
+
+Os 26 slots de Creaty da cena de validação continuam sem componentes `CreatyEstrategico`; continuam exigindo configuração manual. Assim, Paz→N4→N3→N2→N1 foi testado pela lógica/debug, não por ordens e unidades atravessando partida. Quatro testes diplomáticos passaram (cessão permanente, concessão temporária e desmilitarização), mas UI/economia/captura ponta a ponta não foram executadas.
+
+O teste de microbenchmark passou, mas a execução atual não expôs métricas brutas. Há números sintéticos históricos diferentes entre revisões do harness; não os compare como perfil A/B da campanha. FPS, frame time, Main Thread e GC Alloc reais continuam sem medição. Também não foi reproduzido nem explicado o antigo travamento da Play ou o aviso `No cameras rendering`.
+
+#### Arquivos e preservação
+
+Esta continuação alterou `Assets/scripts/IA/BrainMaster/IA_WorldState.cs`, `Assets/Tests/EditMode/IA03AvaliadorMissaoEditModeTests.cs` e esta documentação. Não removi cena, prefab, pacote, asset ou arquivo de jogo. Os ajustes no teste substituem referências inválidas de compilação por reflexão. Alterações locais preexistentes em cenas, prefabs, pacotes, recuperação e arquivos removidos/untracked foram preservadas. Não fiz commit nem limpeza geral do worktree.
+
+#### Próxima etapa recomendada
+
+Configurar manualmente os 26 Creatys, então rodar o cenário existente de dois países em PlayMode, primeiro paz/N4 e depois N3/N2/N1. Integrar um adaptador mínimo ao sistema oficial que conclui batalhas com vencedor. Só então executar campanha longa e medir A/B real com e sem IA03. Operações com porta-aviões, invasão anfíbia e diplomacia presidencial continuam fora desta etapa.
