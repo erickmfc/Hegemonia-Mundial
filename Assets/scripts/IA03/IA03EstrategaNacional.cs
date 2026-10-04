@@ -1795,6 +1795,15 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
+            // O evento global chega depois de vidaAtual ser subtraída. Reconstruir
+            // a vida anterior limita impactos letais ao dano realmente aplicado,
+            // sem contar o excedente do golpe como prejuízo estrutural.
+            float danoEstruturalEfetivo = CalcularDanoEstruturalEfetivo(dano, alvo.vidaAtual);
+            if (danoEstruturalEfetivo <= 0f)
+            {
+                return;
+            }
+
             IdentidadeUnidade identidadeAlvo = SistemaDeDanos.ResolverIdentidade(alvo);
             IdentidadeUnidade identidadeAgressor = agressor != null
                 ? agressor.GetComponentInParent<IdentidadeUnidade>()
@@ -1814,7 +1823,7 @@ namespace Hegemonia.AI.IA03
 
                 if (identidadeAlvo.teamID == paisAlvoTeamId)
                 {
-                    relatorio.RegistrarDanoEstrutural(true, dano);
+                    relatorio.RegistrarDanoEstrutural(true, danoEstruturalEfetivo);
                 }
             }
 
@@ -1830,7 +1839,7 @@ namespace Hegemonia.AI.IA03
                     return;
                 }
 
-                relatorio.RegistrarDanoEstrutural(false, dano);
+                relatorio.RegistrarDanoEstrutural(false, danoEstruturalEfetivo);
                 if (nivelDeConflito == IA03NivelConflito.Paz)
                 {
                     DefinirNivelConflito(IA03NivelConflito.Tensao, "estrutura nacional sob ataque");
@@ -1844,6 +1853,17 @@ namespace Hegemonia.AI.IA03
             }
 
             SolicitarReanaliseAntecipada();
+        }
+
+        private static float CalcularDanoEstruturalEfetivo(float danoSolicitado, float vidaPosteriorAoImpacto)
+        {
+            if (danoSolicitado <= 0f)
+            {
+                return 0f;
+            }
+
+            float vidaAnteriorAoImpacto = Mathf.Max(0f, vidaPosteriorAoImpacto + danoSolicitado);
+            return Mathf.Min(danoSolicitado, vidaAnteriorAoImpacto);
         }
 
         private void GarantirAssinaturaTerritorial()

@@ -158,7 +158,9 @@ public class KamikazeDrone : MonoBehaviour
                 // Calcula dano baseado na distância (opcional)
                 float dist = Vector3.Distance(transform.position, hitCollider.transform.position);
                 float fatorDano = Mathf.Clamp01(1f - (dist / raioExplosao));
-                sd.ReceberDano(danoImpacto * fatorDano);
+                // O próprio drone é a origem da explosão; informar a autoria
+                // evita inferir um agressor varrendo unidades próximas.
+                sd.ReceberDano(danoImpacto * fatorDano, gameObject);
             }
         }
 

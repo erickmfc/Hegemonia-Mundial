@@ -323,6 +323,7 @@ namespace Hegemonia.AI.DEUSA
         {
             _brain.NationName = identidade.nomePais;
             _brain.CurrencyName = identidade.nomeMoeda;
+            _brain.CurrencySymbol = pais.simboloMoeda;
             _brain.NationProfile = IA_DeusaGovernoBridge.MapearPerfil(identidade.personalidade);
             _brain.InitialNationMode = IA_DeusaGovernoBridge.MapearModoInicial(config.modoInicial);
             AplicarPesosPorPersonalidade(_brain, identidade.personalidade);

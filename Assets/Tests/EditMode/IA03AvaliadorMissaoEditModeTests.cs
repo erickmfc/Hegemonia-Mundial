@@ -20,6 +20,27 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         Assert.That(Avaliar("ChegarAoDestino", prazo: true), Is.EqualTo("Expirada"));
     }
 
+    [TestCase(25f, 75f, 25f)]
+    [TestCase(100f, -90f, 10f)]
+    [TestCase(0f, 0f, 0f)]
+    [TestCase(-5f, 45f, 0f)]
+    public void PrejuizoEstruturalContaApenasVidaRealmenteRemovida(
+        float danoSolicitado,
+        float vidaPosteriorAoImpacto,
+        float danoEsperado)
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        MethodInfo calcular = strategistType.GetMethod(
+            "CalcularDanoEstruturalEfetivo",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.That(calcular, Is.Not.Null);
+        float danoEfetivo = (float)calcular.Invoke(
+            null,
+            new object[] { danoSolicitado, vidaPosteriorAoImpacto });
+        Assert.That(danoEfetivo, Is.EqualTo(danoEsperado).Within(0.001f));
+    }
+
     [Test]
     public void CicloForcadoDeDebugPercorrePazN4N3N2N1()
     {

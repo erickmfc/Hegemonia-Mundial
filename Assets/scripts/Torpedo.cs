@@ -519,7 +519,9 @@ public class Torpedo : MonoBehaviour
                 if (sub != null && !sub.EstaSubmerso())
                     danoReal *= 1.5f;
                 
-                danos.ReceberDano(danoReal);
+                // O lançador já é conhecido pelo torpedo; preservar essa
+                // referência evita o fallback de inferência para cada alvo.
+                danos.ReceberDano(danoReal, lancador != null ? lancador.gameObject : null);
             }
 
             // Empurrar objetos com rigidbody

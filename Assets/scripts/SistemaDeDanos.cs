@@ -1,9 +1,12 @@
 using UnityEngine;
 using System.Collections; // Necessário para o atraso da morte
 using System; // Para eventos
+using System.Collections.Generic;
 
 public class SistemaDeDanos : MonoBehaviour
 {
+    private static readonly List<IdentidadeUnidade> candidatosAgressor = new List<IdentidadeUnidade>(256);
+
     // === EVENTOS PARA OUTROS SCRIPTS ===
     public event Action OnDano;  // Disparado quando recebe dano
     public event Action OnMorte; // Disparado quando morre
@@ -160,13 +163,17 @@ public class SistemaDeDanos : MonoBehaviour
         IdentidadeUnidade vitima = ResolverIdentidade(this);
         if (vitima == null || vitima.teamID <= 0) return null;
 
-        IdentidadeUnidade[] unidades = FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        // Identidades ativas já são mantidas pelo registro central no ciclo
+        // OnEnable/OnDisable. Reutilizar a lista evita uma busca e um array
+        // novo em cada impacto que chega sem autoria do projétil.
+        RegistroEntidadesJogo.FillUnidades(candidatosAgressor);
         IdentidadeUnidade melhor = null;
         float menorDistancia = 120f * 120f;
-        for (int i = 0; i < unidades.Length; i++)
+        for (int i = 0; i < candidatosAgressor.Count; i++)
         {
-            IdentidadeUnidade candidata = unidades[i];
-            if (candidata == null || candidata.teamID <= 0 || candidata.teamID == vitima.teamID
+            IdentidadeUnidade candidata = candidatosAgressor[i];
+            if (candidata == null || !candidata.isActiveAndEnabled
+                || candidata.teamID <= 0 || candidata.teamID == vitima.teamID
                 || candidata.tipoUnidade == TipoUnidade.Estrutura) continue;
 
             float distancia = (candidata.transform.position - transform.position).sqrMagnitude;
