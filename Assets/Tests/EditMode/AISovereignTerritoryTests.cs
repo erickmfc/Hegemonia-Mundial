@@ -151,4 +151,40 @@ public sealed class AISovereignTerritoryTests
         Assert.Fail("Membro nao encontrado: " + type.FullName + "." + memberName);
     }
 }
+
+public sealed class AISovereignBootstrapperTests
+{
+    private const string ValidationScenePath = "Assets/Tests/PlayMode/IA03_WarValidation.unity";
+    private const BindingFlags StaticMembers = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+    [TestCase(true, ValidationScenePath, true)]
+    [TestCase(false, ValidationScenePath, false)]
+    [TestCase(true, "Assets/Scenes/GlobalMapRTS.unity", false)]
+    [TestCase(true, "", false)]
+    public void ValidationSceneSuppressesSovereignBootstrapOnlyInEditor(
+        bool isEditor,
+        string scenePath,
+        bool expected)
+    {
+        Type bootstrapperType = ResolveType("Hegemonia.AI.Sovereign.AISovereignBootstrapper");
+        MethodInfo method = bootstrapperType.GetMethod("ShouldSkipBootstrapForScene", StaticMembers);
+        Assert.That(method, Is.Not.Null);
+
+        bool actual = (bool)method.Invoke(null, new object[] { isEditor, scenePath });
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    private static Type ResolveType(string fullName)
+    {
+        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type type = assembly.GetType(fullName, false);
+            if (type != null) return type;
+        }
+
+        Assert.Fail("Tipo nao encontrado: " + fullName);
+        return null;
+    }
+}
 #endif

@@ -280,3 +280,126 @@ O Editor principal continua respondendo após o refresh. O Tundra mais recente c
 No mesmo ciclo, o log mostra o lockfile de pacotes modificado e `com.coplaydev.unity-mcp` resolvido de `045e809812a8` para `da7b9ae4aeeb`; `Packages/manifest.json` acompanha a referência móvel `#main`. A coincidência torna atualização/resolução do pacote uma hipótese forte para a alteração em massa e a recompilação, mas o log não liga cada um dos 402 arquivos a essa mudança nem confirma que ela foi o único gatilho. Após o reload, o comando do Pipeline registrou `Thread was being aborted` em `BasePipelineServer.ExecuteCommandDirect`, consistente com uma operação interrompida durante a recarga; não é uma exceção de gameplay. O pacote e os arquivos de configuração não foram modificados nesta investigação.
 
 O `TestResults.xml` continua sendo o PlayMode 1/1 salvo às 10:53 BRT, anterior ao build mais recente. Portanto, a compilação está confirmada, mas os testes ainda precisam ser reexecutados contra essa revisão; o worker transitório não foi reproduzido novamente. A duração elevada do refresh precisa ser observada em um próximo ciclo normal de abertura/recompilação antes de alterar ou fixar a referência do pacote.
+
+
+#### Continuação da auditoria estática da IA03 (04/10/2026)
+
+Escopo desta continuação: leitura do estado com HEAD 445b587c, sem descartar alterações locais. Não foram alterados scripts, cenas, prefabs, pacotes nem configurações. A Unity principal (PID 19072, projeto Hegemonia-Mundial-main) responde ao Windows, mas não há ferramenta Unity/Test Runner conectada nesta sessão; o Editor.log local não recebe gravações desde 12:04. Não executei compilação nem testes nesta continuação.
+
+##### Agendamento e custo observado por código
+
+IA03 continua como IIAUpdateModule opcional registrado pelo IA_BrainMaster no scheduler existente. A fase inicial é 0,187 s mais DelayInicialEscalonado; não há Update próprio, coroutine própria nem timer por país. Intervalo declarado: 5 s enquanto existe missão ativa; sem missão, o mínimo é 5 s e usa o intervalo do PerfilPaisSO (45 s nos perfis desta cena, até 60 s sem perfil). Os relatórios usam o intervalo configurado de 300 s. A avaliação de conflito usa o perfil (1.500 s para N2 e 3.600 s para N1 nos perfis de teste). A auditoria confirmou uso do scheduler/coordenador do BrainMaster, não uma segunda agenda IA03.
+
+O registro de Creatys é feito pelo OnEnable e removido pelo OnDisable. A consulta usa índice em memória por proprietário e tipo; não há FindObjects, busca por tag, LINQ ou enumeração de cena dentro de IA03/RegistroCreatysEstrategicos. As listas de candidatos da estratégia são reutilizadas. O fallback global existente está em IA_WorldState.RebuildRegistrySnapshotIfNeeded: somente se o registro global estiver vazio e a janela estática permitir, chama FindObjectsByType<IdentidadeUnidade>, registra os resultados e bloqueia nova tentativa global por 20 s. A reconstrução normal percorre snapshot indexado; o módulo renova o snapshot aproximadamente a cada 8 s ou quando uma versão muda. Esse fallback é contingência de inicialização, não busca por relatório.
+
+##### Resultado de combate e eventos
+
+| Evento/sistema | Produtor confirmado | Consumidor confirmado | Representa resultado de batalha? | Risco ao usar |
+|---|---|---|---|---|
+| SistemaDeDanos.OnDanoGlobal | SistemaDeDanos ao aplicar dano | IA03 registra dano/perda econômica observável; outros sistemas também consomem | Não | Um golpe pode não encerrar confronto; não contar como vitória/derrota |
+| SistemaDeDanos.OnMorteGlobal | SistemaDeDanos ao destruir unidade | IA03 atualiza grupo de missão e baixas; IA03MarcaPresidencial e outros ouvintes | Não | Uma baixa não informa qual lado venceu nem se o combate terminou |
+| CartaCombateRegistro.EventoRegistrado | MissileThreatTracker publica lançamento/encerramento; SistemaDeDanos publica unidade destruída | IA03 registra fatos conhecidos; QuartelMenuUIController e UI exibem histórico | Não | O próprio registro informa que míssil encerrado não implica resultado final |
+| OrquestradorGlobalOrdens.OrdemConcluida | OrquestradorGlobalOrdens quando uma ordem de movimento termina | IA03 reconhece chegada/conclusão de ordem | Não | É conclusão de deslocamento, não de combate |
+| GerenteDeTerritorio.OnTerritoryOwnerChanged | GerenteDeTerritorio em captura/transferência de propriedade | IA03 registra objetivo/território; outros sistemas territoriais | Parcial, somente captura/território | Uma troca de dono pode vir de cessão, então não deve contar como batalha vencida |
+| SistemaGovernoMundial.OnGovernoAtualizado | SistemaGovernoMundial em atualização diplomática/governamental | IA03 sincroniza relação e estado nacional | Não | Estado de diplomacia não encerra batalha |
+| SistemaFimDeJogo/RTSObjectiveService | ComplexoGovernamental ao cair a prefeitura; sistema de objetivos avalia vitória da partida | fluxo de resultado final de partida | Só resultado de partida por objetivo final | É vitória/derrota de campanha, não cada evento de batalha |
+
+RegistrarResultadoCombate existe na API IA03/relatório, mas não há chamada produtora no restante do projeto. Nenhum evento localizado agrega início/fim de batalha, participantes e lado vencedor. Resultado: mortes, danos, destruição de infraestrutura e captura são fatos parciais válidos; não existe hoje base autoritativa para alimentar a proporção 2/3 com batalhas vencidas/perdidas. Não foi criado adaptador nem heurística nesta continuação porque seria necessário definir o que constitui uma batalha e qual é seu vencedor.
+
+##### Contagem de forças e coerência do snapshot
+
+IdentidadeUnidade registra/remove a entidade no RegistroEntidadesJogo e no IA_WorldState no ciclo OnEnable/OnDisable/OnDestroy. Os relatórios reutilizam OwnUnits/OwnCombatUnits/ForceSnapshot, sem varrer cena por país ou por relatório. Isto confirma indexação e snapshots, mas não um contador incremental estrito +1/-1 por tipo.
+
+Foi confirmado um risco de consistência: teamID e tipoUnidade são campos públicos serializados e há escritores diretos em vários sistemas de criação, IA01/IA02, save/load, mercado, unidades e transferência de equipe. RegistroEntidadesJogo.NotificarAlteracao existe, mas a busca no projeto encontrou somente o chamador SistemaMercadoGlobal; escritores diretos não passam todos por esse aviso. Um snapshot guarda TeamId/Cache no rebuild e não reavalia identidade apenas porque passou o intervalo normal de 8 s: o evento de registro precisa mudar a versão ou o consumidor ser marcado dirty. Logo, uma alteração de proprietário/tipo em entidade já registrada pode ficar obsoleta até outra invalidação/registro. Não converter os campos em propriedades nem editar dezenas de escritores nesta etapa; isso exige desenho compatível com o contrato Unity/serialização e testes abrangentes. Próximo passo seguro é instrumentar e testar as rotas de mutação em execução, então centralizar setters somente se os casos dinâmicos forem confirmados.
+
+##### Bootstraps e origem dos times extras
+
+| Bootstrap | Gatilho e condição | O que cria | Escopo e risco |
+|---|---|---|---|
+| Hegemonia.RTS.RTSRuntimeBootstrap | RuntimeInitialize BeforeSceneLoad | Mantém RTS_CoreRuntime e garante Governo, Save, sessão RTS, relógio, ledger, visibilidade, objetivos e gerente territorial | Inicialização global para partida; em cena isolada também inicializa serviços do jogo |
+| SistemaGovernoMundial.Awake/InicializarDadosPadrao | Quando singleton nasce e lista de países está vazia | Registra cinco países padrão (teams 1–5) e sistemas nacionais associados | Em teste sem dados injetados, expande o universo além dos dois países do cenário |
+| AISovereignBootstrapper | RuntimeInitialize AfterSceneLoad; em Update a cada 5 s; retorna apenas em cena de menu | Para cada país com teamId maior que teamJogador e sem controlador, cria objeto persistente AISovereign_Team_{id} + AISovereignController | Com defaults 1–5 e teamJogador=1, potencialmente cria 4 controladores (2–5) mesmo no teste Valdoria/Karsovia; a checagem não limita por caminho da cena |
+| IA_ModeSwitch | AfterSceneLoad se não há instância | Cria switch persistente em BrainMaster por padrão e aplica o modo | IsStackAllowedInMode permite a pilha Sovereign também em modo BrainMaster; confirmar custo/autoridade durante campanha, não inferir comandos duplicados só pela existência |
+| IA_GlobalBrainCoordinator | Singleton lazy chamado pelo BrainMaster | Um coordenador compartilhado; registra países e arbitra módulos pesados/budget | Evita executar módulos pesados de vários cérebros no mesmo frame |
+| IA03ValidationDiplomacyBootstrap | Awake somente em Play no Editor e caminho exato IA03_WarValidation.unity | Garante governo e ajusta relação de teams 1/3 para Paz | Não adiciona BrainMasters, Sovereign controllers ou Creatys |
+
+Isso explica estaticamente como um cenário com dois países de teste pode inicializar dados/controladores para cinco times. Não prova que essa inicialização tenha sido o método que travou a Play: não foi obtido stack ativo da thread principal. Nenhum bootstrap foi desligado ou especial-cased.
+
+##### Estado da cena e checklist manual dos 26 Creatys
+
+A cena IA03_WarValidation atual tem dois BrainMasters/IA03 (Team 1 Valdoria e Team 3 Karsovia), dois perfis nacionais e seis missões compartilhadas corretas para patrulha aérea/naval, avanço N3, ataque N2, guerra N1 e defesa de objetivo. Tem 26 GameObjects SLOT_MANUAL ativos, todos sem componente CreatyEstrategico. Portanto a cena ainda não pode registrar ponto nem iniciar missão real. Nenhum Creaty foi gerado nem configurado automaticamente.
+
+Campos comuns exigidos no componente CreatyEstrategico:
+
+| Campo | Valor/regra para este teste |
+|---|---|
+| Id | ID não vazio e único; use o nome exato do GameObject SLOT_MANUAL listado abaixo |
+| País Proprietário Team Id | 1 para Valdoria; 3 para Karsovia |
+| País Alvo Team Id | 3 para Valdoria; 1 para Karsovia |
+| Tipo / Nível de Conflito / Domínio | Valores por slot da tabela seguinte; enums são os nomes exatos do código |
+| Prioridade / Peso de Escolha | Prioridade 50 e peso 1 são baseline seguro; defesa urgente pode subir prioridade quando tiver ponto próprio |
+| Máximo de Unidades | Pelo menos o mínimo da missão e limitado à força realmente disponível; as missões nesta cena têm mínimo de 1 unidade |
+| Tempo de Reutilização / Ativo | 60 s / true para todos os slots de teste |
+| Próximo Ponto | None, salvo quando a rota for configurada intencionalmente entre Creatys do mesmo dono/nível/domínio |
+| Grupo | Vazio, exceto se o cenário deliberadamente agrupar pontos |
+| Países Permitidos / Proibidos | Listas vazias; filtro de alvo já está definido acima |
+| Alvo Preferencial | Nenhum para patrulha/avanço; manter compatível com alvo da MissaoEstrategicaSO para N2/N1 (Tropas no asset atual); DefesaObjetivo usa BaseMilitar no asset atual |
+
+Configuração exata por slots (aplicar a mesma linha a cada nome enumerado):
+
+| GameObjects | Proprietário → alvo | Tipo | Nível | Domínio |
+|---|---|---|---|---|
+| SLOT_MANUAL_Valdoria_PatrulhaAerea_1, SLOT_MANUAL_Valdoria_PatrulhaAerea_2 | 1 → 3 | PatrulhaAerea | Tensao (N4) | Aereo |
+| SLOT_MANUAL_Valdoria_PatrulhaNaval_1, SLOT_MANUAL_Valdoria_PatrulhaNaval_2 | 1 → 3 | PatrulhaNaval | Tensao (N4) | Naval |
+| SLOT_MANUAL_Valdoria_N4_1, SLOT_MANUAL_Valdoria_N4_2 | 1 → 3 | TensaoN4 | Tensao (N4) | Terrestre |
+| SLOT_MANUAL_Valdoria_N3_1, SLOT_MANUAL_Valdoria_N3_2 | 1 → 3 | AvancoN3 | AvancoMilitar (N3) | Terrestre |
+| SLOT_MANUAL_Valdoria_N2_1, SLOT_MANUAL_Valdoria_N2_2 | 1 → 3 | ConflitoN2 | ConflitoLimitado (N2) | Terrestre |
+| SLOT_MANUAL_Valdoria_N1_1, SLOT_MANUAL_Valdoria_N1_2, SLOT_MANUAL_Valdoria_N1_3 | 1 → 3 | GuerraN1 | GuerraTotal (N1) | Terrestre |
+| SLOT_MANUAL_Karsovia_PatrulhaAerea_1, SLOT_MANUAL_Karsovia_PatrulhaAerea_2 | 3 → 1 | PatrulhaAerea | Tensao (N4) | Aereo |
+| SLOT_MANUAL_Karsovia_PatrulhaNaval_1, SLOT_MANUAL_Karsovia_PatrulhaNaval_2 | 3 → 1 | PatrulhaNaval | Tensao (N4) | Naval |
+| SLOT_MANUAL_Karsovia_N4_1, SLOT_MANUAL_Karsovia_N4_2 | 3 → 1 | TensaoN4 | Tensao (N4) | Terrestre |
+| SLOT_MANUAL_Karsovia_N3_1, SLOT_MANUAL_Karsovia_N3_2 | 3 → 1 | AvancoN3 | AvancoMilitar (N3) | Terrestre |
+| SLOT_MANUAL_Karsovia_N2_1, SLOT_MANUAL_Karsovia_N2_2 | 3 → 1 | ConflitoN2 | ConflitoLimitado (N2) | Terrestre |
+| SLOT_MANUAL_Karsovia_N1_1, SLOT_MANUAL_Karsovia_N1_2, SLOT_MANUAL_Karsovia_N1_3 | 3 → 1 | GuerraN1 | GuerraTotal (N1) | Terrestre |
+
+Os quatro slots de patrulha usam missão de domínio aéreo/naval; N4–N1 são os pontos terrestres dos ScriptableObjects atuais. Ative todos os componentes para que OnEnable registre cada ponto. Depois confira no log de debug ID duplicado e se RegistroCreatysEstrategicos.QuantidadeRegistrada é 26 antes de iniciar a campanha. Manter cada lista mission/profile atribuída ao cérebro e conferir se há unidade própria ativa e compatível com domínio; um ponto válido sozinho não cria nem compra unidades.
+
+##### Mapa curto de requisitos e estado
+
+| Requisito | Evidência no código/testes existentes | Estado honesto |
+|---|---|---|
+| Scheduler compartilhado e escalonado | Registro no BrainMaster, delay por time, testes EditMode históricos para 15 times | Implementado no código; sem medida de campanha nesta continuação |
+| Creaty manual e busca leve | Registro por ciclo de vida, índice por time/tipo, 26 slots identificados sem componente | Código validado estaticamente; cenário real bloqueado até configuração manual |
+| N4–N1 e limite sem invasão no N4 | Filtros de MissaoEstrategicaSO e testes de lógica | Cobertura automatizada histórica; ainda sem ciclo de campanha |
+| Missões, timeout, cancelamento e liberação | Avaliador e encerramento limpam reserva do Creaty e grupo; testes de sucesso/falha/cancelar/expirar | Cobertura EditMode histórica; não reexecutada contra este estado |
+| Relatório de 5 min | Intervalo configurado, eventos de dano/morte/destruição/território | Coleta parcial real; vitória/derrota de batalha continua sem produtor |
+| Proporção 2/3 após mínimo | Perfil configura mínimo 3 e regra percentual; sem resultados autoritativos para alimentar | Lógica existe; campanha não validada e contador de batalhas não é confiável sem hook |
+| Contagem sem busca por relatório | Registry/snapshot compartilhado; fallback global condicionado | Sem scans por relatório; risco de snapshot velho após mutação direta de equipe/tipo |
+| Cessão permanente | API de transferência e notificações/eventos já existentes; testes EditMode históricos | Lógica coberta; UI/economia/captura ponta a ponta ainda pendentes |
+| Performance comparativa | harness sintético anterior 15 cérebros, sem mundo/campanha real | Não é profiling real; FPS, main thread, p95/p99 e GC não medidos |
+
+##### Execução e pendências desta revisão
+
+Não houve teste novo nem compilação nesta continuação. O Unity principal responde ao Windows, mas esta sessão não tem Unity MCP/Test Runner nem uma superfície para operar o Editor. O Editor.log local é antigo (última gravação 12:04); os resultados históricos de 29/29 EditMode, 1/1 PlayMode e builds bem-sucedidos permanecem referências de execuções anteriores e não devem ser apresentados como reexecução atual.
+
+Antes de declarar o núcleo validado, ainda faltam: configurar manualmente os 26 componentes acima; restringir o cenário aos dois países no dado/runtime de teste ou medir o impacto dos controladores extras; rodar PlayMode N4→N1 com ordem/missão/unidades observáveis; produzir resultados de batalha por um ponto autoritativo ainda a escolher; testar mutações de teamID/tipoUnidade em entidade já registrada e corrigir os notificadores necessários; fazer campanha de 25 minutos, cessão completa em cena e perfil real com/sem IA03 e 15 cérebros. As mensagens de perfil geológico são logs informativos de inicialização, não prova de falha do IA03. Nenhuma conclusão de causa única para o antigo congelamento da Play foi adicionada.
+
+
+#### Correção localizada do bootstrap da validação IA03 (04/10/2026)
+
+A revisão do caminho de autoridade confirmou o impacto dos controladores extras: IA_BrainMaster reclama prioridade 300; AISovereignController reclama 220. No mesmo time, BrainMaster ganha e o Sovereign não emite ordens, mas cada controller ainda executa Update. Nos teams 2, 4 e 5, ausentes da cena de teste e sem BrainMaster concorrente, os Sovereign recebem autoridade e podem executar estratégia, economia, diplomacia, guerra, módulos pesados e emissão de ordens.
+
+Foi aplicada uma guarda mínima em AISovereignBootstrapper: somente em Editor, quando a cena ativa é exatamente Assets/Tests/PlayMode/IA03_WarValidation.unity, não cria os controllers dos países padrão. Campanha normal, outras cenas do Editor e builds mantêm o fluxo original. A guarda não remove dados padrão do SistemaGovernoMundial nem objetos persistentes que já tenham sido criados antes de entrar nessa cena.
+
+Foi adicionada cobertura EditMode em AISovereignTerritoryTests.cs para os casos: cena IA03 no Editor suprime; mesma cena fora do Editor não suprime; mapa principal no Editor não suprime; caminho vazio não suprime. A mudança não altera cena ou prefab.
+
+Validação: Unity 6.2.15f1, PID 19072, compilou Assembly-CSharp e Hegemonia.EditMode.Tests. O Editor.log registra Tundra build success em 26,59 s, atualização de 10 itens e reload concluído; o processo continuou Responding=True. Os erros CS0246 listados antes no log são históricos do teste IA01 e antecedem esta compilação; não apareceu novo erro CS após o build desta alteração. A suíte EditMode não foi iniciada: o acesso nesta sessão não permite acionar o Test Runner. Portanto a nova cobertura está compilada, mas ainda não executada. Não há medição de FPS/CPU/GC que permita quantificar a redução de custo, nem reprodução PlayMode que confirme o comportamento em runtime.
+
+
+##### Resultado final da guarda de bootstrap
+
+A edição final do comentário também foi reimportada pelo Editor. O último Tundra registrado concluiu em 16,22 s; o Editor terminou o reload e continuou respondendo. Assembly-CSharp atualizado às 12:52:15 e a assembly Hegemonia.EditMode.Tests atualizada às 12:50:10. O arquivo de resultados de testes não foi atualizado nesta sessão.
+
+Além da compilação, executei quatro casos diretamente por reflexão sobre ShouldSkipBootstrapForScene carregado de Library/ScriptAssemblies/Assembly-CSharp.dll: (1) Editor + caminho da cena de validação = skip; (2) build + mesmo caminho = não skip; (3) Editor + GlobalMapRTS = não skip; (4) caminho vazio = não skip. Todos os quatro retornaram os valores esperados. Esse teste direto confirma a regra pura do método, mas não executa callbacks reais de cena, AISovereignBootstrapper.Update, NUnit Test Runner ou PlayMode.
+
+A compilação preservou CS0246 histórico no início do Editor.log, anterior à correção do teste IA01. Após a nova compilação houve Tundra build success sem novo diagnóstico CS; o erro histórico não deve ser interpretado como erro desta alteração. Ainda pendem execução no NUnit EditMode, PlayMode na cena, validação de ausência dos objetos runtime extra e medição de performance com/sem IA03.

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -6,7 +7,16 @@ namespace Hegemonia.AI.Sovereign
     [DefaultExecutionOrder(-920)]
     public sealed class AISovereignBootstrapper : MonoBehaviour
     {
+        private const string IA03ValidationScenePath = "Assets/Tests/PlayMode/IA03_WarValidation.unity";
         private float _nextSyncTime;
+
+        internal static bool ShouldSkipBootstrapForScene(bool isEditor, string activeScenePath)
+        {
+            return isEditor && string.Equals(
+                activeScenePath,
+                IA03ValidationScenePath,
+                StringComparison.OrdinalIgnoreCase);
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void EnsureBootstrapper()
@@ -39,6 +49,15 @@ namespace Hegemonia.AI.Sovereign
             }
 
             _nextSyncTime = Time.unscaledTime + 5f;
+            // A validacao IA03 isola somente os dois BrainMasters configurados
+            // na cena; nao inicialize soberanos dos paises-padrao do governo.
+            if (ShouldSkipBootstrapForScene(
+                    Application.isEditor,
+                    SceneManager.GetActiveScene().path))
+            {
+                return;
+            }
+
             SistemaGovernoMundial.GarantirInstancia();
             SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
             if (gov == null)
