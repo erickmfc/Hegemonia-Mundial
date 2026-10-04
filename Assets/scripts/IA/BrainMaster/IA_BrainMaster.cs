@@ -200,6 +200,11 @@ namespace Hegemonia.AI.BrainMaster
         private string _authorityOwnerKey = string.Empty;
         private bool _authorityClaimed;
         private string _authorityStatus = "autoridade pendente";
+        private bool _traceIA03WarValidationStartup;
+        private bool _firstIA03ValidationUpdateTraced;
+        private bool _firstIA03ValidationOperationalCheckTraced;
+
+        private const string CaminhoCenaValidacaoIA03 = "Assets/Tests/PlayMode/IA03_WarValidation.unity";
 
         private enum IA_CommandLane
         {
@@ -242,14 +247,37 @@ namespace Hegemonia.AI.BrainMaster
 
         private void Awake()
         {
+            _traceIA03WarValidationStartup = Application.isEditor
+                && string.Equals(
+                    SceneManager.GetActiveScene().path,
+                    CaminhoCenaValidacaoIA03,
+                    StringComparison.OrdinalIgnoreCase);
+            LogCheckpointInicialIA03("Awake.begin");
+
             if (IsRecoveryCampaignScene())
             {
+                LogCheckpointInicialIA03("Awake.skip-recovery-scene");
                 enabled = false;
                 return;
             }
 
             Credits = Mathf.Max(0, InitialCredits);
+            LogCheckpointInicialIA03("Awake.runtime-graph.begin");
             EnsureRuntimeGraph(false, false);
+            LogCheckpointInicialIA03("Awake.end");
+        }
+
+        private void LogCheckpointInicialIA03(string checkpoint)
+        {
+            if (!_traceIA03WarValidationStartup)
+            {
+                return;
+            }
+
+            Debug.Log(
+                "[IA03][Startup][Team " + TeamId + "][frame=" + Time.frameCount
+                + "][t=" + Time.realtimeSinceStartup.ToString("0.000") + "] " + checkpoint,
+                this);
         }
 
         private static bool IsRecoveryCampaignScene()
@@ -261,11 +289,19 @@ namespace Hegemonia.AI.BrainMaster
 
         private void Start()
         {
+            LogCheckpointInicialIA03("Start.begin");
             EnsureRuntimeOperational(true);
+            LogCheckpointInicialIA03("Start.end");
         }
 
         private void Update()
         {
+            bool traceFirstUpdate = _traceIA03WarValidationStartup && !_firstIA03ValidationUpdateTraced;
+            if (traceFirstUpdate)
+            {
+                LogCheckpointInicialIA03("FirstUpdate.begin");
+            }
+
             TickEconomy(Time.deltaTime);
             if (IA_RuntimeTextTrace.FrameTraceEnabled)
             {
@@ -277,13 +313,30 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_ABORT", "runtime indisponivel | " + BuildRuntimeTraceSnapshot());
                 }
+                if (traceFirstUpdate)
+                {
+                    LogCheckpointInicialIA03("FirstUpdate.abort-runtime");
+                    _firstIA03ValidationUpdateTraced = true;
+                }
                 return;
             }
 
             IA_GlobalBrainCoordinator coordinator = IA_GlobalBrainCoordinator.Instance;
+            if (traceFirstUpdate)
+            {
+                LogCheckpointInicialIA03("FirstUpdate.coordinator-ready");
+            }
             if (Context != null && _worldState != null)
             {
+                if (traceFirstUpdate)
+                {
+                    LogCheckpointInicialIA03("FirstUpdate.sync-government.begin");
+                }
                 SyncNationStateWithGovernment();
+                if (traceFirstUpdate)
+                {
+                    LogCheckpointInicialIA03("FirstUpdate.sync-government.end");
+                }
                 Context.CombatPressure = _worldState.CombatPressure;
                 Context.ForceSnapshot = _worldState.ForceSnapshot;
                 Context.PerformanceGovernorState = coordinator.GetGovernorStateSnapshot(Context.PerformanceGovernorState);
@@ -299,6 +352,11 @@ namespace Hegemonia.AI.BrainMaster
 
             if (_scheduler == null)
             {
+                if (traceFirstUpdate)
+                {
+                    LogCheckpointInicialIA03("FirstUpdate.scheduler-missing");
+                    _firstIA03ValidationUpdateTraced = true;
+                }
                 return;
             }
 
@@ -313,7 +371,15 @@ namespace Hegemonia.AI.BrainMaster
                 _scheduler.HeavyModulesAllowed = canRunHeavy;
 
                 _updateWatch.Restart();
+                if (traceFirstUpdate)
+                {
+                    LogCheckpointInicialIA03("FirstUpdate.scheduler-tick.begin");
+                }
                 _scheduler.Tick(Time.time, Time.deltaTime);
+                if (traceFirstUpdate)
+                {
+                    LogCheckpointInicialIA03("FirstUpdate.scheduler-tick.end");
+                }
                 _updateWatch.Stop();
 
                 coordinator.ReportFrameCost(_coordinatorSlot, (float)_updateWatch.Elapsed.TotalMilliseconds, canRunHeavy);
@@ -370,6 +436,12 @@ namespace Hegemonia.AI.BrainMaster
                 AtualizarDiagnosticoRuntimeOverlay();
                 IA_RuntimeTextTrace.LogFrame(TeamId, "BrainMaster", "UPDATE_SUMMARY", RuntimeSummary);
                 _nextRuntimeSummaryTime = Time.unscaledTime + 0.6f;
+            }
+
+            if (traceFirstUpdate)
+            {
+                LogCheckpointInicialIA03("FirstUpdate.end");
+                _firstIA03ValidationUpdateTraced = true;
             }
         }
 
@@ -1554,6 +1626,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private void RebuildRuntimeGraph()
         {
+            LogCheckpointInicialIA03("RuntimeGraph.begin");
             _modulesRegistered = false;
             _commandQueue = new IA_CommandQueue();
             _commandQueue.TraceTeamId = TeamId;
@@ -1649,10 +1722,15 @@ namespace Hegemonia.AI.BrainMaster
             Context.DebugMonitor = _debugMonitor;
             if (_deusaBrain != null)
             {
+                LogCheckpointInicialIA03("Deusa.BindRuntime.begin");
                 _deusaBrain.BindRuntime(this, Context);
+                LogCheckpointInicialIA03("Deusa.BindRuntime.end");
             }
 
+            LogCheckpointInicialIA03("SyncNationStateWithGovernment.begin");
             SyncNationStateWithGovernment();
+            LogCheckpointInicialIA03("SyncNationStateWithGovernment.end");
+            LogCheckpointInicialIA03("RuntimeGraph.end");
         }
 
         private void SyncNationStateWithGovernment()
@@ -1693,7 +1771,9 @@ namespace Hegemonia.AI.BrainMaster
                 if (configuracaoMudou || paisMudou)
                 {
                     // GarantirPaisIA reconstrói os catálogos nacionais; só chamar quando identidade/configuração mudar.
+                    LogCheckpointInicialIA03("GarantirPaisIA.begin");
                     gov.GarantirPaisIA(TeamId, NationName, CurrencyName, CurrencySymbol, NationProfile, InitialNationMode);
+                    LogCheckpointInicialIA03("GarantirPaisIA.end");
                     paisAtual = gov.ObterPais(TeamId);
 
                     _governoNacionalSincronizado = gov;
@@ -1833,6 +1913,12 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool EnsureRuntimeOperational(bool initializeBootstrapIfNeeded)
         {
+            bool traceFirstCheck = _traceIA03WarValidationStartup && !_firstIA03ValidationOperationalCheckTraced;
+            if (traceFirstCheck)
+            {
+                LogCheckpointInicialIA03("EnsureRuntimeOperational.begin");
+            }
+
             bool rebuilt = EnsureRuntimeGraph(false, false);
             if (!HasRuntimeGraph())
             {
@@ -1840,6 +1926,11 @@ namespace Hegemonia.AI.BrainMaster
                 ReleaseCommandAuthority();
                 _authorityStatus = "autoridade liberada: runtime indisponivel";
                 IA_RuntimeTextTrace.LogText(TeamId, "BrainMaster", "RUNTIME_ERROR", BootstrapLastError);
+                if (traceFirstCheck)
+                {
+                    LogCheckpointInicialIA03("EnsureRuntimeOperational.runtime-missing");
+                    _firstIA03ValidationOperationalCheckTraced = true;
+                }
                 return false;
             }
 
@@ -1850,7 +1941,15 @@ namespace Hegemonia.AI.BrainMaster
 
             if (!_modulesRegistered)
             {
+                if (traceFirstCheck)
+                {
+                    LogCheckpointInicialIA03("RegisterModules.begin");
+                }
                 RegisterModules();
+                if (traceFirstCheck)
+                {
+                    LogCheckpointInicialIA03("RegisterModules.end");
+                }
             }
 
             bool bootstrapAindaNaoInicializado = BootstrapStage == IA_BootstrapStage.Disabled
@@ -1859,10 +1958,28 @@ namespace Hegemonia.AI.BrainMaster
 
             if (initializeBootstrapIfNeeded || bootstrapAindaNaoInicializado)
             {
+                if (traceFirstCheck)
+                {
+                    LogCheckpointInicialIA03("InitializeBootstrap.begin");
+                }
                 InitializeBootstrap();
+                if (traceFirstCheck)
+                {
+                    LogCheckpointInicialIA03("InitializeBootstrap.end");
+                }
             }
 
+            if (traceFirstCheck)
+            {
+                LogCheckpointInicialIA03("ApplyIntegrationPolicy.begin");
+            }
             ApplyIntegrationPolicy();
+            if (traceFirstCheck)
+            {
+                LogCheckpointInicialIA03("ApplyIntegrationPolicy.end");
+                LogCheckpointInicialIA03("EnsureRuntimeOperational.end");
+                _firstIA03ValidationOperationalCheckTraced = true;
+            }
             return true;
         }
 
