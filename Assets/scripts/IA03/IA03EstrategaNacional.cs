@@ -226,7 +226,7 @@ namespace Hegemonia.AI.IA03
 
         public void Tick(float now, float deltaTime)
         {
-            if (!ativo)
+            if (!ativo || !isActiveAndEnabled)
             {
                 if (missaoAtiva != null)
                 {

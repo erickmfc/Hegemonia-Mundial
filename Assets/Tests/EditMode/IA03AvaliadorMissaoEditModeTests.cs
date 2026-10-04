@@ -738,6 +738,42 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     }
 
     [Test]
+    public void ComponenteDesativadoIgnoraTickDiretoDoScheduler()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type profileType = ResolverTipo("Hegemonia.AI.IA03.PerfilPaisSO");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type contextType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_Context");
+        GameObject owner = new GameObject("IA03 disabled component scheduler test");
+        ScriptableObject profile = ScriptableObject.CreateInstance(profileType);
+        try
+        {
+            Component strategist = owner.AddComponent(strategistType);
+            Component brain = owner.GetComponent(brainType);
+            SetField(strategist, "perfilPais", profile);
+            SetField(strategist, "ativo", true);
+            SetField(strategist, "perfilAplicado", true);
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "ultimaAnaliseEm", -1f);
+            object context = Activator.CreateInstance(contextType);
+            brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
+
+            ((Behaviour)strategist).enabled = false;
+            MethodInfo tick = strategistType.GetMethod("Tick", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(tick, Is.Not.Null);
+            tick.Invoke(strategist, new object[] { 123f, 0.02f });
+
+            Assert.That(Field(strategist, "ultimaAnaliseEm"), Is.EqualTo(-1f),
+                "O BrainMaster pode reter a referência do módulo; Tick precisa respeitar o enabled do componente.");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(owner);
+            UnityEngine.Object.DestroyImmediate(profile);
+        }
+    }
+
+    [Test]
     public void SomenteResultadoTerminalDeMissaoOfensivaContaBatalha()
     {
         Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
