@@ -153,6 +153,23 @@ namespace Hegemonia.AI.BrainMaster
         private IA_DeusaBrain _deusaBrain;
         private IA03EstrategaNacional _ia03Estratega;
         private readonly List<IdentidadeUnidade> _backendUnitBuffer = new List<IdentidadeUnidade>(128);
+        private SistemaGovernoMundial _governoNacionalSincronizado;
+        private DadosPaisGoverno _paisNacionalSincronizado;
+        private bool _identidadeNacionalSincronizada;
+        private int _teamIdNacionalSincronizado = int.MinValue;
+        private string _nomeNacionalSincronizado;
+        private string _moedaNacionalSincronizada;
+        private string _simboloNacionalSincronizado;
+        private PerfilPaisIA _perfilNacionalSincronizado;
+        private ModoInicialPaisIA _modoNacionalSincronizado;
+        private string _nomeNacionalResolvido;
+        private string _moedaNacionalResolvida;
+        private string _simboloNacionalResolvido;
+        private PerfilPaisIA _perfilNacionalResolvido;
+        private ModoInicialPaisIA _modoNacionalResolvido;
+        private float _proximaVerificacaoNacionalEm;
+
+        private const float IntervaloVerificacaoNacionalSegundos = 1f;
 
         private float _incomeTimer;
         private float _nextRuntimeSummaryTime;
@@ -1611,15 +1628,70 @@ namespace Hegemonia.AI.BrainMaster
 
         private void SyncNationStateWithGovernment()
         {
-            SistemaGovernoMundial.GarantirInstancia();
             SistemaGovernoMundial gov = SistemaGovernoMundial.Instancia;
+            if (gov == null)
+            {
+                SistemaGovernoMundial.GarantirInstancia();
+                gov = SistemaGovernoMundial.Instancia;
+            }
+
             if (gov == null)
             {
                 return;
             }
 
-            gov.GarantirPaisIA(TeamId, NationName, CurrencyName, CurrencySymbol, NationProfile, InitialNationMode);
-            DadosPaisGoverno pais = gov.ObterPais(TeamId);
+            bool configuracaoMudou = !_identidadeNacionalSincronizada
+                || !ReferenceEquals(gov, _governoNacionalSincronizado)
+                || TeamId != _teamIdNacionalSincronizado
+                || !string.Equals(NationName, _nomeNacionalSincronizado, StringComparison.Ordinal)
+                || !string.Equals(CurrencyName, _moedaNacionalSincronizada, StringComparison.Ordinal)
+                || !string.Equals(CurrencySymbol, _simboloNacionalSincronizado, StringComparison.Ordinal)
+                || NationProfile != _perfilNacionalSincronizado
+                || InitialNationMode != _modoNacionalSincronizado;
+
+            DadosPaisGoverno pais = _paisNacionalSincronizado;
+            if (configuracaoMudou || Time.unscaledTime >= _proximaVerificacaoNacionalEm)
+            {
+                DadosPaisGoverno paisAtual = gov.ObterPais(TeamId);
+                bool paisMudou = !ReferenceEquals(paisAtual, _paisNacionalSincronizado)
+                    || paisAtual == null
+                    || !string.Equals(paisAtual.nomePais, _nomeNacionalResolvido, StringComparison.Ordinal)
+                    || !string.Equals(paisAtual.nomeMoeda, _moedaNacionalResolvida, StringComparison.Ordinal)
+                    || !string.Equals(paisAtual.simboloMoeda, _simboloNacionalResolvido, StringComparison.Ordinal)
+                    || paisAtual.perfilIA != _perfilNacionalResolvido
+                    || paisAtual.modoInicialIA != _modoNacionalResolvido;
+
+                if (configuracaoMudou || paisMudou)
+                {
+                    // GarantirPaisIA reconstrói os catálogos nacionais; só chamar quando identidade/configuração mudar.
+                    gov.GarantirPaisIA(TeamId, NationName, CurrencyName, CurrencySymbol, NationProfile, InitialNationMode);
+                    paisAtual = gov.ObterPais(TeamId);
+
+                    _governoNacionalSincronizado = gov;
+                    _teamIdNacionalSincronizado = TeamId;
+                    _nomeNacionalSincronizado = NationName;
+                    _moedaNacionalSincronizada = CurrencyName;
+                    _simboloNacionalSincronizado = CurrencySymbol;
+                    _perfilNacionalSincronizado = NationProfile;
+                    _modoNacionalSincronizado = InitialNationMode;
+                    _paisNacionalSincronizado = paisAtual;
+                    _identidadeNacionalSincronizada = true;
+
+                    _nomeNacionalResolvido = paisAtual != null ? paisAtual.nomePais : null;
+                    _moedaNacionalResolvida = paisAtual != null ? paisAtual.nomeMoeda : null;
+                    _simboloNacionalResolvido = paisAtual != null ? paisAtual.simboloMoeda : null;
+                    _perfilNacionalResolvido = paisAtual != null ? paisAtual.perfilIA : NationProfile;
+                    _modoNacionalResolvido = paisAtual != null ? paisAtual.modoInicialIA : InitialNationMode;
+                }
+                else
+                {
+                    _paisNacionalSincronizado = paisAtual;
+                }
+
+                _proximaVerificacaoNacionalEm = Time.unscaledTime + IntervaloVerificacaoNacionalSegundos;
+                pais = paisAtual;
+            }
+
             if (pais == null)
             {
                 return;
