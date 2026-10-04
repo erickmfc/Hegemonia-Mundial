@@ -181,6 +181,12 @@ namespace Hegemonia.AI.BrainMaster
         private float _schedulerPhaseOffset;
         private bool _modulesRegistered;
         private static int _activeBrainCount;
+        private static bool _playerForceEstimateInitialized;
+        private static float _nextPlayerForceEstimateRefreshTime;
+        private static int _sharedPlayerFleetEstimate;
+        private static int _sharedPlayerAircraftEstimate;
+        private const float ImperialPlanUpdateIntervalSeconds = 4f;
+        private const int ImperialPlanStaggerSlots = 15;
         private float _bootstrapStartTime;
         private float _bootstrapStageStartTime;
         private float _nextImperialPlanUpdateTime;
@@ -216,6 +222,7 @@ namespace Hegemonia.AI.BrainMaster
 
             _activeBrainCount++;
             _coordinatorSlot = IA_GlobalBrainCoordinator.Instance.Register(TeamId);
+            _nextImperialPlanUpdateTime = Time.time + CalculateImperialPlanInitialDelay(TeamId);
             _authorityOwnerKey = BuildAuthorityOwnerKey();
             SynchronizeCommandAuthority();
             IA_RuntimeTextTrace.EnsureSession(TeamId);
@@ -373,7 +380,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            _nextImperialPlanUpdateTime = Time.time + 4f;
+            _nextImperialPlanUpdateTime = Time.time + ImperialPlanUpdateIntervalSeconds;
             IA_ForceSnapshot snapshot = Context.ForceSnapshot ?? _worldState.ForceSnapshot;
             if (snapshot == null)
             {
@@ -545,32 +552,54 @@ namespace Hegemonia.AI.BrainMaster
 
         private void CountPlayerForces(out int naval, out int aircraft)
         {
-            naval = 0;
-            aircraft = 0;
-            _backendUnitBuffer.Clear();
-            RegistroEntidadesJogo.FillUnidades(_backendUnitBuffer);
-
-            for (int i = 0; i < _backendUnitBuffer.Count; i++)
+            if (!_playerForceEstimateInitialized || Time.time >= _nextPlayerForceEstimateRefreshTime)
             {
-                IdentidadeUnidade unidade = _backendUnitBuffer[i];
-                if (unidade == null || unidade.teamID != 1 || !unidade.gameObject.activeInHierarchy)
-                {
-                    continue;
-                }
+                long inicioContagem = System.Diagnostics.Stopwatch.GetTimestamp();
+                int navalAtualizado = 0;
+                int aircraftAtualizado = 0;
+                _backendUnitBuffer.Clear();
+                RegistroEntidadesJogo.FillUnidades(_backendUnitBuffer);
 
-                if (unidade.tipoUnidade == TipoUnidade.Naval)
+                for (int i = 0; i < _backendUnitBuffer.Count; i++)
                 {
-                    string nome = IA_Text.Normalize(unidade.name);
-                    if (!nome.Contains("petroleiro") && !nome.Contains("petrolifero") && !nome.Contains("tanker"))
+                    IdentidadeUnidade unidade = _backendUnitBuffer[i];
+                    if (unidade == null || unidade.teamID != 1 || !unidade.gameObject.activeInHierarchy)
                     {
-                        naval++;
+                        continue;
+                    }
+
+                    if (unidade.tipoUnidade == TipoUnidade.Naval)
+                    {
+                        string nome = IA_Text.Normalize(unidade.name);
+                        if (!nome.Contains("petroleiro") && !nome.Contains("petrolifero") && !nome.Contains("tanker"))
+                        {
+                            navalAtualizado++;
+                        }
+                    }
+                    else if (unidade.tipoUnidade == TipoUnidade.Aereo)
+                    {
+                        aircraftAtualizado++;
                     }
                 }
-                else if (unidade.tipoUnidade == TipoUnidade.Aereo)
-                {
-                    aircraft++;
-                }
+
+                float duracaoContagemMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - inicioContagem)
+                    * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("imperial_player_force_scan_ms", duracaoContagemMs);
+                _sharedPlayerFleetEstimate = navalAtualizado;
+                _sharedPlayerAircraftEstimate = aircraftAtualizado;
+                _nextPlayerForceEstimateRefreshTime = Time.time + ImperialPlanUpdateIntervalSeconds;
+                _playerForceEstimateInitialized = true;
             }
+
+            naval = _sharedPlayerFleetEstimate;
+            aircraft = _sharedPlayerAircraftEstimate;
+        }
+
+        private static float CalculateImperialPlanInitialDelay(int teamId)
+        {
+            // Este ciclo roda fora do scheduler global; distribuir a fase evita 15 scans no mesmo frame.
+            int slot = Mathf.Max(0, teamId - 1) % ImperialPlanStaggerSlots;
+            return ImperialPlanUpdateIntervalSeconds * slot / ImperialPlanStaggerSlots;
         }
 
         private int CountOwnByHintFast(params string[] hints)
