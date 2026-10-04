@@ -94,6 +94,16 @@ public class MenuConstrucao : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void GarantirInstanciaRuntime()
     {
+        // A cena de validação da IA03 não tem interface
+        // de campanha; não injete o menu global nela durante o Play Mode.
+        if (string.Equals(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().path,
+                "Assets/Tests/PlayMode/IA03_WarValidation.unity",
+                System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         // O menu inicial nao possui a interface de campanha e, antes, este
         // bootstrap era marcado como DontDestroyOnLoad. Ao entrar em cena19),
         // ele sobrevivia sem catalogo e o MenuConstrucao serializado da cena
