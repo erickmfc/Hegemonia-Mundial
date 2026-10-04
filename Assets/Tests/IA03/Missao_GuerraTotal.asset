@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c9b9ae18bb8d2147a018fbe06e9ca97, type: 3}
+  m_Name: Missao_GuerraTotal
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.MissaoEstrategicaSO
+  idMissao: TEST-GUERRA-N1
+  nomeMissao: Guerra total IA03
+  objetivo: "Engajar for\xE7a inimiga observada"
+  tipoMissao: 3
+  nivelMenosGrave: 1
+  nivelMaisGrave: 1
+  dominio: 0
+  quantidadeMinimaDeUnidades: 1
+  prioridade: 75
+  tempoMaximoSegundos: 1200
+  creatysPermitidos: 07000000
+  alvo: 9
+  tipoOrdem: 1
+  exigePortaAvioes: 0
+  exigeSubmarino: 0
+  exigeTransporteNaval: 0
+  exigePresidente: 0
+  minimoNaviosEscolta: 2
+  minimoAeronaves: 0
+  condicaoDeSucesso: 2
+  condicaoDeFracasso: 3
+  tempoMinimoDePermanenciaSegundos: 0

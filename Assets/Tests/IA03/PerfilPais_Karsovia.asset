@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8af23d39eda24944ad80df7d848fddd, type: 3}
+  m_Name: PerfilPais_Karsovia
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.PerfilPaisSO
+  nomePais: Karsovia
+  nomePresidente: Maksim Orlov
+  idPerfil: IA03-TEST-KARSOVIA
+  nivelEconomico: 2
+  reservaFinanceiraDesejada: 10000
+  prioridadeEconomica: 0.55
+  prioridadeMilitar: 0.45
+  agressividade: 0.3
+  diplomacia: 0.8
+  preferenciaNaval: 0.25
+  preferenciaAerea: 0.25
+  preferenciaTerrestre: 0.5
+  interesseEmPetroleo: 0.55
+  interesseEmAlimentos: 0.6
+  toleranciaABaixas: 0.3
+  disposicaoParaNegociar: 0.8
+  tendenciaDeExportacao: 0.45
+  reservaDefesaNacional: 0.2
+  contingenteMaximoDeGuerra: 0.85
+  contingenteMaximoPorMissaoN1: 0.4
+  minimoNaviosEscolta: 1
+  minimoAeronavesPortaAvioes: 1
+  intervaloDecisaoSegundos: 45
+  minimoDeBatalhasParaAvaliar: 3
+  dominioMinimo: 0.67
+  prejuizoEconomicoMinimoParaPaz: 0.3
+  avaliacaoConflitoLimitadoSegundos: 1500
+  avaliacaoGuerraTotalSegundos: 3600

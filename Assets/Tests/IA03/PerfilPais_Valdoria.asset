@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8af23d39eda24944ad80df7d848fddd, type: 3}
+  m_Name: PerfilPais_Valdoria
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.PerfilPaisSO
+  nomePais: Valdoria
+  nomePresidente: Helena Nogueira
+  idPerfil: IA03-TEST-VALDORIA
+  nivelEconomico: 2
+  reservaFinanceiraDesejada: 12000
+  prioridadeEconomica: 0.4
+  prioridadeMilitar: 0.6
+  agressividade: 0.7
+  diplomacia: 0.35
+  preferenciaNaval: 0.45
+  preferenciaAerea: 0.35
+  preferenciaTerrestre: 0.2
+  interesseEmPetroleo: 0.45
+  interesseEmAlimentos: 0.45
+  toleranciaABaixas: 0.5
+  disposicaoParaNegociar: 0.35
+  tendenciaDeExportacao: 0.3
+  reservaDefesaNacional: 0.15
+  contingenteMaximoDeGuerra: 0.9
+  contingenteMaximoPorMissaoN1: 0.45
+  minimoNaviosEscolta: 1
+  minimoAeronavesPortaAvioes: 1
+  intervaloDecisaoSegundos: 45
+  minimoDeBatalhasParaAvaliar: 3
+  dominioMinimo: 0.67
+  prejuizoEconomicoMinimoParaPaz: 0.3
+  avaliacaoConflitoLimitadoSegundos: 1500
+  avaliacaoGuerraTotalSegundos: 3600
