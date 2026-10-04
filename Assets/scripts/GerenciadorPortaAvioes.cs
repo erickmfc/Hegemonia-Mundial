@@ -1182,8 +1182,10 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 {
                     if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoDroneKamikaze)
                     {
-                        GerenciadorRecursos.Instancia.dinheiro -= precoDroneKamikaze;
-                        ComprarAviao(prefabDroneKamikaze);
+                        if (ComprarAviao(prefabDroneKamikaze))
+                        {
+                            GerenciadorRecursos.Instancia.dinheiro -= precoDroneKamikaze;
+                        }
                     }
                     else
                     {

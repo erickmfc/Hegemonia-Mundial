@@ -223,19 +223,10 @@ public sealed class AircraftPurchasePlayModeTests
             "A mensagem deve informar sobre ausencia de energia.");
 
         bool semEnergiaAtual = (bool)Read(airport, "semEnergia");
-        bool compraExecutada = false;
+        bool compraExecutada = (bool)airport.GetType().GetMethod("TentarComprarAviaoComPagamento", Members)
+            .Invoke(airport, new object[] { aircraftPrefab, (long)precoAeronave });
 
-        if (!semEnergiaAtual)
-        {
-            long saldoAtual = (long)Read(resources, "dinheiro");
-            if (saldoAtual >= precoAeronave)
-            {
-                Set(resources, "dinheiro", saldoAtual - precoAeronave);
-                compraExecutada = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
-                    .Invoke(airport, new object[] { aircraftPrefab });
-            }
-        }
-        else
+        if (semEnergiaAtual)
         {
             MostrarMensagemHUD(Localize("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativa-lo."), 4.5f);
         }
@@ -274,18 +265,8 @@ public sealed class AircraftPurchasePlayModeTests
         long saldoAntes = (long)Read(resources, "dinheiro");
         int quantidadeAntes = ObterTotalAeronaves(airport);
 
-        bool compraExecutada = false;
-        long saldoAtual = (long)Read(resources, "dinheiro");
-        if (saldoAtual >= precoAeronave)
-        {
-            Set(resources, "dinheiro", saldoAtual - precoAeronave);
-            compraExecutada = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
-                .Invoke(airport, new object[] { aircraftPrefab });
-        }
-        else
-        {
-            MostrarMensagemHUD(Localize("economy.no_money_action", "SEM DINHEIRO\nRecursos insuficientes para esta acao."), 3.2f);
-        }
+        bool compraExecutada = (bool)airport.GetType().GetMethod("TentarComprarAviaoComPagamento", Members)
+            .Invoke(airport, new object[] { aircraftPrefab, (long)precoAeronave });
 
         yield return null;
 
@@ -325,9 +306,8 @@ public sealed class AircraftPurchasePlayModeTests
         long saldoAtual = (long)Read(resources, "dinheiro");
         Assert.GreaterOrEqual(saldoAtual, precoAeronave, "Saldo deve ser suficiente.");
 
-        Set(resources, "dinheiro", saldoAtual - precoAeronave);
-        bool comprado = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
-            .Invoke(airport, new object[] { aircraftPrefab });
+        bool comprado = (bool)airport.GetType().GetMethod("TentarComprarAviaoComPagamento", Members)
+            .Invoke(airport, new object[] { aircraftPrefab, (long)precoAeronave });
 
         yield return null;
 
@@ -342,7 +322,7 @@ public sealed class AircraftPurchasePlayModeTests
     }
 
     [UnityTest]
-    public IEnumerator Test4_LocalAirportPurchase_SpawnFailure_ReproducesDebitWithoutSpawn()
+    public IEnumerator Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn()
     {
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
         water.name = "Test4_WaterSurface";
@@ -373,9 +353,8 @@ public sealed class AircraftPurchasePlayModeTests
         LogAssert.Expect(LogType.Error,
             "[Aeroporto] Spawn aéreo bloqueado em água: Test_Airport ((5000.0, 0.0, 5000.0)). Corrija o ponto Preparacao/pista da base.");
 
-        Set(resources, "dinheiro", saldoAntes - precoAeronave);
-        bool retornoComprarAviao = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
-            .Invoke(airport, new object[] { aircraftPrefab });
+        bool retornoComprarAviao = (bool)airport.GetType().GetMethod("TentarComprarAviaoComPagamento", Members)
+            .Invoke(airport, new object[] { aircraftPrefab, (long)precoAeronave });
 
         yield return null;
 
@@ -385,7 +364,7 @@ public sealed class AircraftPurchasePlayModeTests
         Debug.Log($"[TESTE 4 REGISTRO] Saldo Antes: {saldoAntes}, Retorno ComprarAviao: {retornoComprarAviao}, Saldo Depois: {saldoDepois}, Qtd Antes: {quantidadeAntes}, Qtd Depois: {quantidadeDepois}, Motivo: Spawn aereo bloqueado em agua.");
 
         Assert.IsFalse(retornoComprarAviao, "ComprarAviao deve retornar false ao rejeitar o spawn.");
-        Assert.AreEqual(saldoAntes - precoAeronave, saldoDepois, "REPRODUCAO: O saldo diminuiu apesar do spawn ter falhado!");
+        Assert.AreEqual(saldoAntes, saldoDepois, "Nenhum debito quando o spawn falha.");
         Assert.AreEqual(quantidadeAntes, quantidadeDepois, "REPRODUCAO: 0 aeronaves foram criadas!");
     }
 

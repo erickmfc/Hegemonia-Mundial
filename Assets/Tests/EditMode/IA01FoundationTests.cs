@@ -70,6 +70,51 @@ public sealed class IA01FoundationTests
     }
 
     [Test]
+    public void GarantirNomesUnicosTerminaQuandoTodosOsPresidentesBaseEstaoEmUso()
+    {
+        FieldInfo presidentesField = typeof(IA01NationNameRegistry).GetField(
+            "PresidentNames",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(presidentesField, Is.Not.Null);
+        string[] presidentesBase = (string[])presidentesField.GetValue(null);
+        List<DadosPaisGoverno> paises = new List<DadosPaisGoverno>(presidentesBase.Length + 1);
+
+        for (int i = 0; i < presidentesBase.Length; i++)
+        {
+            paises.Add(new DadosPaisGoverno
+            {
+                teamId = i + 1,
+                nomePais = "País de teste " + (i + 1),
+                nomePresidente = presidentesBase[i]
+            });
+        }
+
+        paises.Add(new DadosPaisGoverno
+        {
+            teamId = presidentesBase.Length + 1,
+            nomePais = "País de teste adicional",
+            nomePresidente = presidentesBase[0]
+        });
+
+        Assert.DoesNotThrow(() => IA01NationNameRegistry.GarantirNomesUnicos(paises, 123));
+
+        HashSet<string> nomesPresidentes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (DadosPaisGoverno pais in paises)
+        {
+            Assert.That(string.IsNullOrWhiteSpace(pais.nomePresidente), Is.False);
+            Assert.That(nomesPresidentes.Add(pais.nomePresidente), Is.True, "Presidentes precisam continuar únicos.");
+        }
+
+        for (int i = 0; i < presidentesBase.Length; i++)
+        {
+            Assert.That(paises[i].nomePais, Is.EqualTo("País de teste " + (i + 1)));
+            Assert.That(paises[i].nomePresidente, Is.EqualTo(presidentesBase[i]));
+        }
+
+        Assert.That(paises[paises.Count - 1].nomePresidente, Is.Not.EqualTo(presidentesBase[0]));
+    }
+
+    [Test]
     public void ReapplyingTheSameIdentityDoesNotResetRandomOrDirtyState()
     {
         object context = Activator.CreateInstance(RuntimeContextType);

@@ -27,8 +27,12 @@ public static class IA01NationNameRegistry
         System.Random random = new System.Random(seed == 0 ? Environment.TickCount : seed);
         List<string> countries = CountryNames.OrderBy(x => random.Next()).ToList();
         List<string> presidents = PresidentNames.OrderBy(x => random.Next()).ToList();
-        HashSet<string> usedCountries = new HashSet<string>(paises.Where(p => p != null && p.teamId > 0 && !string.IsNullOrWhiteSpace(p.nomePais)).Select(p => p.nomePais), StringComparer.OrdinalIgnoreCase);
-        HashSet<string> usedPresidents = new HashSet<string>(paises.Where(p => p != null && p.teamId > 0 && !string.IsNullOrWhiteSpace(p.nomePresidente)).Select(p => p.nomePresidente), StringComparer.OrdinalIgnoreCase);
+        HashSet<string> usedCountries = new HashSet<string>(
+            paises.Where(p => p != null && p.teamId == 1 && !string.IsNullOrWhiteSpace(p.nomePais)).Select(p => p.nomePais),
+            StringComparer.OrdinalIgnoreCase);
+        HashSet<string> usedPresidents = new HashSet<string>(
+            paises.Where(p => p != null && p.teamId == 1 && !string.IsNullOrWhiteSpace(p.nomePresidente)).Select(p => p.nomePresidente),
+            StringComparer.OrdinalIgnoreCase);
         int index = 0;
         foreach (DadosPaisGoverno pais in paises.OrderBy(x => x != null ? x.teamId : int.MaxValue))
         {
@@ -44,8 +48,26 @@ public static class IA01NationNameRegistry
             }
             if (duplicatePresident)
             {
+                int presidentIndex = 0;
                 string name;
-                do { name = presidents[(index + pais.teamId) % presidents.Count]; } while (usedPresidents.Contains(name) && index < presidents.Count * 2);
+                do
+                {
+                    name = presidents[(index + pais.teamId + presidentIndex) % presidents.Count];
+                    presidentIndex++;
+                }
+                while (usedPresidents.Contains(name) && presidentIndex < presidents.Count);
+
+                if (usedPresidents.Contains(name))
+                {
+                    string baseName = name + " " + pais.teamId;
+                    name = baseName;
+                    int suffix = 2;
+                    while (usedPresidents.Contains(name))
+                    {
+                        name = baseName + "-" + suffix++;
+                    }
+                }
+
                 pais.nomePresidente = name;
                 usedPresidents.Add(name);
             }

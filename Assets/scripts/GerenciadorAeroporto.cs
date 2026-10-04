@@ -1291,6 +1291,28 @@ public class GerenciadorAeroporto : MonoBehaviour
     }
 
     /// <summary>
+    /// Compra acionada pela interface do aeroporto. Só debita depois que a
+    /// aeronave foi aceita pelo fluxo de spawn/fila; uma entrega recusada não
+    /// pode consumir dinheiro.
+    /// </summary>
+    private bool TentarComprarAviaoComPagamento(GameObject prefabDeAeronave, long custo)
+    {
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        if (prefabDeAeronave == null || semEnergia || custo < 0 || recursos == null || recursos.dinheiro < custo)
+        {
+            return false;
+        }
+
+        if (!ComprarAviao(prefabDeAeronave))
+        {
+            return false;
+        }
+
+        recursos.dinheiro -= custo;
+        return true;
+    }
+
+    /// <summary>
     /// Spawn da reserva mínima da IA usando o mesmo pátio e a mesma rotina do
     /// jogador, sem deixar o primeiro caça preso no limitador da fila.
     /// </summary>
@@ -2695,8 +2717,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             {
                 if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoDroneKamikaze)
                 {
-                    GerenciadorRecursos.Instancia.dinheiro -= precoDroneKamikaze;
-                    ComprarAviao(prefabDroneKamikaze);
+                    TentarComprarAviaoComPagamento(prefabDroneKamikaze, precoDroneKamikaze);
                 }
                 else
                 {
@@ -2721,8 +2742,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             {
                 if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoSu11)
                 {
-                    GerenciadorRecursos.Instancia.dinheiro -= precoSu11;
-                    ComprarAviao(prefabSu11);
+                    TentarComprarAviaoComPagamento(prefabSu11, precoSu11);
                 }
                 else
                 {
