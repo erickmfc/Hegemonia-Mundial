@@ -1018,6 +1018,60 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         return resultado.ToString();
     }
 
+    [Test]
+    public void BrainMasterNaoSubstituiOrdemDaMissaoIA03AposConcluirMovimento()
+    {
+        Type backendType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BackendBridge");
+        Type controleType = ResolverTipo("ControleUnidade");
+        Type runtimeType = ResolverTipo("ControleOrdemMovimentoRuntime");
+        Type orderType = ResolverTipo("TipoOrdemMovimento");
+        object backend = Activator.CreateInstance(backendType, new object[] { 1 });
+        GameObject unit = new GameObject("IA03 reserved mission unit");
+
+        try
+        {
+            Component control = unit.AddComponent(controleType);
+            object runtimeOrder = Activator.CreateInstance(runtimeType, new object[] { 2f });
+            MethodInfo startOrder = runtimeType.GetMethod("TentarIniciar");
+            Assert.That(startOrder, Is.Not.Null);
+            object[] startArguments =
+            {
+                "IA03:mission:unit",
+                "IA03EstrategaNacional",
+                unit,
+                new Vector3(20f, 0f, 0f),
+                Enum.Parse(orderType, "Terrestre"),
+                1f,
+                false
+            };
+            Assert.That(startOrder.Invoke(runtimeOrder, startArguments), Is.EqualTo(true));
+            MethodInfo completeOrder = runtimeType.GetMethod("Concluir");
+            Assert.That(completeOrder.Invoke(runtimeOrder, new object[] { 2f }), Is.EqualTo(true));
+            SetField(control, "controleOrdemMovimento", runtimeOrder);
+
+            object commandService = backendType.GetProperty("CommandService").GetValue(backend);
+            MethodInfo tryIssueMove = commandService.GetType().GetMethod("TryIssueMove", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(tryIssueMove, Is.Not.Null);
+            bool accepted = (bool)tryIssueMove.Invoke(commandService, new object[]
+            {
+                unit,
+                new Vector3(80f, 0f, 0f),
+                "IA_TacticalDirector",
+                "tactical-overwrite"
+            });
+
+            object currentOrder = controleType.GetProperty("OrdemMovimentoAtual").GetValue(control);
+            Assert.That(accepted, Is.EqualTo(false), "ordem tática não deve assumir unidade reservada pela missão IA03");
+            Assert.That(Field(currentOrder, "Dono"), Is.EqualTo("IA03EstrategaNacional"));
+            Assert.That(Field(currentOrder, "Id"), Is.EqualTo("IA03:mission:unit"));
+            Assert.That(Field(currentOrder, "Destino"), Is.EqualTo(new Vector3(20f, 0f, 0f)));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(unit);
+        }
+    }
+
     private static Type ResolverTipo(string nome)
     {
         Type tipo = AppDomain.CurrentDomain.GetAssemblies()

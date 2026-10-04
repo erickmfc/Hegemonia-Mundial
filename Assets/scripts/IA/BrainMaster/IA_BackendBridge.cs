@@ -2737,6 +2737,17 @@ namespace Hegemonia.AI.BrainMaster
 
             bool isIA03Order = string.Equals(orderOwner, "IA03EstrategaNacional", System.StringComparison.Ordinal)
                                && !string.IsNullOrWhiteSpace(orderId);
+            ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
+            OrdemMovimento ordemAtual = controleUnidade != null ? controleUnidade.OrdemMovimentoAtual : null;
+            if (!isIA03Order
+                && ordemAtual != null
+                && string.Equals(ordemAtual.Dono, "IA03EstrategaNacional", System.StringComparison.Ordinal))
+            {
+                // O executor pode concluir a movimentação antes do objetivo IA03.
+                // Mantenha a reserva até a própria missão cancelar/liberar a ordem.
+                return false;
+            }
+
             if (TryIssueSpecializedMove(
                     unit,
                     destination,
@@ -2748,7 +2759,6 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            ControleUnidade controleUnidade = unit.GetComponent<ControleUnidade>();
             if (controleUnidade != null)
             {
                 bool aceita = isIA03Order
