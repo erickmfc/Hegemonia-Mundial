@@ -552,9 +552,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CombustivelUnidade
   usaCombustivel: 1
   classe: 1
-  capacidade: 100
-  combustivelAtual: 100
-  consumoPorSegundoMovendo: 0.3
+  capacidade: 250
+  combustivelAtual: 250
+  consumoPorSegundoMovendo: 0.42
   velocidadeMinimaParaConsumo: 0.05
   limiteBaixoPercentual: 0.25
   preencherAoIniciar: 1
@@ -579,11 +579,14 @@ MonoBehaviour:
   cargaAtual: 0
   raioAbastecimento: 18
   taxaTransferencia: 30
-  intervaloBusca: 0.25
+  intervaloBusca: 1.5
   camadasUnidades:
     serializedVersion: 2
     m_Bits: 4294967295
   abastecerAutomaticamente: 1
+  modoOperacao: 1
+  raioRadar: 2599
+  limiteCombustivelAutomatico: 0.6
   teclaRecarregarCarga: 114
   mostrarIndicadorSelecionado: 1
   offsetIndicador: {x: 0, y: 4.1, z: 0}

@@ -571,7 +571,7 @@ public class CombustivelUnidade : MonoBehaviour
             case ClasseCombustivelUnidade.Aerea:
                 return 300f * MultiplicadorCapacidadeAerea();
             case ClasseCombustivelUnidade.Terrestre:
-                return 240f;
+                return 600f;
             default:
                 return 0f;
         }

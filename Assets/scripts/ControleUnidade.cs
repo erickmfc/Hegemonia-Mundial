@@ -2236,6 +2236,14 @@ public class ControleUnidade : MonoBehaviour
             return abastecedor.AlternarModoOperacao();
         }
 
+        CaminhaoTanqueAbastecimento caminhaoTerrestre = GetComponent<CaminhaoTanqueAbastecimento>()
+            ?? GetComponentInParent<CaminhaoTanqueAbastecimento>()
+            ?? GetComponentInChildren<CaminhaoTanqueAbastecimento>(true);
+        if (caminhaoTerrestre != null)
+        {
+            return caminhaoTerrestre.AlternarModoOperacao();
+        }
+
         if (EhUnidadeNaval())
         {
             return MenuCombateNaval.CiclarModoCombate(this);
