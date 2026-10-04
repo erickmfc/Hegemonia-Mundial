@@ -53,6 +53,30 @@ public sealed class RTSCoreContractsEditModeTests
     }
 
     [Test]
+    public void LosingOwnPrefectureDoesNotFinishTheMatch()
+    {
+        Type endGameType = RequireType("SistemaFimDeJogo");
+        PropertyInfo matchEnded = endGameType.GetProperty(
+            "PartidaEncerrada",
+            BindingFlags.Static | BindingFlags.Public);
+        Assert.That(matchEnded, Is.Not.Null);
+        MethodInfo resetMatchEnded = matchEnded.GetSetMethod(true);
+        Assert.That(resetMatchEnded, Is.Not.Null);
+        resetMatchEnded.Invoke(null, new object[] { false });
+
+        Type objectiveType = RequireType("TipoObjetivoFinal");
+        object prefecture = Enum.Parse(objectiveType, "Prefeitura");
+        MethodInfo reportResult = endGameType.GetMethod(
+            "RegistrarResultado",
+            BindingFlags.Static | BindingFlags.Public);
+        Assert.That(reportResult, Is.Not.Null);
+
+        reportResult.Invoke(null, new[] { prefecture, (object)true, "Sua nação", "Capital própria" });
+
+        Assert.That((bool)matchEnded.GetValue(null), Is.False);
+    }
+
+    [Test]
     public void ManualVisibilityContactIsQueryable()
     {
         Type visibilityType = RequireType("Hegemonia.RTS.RTSVisibilityService");

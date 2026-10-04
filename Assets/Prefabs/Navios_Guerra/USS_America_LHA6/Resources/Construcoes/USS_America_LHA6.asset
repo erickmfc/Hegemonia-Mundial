@@ -10,18 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
-  m_Name: USS_Liberty_Prime
+  m_Name: USS_America_LHA6
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: USS America LHA-6
-  descricao: Navio de assalto anfibio com transporte de tropas e veiculos e apoio aereo.
+  descricao: Navio de assalto anfibio com transporte de tropas e veiculos e apoio
+    aereo.
   icone: {fileID: 21300000, guid: 89d40556283770c4ca13a3005ecf98dc, type: 3}
   itemId: Liberty Prime
   aliases: USS America LHA-6, USS America, America, Liberty Prime, Liberty
   capacidades: 0
   prefabDaUnidade: {fileID: 4357442004992980676, guid: 685d08b88a335374797ab9be71a389af, type: 3}
   preco: 5000
+  precoDefinitivo: 0
   categoria: 1
   escalaPoder: 2
   strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

@@ -232,7 +232,7 @@ public class ComplexoGovernamental : MonoBehaviour
 
         if (ehDoJogador)
         {
-            Debug.LogError("GAME OVER: Você perdeu sua prefeitura principal!");
+            Debug.Log("Prefeitura principal destruída; a partida continua.");
         }
         else
         {

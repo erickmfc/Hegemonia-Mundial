@@ -142,7 +142,7 @@ public class MisselNaval : MonoBehaviour
     {
         if (lancadorRef == null) return null;
 
-        IdentidadeUnidade identidade = lancadorRef.GetComponentInParent<IdentidadeUnidade>();
+        IdentidadeUnidade identidade = lancadorRef.GetComponentInParent<IdentidadeUnidade>(true);
         return identidade != null ? identidade.transform : lancadorRef.root;
     }
 
@@ -517,7 +517,7 @@ public class MisselNaval : MonoBehaviour
         if (lancador != null)
         {
             IdentidadeUnidade identidadeLancador = lancador.GetComponent<IdentidadeUnidade>();
-            IdentidadeUnidade identidadeOutro = other.GetComponentInParent<IdentidadeUnidade>();
+            IdentidadeUnidade identidadeOutro = other.GetComponentInParent<IdentidadeUnidade>(true);
             if (identidadeLancador != null && identidadeOutro == identidadeLancador) return true;
             if (raizOutro == lancador) return true;
         }
