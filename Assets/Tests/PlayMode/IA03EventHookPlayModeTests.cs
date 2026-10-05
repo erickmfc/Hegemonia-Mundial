@@ -58,6 +58,59 @@ public sealed class IA03EventHookPlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator RealStructuralDamageUpdatesConflictReportFromParentIdentity()
+    {
+        Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type brainType = ResolveType("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type damageType = ResolveType("SistemaDeDanos");
+        Type identityType = ResolveType("IdentidadeUnidade");
+        var objects = new List<GameObject>();
+        GameObject observer = new GameObject("IA03 structural damage listener test");
+        observer.SetActive(false);
+        objects.Add(observer);
+
+        try
+        {
+            Component brain = observer.AddComponent(brainType);
+            SetField(brain, "TeamId", 1);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            ((Behaviour)brain).enabled = false;
+            Component strategist = observer.AddComponent(strategistType);
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "paisAlvoTeamId", 2);
+            observer.SetActive(true);
+            yield return null;
+
+            GameObject attacker = CreateEntity(objects, identityType, damageType, 1, false, "Structural damage attacker");
+            GameObject target = CreateEntity(objects, identityType, damageType, 2, true, "Structural damage target");
+            GameObject attackerChild = new GameObject("attacker weapon child");
+            attackerChild.transform.SetParent(attacker.transform);
+            objects.Add(attackerChild);
+
+            Component targetDamage = target.GetComponent(damageType);
+            SetField(targetDamage, "vidaAtual", 100f);
+            MethodInfo receiveDamage = damageType.GetMethod("ReceberDano", Members);
+            Assert.That(receiveDamage, Is.Not.Null);
+
+            receiveDamage.Invoke(targetDamage, new object[] { 25f, attackerChild });
+            Assert.That(ReportFloat(strategist, strategistType, "DanoEstruturalInimigo"),
+                Is.EqualTo(25f).Within(0.001f),
+                "O hook global deve resolver a identidade do agressor ancestral e registrar o dano estrutural efetivo.");
+            Assert.That(ReportFloat(strategist, strategistType, "DanoEstruturalProprio"),
+                Is.EqualTo(0f).Within(0.001f));
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+            {
+                if (objects[i] != null) UnityEngine.Object.Destroy(objects[i]);
+            }
+        }
+
+        yield return null;
+    }
+    [UnityTest]
     public IEnumerator RealUnitDeathUpdatesConflictReportAndDisableUnsubscribes()
     {
         Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");

@@ -467,6 +467,99 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         }
     }
 
+    [TestCase(1, 3)]
+    [TestCase(3, 1)]
+    public void TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado(
+        int equipeAtiradora,
+        int equipeInimiga)
+    {
+        GameObject scenario = new GameObject("IA03 grouped target acquisition test");
+        scenario.transform.position = new Vector3(1000000f, 0f, 1000000f);
+        Component identidadeAtiradora = null;
+        Component identidadeAliada = null;
+        Component identidadeInimiga = null;
+        MethodInfo unregister = null;
+        try
+        {
+            identidadeAtiradora = CriarUnidadeComTorre(
+                scenario.transform, "PaisAtacante", "UnidadeAtacante", equipeAtiradora, out Component torre);
+            identidadeAliada = CriarUnidadeComTorre(
+                scenario.transform, "PaisAliado", "UnidadeAliada", equipeAtiradora, out _);
+            identidadeInimiga = CriarUnidadeComTorre(
+                scenario.transform, "PaisDefensor", "UnidadeDefensora", equipeInimiga, out _);
+
+            identidadeAtiradora.transform.position = scenario.transform.position;
+            identidadeAliada.transform.position = scenario.transform.position + new Vector3(0f, 0f, 6f);
+            identidadeInimiga.transform.position = scenario.transform.position + new Vector3(0f, 0f, 20f);
+            identidadeAtiradora.gameObject.AddComponent<BoxCollider>();
+            identidadeAliada.gameObject.AddComponent<BoxCollider>();
+            identidadeInimiga.gameObject.AddComponent<BoxCollider>();
+
+            Type registryType = ResolverTipo("RegistroEntidadesJogo");
+            Type identityType = ResolverTipo("IdentidadeUnidade");
+            MethodInfo register = registryType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(method => method.Name == "Register"
+                    && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == identityType);
+            unregister = registryType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(method => method.Name == "Unregister"
+                    && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == identityType);
+            register.Invoke(null, new object[] { identidadeAtiradora });
+            register.Invoke(null, new object[] { identidadeAliada });
+            register.Invoke(null, new object[] { identidadeInimiga });
+
+            Type registeredUnitsType = typeof(List<>).MakeGenericType(identityType);
+            object registeredUnits = Activator.CreateInstance(registeredUnitsType);
+            registryType.GetMethod("FillUnidades", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new[] { registeredUnits });
+            bool enemyIsRegistered = (bool)registeredUnitsType.GetMethod("Contains")
+                .Invoke(registeredUnits, new object[] { identidadeInimiga });
+            Assert.That(enemyIsRegistered, Is.True, "O teste não registrou a unidade inimiga no cache real.");
+
+            SetField(torre, "minhaIdentidade", identidadeAtiradora);
+            SetField(torre, "meuTime", equipeAtiradora);
+            SetField(torre, "alcance", 100f);
+            SetField(torre, "souAntiAereo", false);
+            Physics.SyncTransforms();
+
+            MethodInfo procurarNoRegistro = torre.GetType().GetMethod(
+                "ProcurarAlvoNoRegistroGlobal", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo procurarNoRadar = torre.GetType().GetMethod(
+                "ProcurarAlvo", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(procurarNoRegistro, Is.Not.Null);
+            Assert.That(procurarNoRadar, Is.Not.Null);
+            MethodInfo podeAtacar = torre.GetType().GetMethod(
+                "PodeAtacarAutomaticamente", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(podeAtacar, Is.Not.Null);
+            Assert.That(podeAtacar.Invoke(torre, new object[] { identidadeInimiga }), Is.EqualTo(true));
+            Assert.That(identidadeInimiga.gameObject.activeInHierarchy, Is.True);
+            Assert.That(Vector3.Distance(torre.transform.position, identidadeInimiga.transform.position), Is.LessThan(100f));
+            Assert.That((bool)ResolverTipo("ControleSubmarino")
+                .GetMethod("PodeSerAlvoConvencional", BindingFlags.Public | BindingFlags.Static)
+                .Invoke(null, new object[] { identidadeInimiga.transform }), Is.True);
+
+            Transform alvoGlobal = (Transform)procurarNoRegistro.Invoke(torre, null);
+            Assert.That(alvoGlobal, Is.SameAs(identidadeInimiga.transform),
+                "A busca pelo registro descartou o inimigo por compartilhar a raiz da cena.");
+
+            procurarNoRadar.Invoke(torre, null);
+            Assert.That(Field(torre, "alvoAtual"), Is.SameAs(identidadeInimiga.transform),
+                "O radar local descartou o inimigo ou priorizou a própria unidade/um aliado.");
+            Assert.That(identidadeAtiradora.transform.root, Is.SameAs(identidadeInimiga.transform.root));
+        }
+        finally
+        {
+            if (unregister != null)
+            {
+                if (identidadeAtiradora != null) unregister.Invoke(null, new[] { identidadeAtiradora });
+                if (identidadeAliada != null) unregister.Invoke(null, new[] { identidadeAliada });
+                if (identidadeInimiga != null) unregister.Invoke(null, new[] { identidadeInimiga });
+            }
+            UnityEngine.Object.DestroyImmediate(scenario);
+        }
+    }
+
     [Test]
     public void ProducaoAereaIAFalhaQuandoAeroportoBloqueiaSpawnEmAgua()
     {

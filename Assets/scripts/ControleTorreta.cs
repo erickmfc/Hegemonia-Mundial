@@ -494,10 +494,7 @@ public class ControleTorreta : MonoBehaviour
             if (filtrarAlvosAutorizadosNavais && !souAntiAereo
                 && !EstaNaListaAutorizada(ResolverTransformAlvo(alvoTr))) continue;
 
-            if (alvoTr.root == transform.root)
-            {
-                continue;
-            }
+            if (EhParteDaMinhaUnidade(alvoTr)) continue;
 
             bool ehMissil = ObterEhMissilComCache(alvoTr);
             bool ehTorpedo = ObterEhTorpedoComCache(alvoTr);
@@ -717,7 +714,7 @@ public class ControleTorreta : MonoBehaviour
             if (!PodeAtacarAutomaticamente(idAlvo)) continue;
 
             Transform alvoTr = ResolverTransformAlvo(idAlvo.transform);
-            if (alvoTr == null || alvoTr.root == transform.root) continue;
+            if (alvoTr == null || idAlvo == minhaIdentidade) continue;
             if (!ControleSubmarino.PodeSerAlvoConvencional(alvoTr)) continue;
 
             float distSqr = (alvoTr.position - transform.position).sqrMagnitude;
@@ -1698,6 +1695,34 @@ public class ControleTorreta : MonoBehaviour
         cached = t.GetComponentInParent<IdentidadeUnidade>();
         _idParentCache[t] = cached;
         return cached;
+    }
+
+    private bool EhParteDaMinhaUnidade(Transform candidato)
+    {
+        if (candidato == null) return true;
+        if (minhaIdentidade == null) return candidato.root == transform.root;
+
+        Transform unidadePropria = minhaIdentidade.transform;
+        if (candidato == unidadePropria || candidato.IsChildOf(unidadePropria)) return true;
+
+        IdentidadeUnidade identidadeCandidata = ObterIdentidadeUnidadeComCache(candidato);
+        if (identidadeCandidata != null) return identidadeCandidata == minhaIdentidade;
+
+        Projetil projetil = candidato.GetComponentInParent<Projetil>();
+        if (projetil != null && projetil.GetDono() == minhaIdentidade.gameObject) return true;
+
+        Torpedo torpedo = candidato.GetComponentInParent<Torpedo>();
+        if (torpedo != null)
+        {
+            if (torpedo.lancador == unidadePropria
+                || (torpedo.lancador != null && torpedo.lancador.IsChildOf(unidadePropria))) return true;
+            if (torpedo.timeLancador > 0 && torpedo.timeLancador == meuTime) return true;
+        }
+
+        MissileThreatTracker rastreadorMissil = candidato.GetComponentInParent<MissileThreatTracker>();
+        return rastreadorMissil != null
+            && rastreadorMissil.TeamOrigem > 0
+            && rastreadorMissil.TeamOrigem == meuTime;
     }
 
     private bool ObterEhAviaoComCache(Transform t)
