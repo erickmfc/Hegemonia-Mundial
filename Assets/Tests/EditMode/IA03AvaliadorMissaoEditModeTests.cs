@@ -1052,7 +1052,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1));
             Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(0));
 
-            Finalizar("GuerraTotal", "Fracasso");
+            Finalizar("GuerraTotal", "Fracasso", grupoPerdeuUnidade: true);
             Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1));
             Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(1));
 
@@ -1062,13 +1062,14 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1), "Timeout, cancelamento e patrulha são inconclusivos para batalhas.");
             Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(1));
 
-            void Finalizar(string tipo, string resultado)
+            void Finalizar(string tipo, string resultado, bool grupoPerdeuUnidade = false)
             {
                 ScriptableObject activeMission = ScriptableObject.CreateInstance(missionType);
                 missions.Add(activeMission);
                 SetField(activeMission, "tipoMissao", Enum.Parse(missionKindType, tipo));
                 SetField(activeMission, "condicaoDeSucesso", Enum.Parse(conditionType, "DestruirAlvo"));
                 SetField(strategist, "missaoAtiva", activeMission);
+                SetField(strategist, "grupoPerdeuUnidade", grupoPerdeuUnidade);
                 finalize.Invoke(strategist, new object[] { Enum.Parse(resultType, resultado), "teste controlado" });
             }
         }
@@ -1079,6 +1080,43 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             {
                 UnityEngine.Object.DestroyImmediate(missions[i]);
             }
+        }
+    }
+
+    [Test]
+    public void FalhaDeDisponibilidadeSemPerdaMilitarNaoContaBatalhaPerdida()
+    {
+        Type strategistType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type missionKindType = ResolverTipo("Hegemonia.AI.IA03.IA03TipoMissao");
+        Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        GameObject strategistObject = new GameObject("IA03 unavailable mission does not count as battle test");
+        strategistObject.SetActive(false);
+        ScriptableObject mission = ScriptableObject.CreateInstance(missionType);
+        try
+        {
+            Component strategist = strategistObject.AddComponent(strategistType);
+            Component brain = strategistObject.GetComponent(brainType);
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "missaoAtiva", mission);
+            SetField(mission, "tipoMissao", Enum.Parse(missionKindType, "AtaqueLimitado"));
+            SetField(mission, "condicaoDeSucesso", Enum.Parse(conditionType, "DestruirAlvo"));
+
+            MethodInfo process = strategistType.GetMethod("ProcessarMissaoAtiva", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(process, Is.Not.Null);
+            process.Invoke(strategist, new object[] { 10f });
+
+            object report = strategistType.GetProperty("RelatorioAtual").GetValue(strategist);
+            Assert.That(Field(strategist, "estadoDaMissao").ToString(), Is.EqualTo("Fracasso"));
+            Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(0));
+            Assert.That(Field(strategist, "missaoAtiva"), Is.Null);
+            Assert.That(Field(strategist, "creatyAtivo"), Is.Null);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(strategistObject);
+            UnityEngine.Object.DestroyImmediate(mission);
         }
     }
 

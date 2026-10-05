@@ -113,6 +113,24 @@ public class SistemaDeDanos : MonoBehaviour
                 ultimoAgressorTeamId = agressorID.teamID;
                 if (!envolveCartel && SistemaGovernoMundial.Instancia != null)
                 {
+#if UNITY_EDITOR
+                    if (Projetil.IdProbeProjectileNoDano > 0
+                        && Application.isPlaying
+                        && string.Equals(
+                            UnityEngine.SceneManagement.SceneManager.GetActiveScene().path,
+                            "Assets/Tests/PlayMode/IA03_WarValidation.unity",
+                            System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        UnityEngine.Debug.Log("[IA03][PROJECTILE_PROBE][DAMAGE] id="
+                            + Projetil.IdProbeProjectileNoDano
+                            + " frame=" + UnityEngine.Time.frameCount
+                            + " victim=" + name
+                            + " victimTeam=" + vitimaID.teamID
+                            + " aggressor=" + agressor.name
+                            + " aggressorTeam=" + agressorID.teamID,
+                            this);
+                    }
+#endif
                     SistemaGovernoMundial.Instancia.RegistrarAgressao(vitimaID.teamID, agressorID.teamID);
                     var relacao = SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
                     if (relacao != null && !relacao.guerraDeclarada)

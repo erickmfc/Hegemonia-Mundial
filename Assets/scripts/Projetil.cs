@@ -14,6 +14,72 @@ public class Projetil : MonoBehaviour
 {
     private static readonly HashSet<Projetil> ativosNoMapa = new HashSet<Projetil>();
 
+#if UNITY_EDITOR
+    private const string CenaProbeIA03 = "Assets/Tests/PlayMode/IA03_WarValidation.unity";
+    private static readonly HashSet<int> torretasComDisparoRastreado = new HashSet<int>();
+    private static int proximoIdProbeDisparo;
+    private static int idProbeProjectileNoDano;
+    private int idProbeDisparo;
+
+    public static int IdProbeProjectileNoDano => idProbeProjectileNoDano;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetarProbeDisparo()
+    {
+        torretasComDisparoRastreado.Clear();
+        proximoIdProbeDisparo = 0;
+        idProbeProjectileNoDano = 0;
+    }
+
+    public void RegistrarProbeDisparo(ControleTorreta torreta, Transform cano, Transform alvo)
+    {
+        if (torreta == null
+            || !Application.isPlaying
+            || !string.Equals(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().path,
+                CenaProbeIA03,
+                System.StringComparison.OrdinalIgnoreCase)
+            || !torretasComDisparoRastreado.Add(torreta.GetInstanceID()))
+        {
+            return;
+        }
+
+        idProbeDisparo = ++proximoIdProbeDisparo;
+        GameObject donoAtual = dono;
+        IdentidadeUnidade identidadeDono = donoAtual != null
+            ? donoAtual.GetComponentInParent<IdentidadeUnidade>(true)
+            : null;
+        IdentidadeUnidade identidadeAlvo = alvo != null
+            ? alvo.GetComponentInParent<IdentidadeUnidade>(true)
+            : null;
+
+        Debug.Log("[IA03][PROJECTILE_PROBE][SPAWN] id=" + idProbeDisparo
+            + " frame=" + Time.frameCount
+            + " shooter=" + (donoAtual != null ? donoAtual.name : "<null>")
+            + " shooterTeam=" + (identidadeDono != null ? identidadeDono.teamID.ToString() : "<sem-identidade>")
+            + " turretComponentId=" + torreta.GetInstanceID()
+            + " turretPath=" + CaminhoProbeDisparo(torreta.transform)
+            + " barrel=" + (cano != null ? CaminhoProbeDisparo(cano) : "<null>")
+            + " projectile=" + name
+            + " target=" + (alvo != null ? alvo.name : "<null>")
+            + " targetTeam=" + (identidadeAlvo != null ? identidadeAlvo.teamID.ToString() : "<sem-identidade>"),
+            this);
+    }
+
+    private static string CaminhoProbeDisparo(Transform alvo)
+    {
+        if (alvo == null) return "<null>";
+        string caminho = alvo.name;
+        Transform pai = alvo.parent;
+        while (pai != null)
+        {
+            caminho = pai.name + "/" + caminho;
+            pai = pai.parent;
+        }
+        return "/" + caminho;
+    }
+#endif
+
     [Header("Balística")]
     [Tooltip("Velocidade do projétil em metros por segundo.")]
     public float velocidade = 60f;
@@ -71,6 +137,9 @@ public class Projetil : MonoBehaviour
         IA_CombatTelemetry.RegisterProjectile();
         ativosNoMapa.Add(this);
         jaAcertou = false;
+#if UNITY_EDITOR
+        idProbeDisparo = 0;
+#endif
         dono = null;
         teamDono = -1;
         alvoPerseguido = null;
@@ -84,6 +153,9 @@ public class Projetil : MonoBehaviour
         IA_CombatTelemetry.UnregisterProjectile();
         ativosNoMapa.Remove(this);
         jaAcertou = false;
+#if UNITY_EDITOR
+        idProbeDisparo = 0;
+#endif
         alvoPerseguido = null;
         dono = null;
         teamDono = -1;
@@ -264,6 +336,27 @@ public class Projetil : MonoBehaviour
 
         jaAcertou = true;
 
+#if UNITY_EDITOR
+        int contextoAnterior = idProbeProjectileNoDano;
+        idProbeProjectileNoDano = idProbeDisparo;
+        try
+        {
+            if (idProbeDisparo > 0)
+            {
+                IdentidadeUnidade identidadeDono = dono != null
+                    ? dono.GetComponentInParent<IdentidadeUnidade>(true)
+                    : null;
+                IdentidadeUnidade identidadeAlvo = alvo.GetComponentInParent<IdentidadeUnidade>(true);
+                Debug.Log("[IA03][PROJECTILE_PROBE][IMPACT] id=" + idProbeDisparo
+                    + " frame=" + Time.frameCount
+                    + " shooter=" + (dono != null ? dono.name : "<null>")
+                    + " shooterTeam=" + (identidadeDono != null ? identidadeDono.teamID.ToString() : "<sem-identidade>")
+                    + " target=" + alvo.name
+                    + " targetTeam=" + (identidadeAlvo != null ? identidadeAlvo.teamID.ToString() : "<sem-identidade>"),
+                    this);
+            }
+#endif
+
         // --- 1. Dano Direto ---
         SistemaDeDanos vidaDireta = alvo.GetComponent<SistemaDeDanos>();
         if (vidaDireta == null) vidaDireta = alvo.GetComponentInParent<SistemaDeDanos>();
@@ -318,6 +411,13 @@ public class Projetil : MonoBehaviour
 
         // Destrói o projétil imediatamente
         Liberar();
+#if UNITY_EDITOR
+        }
+        finally
+        {
+            idProbeProjectileNoDano = contextoAnterior;
+        }
+#endif
     }
 
     void Explodir(SistemaDeDanos alvoDiretoIgnorar)

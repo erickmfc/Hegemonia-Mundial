@@ -1363,7 +1363,7 @@ namespace Hegemonia.AI.IA03
 
             if (creatyAtivo == null)
             {
-                FinalizarMissao(IA03ResultadoMissao.Fracasso, "Creaty indisponível");
+                FinalizarMissaoPorFalhaDeDisponibilidade("Creaty indisponível");
                 return;
             }
 
@@ -1412,7 +1412,7 @@ namespace Hegemonia.AI.IA03
             float tempoMaximo = missaoAtiva != null ? missaoAtiva.TempoMaximoSegundos : 600f;
             if (vivos == 0)
             {
-                FinalizarMissao(IA03ResultadoMissao.Fracasso, "grupo indisponível");
+                FinalizarMissaoPorFalhaDeDisponibilidade("grupo indisponível");
                 return;
             }
 
@@ -1543,6 +1543,22 @@ namespace Hegemonia.AI.IA03
 
         private void FinalizarMissao(IA03ResultadoMissao resultado, string motivo)
         {
+            FinalizarMissaoInterno(resultado, motivo, true);
+        }
+
+        private void FinalizarMissaoPorFalhaDeDisponibilidade(string motivo)
+        {
+            bool houveResultadoMilitar = grupoPerdeuUnidade
+                                         || territorioDoObjetivoPerdido
+                                         || confirmacaoExternaDeFracasso;
+            FinalizarMissaoInterno(IA03ResultadoMissao.Fracasso, motivo, houveResultadoMilitar);
+        }
+
+        private void FinalizarMissaoInterno(
+            IA03ResultadoMissao resultado,
+            string motivo,
+            bool contabilizarResultadoMilitar)
+        {
             bool sucesso = resultado == IA03ResultadoMissao.Sucesso;
             bool final = resultado == IA03ResultadoMissao.Sucesso
                          || resultado == IA03ResultadoMissao.Fracasso
@@ -1568,7 +1584,7 @@ namespace Hegemonia.AI.IA03
                                 + missaoAtiva.NomeMissao + " — " + (motivo ?? string.Empty);
             }
 
-            RegistrarResultadoMissaoMilitar(missaoAtiva, resultado);
+            RegistrarResultadoMissaoMilitar(missaoAtiva, resultado, contabilizarResultadoMilitar);
 
             if (cancelarOrdens && brain != null && brain.Context != null && brain.Context.CommandQueue != null
                 && !string.IsNullOrWhiteSpace(idOrdemAtivaDaMissao))
@@ -1606,7 +1622,10 @@ namespace Hegemonia.AI.IA03
             RegistrarLogDebugSeNecessario();
         }
 
-        private void RegistrarResultadoMissaoMilitar(MissaoEstrategicaSO missao, IA03ResultadoMissao resultado)
+        private void RegistrarResultadoMissaoMilitar(
+            MissaoEstrategicaSO missao,
+            IA03ResultadoMissao resultado,
+            bool contabilizarResultadoMilitar)
         {
             if (missao == null
                 || (missao.TipoMissao != IA03TipoMissao.AtaqueLimitado
@@ -1617,13 +1636,14 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
-            // Vitória/derrota vêm do resultado terminal da missão ofensiva.
-            // Timeout e cancelamento são inconclusivos; morte isolada não conta como vitória.
+            // Vitória vem do objetivo ofensivo concluído. Uma falha operacional por
+            // indisponibilidade só conta como derrota quando há evidência de perda militar.
+            // Timeout e cancelamento continuam inconclusivos.
             if (resultado == IA03ResultadoMissao.Sucesso)
             {
                 RegistrarResultadoCombate(true);
             }
-            else if (resultado == IA03ResultadoMissao.Fracasso)
+            else if (resultado == IA03ResultadoMissao.Fracasso && contabilizarResultadoMilitar)
             {
                 RegistrarResultadoCombate(false);
             }
