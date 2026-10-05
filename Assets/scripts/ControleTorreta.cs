@@ -203,6 +203,7 @@ public class ControleTorreta : MonoBehaviour
     private readonly List<Transform> alvosAutorizadosNavais = new List<Transform>(8);
     public bool EhAntiAereo => souAntiAereo;
     private bool exigeGuerraDeclarada;
+    private bool exigeHostilidadeNaBuscaAutomatica;
     private bool diagnosticoLocaisDoTiroEmitido;
     private bool bloquearRotacaoAutomatica;
 
@@ -255,6 +256,9 @@ public class ControleTorreta : MonoBehaviour
 
         minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
         meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1;
+        if (minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval)
+            exigeGuerraDeclarada = true;
+        exigeHostilidadeNaBuscaAutomatica = !exigeGuerraDeclarada && !EhUnidadeAereaParaEngajamento();
 
         souAntiAereo = DeterminarSouAntiAereo();
 
@@ -541,7 +545,7 @@ public class ControleTorreta : MonoBehaviour
                         ehInimigo = true;
                     }
                 }
-                else if (!NavioExigeGuerraDeclarada()
+                else if (!NavioExigeGuerraDeclarada() && !exigeHostilidadeNaBuscaAutomatica
                     && (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo")))
                 {
                     ehInimigo = true;
@@ -758,13 +762,25 @@ public class ControleTorreta : MonoBehaviour
         return exigeGuerraDeclarada;
     }
 
+    private bool EhUnidadeAereaParaEngajamento()
+    {
+        return (minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Aereo)
+            || GetComponentInParent<ControleAviao>() != null
+            || GetComponentInParent<ControleAviaoCaca>() != null
+            || GetComponentInParent<Helicoptero>() != null;
+    }
+
     private bool PodeAtacarAutomaticamente(IdentidadeUnidade alvo)
     {
         if (alvo == null || alvo.teamID <= 0 || alvo.teamID == meuTime) return false;
-        if (!NavioExigeGuerraDeclarada()) return true;
+        if (NavioExigeGuerraDeclarada())
+        {
+            return SistemaGovernoMundial.Instancia != null
+                && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
+        }
 
-        return SistemaGovernoMundial.Instancia != null
-            && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
+        return !exigeHostilidadeNaBuscaAutomatica
+            || ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, alvo);
     }
 
 #if UNITY_EDITOR
@@ -831,14 +847,14 @@ public class ControleTorreta : MonoBehaviour
         // consultadas por armas navais também registram contexto/incident.
         bool autorizacaoAutomatica = !alvoExplicito;
         bool consultaDiplomatica = !alvoExplicito
-            && torreta.NavioExigeGuerraDeclarada()
+            && (torreta.NavioExigeGuerraDeclarada() || torreta.exigeHostilidadeNaBuscaAutomatica)
             && SistemaGovernoMundial.Instancia != null;
         string justificativa = alvoExplicito
             ? "alvo prioritário explícito; busca automática não aplicou o gate diplomático"
             : consultaDiplomatica
-                ? "PodeAtacarAutomaticamente consultou ContextoTerritorialDiplomatico"
+                ? "PodeAtacarAutomaticamente consultou a política diplomática existente"
                 : autorizacaoAutomatica
-                    ? "PodeAtacarAutomaticamente aceitou TeamId diferente sem consultar diplomacia"
+                    ? "alvo selecionado por um caminho sem gate diplomático (ex.: unidade aérea)"
                     : "PodeAtacarAutomaticamente recusou o alvo";
 
         StringBuilder log = new StringBuilder(512);

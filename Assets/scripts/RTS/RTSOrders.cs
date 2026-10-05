@@ -63,19 +63,29 @@ namespace Hegemonia.RTS
                     return unit.EmitirOrdemMover(command.destination);
 
                 case RTSOrderType.AttackMove:
-                    if (command.target != null)
+                    bool attackMoveAccepted = unit.EmitirOrdemMover(command.destination);
+                    if (attackMoveAccepted && command.target != null)
                     {
+                        // EmitirOrdemMover limpa o alvo prioritário ao cancelar
+                        // comportamentos. A prioridade precisa ser aplicada após
+                        // a ordem de deslocamento ser aceita.
                         unit.DefinirAlvoPrioritario(command.target);
                     }
-                    return unit.EmitirOrdemMover(command.destination);
+                    return attackMoveAccepted;
 
                 case RTSOrderType.Attack:
                     if (command.target == null)
                     {
                         return false;
                     }
-                    unit.DefinirAlvoPrioritario(command.target);
-                    return unit.EmitirOrdemMover(command.target.position);
+                    bool attackAccepted = unit.EmitirOrdemMover(command.target.position);
+                    if (attackAccepted)
+                    {
+                        // Preserva a distinção entre aquisição automática e
+                        // uma ordem ofensiva explícita do jogador/IA.
+                        unit.DefinirAlvoPrioritario(command.target);
+                    }
+                    return attackAccepted;
 
                 case RTSOrderType.Stop:
                     return unit.EmitirOrdemParar();

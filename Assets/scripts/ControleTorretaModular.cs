@@ -68,6 +68,7 @@ public class ControleTorretaModular : MonoBehaviour
     private readonly List<Transform> alvosAutorizadosNavais = new List<Transform>(8);
     public bool EhAntiAereo => souAntiAereo;
     private bool exigeGuerraDeclarada;
+    private bool exigeHostilidadeNaBuscaAutomatica;
     private Quaternion rotacaoInicialPecaQueGira = Quaternion.identity;
     private Vector3 eulerRepousoPecaQueGira;
     private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
@@ -95,6 +96,13 @@ public class ControleTorretaModular : MonoBehaviour
         exigeGuerraDeclarada = (controleRaiz != null && controleRaiz.EhUnidadeNaval())
             || GetComponentInParent<IdentidadeNaval>() != null
             || GetComponentInParent<ControleNavioRealista>() != null;
+        if (meuID != null && meuID.tipoUnidade == TipoUnidade.Naval)
+            exigeGuerraDeclarada = true;
+        bool unidadeAerea = (meuID != null && meuID.tipoUnidade == TipoUnidade.Aereo)
+            || GetComponentInParent<ControleAviao>() != null
+            || GetComponentInParent<ControleAviaoCaca>() != null
+            || GetComponentInParent<Helicoptero>() != null;
+        exigeHostilidadeNaBuscaAutomatica = !exigeGuerraDeclarada && !unidadeAerea;
         if (pecaQueGira == null) pecaQueGira = transform;
         if (pecaQueGira != null)
         {
@@ -302,7 +310,7 @@ public class ControleTorretaModular : MonoBehaviour
                 }
             }
             // Fallback por tag
-            else if (!NavioExigeGuerraDeclarada()
+            else if (!NavioExigeGuerraDeclarada() && !exigeHostilidadeNaBuscaAutomatica
                 && (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo")))
             {
                 ehInimigo = true;
@@ -390,10 +398,14 @@ public class ControleTorretaModular : MonoBehaviour
     private bool PodeAtacarAutomaticamente(IdentidadeUnidade alvo)
     {
         if (alvo == null || alvo.teamID <= 0 || alvo.teamID == meuTime) return false;
-        if (!NavioExigeGuerraDeclarada()) return true;
+        if (NavioExigeGuerraDeclarada())
+        {
+            return SistemaGovernoMundial.Instancia != null
+                && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
+        }
 
-        return SistemaGovernoMundial.Instancia != null
-            && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
+        return !exigeHostilidadeNaBuscaAutomatica
+            || ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, alvo);
     }
     
     void RotacionarParaAlvo()

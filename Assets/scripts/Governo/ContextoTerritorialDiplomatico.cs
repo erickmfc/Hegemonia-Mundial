@@ -224,6 +224,30 @@ public static class ContextoTerritorialDiplomatico
         return relacao == null || !relacao.cessarFogoAtivo;
     }
 
+    /// <summary>
+    /// Gate para aquisição automática de alvos por armas terrestres. A postura
+    /// hostil ou a guerra declarada autorizam o engajamento; cessar-fogo e
+    /// zonas desmilitarizadas continuam bloqueando o disparo.
+    /// </summary>
+    public static bool PodeDispararPorHostilidadeOuGuerra(int teamAtacante, IdentidadeUnidade alvo)
+    {
+        if (teamAtacante <= 0 || alvo == null || alvo.teamID <= 0 || teamAtacante == alvo.teamID)
+            return false;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null) return false;
+
+        RelacaoPaisGoverno relacao = governo.ObterRelacao(teamAtacante, alvo.teamID);
+        if (relacao != null && relacao.cessarFogoAtivo) return false;
+
+        bool posturaHostil = relacao != null
+            && relacao.PosturaDe(teamAtacante) == PosturaRelacaoPais.Inimigo;
+        bool emGuerra = !posturaHostil && PodeDispararEmGuerra(teamAtacante, alvo.teamID);
+        if (!posturaHostil && !emGuerra) return false;
+
+        return !governo.EstaPosicaoDesmilitarizada(alvo.teamID, alvo.transform.position);
+    }
+
     public static bool PodeDispararEmGuerra(int teamAtacante, IdentidadeUnidade alvo)
     {
         if (alvo == null) return false;
