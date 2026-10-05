@@ -5,32 +5,10 @@ using UnityEditor;
 using UnityEditor.TestTools.TestRunner.Api;
 using UnityEngine;
 
-[InitializeOnLoad]
 public static class RunAircraftTestsInEditor
 {
     private const string RanKey = "AircraftTests_Ran_Flag_v1";
     private static TestRunnerApi api;
-
-    static RunAircraftTestsInEditor()
-    {
-        // A execução automática das compras de aeronave não pode disputar o
-        // Test Runner quando a Unity foi iniciada por `-runTests` (CLI/CI).
-        // O menu manual continua disponível para validar essa suíte no Editor.
-        if (IsCommandLineTestRun()) return;
-        EditorApplication.delayCall += Trigger;
-    }
-
-    private static bool IsCommandLineTestRun()
-    {
-        string[] arguments = Environment.GetCommandLineArgs();
-        for (int i = 0; i < arguments.Length; i++)
-        {
-            if (string.Equals(arguments[i], "-runTests", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
-    }
 
     private static void Trigger()
     {
