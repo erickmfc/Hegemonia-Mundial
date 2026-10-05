@@ -212,6 +212,77 @@ public sealed class IA03EventHookPlayModeTests
         yield return null;
     }
 
+    [UnityTest]
+    public IEnumerator GuidedMissileKillKeepsRegisteredLaunchTeamForConflictReport()
+    {
+        Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type brainType = ResolveType("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type damageType = ResolveType("SistemaDeDanos");
+        Type identityType = ResolveType("IdentidadeUnidade");
+        Type missileType = ResolveType("MissilTeleguiado");
+        Type trackerType = ResolveType("MissileThreatTracker");
+        var objects = new List<GameObject>();
+        GameObject observer = new GameObject("IA03 guided missile attribution test");
+        observer.SetActive(false);
+        objects.Add(observer);
+
+        try
+        {
+            Component brain = observer.AddComponent(brainType);
+            SetField(brain, "TeamId", 1);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            ((Behaviour)brain).enabled = false;
+            Component strategist = observer.AddComponent(strategistType);
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "paisAlvoTeamId", 2);
+            observer.SetActive(true);
+            yield return null;
+
+            GameObject launcher = CreateEntity(objects, identityType, damageType, 1, false, "Guided missile launcher");
+            launcher.transform.position = new Vector3(250f, 0f, 0f);
+            GameObject target = CreateEntity(objects, identityType, damageType, 2, false, "Guided missile target");
+            yield return null;
+            Component targetDamage = target.GetComponent(damageType);
+            SetField(targetDamage, "vidaMaxima", 10f);
+            SetField(targetDamage, "vidaAtual", 10f);
+
+            GameObject missile = new GameObject("Tracked guided missile");
+            missile.transform.position = target.transform.position;
+            objects.Add(missile);
+            Component guided = missile.AddComponent(missileType);
+            SetField(guided, "alvo", target.transform);
+
+            MethodInfo registerMissile = trackerType.GetMethod("RegistrarLancamento", BindingFlags.Static | BindingFlags.Public);
+            Assert.That(registerMissile, Is.Not.Null);
+            registerMissile.Invoke(null, new object[]
+            {
+                missile,
+                launcher.GetComponent(identityType),
+                target.transform.position,
+                target.transform,
+                80f,
+                false
+            });
+
+            MethodInfo applyDamage = missileType.GetMethod("AplicarDano", Members);
+            Assert.That(applyDamage, Is.Not.Null);
+            applyDamage.Invoke(guided, null);
+
+            Assert.That(ReportValue(strategist, strategistType, "InimigosDestruidos"), Is.EqualTo(1),
+                "A morte deve herdar o time registrado no tracker do míssil, mesmo sem atacante próximo ao alvo.");
+        }
+        finally
+        {
+            for (int i = 0; i < objects.Count; i++)
+            {
+                if (objects[i] != null) UnityEngine.Object.Destroy(objects[i]);
+            }
+        }
+
+        yield return null;
+    }
+
     private static GameObject CreateEntity(
         List<GameObject> objects,
         Type identityType,

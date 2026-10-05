@@ -169,7 +169,10 @@ public class MissilTeleguiado : MonoBehaviour
             ?? alvo.GetComponentInChildren<SistemaDeDanos>(true);
         if (sistemaDanos != null)
         {
-            sistemaDanos.ReceberDano(dano);
+            // Preserve o tracker de origem do míssil. Sem agressor, o sistema
+            // tenta inferir uma unidade próxima e pode atribuir a baixa ao time
+            // errado ou deixar a IA03 sem autoria do evento.
+            sistemaDanos.ReceberDano(dano, gameObject);
             return;
         }
 
