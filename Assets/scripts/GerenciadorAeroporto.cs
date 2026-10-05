@@ -1327,6 +1327,12 @@ public class GerenciadorAeroporto : MonoBehaviour
     /// </summary>
     public bool TryComprarAviaoIAImediato(GameObject prefabDeAeronave, string productionOrderId = "")
     {
+        if (semEnergia)
+        {
+            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            return false;
+        }
+
         // A IA pode encontrar fichas legadas com uma referência vazia/objeto
         // quebrado. Não encaminhe esse objeto para Instantiate: isso gerava o
         // erro de prefab sem nome e interrompia a fila militar.

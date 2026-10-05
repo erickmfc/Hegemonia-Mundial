@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Reflection;
+using System.Text;
 using UnityEngine;
 using Hegemonia.RTS;
 
@@ -154,6 +156,11 @@ public class ControleTorreta : MonoBehaviour
     private bool estaRecarregandoMisseis = false;
     private float contadorRecargaMissel = 0f;
     private float cooldownMissel = 0f;
+
+#if UNITY_EDITOR
+    private static readonly HashSet<int> probeSelecaoPorTorreta = new HashSet<int>();
+    private static readonly HashSet<int> probeDisparoPorTorreta = new HashSet<int>();
+#endif
 
     // Buffer de colisores privado para não gerar lixo na memória
     private Collider[] bufferColisores = new Collider[40]; 
@@ -442,6 +449,9 @@ public class ControleTorreta : MonoBehaviour
             float distSqrPrioritario = (transform.position - alvoPosRealPrioritario).sqrMagnitude;
             if (distSqrPrioritario <= alcance * alcance)
             {
+#if UNITY_EDITOR
+                RegistrarProbeEngajamento("ALVO_ESCOLHIDO", this, alvoPrioritario, "alvoPrioritario", true);
+#endif
                 SetarAlvo(alvoPrioritario);
                 return;
             }
@@ -612,6 +622,18 @@ public class ControleTorreta : MonoBehaviour
             bufferColisores[i] = null;
         }
 
+#if UNITY_EDITOR
+        if (melhorAlvo != null)
+        {
+            bool alvoExplicito = alvoPrioritario != null && ResolverTransformAlvo(alvoPrioritario) == melhorAlvo;
+            RegistrarProbeEngajamento(
+                "ALVO_ESCOLHIDO",
+                this,
+                melhorAlvo,
+                alvoExplicito ? "alvoPrioritario" : "ProcurarAlvo/PodeAtacarAutomaticamente",
+                alvoExplicito);
+        }
+#endif
         SetarAlvo(melhorAlvo);
     }
 
@@ -747,6 +769,182 @@ public class ControleTorreta : MonoBehaviour
         return SistemaGovernoMundial.Instancia != null
             && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
     }
+
+#if UNITY_EDITOR
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetarProbeEngajamento()
+    {
+        probeSelecaoPorTorreta.Clear();
+        probeDisparoPorTorreta.Clear();
+    }
+
+    private static void RegistrarProbeEngajamento(
+        string etapa,
+        ControleTorreta torreta,
+        Transform alvoTransform,
+        string metodoSelecao,
+        bool alvoExplicito)
+    {
+        if (torreta == null
+            || !Application.isPlaying
+            || !string.Equals(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().path,
+                "Assets/Tests/PlayMode/IA03_WarValidation.unity",
+                System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        bool eDisparo = string.Equals(etapa, "DISPARAR_INVOCADO", System.StringComparison.Ordinal);
+        HashSet<int> sondasDaTorreta = eDisparo ? probeDisparoPorTorreta : probeSelecaoPorTorreta;
+        int torretaId = torreta.GetInstanceID();
+        if (sondasDaTorreta.Contains(torretaId))
+            return;
+
+        IdentidadeUnidade atirador = torreta.minhaIdentidade != null
+            ? torreta.minhaIdentidade
+            : torreta.GetComponentInParent<IdentidadeUnidade>(true);
+        IdentidadeUnidade identidadeAlvo = alvoTransform != null
+            ? alvoTransform.GetComponentInParent<IdentidadeUnidade>(true)
+            : null;
+
+        if (atirador == null || identidadeAlvo == null
+            || !ParDeValidacaoIA03(atirador.teamID, identidadeAlvo.teamID))
+        {
+            return;
+        }
+
+        sondasDaTorreta.Add(torretaId);
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        RelacaoPaisGoverno relacao = governo != null
+            ? governo.ObterRelacao(atirador.teamID, identidadeAlvo.teamID)
+            : null;
+        ControleUnidade controle = atirador.GetComponentInParent<ControleUnidade>(true);
+        string ordem = controle != null ? controle.OrdemAtual.ToString() : "sem ControleUnidade";
+        string ordemMovimento = controle != null && controle.OrdemMovimentoAtual != null
+            ? controle.OrdemMovimentoAtual.ToString()
+            : "nenhuma";
+        bool modoCombate = controle != null && controle.ModoCombateAtivo;
+        bool patrulhaAtiva = ordem == "Patrulhando"
+            || ordemMovimento.IndexOf("Patrulha", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+        string ia03 = DescreverEstadoIA03Probe(atirador);
+        // Não reexecuta o gate durante a sonda: algumas APIs diplomáticas
+        // consultadas por armas navais também registram contexto/incident.
+        bool autorizacaoAutomatica = !alvoExplicito;
+        bool consultaDiplomatica = !alvoExplicito
+            && torreta.NavioExigeGuerraDeclarada()
+            && SistemaGovernoMundial.Instancia != null;
+        string justificativa = alvoExplicito
+            ? "alvo prioritário explícito; busca automática não aplicou o gate diplomático"
+            : consultaDiplomatica
+                ? "PodeAtacarAutomaticamente consultou ContextoTerritorialDiplomatico"
+                : autorizacaoAutomatica
+                    ? "PodeAtacarAutomaticamente aceitou TeamId diferente sem consultar diplomacia"
+                    : "PodeAtacarAutomaticamente recusou o alvo";
+
+        StringBuilder log = new StringBuilder(512);
+        log.Append("[IA03][ENGAGEMENT_PROBE][").Append(etapa).Append("] frame=").Append(Time.frameCount);
+        log.Append(" shooter=").Append(atirador.name).Append(" path=").Append(CaminhoProbe(atirador.transform));
+        log.Append(" shooterTeam=").Append(atirador.teamID).Append(" identity=").Append(atirador.GetType().Name);
+        log.Append(" target=").Append(identidadeAlvo.name).Append(" path=").Append(CaminhoProbe(identidadeAlvo.transform));
+        log.Append(" targetTeam=").Append(identidadeAlvo.teamID);
+        log.Append(" relationWar=").Append(relacao != null ? relacao.guerraDeclarada.ToString() : "indisponível");
+        log.Append(" relationValue=").Append(relacao != null ? relacao.valor.ToString() : "indisponível");
+        log.Append(" postureAtoB=").Append(relacao != null ? relacao.posturaAParaB.ToString() : "indisponível");
+        log.Append(" postureBtoA=").Append(relacao != null ? relacao.posturaBParaA.ToString() : "indisponível");
+        log.Append(" selector=").Append(metodoSelecao);
+        log.Append(" explicitTarget=").Append(alvoExplicito);
+        log.Append(" autoAuthorized=").Append(alvoExplicito ? "n/a" : autorizacaoAutomatica.ToString());
+        log.Append(" diplomaticApiConsulted=").Append(consultaDiplomatica);
+        log.Append(" unitOrder=").Append(ordem).Append(" movementOrder=").Append(ordemMovimento);
+        log.Append(" patrolActive=").Append(patrulhaAtiva).Append(" combatMode=").Append(modoCombate);
+        log.Append(" IA03=").Append(ia03);
+        log.Append(" turretComponentId=").Append(torretaId);
+        log.Append(" turretPath=").Append(CaminhoProbe(torreta.transform));
+        log.Append(" turretEnabled=").Append(torreta.isActiveAndEnabled);
+        log.Append(" yawPart=").Append(torreta.pecaQueGira != null ? torreta.pecaQueGira.name : "none");
+        log.Append(" barrelPart=").Append(torreta.canosDaTorreta != null ? torreta.canosDaTorreta.name : "none");
+        log.Append(" reason=").Append(justificativa);
+        Debug.Log(log.ToString(), torreta);
+    }
+
+    private static bool ParDeValidacaoIA03(int a, int b)
+    {
+        return (a == 1 && b == 3) || (a == 3 && b == 1);
+    }
+
+    private static string CaminhoProbe(Transform alvo)
+    {
+        if (alvo == null) return "<null>";
+        string caminho = alvo.name;
+        Transform pai = alvo.parent;
+        while (pai != null)
+        {
+            caminho = pai.name + "/" + caminho;
+            pai = pai.parent;
+        }
+        return "/" + caminho;
+    }
+
+    private static string DescreverEstadoIA03Probe(IdentidadeUnidade unidade)
+    {
+        MonoBehaviour[] componentes = unidade.GetComponentsInParent<MonoBehaviour>(true);
+        for (int i = 0; i < componentes.Length; i++)
+        {
+            MonoBehaviour componente = componentes[i];
+            if (componente == null || componente.GetType().Name != "IA03EstrategaNacional") continue;
+
+            object missao = LerMembroProbe(componente, "missaoAtiva");
+            object creaty = LerMembroProbe(componente, "creatyAtivo");
+            object nivel = LerMembroProbe(componente, "NivelDeConflito");
+            object estadoMissao = LerMembroProbe(componente, "EstadoDaMissao");
+            return "level=" + ValorProbe(nivel)
+                + ",mission=" + DescreverMissaoProbe(missao)
+                + ",missionState=" + ValorProbe(estadoMissao)
+                + ",creaty=" + DescreverCreatyProbe(creaty);
+        }
+        return "não encontrado no pai do atirador";
+    }
+
+    private static object LerMembroProbe(object origem, string nome)
+    {
+        if (origem == null) return null;
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        System.Type tipo = origem.GetType();
+        FieldInfo campo = tipo.GetField(nome, flags);
+        if (campo != null) return campo.GetValue(origem);
+        PropertyInfo propriedade = tipo.GetProperty(nome, flags);
+        return propriedade != null && propriedade.CanRead ? propriedade.GetValue(origem) : null;
+    }
+
+    private static string DescreverMissaoProbe(object missao)
+    {
+        if (missao == null) return "nenhuma";
+        object nome = LerMembroProbe(missao, "NomeMissao");
+        return nome != null ? nome.ToString() : ValorProbe(missao);
+    }
+
+    private static string DescreverCreatyProbe(object creaty)
+    {
+        if (creaty == null) return "nenhum";
+        UnityEngine.Object objetoUnity = creaty as UnityEngine.Object;
+        string nome = objetoUnity != null ? objetoUnity.name : ValorProbe(creaty);
+        return nome
+            + "(id=" + ValorProbe(LerMembroProbe(creaty, "id"))
+            + ",type=" + ValorProbe(LerMembroProbe(creaty, "tipo"))
+            + ",level=" + ValorProbe(LerMembroProbe(creaty, "nivelDeConflito"))
+            + ",domain=" + ValorProbe(LerMembroProbe(creaty, "dominio")) + ")";
+    }
+
+    private static string ValorProbe(object valor)
+    {
+        if (valor == null) return "nenhum";
+        UnityEngine.Object objetoUnity = valor as UnityEngine.Object;
+        return objetoUnity != null ? objetoUnity.name : valor.ToString();
+    }
+#endif
 
     private void SetarAlvo(Transform novoAlvo)
     {
@@ -1051,6 +1249,13 @@ public class ControleTorreta : MonoBehaviour
 
     void Disparar()
     {
+#if UNITY_EDITOR
+        RegistrarProbeEngajamento("DISPARAR_INVOCADO", this, alvoAtual,
+            alvoPrioritario != null && ResolverTransformAlvo(alvoPrioritario) == alvoAtual
+                ? "alvoPrioritario"
+                : "Update -> Disparar (gate de mira/recarga concluído)",
+            alvoPrioritario != null && ResolverTransformAlvo(alvoPrioritario) == alvoAtual);
+#endif
         bool alvoEhMissil = ObterEhMissilComCache(alvoAtual);
         bool alvoEhTorpedo = ObterEhTorpedoComCache(alvoAtual);
 
@@ -1119,6 +1324,9 @@ public class ControleTorreta : MonoBehaviour
             if (scriptBala != null)
             {
                 scriptBala.SetDono(ObterDonoDoDisparo());
+#if UNITY_EDITOR
+                scriptBala.RegistrarProbeDisparo(this, barrilDaVez, alvoAtual);
+#endif
                 scriptBala.SetDirecao(direcaoDisparo);
                 if (scriptBala.velocidade == 0) scriptBala.velocidade = 200f;
             }

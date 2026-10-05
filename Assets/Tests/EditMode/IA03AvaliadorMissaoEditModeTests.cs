@@ -531,6 +531,105 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         }
     }
 
+    [Test]
+    public void ProducaoAereaIABloqueiaSpawnQuandoAeroportoEstaSemEnergia()
+    {
+        Vector3 spawn = new Vector3(50000f, 0f, 50000f);
+        GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        water.name = "IA03 blackout water spawn blocker";
+        water.transform.position = spawn;
+        water.transform.localScale = new Vector3(1000f, 10f, 1000f);
+        water.AddComponent(ResolverTipo("MarcadorSuperficieMapa"));
+
+        GameObject airportObject = new GameObject("IA03 unpowered airport spawn test");
+        airportObject.SetActive(false);
+        airportObject.transform.position = spawn;
+        GameObject prefab = new GameObject("IA03 unpowered fighter test prefab");
+        Component airport = null;
+        try
+        {
+            airport = airportObject.AddComponent(ResolverTipo("GerenciadorAeroporto"));
+            SetField(airport, "semEnergia", true);
+            MethodInfo trySpawn = airport.GetType().GetMethod(
+                "TryComprarAviaoIAImediato",
+                BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(trySpawn, Is.Not.Null);
+
+            bool accepted = (bool)trySpawn.Invoke(airport, new object[] { prefab, "ia03-blackout-aircraft" });
+
+            Assert.That(accepted, Is.False);
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(prefab);
+            UnityEngine.Object.DestroyImmediate(airportObject);
+            UnityEngine.Object.DestroyImmediate(water);
+        }
+    }
+
+    [Test]
+    public void ProducaoDeHelicopteroIAFalhaQuandoHeliportoEstaSemEnergia()
+    {
+        const int teamId = 987655;
+        GameObject heliportObject = new GameObject("IA03 unpowered heliport test");
+        heliportObject.SetActive(false);
+        GameObject prefab = new GameObject("IA03 heli test prefab");
+        ScriptableObject item = ScriptableObject.CreateInstance(ResolverTipo("DadosConstrucao"));
+        Component heliport = null;
+        object backend = null;
+        try
+        {
+            Component identity = heliportObject.AddComponent(ResolverTipo("IdentidadeUnidade"));
+            SetField(identity, "teamID", teamId);
+            heliport = heliportObject.AddComponent(ResolverTipo("Heliporto"));
+            Component property = heliportObject.AddComponent(ResolverTipo("Imovel"));
+            SetField(property, "semEnergia", true);
+
+            Type registryType = ResolverTipo("RegistroEntidadesJogo");
+            MethodInfo register = registryType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .First(method => method.Name == "Register"
+                    && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == heliport.GetType());
+            register.Invoke(null, new object[] { heliport });
+
+            SetField(item, "nomeItem", "IA03 helicopter test");
+            SetField(item, "prefabDaUnidade", prefab);
+
+            Type backendType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BackendBridge");
+            backend = Activator.CreateInstance(backendType, new object[] { teamId });
+            object productionService = backendType.GetProperty("ProductionService").GetValue(backend);
+            MethodInfo produceHelicopter = productionService.GetType().GetMethod(
+                "ProduceHelicopter",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(produceHelicopter, Is.Not.Null);
+
+            object[] arguments = { item, null, "ia03-unpowered-heliport" };
+            GameObject produced = produceHelicopter.Invoke(productionService, arguments) as GameObject;
+
+            Assert.That(produced, Is.Null);
+            Assert.That(arguments[1], Is.EqualTo("heliporto sem energia"));
+            Assert.That((bool)heliport.GetType().GetMethod("TemEspacoParaPousar").Invoke(heliport, null), Is.True,
+                "O teste precisa comprovar que o bloqueio foi energia, não lotação.");
+        }
+        finally
+        {
+            if (heliport != null)
+            {
+                Type registryType = ResolverTipo("RegistroEntidadesJogo");
+                MethodInfo unregister = registryType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .First(method => method.Name == "Unregister"
+                        && method.GetParameters().Length == 1
+                        && method.GetParameters()[0].ParameterType == heliport.GetType());
+                unregister.Invoke(null, new object[] { heliport });
+            }
+
+            UnityEngine.Object.DestroyImmediate(item);
+            UnityEngine.Object.DestroyImmediate(prefab);
+            UnityEngine.Object.DestroyImmediate(heliportObject);
+        }
+    }
+
     private static Component CriarUnidadeComTorre(
         Transform root,
         string pais,

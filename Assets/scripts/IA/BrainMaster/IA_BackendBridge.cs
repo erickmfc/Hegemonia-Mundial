@@ -1968,11 +1968,20 @@ namespace Hegemonia.AI.BrainMaster
                 DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", data.PrefabDaUnidade.name);
             }
             RegistroEntidadesJogo.FillHeliportos(_heliportBuffer);
+            bool encontrouHeliportoSemEnergia = false;
             for (int i = 0; i < _heliportBuffer.Count; i++)
             {
                 Heliporto heliport = _heliportBuffer[i];
                 if (heliport == null || !_bridge.BelongsToTeam(heliport))
                 {
+                    continue;
+                }
+
+                Imovel imovel = heliport.GetComponent<Imovel>();
+                if (imovel == null) imovel = heliport.GetComponentInParent<Imovel>();
+                if (imovel != null && imovel.semEnergia)
+                {
+                    encontrouHeliportoSemEnergia = true;
                     continue;
                 }
 
@@ -1992,7 +2001,7 @@ namespace Hegemonia.AI.BrainMaster
                 return unit;
             }
 
-            reason = "heliporto indisponivel";
+            reason = encontrouHeliportoSemEnergia ? "heliporto sem energia" : "heliporto indisponivel";
             return null;
         }
 
