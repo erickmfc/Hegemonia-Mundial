@@ -219,6 +219,7 @@ namespace Hegemonia.AI.IA03
             if (gerenteTerritorialAssinado != null)
             {
                 gerenteTerritorialAssinado.OnTerritoryOwnerChanged -= AoMudarDonoTerritorial;
+                gerenteTerritorialAssinado.OnTerritoryCapturedByOccupation -= AoCapturarTerritorioPorOcupacao;
                 gerenteTerritorialAssinado = null;
             }
             EncerrarMissao("IA03 desativada");
@@ -1439,20 +1440,6 @@ namespace Hegemonia.AI.IA03
                 }
             }
 
-            if ((missaoAtiva != null &&
-                 (missaoAtiva.CondicaoDeSucesso == IA03CondicaoMissao.CapturarTerritorio
-                  || missaoAtiva.CondicaoDeFracasso == IA03CondicaoMissao.CapturarTerritorio))
-                && GerenteDeTerritorio.Instancia != null)
-            {
-                ResultadoConsultaTerritorio objetivo = GerenteDeTerritorio.Instancia.ObterTerritorioNaPosicao(creatyAtivo.transform.position);
-                if (objetivo.encontrouRegiao)
-                {
-                    territorioDoObjetivoCapturado = objetivo.ownerCountryTeamId == brain.TeamId;
-                    territorioDoObjetivoPerdido = objetivo.ownerCountryTeamId == equipeAlvoAtiva
-                                                   && !territorioDoObjetivoCapturado;
-                }
-            }
-
             bool prazoEncerrado = tempoMaximo > 0f && now - inicioMissaoEm >= tempoMaximo;
             float tempoPermanenciaMinimo = missaoAtiva != null
                 ? Mathf.Max(0f, missaoAtiva.TempoMinimoDePermanenciaSegundos)
@@ -1630,8 +1617,7 @@ namespace Hegemonia.AI.IA03
             if (missao == null
                 || (missao.TipoMissao != IA03TipoMissao.AtaqueLimitado
                     && missao.TipoMissao != IA03TipoMissao.GuerraTotal)
-                || (missao.CondicaoDeSucesso != IA03CondicaoMissao.DestruirAlvo
-                    && missao.CondicaoDeSucesso != IA03CondicaoMissao.CapturarTerritorio))
+                || missao.CondicaoDeSucesso != IA03CondicaoMissao.DestruirAlvo)
             {
                 return;
             }
@@ -1970,6 +1956,7 @@ namespace Hegemonia.AI.IA03
             if (gerenteTerritorialAssinado != null)
             {
                 gerenteTerritorialAssinado.OnTerritoryOwnerChanged += AoMudarDonoTerritorial;
+                gerenteTerritorialAssinado.OnTerritoryCapturedByOccupation += AoCapturarTerritorioPorOcupacao;
             }
         }
 
@@ -1989,10 +1976,15 @@ namespace Hegemonia.AI.IA03
                 relatorio.RegistrarObjetivoCapturado(false);
             }
 
+        }
+
+        private void AoCapturarTerritorioPorOcupacao(string territorioId, int donoAnterior, int novoDono)
+        {
             bool exigeCapturaTerritorial = missaoAtiva != null
                 && (missaoAtiva.CondicaoDeSucesso == IA03CondicaoMissao.CapturarTerritorio
                     || missaoAtiva.CondicaoDeFracasso == IA03CondicaoMissao.CapturarTerritorio);
-            if (!exigeCapturaTerritorial || creatyAtivo == null || gerenteTerritorialAssinado == null)
+            if (!exigeCapturaTerritorial || brain == null || creatyAtivo == null
+                || gerenteTerritorialAssinado == null || string.IsNullOrWhiteSpace(territorioId))
             {
                 return;
             }
@@ -2003,18 +1995,18 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
-            if (donoAnterior == equipeAlvoAtiva && novoDono == brain.TeamId)
+            if (novoDono == brain.TeamId)
             {
                 territorioDoObjetivoCapturado = true;
                 territorioDoObjetivoPerdido = false;
+                SolicitarReanaliseAntecipada();
             }
             else if (donoAnterior == brain.TeamId && novoDono == equipeAlvoAtiva)
             {
                 territorioDoObjetivoCapturado = false;
                 territorioDoObjetivoPerdido = true;
+                SolicitarReanaliseAntecipada();
             }
-
-            SolicitarReanaliseAntecipada();
         }
 
         private static string ObterIdPersistenteAlvo(Transform alvo)

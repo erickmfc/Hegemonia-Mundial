@@ -135,6 +135,11 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         };
         EventInfo eventoTerritorial = gerenteType.GetEvent("OnTerritoryOwnerChanged", BindingFlags.Instance | BindingFlags.Public);
         eventoTerritorial.AddEventHandler(gerente, aoMudarDono);
+        bool recebeuEventoDeOcupacao = false;
+        Action<string, int, int> aoCapturarPorOcupacao = (id, anterior, atual) =>
+            recebeuEventoDeOcupacao |= id == "cessao-permanente";
+        EventInfo eventoOcupacao = gerenteType.GetEvent("OnTerritoryCapturedByOccupation", BindingFlags.Instance | BindingFlags.Public);
+        eventoOcupacao.AddEventHandler(gerente, aoCapturarPorOcupacao);
         bool recebeuNoticia = false;
         Action<string> aoReceberNoticia = mensagem => recebeuNoticia |= mensagem.Contains("cedeu permanentemente");
         EventInfo eventoNoticia = governoType.GetEvent("OnNoticia", BindingFlags.Instance | BindingFlags.Public);
@@ -153,6 +158,7 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
 
             Assert.That(sucesso, Is.True, argumentos[2] as string);
             Assert.That(recebeuMudanca, Is.True);
+            Assert.That(recebeuEventoDeOcupacao, Is.False, "Cessão diplomática deve publicar a mudança genérica, não uma captura por ocupação.");
             Assert.That(donoAnterior, Is.EqualTo(3));
             Assert.That(novoDono, Is.EqualTo(2));
             Assert.That(Field(Invocar(gerente, "ObterEstadoDaRegiao", "cessao-permanente"), "ownerCountryTeamId"), Is.EqualTo(2));
@@ -168,7 +174,149 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         finally
         {
             eventoTerritorial.RemoveEventHandler(gerente, aoMudarDono);
+            eventoOcupacao.RemoveEventHandler(gerente, aoCapturarPorOcupacao);
             eventoNoticia.RemoveEventHandler(governo, aoReceberNoticia);
+        }
+    }
+
+    [Test]
+    public void CessaoGenericaDuranteMissaoDeCapturaNaoCompletaAMissao()
+    {
+        const string territorioId = "missao-sem-captura-diplomatica";
+        Vector3 posicao = new Vector3(4321f, 0f, 4321f);
+        GameObject estrategaObject = null;
+        GameObject creatyObject = null;
+        GameObject unidadeMissao = new GameObject("Unidade IA03 cessão teste");
+        ScriptableObject missao = null;
+        try
+        {
+            AdicionarRegiao(territorioId, 3, capturable: true);
+            ConfigurarGeometriaTerritorial(territorioId, posicao);
+            Component estratega = CriarEstrategaComMissaoCaptura(
+                posicao, out estrategaObject, out creatyObject, out missao);
+            VincularUnidadeAMissao(estratega, unidadeMissao);
+
+            Assert.That(Invocar(gerente, "TentarCapturarTerritorio", territorioId, 2), Is.True);
+            Invocar(estratega, "ProcessarMissaoAtiva", 1f);
+            Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.False,
+                "A mudança genérica do proprietário por cessão não pode confirmar a captura da missão.");
+            Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False);
+            Assert.That(Field(estratega, "missaoAtiva"), Is.SameAs(missao));
+            Assert.That(Field(estratega, "estadoDaMissao").ToString(), Is.EqualTo("EmAndamento"));
+
+            Assert.That(Invocar(gerente, "TentarCapturarTerritorio", territorioId, 3), Is.True);
+            Invocar(estratega, "ProcessarMissaoAtiva", 2f);
+            Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.False);
+            Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False,
+                "A reversão diplomática também não representa perda física da missão.");
+            Assert.That(Field(estratega, "missaoAtiva"), Is.SameAs(missao));
+            Assert.That(Field(estratega, "estadoDaMissao").ToString(), Is.EqualTo("EmAndamento"));
+        }
+        finally
+        {
+            if (estrategaObject != null) UnityEngine.Object.DestroyImmediate(estrategaObject);
+            if (creatyObject != null) UnityEngine.Object.DestroyImmediate(creatyObject);
+            UnityEngine.Object.DestroyImmediate(unidadeMissao);
+            if (missao != null) UnityEngine.Object.DestroyImmediate(missao);
+        }
+    }
+
+    [Test]
+    public void CapturaFisicaPublicaEventoEspecificoEConservaEventoGenerico()
+    {
+        const string territorioId = "captura-fisica";
+        Vector3 posicao = new Vector3(4321f, 0f, 4321f);
+        GameObject unidadeObject = new GameObject("Unidade teste captura física");
+        GameObject estrategaObject = null;
+        GameObject creatyObject = null;
+        ScriptableObject missao = null;
+        EventInfo eventoGenerico = gerenteType.GetEvent("OnTerritoryOwnerChanged", BindingFlags.Instance | BindingFlags.Public);
+        EventInfo eventoOcupacao = gerenteType.GetEvent("OnTerritoryCapturedByOccupation", BindingFlags.Instance | BindingFlags.Public);
+        bool recebeuGenerico = false;
+        bool recebeuOcupacao = false;
+        int donoAnterior = int.MinValue;
+        int novoDono = int.MinValue;
+        Action<string, int, int> aoMudarDono = (id, anterior, atual) =>
+        {
+            if (id != territorioId) return;
+            recebeuGenerico = true;
+            donoAnterior = anterior;
+            novoDono = atual;
+        };
+        Action<string, int, int> aoCapturar = (id, anterior, atual) =>
+        {
+            if (id != territorioId) return;
+            recebeuOcupacao = true;
+            donoAnterior = anterior;
+            novoDono = atual;
+        };
+
+        try
+        {
+            SetField(gerente, "usarLimitesDeTerreno", false);
+            Bounds limitesTeste = new Bounds(Vector3.zero, new Vector3(10000f, 1000f, 10000f));
+            SetField(gerente, "limitesMapaExplicitos", limitesTeste);
+            SetField(gerente, "limitesTerritoriais", limitesTeste);
+            SetField(gerente, "limitesTerritoriaisProntos", true);
+            SetField(gerente, "definicaoMapaGlobal", null);
+            SetField(gerente, "segundosParaCapturarTerritorio", 1f);
+
+            AdicionarRegiao(territorioId, 0, capturable: true, neutral: true);
+            ConfigurarGeometriaTerritorial(territorioId, posicao);
+            object consulta = Invocar(gerente, "ObterTerritorioNaPosicao", posicao);
+            Assert.That(Field(consulta, "encontrouRegiao"), Is.True, "O polígono de teste deve conter a posição da unidade.");
+            Assert.That(Field(consulta, "territorioId"), Is.EqualTo(territorioId));
+            Assert.That(Field(consulta, "neutral"), Is.True);
+            Assert.That(Field(consulta, "capturable"), Is.True);
+
+            unidadeObject.transform.position = posicao;
+            Type identidadeType = ResolverTipo("IdentidadeUnidade");
+            Component identidade = unidadeObject.AddComponent(identidadeType);
+            SetField(identidade, "teamID", 2);
+            SetField(identidade, "tipoUnidade", Enum.Parse(ResolverTipo("TipoUnidade"), "Infantaria"));
+            MethodInfo registrarUnidade = ResolverTipo("RegistroEntidadesJogo")
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .FirstOrDefault(metodo => metodo.Name == "Register"
+                    && metodo.GetParameters().Length == 1
+                    && metodo.GetParameters()[0].ParameterType == identidadeType);
+            Assert.That(registrarUnidade, Is.Not.Null);
+            // Em EditMode, MonoBehaviours comuns não recebem necessariamente OnEnable como no Play Mode.
+            registrarUnidade.Invoke(null, new object[] { identidade });
+            Component estratega = CriarEstrategaComMissaoCaptura(
+                posicao, out estrategaObject, out creatyObject, out missao);
+            eventoGenerico.AddEventHandler(gerente, aoMudarDono);
+            eventoOcupacao.AddEventHandler(gerente, aoCapturar);
+
+            Invocar(gerente, "AtualizarCapturasTerritoriais", 1f);
+
+            IDictionary equipesPresentes = (IDictionary)Field(gerente, "equipesPresentesPorTerritorio");
+            Assert.That(equipesPresentes.Contains(territorioId), Is.True, "A IdentidadeUnidade ativa deve ser lida pelo registro reutilizável.");
+            Assert.That(recebeuGenerico, Is.True);
+            Assert.That(recebeuOcupacao, Is.True);
+            Assert.That(donoAnterior, Is.EqualTo(0));
+            Assert.That(novoDono, Is.EqualTo(2));
+            Assert.That(Invocar(gerente, "ObterDonoDaRegiao", territorioId), Is.EqualTo(2));
+            Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.True,
+                "O consumidor IA03 deve receber o evento físico e confirmar o objetivo da missão.");
+            Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False);
+            VincularUnidadeAMissao(estratega, unidadeObject);
+            Invocar(estratega, "ProcessarMissaoAtiva", 2f);
+            Assert.That(Field(estratega, "estadoDaMissao").ToString(), Is.EqualTo("Sucesso"));
+            Assert.That(Field(estratega, "missaoAtiva"), Is.Null);
+            Assert.That(Field(estratega, "creatyAtivo"), Is.Null);
+            Assert.That(((IList)Field(estratega, "unidadesAtivasNaMissao")).Count, Is.EqualTo(0));
+            object relatorio = estratega.GetType().GetProperty("RelatorioAtual").GetValue(estratega, null);
+            Assert.That(Field(relatorio, "BatalhasVencidas"), Is.EqualTo(0),
+                "O sucesso territorial conclui a missão, mas não aumenta vitórias em batalha.");
+        }
+        finally
+        {
+            eventoGenerico.RemoveEventHandler(gerente, aoMudarDono);
+            eventoOcupacao.RemoveEventHandler(gerente, aoCapturar);
+            UnityEngine.Object.DestroyImmediate(unidadeObject);
+            if (estrategaObject != null) UnityEngine.Object.DestroyImmediate(estrategaObject);
+            if (creatyObject != null) UnityEngine.Object.DestroyImmediate(creatyObject);
+            if (missao != null) UnityEngine.Object.DestroyImmediate(missao);
         }
     }
 
@@ -200,13 +348,77 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         return (bool)Invocar(governo, "EstaRegiaoDesmilitarizada", teamId, id);
     }
 
-    private void AdicionarRegiao(string id, int owner, bool capturable)
+    private Component CriarEstrategaComMissaoCaptura(
+        Vector3 posicao,
+        out GameObject estrategaObject,
+        out GameObject creatyObject,
+        out ScriptableObject missao)
+    {
+        Type strategaType = ResolverTipo("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type brainType = ResolverTipo("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        estrategaObject = new GameObject("IA03 teste missão de captura");
+        estrategaObject.SetActive(false);
+        Component brain = estrategaObject.AddComponent(brainType);
+        SetField(brain, "TeamId", 2);
+        Component estratega = estrategaObject.AddComponent(strategaType);
+        SetField(estratega, "brain", brain);
+        SetField(estratega, "paisAlvoTeamId", 3);
+        SetField(estratega, "equipeAlvoAtiva", 3);
+
+        creatyObject = new GameObject("Creaty teste missão de captura");
+        creatyObject.SetActive(false);
+        creatyObject.transform.position = posicao;
+        Component creaty = creatyObject.AddComponent(ResolverTipo("Hegemonia.AI.IA03.CreatyEstrategico"));
+        SetField(estratega, "creatyAtivo", creaty);
+
+        Type missionType = ResolverTipo("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type conditionType = ResolverTipo("Hegemonia.AI.IA03.IA03CondicaoMissao");
+        missao = ScriptableObject.CreateInstance(missionType);
+        SetField(missao, "tipoMissao", Enum.Parse(ResolverTipo("Hegemonia.AI.IA03.IA03TipoMissao"), "AtaqueLimitado"));
+        SetField(missao, "condicaoDeSucesso", Enum.Parse(conditionType, "CapturarTerritorio"));
+        SetField(missao, "condicaoDeFracasso", Enum.Parse(conditionType, "SobreviverAteOPrazo"));
+        SetField(estratega, "missaoAtiva", missao);
+        Invocar(estratega, "GarantirAssinaturaTerritorial");
+        return estratega;
+    }
+
+    private static void VincularUnidadeAMissao(Component estratega, GameObject unidade)
+    {
+        ((IList)Field(estratega, "unidadesAtivasNaMissao")).Add(unidade);
+        SetField(estratega, "unidadesOriginaisNaMissao", 1);
+        SetField(estratega, "inicioMissaoEm", 0f);
+    }
+
+    private void ConfigurarGeometriaTerritorial(string id, Vector3 posicao)
+    {
+        Bounds limites = new Bounds(Vector3.zero, new Vector3(10000f, 1000f, 10000f));
+        SetField(gerente, "usarLimitesDeTerreno", false);
+        SetField(gerente, "limitesMapaExplicitos", limites);
+        SetField(gerente, "limitesTerritoriais", limites);
+        SetField(gerente, "limitesTerritoriaisProntos", true);
+        SetField(gerente, "definicaoMapaGlobal", null);
+
+        Vector2 uv = new Vector2(posicao.x / 10000f + 0.5f, 0.5f - posicao.z / 10000f);
+        var vertices = new List<Vector2>
+        {
+            uv + new Vector2(-0.01f, -0.01f),
+            uv + new Vector2(0.01f, -0.01f),
+            uv + new Vector2(0.01f, 0.01f),
+            uv + new Vector2(-0.01f, 0.01f)
+        };
+        IList regioes = (IList)mapa.GetType().GetProperty("Regioes", PublicInstance).GetValue(mapa, null);
+        object regiao = regioes.Cast<object>().First(item => (string)Field(item, "territorioId") == id);
+        SetField(regiao, "vertices", vertices);
+        Invocar(mapa, "InvalidarIndice");
+    }
+
+    private void AdicionarRegiao(string id, int owner, bool capturable, bool neutral = false)
     {
         Type regiaoType = ResolverTipo("RegiaoPolitica");
         object regiao = Activator.CreateInstance(regiaoType);
         SetField(regiao, "territorioId", id);
         SetField(regiao, "ownerCountryTeamId", owner);
-        SetField(regiao, "neutral", false);
+        SetField(regiao, "neutral", neutral);
         SetField(regiao, "capturable", capturable);
         SetField(regiao, "tipo", Enum.Parse(ResolverTipo("TipoRegiaoPolitica"), "Terra"));
         IList regioes = (IList)mapa.GetType().GetProperty("Regioes", PublicInstance).GetValue(mapa, null);

@@ -1155,8 +1155,12 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             MethodInfo finalize = strategistType.GetMethod("FinalizarMissao", BindingFlags.Instance | BindingFlags.NonPublic);
             Assert.That(finalize, Is.Not.Null);
 
-            Finalizar("AtaqueLimitado", "Sucesso");
+            Finalizar("AtaqueLimitado", "Sucesso", "CapturarTerritorio");
             object report = strategistType.GetProperty("RelatorioAtual").GetValue(strategist);
+            Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(0), "Conquistar uma região não é, por si só, uma batalha.");
+            Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(0));
+
+            Finalizar("AtaqueLimitado", "Sucesso");
             Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1));
             Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(0));
 
@@ -1167,15 +1171,20 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Finalizar("AtaqueLimitado", "Expirada");
             Finalizar("GuerraTotal", "Cancelada");
             Finalizar("Patrulha", "Sucesso");
+            Finalizar("GuerraTotal", "Fracasso", "CapturarTerritorio", grupoPerdeuUnidade: true);
             Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(1), "Timeout, cancelamento e patrulha são inconclusivos para batalhas.");
             Assert.That(Field(report, "BatalhasPerdidas"), Is.EqualTo(1));
 
-            void Finalizar(string tipo, string resultado, bool grupoPerdeuUnidade = false)
+            void Finalizar(
+                string tipo,
+                string resultado,
+                string condicao = "DestruirAlvo",
+                bool grupoPerdeuUnidade = false)
             {
                 ScriptableObject activeMission = ScriptableObject.CreateInstance(missionType);
                 missions.Add(activeMission);
                 SetField(activeMission, "tipoMissao", Enum.Parse(missionKindType, tipo));
-                SetField(activeMission, "condicaoDeSucesso", Enum.Parse(conditionType, "DestruirAlvo"));
+                SetField(activeMission, "condicaoDeSucesso", Enum.Parse(conditionType, condicao));
                 SetField(strategist, "missaoAtiva", activeMission);
                 SetField(strategist, "grupoPerdeuUnidade", grupoPerdeuUnidade);
                 finalize.Invoke(strategist, new object[] { Enum.Parse(resultType, resultado), "teste controlado" });

@@ -38,6 +38,8 @@ public class GerenteDeTerritorio : MonoBehaviour
     private GlobalWorldDefinition definicaoMapaGlobal;
 
     public event Action<string, int, int> OnTerritoryOwnerChanged;
+    /// <summary>Disparado somente quando a ocupação terrestre conclui a captura no ciclo físico de presença.</summary>
+    public event Action<string, int, int> OnTerritoryCapturedByOccupation;
 
     public DadosMapaTerritorial MapaPolitico
     {
@@ -171,10 +173,14 @@ public class GerenteDeTerritorio : MonoBehaviour
             }
 
             progresso.segundos += intervalo;
-            if (progresso.segundos >= Mathf.Max(1f, segundosParaCapturarTerritorio)
-                && TentarCapturarTerritorio(territorioId, equipe))
+            if (progresso.segundos >= Mathf.Max(1f, segundosParaCapturarTerritorio))
             {
-                progressoCaptura.Remove(territorioId);
+                int donoAnterior = ObterDonoDaRegiao(territorioId);
+                if (TentarCapturarTerritorio(territorioId, equipe))
+                {
+                    progressoCaptura.Remove(territorioId);
+                    OnTerritoryCapturedByOccupation?.Invoke(territorioId, donoAnterior, equipe);
+                }
             }
         }
     }
