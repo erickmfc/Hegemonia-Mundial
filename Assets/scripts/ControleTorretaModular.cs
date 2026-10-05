@@ -404,8 +404,9 @@ public class ControleTorretaModular : MonoBehaviour
                 && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
         }
 
-        return !exigeHostilidadeNaBuscaAutomatica
-            || ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, alvo);
+        // Aquisição automática não presume que uma equipe diferente seja
+        // inimiga. O alvo prioritário explícito é tratado antes deste método.
+        return ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, alvo);
     }
     
     void RotacionarParaAlvo()

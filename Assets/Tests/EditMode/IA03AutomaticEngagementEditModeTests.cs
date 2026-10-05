@@ -136,7 +136,10 @@ public sealed class IA03AutomaticEngagementEditModeTests
         SetField(turret, "alcance", 20f);
         SetField(turret, "souAntiAereo", false);
         SetField(turret, "exigeGuerraDeclarada", false);
-        SetField(turret, "exigeHostilidadeNaBuscaAutomatica", true);
+        // Exercita a antiga rota de bypass: mesmo se a flag de classificação
+        // disser que não exige hostilidade, a aquisição automática precisa
+        // passar pela política diplomática central.
+        SetField(turret, "exigeHostilidadeNaBuscaAutomatica", false);
 
         Component control = shooter.AddComponent(controlType);
 
@@ -186,7 +189,7 @@ public sealed class IA03AutomaticEngagementEditModeTests
         }
         SetField(turret, "meuTime", 1);
         SetField(turret, "exigeGuerraDeclarada", false);
-        SetField(turret, "exigeHostilidadeNaBuscaAutomatica", true);
+        SetField(turret, "exigeHostilidadeNaBuscaAutomatica", false);
 
         GameObject target = Track(new GameObject("IA03 gate target " + targetTeam));
         target.SetActive(false);

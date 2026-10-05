@@ -779,8 +779,10 @@ public class ControleTorreta : MonoBehaviour
                 && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, alvo);
         }
 
-        return !exigeHostilidadeNaBuscaAutomatica
-            || ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, alvo);
+        // Alvos adquiridos automaticamente sempre passam pela política
+        // diplomática. A distinção entre patrulha e ordem ofensiva explícita
+        // fica no fluxo de seleção: alvoPrioritario retorna antes deste gate.
+        return ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, alvo);
     }
 
 #if UNITY_EDITOR
@@ -846,9 +848,7 @@ public class ControleTorreta : MonoBehaviour
         // Não reexecuta o gate durante a sonda: algumas APIs diplomáticas
         // consultadas por armas navais também registram contexto/incident.
         bool autorizacaoAutomatica = !alvoExplicito;
-        bool consultaDiplomatica = !alvoExplicito
-            && (torreta.NavioExigeGuerraDeclarada() || torreta.exigeHostilidadeNaBuscaAutomatica)
-            && SistemaGovernoMundial.Instancia != null;
+        bool consultaDiplomatica = !alvoExplicito && SistemaGovernoMundial.Instancia != null;
         string justificativa = alvoExplicito
             ? "alvo prioritário explícito; busca automática não aplicou o gate diplomático"
             : consultaDiplomatica

@@ -474,6 +474,15 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         int equipeInimiga)
     {
         GameObject scenario = new GameObject("IA03 grouped target acquisition test");
+        Type governmentType = ResolverTipo("SistemaGovernoMundial");
+        PropertyInfo governmentInstance = governmentType.GetProperty(
+            "Instancia",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        object previousGovernment = governmentInstance.GetValue(null, null);
+        GameObject governmentObject = new GameObject("IA03 grouped acquisition diplomacy");
+        governmentObject.SetActive(false);
+        Component government = governmentObject.AddComponent(governmentType);
+        governmentInstance.GetSetMethod(true).Invoke(null, new[] { government });
         scenario.transform.position = new Vector3(1000000f, 0f, 1000000f);
         Component identidadeAtiradora = null;
         Component identidadeAliada = null;
@@ -487,6 +496,10 @@ public sealed class IA03AvaliadorMissaoEditModeTests
                 scenario.transform, "PaisAliado", "UnidadeAliada", equipeAtiradora, out _);
             identidadeInimiga = CriarUnidadeComTorre(
                 scenario.transform, "PaisDefensor", "UnidadeDefensora", equipeInimiga, out _);
+
+            object relation = governmentType.GetMethod("ObterRelacao", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Invoke(government, new object[] { equipeAtiradora, equipeInimiga });
+            SetField(relation, "guerraDeclarada", true);
 
             identidadeAtiradora.transform.position = scenario.transform.position;
             identidadeAliada.transform.position = scenario.transform.position + new Vector3(0f, 0f, 6f);
@@ -556,6 +569,8 @@ public sealed class IA03AvaliadorMissaoEditModeTests
                 if (identidadeAliada != null) unregister.Invoke(null, new[] { identidadeAliada });
                 if (identidadeInimiga != null) unregister.Invoke(null, new[] { identidadeInimiga });
             }
+            governmentInstance.GetSetMethod(true).Invoke(null, new[] { previousGovernment });
+            UnityEngine.Object.DestroyImmediate(governmentObject);
             UnityEngine.Object.DestroyImmediate(scenario);
         }
     }
