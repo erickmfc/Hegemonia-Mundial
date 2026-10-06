@@ -81,6 +81,10 @@ namespace Hegemonia.RTS
                     bool attackAccepted = unit.EmitirOrdemMover(command.target.position);
                     if (attackAccepted)
                     {
+                        // Stop desativa o combate. Uma ordem Attack explícita
+                        // precisa reativá-lo depois que o movimento foi aceito,
+                        // antes de entregar o alvo prioritário às armas.
+                        unit.DefinirModoCombate(true);
                         // Preserva a distinção entre aquisição automática e
                         // uma ordem ofensiva explícita do jogador/IA.
                         unit.DefinirAlvoPrioritario(command.target);
