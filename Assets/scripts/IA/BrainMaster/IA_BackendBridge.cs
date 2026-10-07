@@ -2882,9 +2882,19 @@ namespace Hegemonia.AI.BrainMaster
             bool armed = false;
             AttackSystemsCacheEntry cache = GetOrBuildAttackCache(unit);
             ControleUnidade controller = cache.Controller;
-            if (controller != null && controller.DefinirModoCombate(true))
+            if (controller != null)
             {
-                armed = true;
+                if (controller.DefinirModoCombate(true))
+                {
+                    armed = true;
+                }
+
+                // ArmUnitForAttack represents an explicit BrainMaster Attack.
+                // Keep its target on the same priority channel as player RTS orders.
+                if (target != null)
+                {
+                    controller.DefinirAlvoPrioritario(target);
+                }
             }
 
             ControleTorreta[] turrets = cache.Turrets;

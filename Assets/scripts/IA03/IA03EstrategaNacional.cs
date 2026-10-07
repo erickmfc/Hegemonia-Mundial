@@ -115,6 +115,24 @@ namespace Hegemonia.AI.IA03
         public bool DebugHabilitado => debugIA03;
         public IA03RelatorioSnapshot RelatorioAtual => relatorio.Acumulado;
 
+        public bool IsUnitReservedForActiveMission(GameObject unit)
+        {
+            if (!ativo || !isActiveAndEnabled || unit == null || missaoAtiva == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < unidadesAtivasNaMissao.Count; i++)
+            {
+                if (unidadesAtivasNaMissao[i] == unit)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static float CalcularAtrasoInicialEscalonado(int teamId)
         {
             int indice = Mathf.Max(0, teamId - 1) % 15;

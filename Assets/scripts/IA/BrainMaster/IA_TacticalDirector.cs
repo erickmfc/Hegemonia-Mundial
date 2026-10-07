@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Hegemonia.AI.IA03;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -8,6 +9,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private const float ForcedAssaultStartSeconds = 35f;
         private readonly IA_Context _context;
+        private readonly IA03EstrategaNacional _ia03Estratega;
         private readonly List<GameObject> _loadedAmphibiousBuffer = new List<GameObject>(16);
         private readonly List<GameObject> _emptyAmphibiousBuffer = new List<GameObject>(16);
         private readonly List<GameObject> _emptyGroundTransportBuffer = new List<GameObject>(16);
@@ -27,6 +29,9 @@ namespace Hegemonia.AI.BrainMaster
         public IA_TacticalDirector(IA_Context context)
         {
             _context = context;
+            _ia03Estratega = context != null && context.Brain != null
+                ? context.Brain.GetComponent<IA03EstrategaNacional>()
+                : null;
         }
 
         public string Name
@@ -170,9 +175,15 @@ namespace Hegemonia.AI.BrainMaster
 
             Vector3 pointA = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 260f, 24);
             Vector3 pointB = BlendObjective(baseCenter, strategicObjective, 0.72f, 140f, 280f);
+            List<GameObject> patrolUnits = CloneUnits(squad.Units);
+            if (patrolUnits.Count == 0)
+            {
+                return;
+            }
+
             IA_PatrolOrderData payload = new IA_PatrolOrderData
             {
-                Units = CloneUnits(squad.Units),
+                Units = patrolUnits,
                 PointA = pointA,
                 PointB = pointB
             };
@@ -915,9 +926,15 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueMove(string key, List<GameObject> units, Vector3 destination, int priority, float cooldown)
         {
+            List<GameObject> availableUnits = CloneUnits(units);
+            if (availableUnits.Count == 0)
+            {
+                return;
+            }
+
             IA_MoveOrderData payload = new IA_MoveOrderData
             {
-                Units = CloneUnits(units),
+                Units = availableUnits,
                 Destination = destination
             };
 
@@ -938,9 +955,15 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueAttack(string key, List<GameObject> units, Transform target, Vector3 targetPosition, int priority, float cooldown)
         {
+            List<GameObject> availableUnits = CloneUnits(units);
+            if (availableUnits.Count == 0)
+            {
+                return;
+            }
+
             IA_AttackOrderData payload = new IA_AttackOrderData
             {
-                Units = CloneUnits(units),
+                Units = availableUnits,
                 Target = target,
                 TargetPosition = targetPosition
             };
@@ -962,7 +985,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueAbility(string key, GameObject caster, string abilityKey, Vector3 targetPosition, Transform target, int priority, float cooldown)
         {
-            if (caster == null)
+            if (caster == null || IsReservedByActiveIA03Mission(caster))
             {
                 return;
             }
@@ -990,7 +1013,7 @@ namespace Hegemonia.AI.BrainMaster
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
         }
 
-        private static List<GameObject> CloneUnits(List<GameObject> source)
+        private List<GameObject> CloneUnits(List<GameObject> source)
         {
             var output = source != null ? new List<GameObject>(source.Count) : new List<GameObject>();
             if (source == null)
@@ -1001,13 +1024,18 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < source.Count; i++)
             {
                 GameObject unit = source[i];
-                if (unit != null)
+                if (unit != null && !IsReservedByActiveIA03Mission(unit))
                 {
                     output.Add(unit);
                 }
             }
 
             return output;
+        }
+
+        private bool IsReservedByActiveIA03Mission(GameObject unit)
+        {
+            return _ia03Estratega != null && _ia03Estratega.IsUnitReservedForActiveMission(unit);
         }
 
         private static bool HasUnits(IA_SquadData squad)
