@@ -1,0 +1,87 @@
+RESUMO — ONDE ESTA O FARM (FAZENDA) E O QUE ELE PRODUZ
+Projeto: Hegemonia Mundial
+Gerado em: 2026-09-30
+
+====================================================
+1. ONDE O FARM ESTA DEFINIDO NO CODIGO
+====================================================
+
+Arquivo principal:
+  Assets/scripts/Fazenda.cs
+  - Componente "Fazenda" (MonoBehaviour).
+  - Fazenda passiva: ao ser construida, NAO abre menu, painel ou clique
+    de gerenciamento. Ela so registra a estrutura economica e inicia a
+    producao automatica.
+  - No Awake():
+      * cade/garante um componente EstruturaEconomica no mesmo GameObject;
+      * define estrutura.tipo = TipoEstruturaEconomica.Farm;
+      * adiciona o componente ProducaoAutomaticaEdificio com
+        TipoInstalacao.Fazenda (e e ele quem produz comida).
+
+Arquivo da estrutura economica:
+  Assets/scripts/Governo/EstruturaEconomica.cs
+  - Enum TipoEstruturaEconomica.Farm (tipo da fazenda).
+  - A funcao AplicarPadraoPorTipo(), caso Farm (linha ~280), aplica:
+      * empregosGerados  = 10 (se nao definido)
+      * comidaProduzida  = 5   (se nao definido)
+      * energiaConsumida = 0.7 (se nao definido)
+  - Tambem existe uma inferencia por nome: se o nome do predio contem
+    "farm", "fazenda" ou "comida", o tipo vira Farm automaticamente.
+
+Onde a fazenda entra como construcao:
+  Assets/scripts/Menus/MenuConstrucao.cs
+  - A palavra-chave "fazenda"/"farm" esta na lista de termos de
+    estrutura do menu de construcao (linha ~3366), ou seja, o farm e um
+    predio construivel como qualquer outro.
+
+====================================================
+2. O QUE A FAZENDA PRODUZ (AS COMIDAS)
+====================================================
+
+Arquivo da producao:
+  Assets/scripts/Governo/ProducaoAutomaticaEdificio.cs
+
+Lista de saidas agricolas (linha ~19), que sao as "comidas" que a
+fazenda pode produzir:
+
+  1. comida_milho
+  2. comida_batata
+  3. comida_feijao
+  4. comida_trigo
+  5. comida_arroz
+  6. comida_cana
+  7. comida_soja
+  8. comida_cafe
+  9. comida_cacau
+
+Como funciona o ciclo de producao (funcao ProduzirFazenda):
+  - A cada ciclo (intervalo padrao de 18 segundos; primeiro ciclo entre
+    2 e 8 segundos) a fazenda:
+      * consome 2 de energia (energiaPorCicloFazenda); se nao houver
+        energia, a producao fica aguardando;
+      * escolhe ALEATORIAMENTE UMA comida da lista acima como "destaque"
+        daquele ciclo;
+      * produz um total de comida = 42 x fator aleatorio entre 0.85 e
+        1.25 (aprox. 36 a 52 de comida por ciclo);
+      * adiciona esse total ao estoque do pais dono da fazenda como
+        RecursoMercado.Comida;
+      * tambem aumenta o estoque/oferta da comida escolhida no mercado
+        global (SistemaMercadoGlobal).
+
+Resumo simples:
+  - A fazenda NAO deixa o jogador escolher a lavoura. Ela sorteia uma
+    das 9 comidas a cada ciclo e produz comida generica para o estoque
+    nacional, alem de abastecer o mercado com o item sorteado.
+  - Sem energia = producao pausada ate ter energia.
+
+====================================================
+3. ARQUIVOS-CHAVE (PARA CONSULTA RAPIDA)
+====================================================
+  Assets/scripts/Fazenda.cs                        -> componente da fazenda
+  Assets/scripts/Governo/EstruturaEconomica.cs     -> tipo Farm e padroes
+  Assets/scripts/Governo/ProducaoAutomaticaEdificio.cs -> ciclo de producao e lista de comidas
+  Assets/scripts/Menus/MenuConstrucao.cs           -> fazenda como opcao de construcao
+
+Documentos de design relacionados (Docs/):
+  Docs/GDD_SistemaGlobalConsumo.md
+  Docs/REFORMA_JOGO_2026-09-05.md

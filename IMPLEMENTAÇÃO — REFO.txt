@@ -1,0 +1,674 @@
+IMPLEMENTAÇÃO — REFORMA COMPLETA DO SISTEMA AGRÍCOLA
+
+Projeto: Hegemonia Mundial
+
+OBJETIVO
+
+Remover completamente o sistema de FAZENDA/FARM como prédio físico e substituí-lo por um sistema nacional de AGRICULTURA integrado ao Governo > Economia > Produção.
+
+IMPORTANTE:
+- Não quebrar os sistemas existentes de economia, mercado, comércio, navios, IA, energia, água, ciência ou Governo.
+- Antes de alterar qualquer arquivo, fazer uma auditoria de todas as referências a Farm/Fazenda.
+- Não apagar recursos compartilhados apenas porque eram usados pela Fazenda.
+- Não criar GameObjects físicos para representar agricultura.
+- A agricultura será calculada pelo sistema econômico nacional.
+- A produção deve continuar alimentando o estoque nacional e o mercado global existentes.
+- Não criar um segundo sistema paralelo de mercado/comércio se já existir um sistema equivalente.
+
+==================================================
+1. REMOVER O FARM FÍSICO
+==================================================
+
+Remover o conceito de Fazenda/Farm como estrutura construível.
+
+Auditar e remover corretamente:
+
+Assets/scripts/Fazenda.cs
+
+TipoEstruturaEconomica.Farm
+
+referências Farm/Fazenda em:
+Assets/scripts/Governo/EstruturaEconomica.cs
+
+referências de construção em:
+Assets/scripts/Menus/MenuConstrucao.cs
+
+ProduzirFazenda() e lógica exclusiva da Fazenda em:
+Assets/scripts/Governo/ProducaoAutomaticaEdificio.cs
+
+IMPORTANTE:
+Não simplesmente apagar arquivos sem verificar dependências.
+
+Remover:
+- Fazenda como prédio construível
+- produção automática individual da Fazenda
+- ciclo de 18 segundos da Fazenda
+- sorteio individual de cultura por Fazenda
+- consumo de energia específico da Fazenda
+
+PRESERVAR:
+- RecursoMercado.Comida, caso seja usado por outros sistemas
+- SistemaMercadoGlobal
+- sistema de estoque nacional
+- mercado internacional
+- comércio por navios
+- demais recursos econômicos
+- IA
+- Governo
+- ciência
+- energia
+- água
+- infraestrutura existente
+
+Depois da remoção, não pode existir botão/opção de construção chamado Fazenda/Farm.
+
+==================================================
+2. NOVO SISTEMA: AGRICULTURA NACIONAL
+==================================================
+
+Criar um sistema econômico centralizado para agricultura.
+
+Nome sugerido:
+
+AgriculturaNacional
+ou
+SistemaAgricultura
+
+Seguir a arquitetura e padrões já existentes no projeto antes de escolher o nome definitivo.
+
+O sistema NÃO deve rodar a cada frame.
+
+Como o jogo possui:
+2 minutos reais = 1 dia de jogo
+
+a agricultura deve ser recalculada principalmente na passagem de dia ou através do mesmo mecanismo econômico já usado para produção periódica.
+
+Não usar Update() para cálculos contínuos.
+
+==================================================
+3. PRODUÇÃO DE ALIMENTOS
+==================================================
+
+A agricultura passa a produzir alimentos com base em:
+
+- capacidade agrícola do país
+- investimento agrícola
+- água disponível
+- sementes
+- fertilizantes/esterco
+- agrotóxicos
+- tecnologia agrícola
+- mecanização
+- pesquisa
+- energia/combustível quando aplicável
+- eficiência logística
+- estabilidade da produção
+
+Não criar fazendas físicas.
+
+A capacidade agrícola representa a estrutura produtiva nacional.
+
+==================================================
+4. AUMENTAR A VARIEDADE DE ALIMENTOS
+==================================================
+
+Manter as categorias já existentes:
+
+- milho
+- batata
+- feijão
+- trigo
+- arroz
+- cana
+- soja
+- café
+- cacau
+
+Adicionar novas culturas seguindo o padrão atual de recursos/mercado:
+
+- mandioca
+- aveia
+- cevada
+- tomate
+- frutas
+- hortaliças
+
+Antes de criar novos enums/recursos, verificar como o projeto cadastra recursos do mercado e utilizar a arquitetura existente.
+
+Cada alimento deve poder:
+- ter produção nacional
+- ter consumo
+- ter estoque
+- ter oferta no mercado global
+- ser importado/exportado quando o sistema atual permitir
+
+Não duplicar sistemas de recurso.
+
+==================================================
+5. INSUMOS AGRÍCOLAS
+==================================================
+
+Criar recursos/necessidades para a produção agrícola.
+
+Principais:
+
+ÁGUA
+ESTERCO/FERTILIZANTE ORGÂNICO
+SEMENTES
+AGROTÓXICOS
+ENERGIA
+COMBUSTÍVEL/LOGÍSTICA
+
+Verificar primeiro se Água, Energia ou outros recursos já existem.
+
+Se já existem, reutilizar.
+
+Não criar recursos duplicados.
+
+==================================================
+6. ÁGUA
+==================================================
+
+A agricultura deve depender de água.
+
+Criar uma relação:
+
+Água disponível
+↓
+capacidade agrícola efetiva
+↓
+produção de alimentos
+
+Se houver pouca água:
+- produtividade agrícola diminui
+
+Se houver boa infraestrutura hídrica:
+- produção fica mais estável
+- menor impacto de escassez
+
+Criar investimento específico:
+
+IRRIGAÇÃO E RECURSOS HÍDRICOS
+
+Esse investimento melhora a eficiência do uso da água.
+
+==================================================
+7. ESTERCO / FERTILIZAÇÃO
+==================================================
+
+Adicionar ESTERCO/FERTILIZANTE ORGÂNICO como insumo agrícola.
+
+Ele pode vir de:
+- pecuária
+- produção agropecuária
+- comércio/importação
+
+A agricultura deve conseguir funcionar com diferentes níveis de fertilização.
+
+Exemplo:
+
+Pouco fertilizante:
+produção reduzida
+
+Fertilização adequada:
+produção normal
+
+Boa fertilização + tecnologia:
+produção aumentada
+
+Não tornar o sistema excessivamente punitivo no início.
+
+==================================================
+8. AGROTÓXICOS — MECÂNICA IMPORTANTE
+==================================================
+
+Criar AGROTÓXICOS como insumo estratégico.
+
+ATENÇÃO:
+
+O jogador NÃO começa necessariamente com tecnologia para fabricar agrotóxicos.
+
+Algumas IAs já possuem essa tecnologia porque investiram anteriormente em Ciência/Pesquisa.
+
+Portanto:
+
+IA com tecnologia:
+produz agrotóxicos
+↓
+pode vender/exportar
+↓
+jogador compra no mercado internacional
+↓
+produto chega através do sistema de comércio/navios
+↓
+estoque nacional de agrotóxicos aumenta
+↓
+agricultura consegue utilizar o insumo
+
+Isso deve usar o sistema de comércio/navios existente.
+
+NÃO criar um sistema fake de entrega.
+
+A compra deve realmente gerar uma carga/comércio compatível com os sistemas atuais.
+
+==================================================
+9. TECNOLOGIA DE AGROTÓXICOS
+==================================================
+
+Adicionar uma tecnologia/pesquisa na área:
+
+GOVERNO > CIÊNCIA > PESQUISA
+
+Nome:
+
+TECNOLOGIA DE AGROTÓXICOS
+
+Estado inicial do jogador:
+
+NÃO DESENVOLVIDA
+
+Enquanto não possuir a tecnologia:
+- pode importar agrotóxicos de países que possuem tecnologia
+- não pode produzir internamente
+
+Depois de concluir a pesquisa:
+- desbloqueia produção nacional
+- reduz dependência externa
+- pode permitir indústria nacional de agrotóxicos
+
+A pesquisa deve demorar tempo de jogo.
+
+Não concluir instantaneamente.
+
+Usar o sistema de pesquisa existente.
+
+Se já existir sistema de projetos científicos, integrar nele.
+
+Exemplo conceitual:
+
+TECNOLOGIA DE AGROTÓXICOS
+Progresso: 37%
+Tempo restante: 120 dias
+
+Ao completar:
+TECNOLOGIA DESBLOQUEADA
+
+Não colocar valores hardcoded se o projeto possuir configuração centralizada.
+
+==================================================
+10. IA E AGROTÓXICOS
+==================================================
+
+As IAs que já possuem tecnologia devem conseguir:
+
+- produzir agrotóxicos
+- consumir parte internamente
+- possuir excedente
+- disponibilizar excedente para exportação
+
+O jogador pode comprar delas.
+
+Isso cria uma cadeia:
+
+IA INVESTE EM CIÊNCIA
+↓
+DESENVOLVE TECNOLOGIA
+↓
+CONSTRÓI CAPACIDADE INDUSTRIAL
+↓
+PRODUZ AGROTÓXICOS
+↓
+EXPORTA
+↓
+NAVIO TRANSPORTA
+↓
+JOGADOR RECEBE
+↓
+AGRICULTURA UTILIZA
+↓
+PRODUÇÃO DE ALIMENTOS AUMENTA
+
+Não inventar um novo sistema de IA se já houver produção/mercado internacional.
+
+Integrar ao sistema existente.
+
+==================================================
+11. INVESTIMENTO AUTOMÁTICO EM AGRICULTURA
+==================================================
+
+O país deve começar com investimento agrícola mínimo automático:
+
+$100.000.000 por semana
+
+Esse valor é descontado automaticamente do Tesouro.
+
+Esse investimento representa:
+- manutenção
+- assistência agrícola
+- infraestrutura
+- pesquisa básica
+- sementes
+- modernização inicial
+
+Bônus inicial:
+
++0,5% de eficiência agrícola
+
+Esse bônus NÃO deve crescer infinitamente acumulando toda semana.
+
+O investimento define o nível/eficiência atual.
+
+==================================================
+12. INVESTIMENTO ADICIONAL
+==================================================
+
+O jogador pode aumentar o investimento manualmente.
+
+Exemplo inicial de configuração:
+
+$100M/semana → +0,5%
+$250M/semana → +1%
+$500M/semana → +2%
+$1B/semana → +4%
+$2B/semana → +6%
+$5B/semana → +9%
+$10B/semana → +12%
+
+Esses valores devem ser configuráveis.
+
+O sistema deve possuir retorno decrescente para impedir crescimento infinito.
+
+Se o Tesouro não tiver dinheiro:
+- o investimento não deve ser pago como se tivesse sido pago
+- registrar situação de financiamento insuficiente
+- aplicar a regra de manutenção definida pelo sistema
+- nunca criar dinheiro do nada
+
+==================================================
+13. ÁREAS DE INVESTIMENTO
+==================================================
+
+Criar dentro do menu:
+
+ECONOMIA
+→ PRODUÇÃO
+→ AGRICULTURA E ABASTECIMENTO
+
+Áreas:
+
+1. PRODUÇÃO AGRÍCOLA
+Aumenta produtividade geral.
+
+2. MECANIZAÇÃO
+Aumenta eficiência das operações agrícolas.
+
+3. IRRIGAÇÃO
+Melhora utilização de água e resistência à escassez.
+
+4. INSUMOS
+Melhora disponibilidade/eficiência de fertilizantes, sementes e outros insumos.
+
+5. PESQUISA AGRÍCOLA
+Aumenta produtividade de longo prazo.
+
+6. AGROINDÚSTRIA
+Melhora processamento e integração com a indústria.
+
+7. LOGÍSTICA AGRÍCOLA
+Reduz perdas e melhora distribuição.
+
+8. ARMAZENAMENTO
+Aumenta capacidade de reserva alimentar.
+
+9. RECURSOS HÍDRICOS
+Aumenta segurança hídrica da agricultura.
+
+10. PECUÁRIA
+Integra produção animal e geração de esterco/fertilizantes.
+
+11. TECNOLOGIA DE AGROTÓXICOS
+Deve ficar principalmente em CIÊNCIA/PESQUISA, mas aparecer na agricultura como:
+"Dependência tecnológica: IMPORTADA" ou "PRODUÇÃO NACIONAL DESBLOQUEADA".
+
+==================================================
+14. CÁLCULO DA PRODUÇÃO
+==================================================
+
+A produção deve seguir uma fórmula centralizada e configurável.
+
+Conceito:
+
+Produção base agrícola
+× eficiência agrícola
+× disponibilidade de água
+× disponibilidade de insumos
+× tecnologia
+× mecanização
+× pesquisa
+× logística
+
+= produção final
+
+Não aplicar multiplicadores duplicados em vários sistemas.
+
+Criar um ponto central de cálculo.
+
+Exemplo:
+
+Produção base:
+100
+
+Eficiência:
++5%
+
+Água:
+100%
+
+Insumos:
+90%
+
+Tecnologia:
+80%
+
+Resultado:
+calculado pelo sistema central.
+
+Os valores são apenas exemplos e devem ser balanceáveis.
+
+==================================================
+15. NÃO PRODUZIR COMIDA "DO NADA"
+==================================================
+
+O Governo não deve simplesmente gerar comida porque recebeu investimento.
+
+O investimento aumenta a capacidade/produtividade do setor agrícola.
+
+A produção alimentar deve depender dos fatores reais do sistema.
+
+Assim:
+
+INVESTIMENTO
+→ aumenta capacidade/eficiência
+
+INSUMOS
+→ permitem produtividade
+
+ÁGUA
+→ permite produção
+
+TECNOLOGIA
+→ melhora produtividade
+
+COMÉRCIO
+→ fornece o que o país não consegue produzir
+
+AGRICULTURA
+→ produz alimentos
+
+==================================================
+16. MENU
+==================================================
+
+Adicionar na tela atual de:
+
+ECONOMIA > PRODUÇÃO
+
+uma nova ação:
+
+[ INVESTIR EM AGRICULTURA ]
+
+Ao abrir:
+
+AGRICULTURA E ABASTECIMENTO
+
+Mostrar:
+
+Produção agrícola
+Produção diária
+Consumo diário
+Saldo
+Estoque de alimentos
+Eficiência agrícola
+Investimento semanal
+Água disponível
+Insumos disponíveis
+Agrotóxicos disponíveis
+Tecnologia agrícola
+Dependência de importações
+
+E as áreas:
+
+PRODUÇÃO
+MECANIZAÇÃO
+IRRIGAÇÃO
+INSUMOS
+PESQUISA
+AGROINDÚSTRIA
+LOGÍSTICA
+ARMAZENAMENTO
+RECURSOS HÍDRICOS
+PECUÁRIA
+
+Mostrar também:
+
+AGROTÓXICOS
+Estado: IMPORTADO
+ou
+Estado: PRODUÇÃO NACIONAL
+
+==================================================
+17. REMOVER COMPLEXIDADE DESNECESSÁRIA
+==================================================
+
+Não criar:
+- uma GameObject por plantação
+- uma Fazenda por região
+- scripts rodando em Update
+- ciclos individuais de produção
+- sistemas duplicados de mercado
+- sistemas duplicados de comércio
+- sistemas duplicados de recursos
+
+A agricultura deve ser predominantemente DATA + CÁLCULO ECONÔMICO.
+
+Isso existe justamente para reduzir o peso do mapa e da simulação.
+
+==================================================
+18. COMPATIBILIDADE
+==================================================
+
+Antes de implementar:
+
+1. localizar todas as referências de Fazenda/Farm;
+2. localizar como Recursos são registrados;
+3. localizar como água já funciona;
+4. localizar como energia já funciona;
+5. localizar como mercado global funciona;
+6. localizar como comércio internacional funciona;
+7. localizar como navios recebem/transportam cargas;
+8. localizar como IA produz e vende recursos;
+9. localizar sistema de pesquisa científica;
+10. somente depois implementar.
+
+Não substituir sistemas existentes que já resolvem essas funções.
+
+Conectar ao que já existe.
+
+==================================================
+19. TESTES OBRIGATÓRIOS
+==================================================
+
+Testar:
+
+1. país sem Fazenda física continua funcionando;
+2. não existe opção Fazenda/Farm no menu de construção;
+3. produção agrícola funciona pelo novo sistema;
+4. comida continua chegando ao estoque nacional;
+5. comidas continuam funcionando no mercado;
+6. água influencia agricultura;
+7. esterco/fertilizante influencia agricultura;
+8. agrotóxico influencia agricultura;
+9. país sem tecnologia consegue importar agrotóxico;
+10. país com tecnologia consegue produzir agrotóxico;
+11. IA com tecnologia consegue vender/exportar;
+12. comércio por navio continua funcionando;
+13. pesquisa de agrotóxicos demora tempo de jogo;
+14. investimento automático de $100M/semana funciona;
+15. investimento adicional funciona;
+16. Tesouro não fica negativo por criação artificial de dinheiro;
+17. produção não roda a cada frame;
+18. não existem GameObjects de Farm sendo criados;
+19. não existem referências quebradas de Fazenda/Farm;
+20. mercado global não foi duplicado.
+
+==================================================
+20. REGRA FINAL
+==================================================
+
+Não fazer uma grande reescrita cega.
+
+Primeiro AUDITAR.
+Depois IMPLEMENTAR em etapas.
+Depois TESTAR.
+
+Preservar tudo que já funciona.
+
+A nova arquitetura desejada é:
+
+GOVERNO
+↓
+ECONOMIA
+↓
+PRODUÇÃO
+↓
+AGRICULTURA E ABASTECIMENTO
+↓
+INVESTIMENTOS + ÁGUA + INSUMOS + TECNOLOGIA
+↓
+PRODUÇÃO AGRÍCOLA NACIONAL
+↓
+ESTOQUE / MERCADO / COMÉRCIO
+
+E:
+
+CIÊNCIA
+↓
+TECNOLOGIA DE AGROTÓXICOS
+↓
+produção nacional desbloqueada
+
+Enquanto não houver tecnologia:
+
+PAÍSES/IA COM TECNOLOGIA
+↓
+EXPORTAÇÃO DE AGROTÓXICOS
+↓
+NAVIO
+↓
+IMPORTAÇÃO
+↓
+ESTOQUE NACIONAL
+↓
+AGRICULTURA
+
+Esse é o comportamento desejado.
