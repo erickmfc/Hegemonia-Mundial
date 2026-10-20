@@ -179,7 +179,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3703004318280002227}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: -0.7071068, z: 0, w: 0.7071068}
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -196,7 +196,7 @@ Transform:
   - {fileID: 3076926234684940962}
   - {fileID: 8667133101026914480}
   m_Father: {fileID: 7608186084770089252}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!1 &4491478996197137091
 GameObject:
   m_ObjectHideFlags: 0
@@ -217,6 +217,7 @@ GameObject:
   - component: {fileID: 5252147883967540560}
   - component: {fileID: 7333830382929383867}
   - component: {fileID: 5966397834379054812}
+  - component: {fileID: 7000000000000000043}
   m_Layer: 0
   m_Name: USS_Oliver_Hazard_Perry_FFG-7
   m_TagString: Navio
@@ -437,6 +438,7 @@ MonoBehaviour:
   alcanceRadar: 900
   alcanceConfiguradoNoPrefab: 0
   radarLigado: 0
+  ativacaoAutomaticaHelicopteroEmVoo: 0
 --- !u!114 &7333830382929383867
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -514,6 +516,8 @@ MonoBehaviour:
   - {fileID: 7747234784664203783}
   - {fileID: 6587544295934315586}
   prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
+  prefabMisselCruzeiro: {fileID: 8114338089166656182, guid: cd48a5aeaa2e9424890bb861ade6463b, type: 3}
+  tipoMissilNaval: 0
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 0
   municaoTotal: 10
@@ -541,6 +545,36 @@ MonoBehaviour:
   - Inimigo
   - Destrutivel
   debugLogs: 0
+--- !u!114 &7000000000000000043
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4491478996197137091}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 1000
+  intervaloVarreduraSegundos: 0.5
+  intervaloReconhecimentoEmPazSegundos: 2
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1
 --- !u!1 &5248722824884503988
 GameObject:
   m_ObjectHideFlags: 0

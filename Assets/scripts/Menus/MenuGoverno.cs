@@ -149,7 +149,7 @@ public class MenuGoverno : MonoBehaviour
     private static readonly string[] SubSancoes = { "Visao Geral", "Aplicadas", "Tipos", "Historico", "Legitimidade", "Emprestimos" };
     private static readonly string[] SubEconomia = { "Tesouro", "Orcamento", "Producao", "Impostos" };
     private static readonly string[] SubMercado = { "Comprar", "Vender", "Precos", "Rotas" };
-    private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Projetos", "Meio Ambiente" };
+    private static readonly string[] SubInterior = { "Populacao", "Cidades", "Bem-estar", "Prioridades", "Meio Ambiente" };
     private static readonly string[] SubDefesa = { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" };
     private static readonly string[] SubCiencia = { "Pesquisa", "Tecnologias", "Projetos", "Laboratorios" };
     private static readonly string[] SubTrabalho = { "Empregos", "Setores", "Formacao", "Politicas" };
@@ -165,6 +165,8 @@ public class MenuGoverno : MonoBehaviour
     private readonly Dictionary<string, MarketSellRow> sellRows = new Dictionary<string, MarketSellRow>();
     private readonly Dictionary<string, MarketBuyRow> buyRows = new Dictionary<string, MarketBuyRow>();
     private readonly Dictionary<string, MarketPriceRow> priceRows = new Dictionary<string, MarketPriceRow>();
+    private List<DadosConstrucao> sellCatalogSource;
+    private int sellCatalogCount = -1;
     private readonly List<RouteRow> routeRows = new List<RouteRow>();
 
     private GameObject canvasObj;
@@ -1036,26 +1038,64 @@ public class MenuGoverno : MonoBehaviour
 
     private void BuildMarketSellPage(PageView page)
     {
-        CreateSectionTitle(page.Root.transform, "Vender recursos reais");
-        CreateDescription(page.Root.transform, "Acoes de venda atualizam somente as linhas e mantem a posicao do scroll.");
+        CreateSectionTitle(page.Root.transform, "Vender recursos e equipamentos");
+        CreateDescription(page.Root.transform, "Escolha o item e a quantidade. Equipamentos militares transferem unidades reais ao comprador.");
         CreateHeaderRow(page.Root.transform, new[] { "RECURSO", "ESTOQUE", "PRECO", "AUTO", "VENDA" }, new[] { 1.1f, 0.8f, 0.8f, 1.1f, 1.6f });
 
+        page.Refresh = () => RefreshMarketSellRows(page.Root.transform);
+        page.Refresh();
+    }
+
+    private void RefreshMarketSellRows(Transform parent)
+    {
+        SincronizarCatalogoVendaSeMudou();
         string[] ids = MercadoIdsVendaveis();
         for (int i = 0; i < ids.Length; i++)
         {
-            if (!sellRows.ContainsKey(ids[i]))
-                sellRows[ids[i]] = CreateSellRow(page.Root.transform, ids[i]);
+            MarketSellRow existente;
+            if (!sellRows.TryGetValue(ids[i], out existente) || existente == null || existente.Root == null)
+                sellRows[ids[i]] = CreateSellRow(parent, ids[i]);
         }
 
-        page.Refresh = () =>
+        // O catálogo pode receber equipamentos após a criação da página. Recalcular
+        // os IDs no refresh evita manter uma captura inicial incompleta.
+        foreach (KeyValuePair<string, MarketSellRow> pair in sellRows)
         {
-            foreach (string id in ids)
+            bool visivel = false;
+            for (int i = 0; i < ids.Length; i++)
             {
-                MarketSellRow row;
-                if (sellRows.TryGetValue(id, out row)) row.Refresh();
+                if (string.Equals(ids[i], pair.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    visivel = true;
+                    break;
+                }
             }
-        };
-        page.Refresh();
+            if (pair.Value.Root != null && pair.Value.Root.transform.parent == parent)
+                pair.Value.Root.SetActive(visivel);
+        }
+
+        for (int i = 0; i < ids.Length; i++)
+        {
+            MarketSellRow row;
+            if (sellRows.TryGetValue(ids[i], out row)) row.Refresh();
+        }
+    }
+
+    private void SincronizarCatalogoVendaSeMudou()
+    {
+        SistemaMercadoGlobal mercado = Market();
+        List<DadosConstrucao> catalogo = MenuConstrucao.catalogoGlobal;
+        if (mercado == null || catalogo == null || catalogo.Count == 0)
+            return;
+
+        if (ReferenceEquals(catalogo, sellCatalogSource) && catalogo.Count == sellCatalogCount)
+            return;
+
+        // O catalogo e percorrido somente quando sua referencia ou tamanho muda,
+        // nunca a cada frame nem em cada linha da lista.
+        mercado.SincronizarCatalogoConstrucao();
+        sellCatalogSource = catalogo;
+        sellCatalogCount = catalogo.Count;
     }
 
     private string[] MercadoIdsVendaveis()
@@ -1064,11 +1104,15 @@ public class MenuGoverno : MonoBehaviour
         if (mercado == null)
             return new[] { "energia" };
 
-        return mercado.ItensOrdenados()
+        List<DadosItemMercado> vendaveis = mercado.ItensOrdenados()
             .Where(i => i != null && i.podeVender)
-            .Select(i => i.id)
-            .Distinct()
-            .Take(64)
+            .ToList();
+
+        // Mantem o limite leve dos demais produtos sem deixar que ele esconda
+        // equipamentos militares do catalogo.
+        return vendaveis.Where(i => i.equipamentoMilitar).Select(i => i.id)
+            .Concat(vendaveis.Where(i => !i.equipamentoMilitar).Take(64).Select(i => i.id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
@@ -1416,7 +1460,9 @@ public class MenuGoverno : MonoBehaviour
 
         foreach (var c in lista)
         {
-            string tipoStr = c.marcador != null && c.marcador.GetComponent<ComplexoGovernamental>() != null
+            string tipoStr = c.ehCidadeNaoMaterializada
+                ? "Cidade de dados (estágio " + c.EstagioUrbano + ")"
+                : c.marcador != null && c.marcador.GetComponent<ComplexoGovernamental>() != null
                 ? "Centro Administrativo Regional"
                 : c.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
             string aeroStr = c.temAeroporto ? "Sim 🛫" : "Não";
@@ -1675,7 +1721,13 @@ public class MenuGoverno : MonoBehaviour
             RelacaoPaisGoverno r = Government()?.ObterRelacao(paisJogadorId, paisSelecionadoId);
             selected.text = p == null
                 ? "Selecione um pais."
-                : p.nomePais + "\nRelacao: " + (r != null ? r.valor.ToString() : "0")
+                : p.nomePais + "\nOpiniao atual: " + (r != null ? r.valor.ToString() : "0")
+                  + "\nBase historica: " + (r != null ? r.valorBaseHistorico.ToString() : "0")
+                  + "\nPostura atual: " + (r != null ? r.PosturaDe(paisJogadorId).ToString() : PosturaRelacaoPais.Neutro.ToString())
+                  + "\nTratado comercial: " + (r != null && r.tratadoComercial ? "Ativo" : "Inativo")
+                  + " | Pacto militar: " + (r != null && r.pactoMilitar ? "Ativo" : "Inativo")
+                  + "\nGuerra formal: " + (r != null && r.guerraDeclarada ? "Sim" : "Nao")
+                  + " | Cessar-fogo: " + (r != null && r.cessarFogoAtivo ? "Ativo" : "Inativo")
                   + "\nBloco: " + p.bloco
                   + "\nStatus: " + StatusGov(p)
                   + "\nPlano IA: " + p.planoEstrategico;
@@ -1896,7 +1948,9 @@ public class MenuGoverno : MonoBehaviour
                     return;
                 }
 
-                string tipoStr = selecionada.marcador != null && selecionada.marcador.GetComponent<ComplexoGovernamental>() != null
+                string tipoStr = selecionada.ehCidadeNaoMaterializada
+                    ? "Cidade não materializada (estágio " + selecionada.EstagioUrbano + ")"
+                    : selecionada.marcador != null && selecionada.marcador.GetComponent<ComplexoGovernamental>() != null
                     ? "Centro Administrativo Regional"
                     : selecionada.ehEstado ? "Capital (Estado)" : "Cidade (Distrito)";
                 string aeroStr = selecionada.temAeroporto ? "Sim" : "Nenhum";
@@ -1920,7 +1974,17 @@ public class MenuGoverno : MonoBehaviour
                     + " vagas; empregos " + Mathf.Max(0, selecionada.populacaoCivil - selecionada.empregosTotais).ToString("N0")
                     + " necessários"
                     + "\nConsumo e impostos continuam consolidados no nível nacional; não há valores regionais existentes."
-                    + "\nLocalização: " + selecionada.marcador.transform.position.ToString("F0");
+                    + (selecionada.ehCidadeNaoMaterializada
+                        ? "\nEstágio urbano: " + selecionada.EstagioUrbano
+                            + " | Desenvolvimento: " + selecionada.desenvolvimento.ToString("0") + "%"
+                            + " | Importância estratégica: " + selecionada.importanciaEstrategica.ToString("0")
+                            + " | Dano: " + selecionada.estadoDano.ToString("0") + "%"
+                            + "\nProdução econômica mensal: " + selecionada.producaoEconomicaMensal.ToString("N0")
+                            + " | Produção agrícola: " + selecionada.producaoAgricola.ToString("N0")
+                        : string.Empty)
+                    + "\nLocalização: " + (selecionada.marcador != null
+                        ? selecionada.marcador.transform.position.ToString("F0")
+                        : selecionada.localizacao.ToString("F0"));
 
                 CreateDescription(page.Root.transform, "Alterar nome do território:");
                 InputField inputNome = CreateCompactInput(page.Root.transform, selecionada.nome);
@@ -2778,10 +2842,12 @@ public class MenuGoverno : MonoBehaviour
         ah.childForceExpandWidth = true;
         DadosItemMercado item = Market()?.ObterItem(itemId);
         bool equipamento = item != null && item.equipamentoMilitar;
-        int loteRapido = equipamento ? 1 : 50;
-        int loteGrande = equipamento ? 5 : 200;
-        view.Sell50 = CreateSmallButton(actions.transform, loteRapido.ToString(), corAzulBotao, () => SellMarketResource(itemId, loteRapido));
-        view.Sell200 = CreateSmallButton(actions.transform, loteGrande.ToString(), corAzulBotao, () => SellMarketResource(itemId, loteGrande));
+        view.QuickQuantity = equipamento ? 1 : 50;
+        view.BulkQuantity = equipamento ? 5 : 200;
+        view.Sell50 = CreateSmallButton(actions.transform, view.QuickQuantity.ToString(), corAzulBotao, () => SellMarketResource(view.ItemId, view.QuickQuantity));
+        view.Sell200 = CreateSmallButton(actions.transform, view.BulkQuantity.ToString(), corAzulBotao, () => SellMarketResource(view.ItemId, view.BulkQuantity));
+        view.QuickLabel = view.Sell50.transform.Find("Label").GetComponent<Text>();
+        view.BulkLabel = view.Sell200.transform.Find("Label").GetComponent<Text>();
         view.SellAll = CreateSmallButton(actions.transform, "Tudo", new Color(0.360f, 0.100f, 0.070f, 1f), () => SellAllMarketResource(itemId));
         h.enabled = true;
         return view;
@@ -2964,7 +3030,7 @@ public class MenuGoverno : MonoBehaviour
 
         string msg;
         if (mercado.Vender(paisJogadorId, comprador.teamId, item.id, quantity, out msg))
-            Notificar("Venda", msg + " | navio de carga em rota.");
+            Notificar("Venda", item.equipamentoMilitar ? msg : msg + " | carga em rota.");
         else
             Notificar("Venda", msg);
 
@@ -4308,6 +4374,10 @@ public class MenuGoverno : MonoBehaviour
         public Button Sell50;
         public Button Sell200;
         public Button SellAll;
+        public Text QuickLabel;
+        public Text BulkLabel;
+        public int QuickQuantity;
+        public int BulkQuantity;
 
         public void Refresh()
         {
@@ -4321,13 +4391,15 @@ public class MenuGoverno : MonoBehaviour
             Name.text = Menu.DisplayItemName(ItemId);
             Stock.text = Menu.FormatNumber(stock);
             Price.text = item != null ? "$" + Menu.FormatNumber(item.precoAtual) : "$0";
-            AutoText.text = vendaDireta ? (auto ? "Auto " + autoAmount : "Auto off") : "Navio";
+            AutoText.text = vendaDireta ? (auto ? "Auto " + autoAmount : "Auto off") : item != null && item.equipamentoMilitar ? "Direto" : "Navio";
             Auto.GetComponent<Image>().color = auto ? new Color(0.070f, 0.290f, 0.130f, 1f) : Menu.corPainel2;
             Auto.interactable = vendaDireta;
-            int loteRapido = item != null && item.equipamentoMilitar ? 1 : 50;
-            int loteGrande = item != null && item.equipamentoMilitar ? 5 : 200;
-            Sell50.interactable = stock >= loteRapido;
-            Sell200.interactable = stock >= loteGrande;
+            QuickQuantity = item != null && item.equipamentoMilitar ? 1 : 50;
+            BulkQuantity = item != null && item.equipamentoMilitar ? 5 : 200;
+            if (QuickLabel != null) QuickLabel.text = QuickQuantity.ToString();
+            if (BulkLabel != null) BulkLabel.text = BulkQuantity.ToString();
+            Sell50.interactable = stock >= QuickQuantity;
+            Sell200.interactable = stock >= BulkQuantity;
             SellAll.interactable = stock > 0;
         }
     }

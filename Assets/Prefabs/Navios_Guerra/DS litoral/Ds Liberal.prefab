@@ -981,6 +981,7 @@ GameObject:
   - component: {fileID: 2314166710607534300}
   - component: {fileID: 5406660924093905897}
   - component: {fileID: 242043546086696032}
+  - component: {fileID: 7000000000000000027}
   m_Layer: 0
   m_Name: Ds Liberal
   m_TagString: Navio
@@ -998,7 +999,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 190.8, y: -0.00001, z: -139.4}
-  m_LocalScale: {x: 0.75, y: 0.65, z: 0.75}
+  m_LocalScale: {x: 1.068975, y: 0.8903049, z: 1.02675}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5505753513897011768}
@@ -1242,6 +1243,8 @@ MonoBehaviour:
   pontosDeSaidaTorpedo:
   - {fileID: 8081525368635115213}
   prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
+  prefabMisselCruzeiro: {fileID: 8114338089166656182, guid: cd48a5aeaa2e9424890bb861ade6463b, type: 3}
+  tipoMissilNaval: 0
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 0
   municaoTotal: 32
@@ -1269,6 +1272,52 @@ MonoBehaviour:
   - Inimigo
   - Destrutivel
   debugLogs: 0
+--- !u!114 &242043546086696032
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4949387818494710886}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 85000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0
+  ativacaoAutomaticaHelicopteroEmVoo: 0
+--- !u!114 &7000000000000000027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4949387818494710886}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 1000
+  intervaloVarreduraSegundos: 0.5
+  intervaloReconhecimentoEmPazSegundos: 2
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1
 --- !u!1 &5016411945493444796
 GameObject:
   m_ObjectHideFlags: 0
@@ -2889,7 +2938,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aereo
-  alcance: 12000
+  alcance: 4000
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -2904,6 +2953,7 @@ MonoBehaviour:
   inclinarPecaSemCanos: 0
   canosDaTorreta: {fileID: 2802517985833777075}
   descobrirCanosAutomaticamente: 1
+  inverterSentidoPitch: 0
   locaisDoTiro:
   - {fileID: 2676512421207615871}
   municaoPrefab: {fileID: 5864298406509392469, guid: 7d63fada631986340b6342d8658a8c17, type: 3}
@@ -2963,7 +3013,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4089975250393568596, guid: 7ba23e79c3dfb86409b88c51a653aae2, type: 3}
       propertyPath: alcanceRadar
-      value: 2200
+      value: 4000
       objectReference: {fileID: 0}
     - target: {fileID: 5203712587483020577, guid: 7ba23e79c3dfb86409b88c51a653aae2, type: 3}
       propertyPath: m_LocalPosition.x
@@ -3162,18 +3212,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1652555017968927179, guid: 4ba2c34b970561d468de046c3d7b2ec1, type: 3}
   m_PrefabInstance: {fileID: 7985034780244717118}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &242043546086696032
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4949387818494710886}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 85000
-  alcanceConfiguradoNoPrefab: 1
-  radarLigado: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: DS Liberal
   descricao: Navio de combate da classe Liberal para operações navais.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 31a37a2bc77e64f48a312813ba91054a, type: 3}
   itemId: DS_Liberal
   aliases: Liberal; Ds liberal; navio DS Liberal
   capacidades: 0

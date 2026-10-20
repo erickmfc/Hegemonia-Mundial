@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Destroyer Nagoya
   descricao: Destroyer Nagoya, unidade naval pronta para combate e patrulha.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 01c11c7706ec6bd4fa83889f23aef265, type: 3}
   itemId: DDG_HANGZHOU_UNIT_2
   aliases: Nagoya; Destroyer Nagoya; Navio_Nagoya; Hangzhou II; Hangzhou unidade
     2; Chinese PLAN Hangzhou Ship

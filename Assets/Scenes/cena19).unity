@@ -17286,6 +17286,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 795c8d1e2fea4c449a8a61032a3aa317, type: 2}
   - {fileID: 11400000, guid: 22c326fdd9332f84f9db0a8a1f3e9025, type: 2}
   - {fileID: 0}
+  - {fileID: 11400000, guid: b493898a897b8074882fa7654a554fde, type: 2}
+  - {fileID: 11400000, guid: f9ac2523422580346816c206dd9835e0, type: 2}
+  - {fileID: 11400000, guid: 8c7a9c1a5e0f4b1f9dcd2e5a6fef3d40, type: 2}
+  - {fileID: 11400000, guid: 8ca896c2a55dfa94a84d831cd9e48bde, type: 2}
+  - {fileID: 11400000, guid: e17fd7e162d499f4ebba9a28377391e0, type: 2}
+  - {fileID: 11400000, guid: a6d8e2e5b281fb8489d15890a31b7777, type: 2}
+  - {fileID: 11400000, guid: 25f3ab81f77f52e4fb040151fc9a9475, type: 2}
+  - {fileID: 11400000, guid: e1b725f02b9ca3a4dbd933147d1b64fe, type: 2}
+  - {fileID: 11400000, guid: 8898c68352fc439b98739a7b67d1a754, type: 2}
 --- !u!1 &299885441
 GameObject:
   m_ObjectHideFlags: 0
@@ -71856,7 +71865,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 30.5
+      value: 32.5
       objectReference: {fileID: 0}
     - target: {fileID: 475809422331488224, guid: e778fac879605f841a104458d5d623d4, type: 3}
       propertyPath: m_LocalPosition.z
@@ -89601,7 +89610,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: e90dafeaa47c74a4ea4ffd690d70527a, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: ab9f44af321c01149b35eeee20491bd0, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &1658655004
 Terrain:
@@ -89612,7 +89621,7 @@ Terrain:
   m_GameObject: {fileID: 1658655000}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: e90dafeaa47c74a4ea4ffd690d70527a, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: ab9f44af321c01149b35eeee20491bd0, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5

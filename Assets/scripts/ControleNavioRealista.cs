@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.SceneManagement;
@@ -85,6 +86,8 @@ public class ControleNavioRealista : MonoBehaviour
     private float tempoInatividade = 0f;
     private bool estaDesligado = false;
     private bool paradoPorFaltaDeCombustivel;
+    private string ultimoMotivoRecusaDestino = string.Empty;
+    public string UltimoMotivoRecusaDestino => ultimoMotivoRecusaDestino;
 
     [Header("Sistema de Torpedos")]
     [Tooltip("Se true, este navio pode lançar torpedos.")]
@@ -110,6 +113,12 @@ public class ControleNavioRealista : MonoBehaviour
     {
         Ativo,   // Sempre ligado
         Passivo  // Desliga após 20s parado
+    }
+
+    public enum ArmamentoHud
+    {
+        Automatico,
+        Torpedo
     }
 
     // Estado Interno (Simulação)
@@ -170,10 +179,174 @@ public class ControleNavioRealista : MonoBehaviour
     private float proximoLancamentoTorpedo = 0f;
     private float proximaBuscaTorpedoAtivo = 0f;
     private bool modoCombateTorpedosAtivo = false;
+    private ArmamentoHud armamentoSelecionadoHud = ArmamentoHud.Automatico;
     public int MaximoTorpedosConfigurado => Mathf.Max(0, totalTubosValidos * 2);
+    public ArmamentoHud ArmamentoSelecionadoHud => armamentoSelecionadoHud;
+    public bool TemTuboTorpedoConfigurado
+    {
+        get
+        {
+            if (tubosTorpedo == null) return false;
+            for (int i = 0; i < tubosTorpedo.Length; i++)
+                if (tubosTorpedo[i] != null) return true;
+            return false;
+        }
+    }
+
+    public bool DefinirArmamentoHud(ArmamentoHud armamento)
+    {
+        if (armamento == ArmamentoHud.Torpedo
+            && (!possuiTorpedos || prefabTorpedo == null || prefabTorpedo.GetComponent<Torpedo>() == null || !TemTuboTorpedoConfigurado))
+        {
+            return false;
+        }
+        armamentoSelecionadoHud = armamento;
+        proximaBuscaTorpedoAtivo = 0f;
+        return true;
+    }
     private IdentidadeUnidade minhaIdentidade;
     private static readonly Collider[] bufferAlvosTorpedo = new Collider[96];
     private static readonly List<IdentidadeUnidade> unidadesRegistradasTorpedo = new List<IdentidadeUnidade>(256);
+    private readonly Dictionary<int, Coroutine> pousosHelicopterosCreaty = new Dictionary<int, Coroutine>();
+    private readonly Dictionary<int, Transform> vagasReservadasHelicopterosCreaty = new Dictionary<int, Transform>();
+    private readonly List<int> reservasHelicopterosCreatyParaRemover = new List<int>(8);
+    private float proximaLimpezaReservasHelicopterosCreaty;
+
+    /// <summary>True quando este navio tem ao menos uma vaga de convés conectada a um Creaty próprio.</summary>
+    public bool PodeReceberHelicopterosCreaty
+    {
+        get
+        {
+            PontoPousoHelicopteroNaval[] pontos = GetComponentsInChildren<PontoPousoHelicopteroNaval>(true);
+            for (int i = 0; i < pontos.Length; i++)
+                if (pontos[i] != null && pontos[i].EstaConectadoAoNavio(this)) return true;
+            return false;
+        }
+    }
+
+    public bool SolicitarPousoHelicopteroCreaty(Helicoptero heli)
+    {
+        if (!PodeReceberHelicopterosCreaty || !HelicopteroPertenceAoTime(heli)) return false;
+        int heliId = heli.GetInstanceID();
+        if (pousosHelicopterosCreaty.TryGetValue(heliId, out Coroutine pousoAtual) && pousoAtual != null)
+            StopCoroutine(pousoAtual);
+
+        Transform vaga = ObterVagaCreatyLivre(heli);
+        if (vaga == null) return false;
+        vagasReservadasHelicopterosCreaty[heliId] = vaga;
+        heli.transform.SetParent(null, true);
+        heli.VincularTemporariamenteAoNavio(vaga);
+        heli.CancelarMissaoAeroporto();
+        pousosHelicopterosCreaty[heliId] = StartCoroutine(RotinaPousoHelicopteroCreaty(heli, vaga, heliId));
+        return true;
+    }
+
+    public bool TentarServirHelicopteroCreaty(Helicoptero heli)
+    {
+        if (!HelicopteroPertenceAoTime(heli) || !heli.EstaEstacionadoNoAeroporto()) return false;
+        Transform vaga = heli.ObterVagaAeroporto();
+        if (vaga == null || !VagaCreatyPertenceAoNavio(vaga)) return false;
+
+        bool serviu = false;
+        CombustivelUnidade combustivel = heli.GetComponent<CombustivelUnidade>();
+        if (combustivel != null && combustivel.usaCombustivel)
+            serviu |= ServicoAbastecimento.TentarAbastecer(combustivel,
+                combustivel.Capacidade - combustivel.CombustivelAtual, out _);
+
+        LancadorMisselCaca[] misseisCaca = heli.GetComponentsInChildren<LancadorMisselCaca>(true);
+        for (int i = 0; i < misseisCaca.Length; i++)
+            if (misseisCaca[i] != null) { misseisCaca[i].RecarregarCompletoNaBase(); serviu = true; }
+        LancadorMisseis[] misseis = heli.GetComponentsInChildren<LancadorMisseis>(true);
+        for (int i = 0; i < misseis.Length; i++)
+            if (misseis[i] != null) { misseis[i].municaoAtual = misseis[i].municaoMaxima; serviu = true; }
+        SistemaArmamentoHelice[] canhoes = heli.GetComponentsInChildren<SistemaArmamentoHelice>(true);
+        for (int i = 0; i < canhoes.Length; i++)
+            if (canhoes[i] != null) { canhoes[i].RecarregarCompletoNaBase(); serviu = true; }
+        return serviu;
+    }
+
+    private IEnumerator RotinaPousoHelicopteroCreaty(Helicoptero heli, Transform vaga, int heliId)
+    {
+        if (heli == null || vaga == null) yield break;
+        heli.IniciarPousoEmVagaMovel(vaga);
+        float tempo = 0f;
+        const float timeout = 60f;
+        while (tempo < timeout && heli != null && vaga != null && heli.EstaSobControleDoAeroporto() == false)
+        {
+            tempo += Time.deltaTime;
+            heli.AtualizarPousoEmVagaMovel(vaga);
+            if (!heli.estaVoando && !heli.EstaEmPreparacaoDecolagem())
+            {
+                heli.FixarEmVagaMovel(vaga, transform);
+                break;
+            }
+            yield return null;
+        }
+        pousosHelicopterosCreaty.Remove(heliId);
+        if (heli == null || !heli.EstaEstacionadoNoAeroporto())
+        {
+            vagasReservadasHelicopterosCreaty.Remove(heliId);
+            yield break;
+        }
+    }
+
+    private Transform ObterVagaCreatyLivre(Helicoptero heli)
+    {
+        PontoPousoHelicopteroNaval[] pontos = GetComponentsInChildren<PontoPousoHelicopteroNaval>(true);
+        for (int i = 0; i < pontos.Length; i++)
+        {
+            PontoPousoHelicopteroNaval ponto = pontos[i];
+            if (ponto == null || !ponto.EstaConectadoAoNavio(this)) continue;
+            Transform vaga = ponto.transform;
+            bool ocupada = false;
+            foreach (KeyValuePair<int, Transform> reserva in vagasReservadasHelicopterosCreaty)
+                if (reserva.Key != heli.GetInstanceID() && reserva.Value == vaga) { ocupada = true; break; }
+            if (ocupada) continue;
+            Helicoptero[] estacionados = FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
+            for (int h = 0; h < estacionados.Length; h++)
+                if (estacionados[h] != null && estacionados[h] != heli && estacionados[h].EstaEstacionadoNoAeroporto()
+                    && estacionados[h].ObterVagaAeroporto() == vaga) { ocupada = true; break; }
+            if (!ocupada) return vaga;
+        }
+        return null;
+    }
+
+    private void LimparReservasHelicopterosCreaty()
+    {
+        if (Time.unscaledTime < proximaLimpezaReservasHelicopterosCreaty) return;
+        proximaLimpezaReservasHelicopterosCreaty = Time.unscaledTime + 1f;
+        if (vagasReservadasHelicopterosCreaty.Count == 0) return;
+
+        Helicoptero[] helicos = FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
+        reservasHelicopterosCreatyParaRemover.Clear();
+        foreach (KeyValuePair<int, Transform> reserva in vagasReservadasHelicopterosCreaty)
+        {
+            if (pousosHelicopterosCreaty.ContainsKey(reserva.Key)) continue;
+            Helicoptero dono = null;
+            for (int i = 0; i < helicos.Length; i++)
+                if (helicos[i] != null && helicos[i].GetInstanceID() == reserva.Key) { dono = helicos[i]; break; }
+            if (dono == null || !dono.EstaEstacionadoNoAeroporto() || dono.ObterVagaAeroporto() != reserva.Value)
+                reservasHelicopterosCreatyParaRemover.Add(reserva.Key);
+        }
+        for (int i = 0; i < reservasHelicopterosCreatyParaRemover.Count; i++)
+            vagasReservadasHelicopterosCreaty.Remove(reservasHelicopterosCreatyParaRemover[i]);
+    }
+
+    private bool VagaCreatyPertenceAoNavio(Transform vaga)
+    {
+        if (vaga == null) return false;
+        PontoPousoHelicopteroNaval ponto = vaga.GetComponent<PontoPousoHelicopteroNaval>();
+        return ponto != null && ponto.EstaConectadoAoNavio(this);
+    }
+
+    private bool HelicopteroPertenceAoTime(Helicoptero heli)
+    {
+        if (heli == null) return false;
+        IdentidadeUnidade identidadeNavio = GetComponent<IdentidadeUnidade>() ?? GetComponentInChildren<IdentidadeUnidade>(true);
+        IdentidadeUnidade identidadeHeli = heli.GetComponent<IdentidadeUnidade>() ?? heli.GetComponentInChildren<IdentidadeUnidade>(true);
+        return identidadeNavio != null && identidadeHeli != null && identidadeNavio.teamID > 0
+            && identidadeHeli.teamID == identidadeNavio.teamID;
+    }
 
     void Awake()
     {
@@ -234,6 +407,15 @@ public class ControleNavioRealista : MonoBehaviour
         fonteAudio.loop = true;
         fonteAudio.spatialBlend = 1.0f; // 3D Sound
         fonteAudio.playOnAwake = false;
+        AudioClip somNavios = AudioRuntime.ObterAudioNavios();
+        if (somNavios != null)
+        {
+            // O mesmo loop identifica o navio ligado, parado ou em movimento.
+            // Se o recurso estiver ausente, os clipes configurados no prefab
+            // continuam sendo usados como antes.
+            somMotorParado = somNavios;
+            somMotorMovimento = somNavios;
+        }
 
         // Garante que os efeitos começam desligados
         if(bigodeiraProa) bigodeiraProa.Stop();
@@ -297,6 +479,7 @@ public class ControleNavioRealista : MonoBehaviour
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         try
         {
+            LimparReservasHelicopterosCreaty();
             AtualizarEstadoOtimizacao();
             if (agente == null) return;
 
@@ -1150,22 +1333,26 @@ public class ControleNavioRealista : MonoBehaviour
 
     public bool DefinirDestino(Vector3 destino, string ordemExternaId)
     {
+        ultimoMotivoRecusaDestino = string.Empty;
         // O diorama do menu reutiliza navios da campanha, mas não deve aceitar
         // ordens nem tentar preparar um NavMesh enquanto a partida ainda não
         // começou. A cena de campanha continua usando o fluxo normal abaixo.
         if (ehCenaDeMenuCache)
         {
+            ultimoMotivoRecusaDestino = "partida ainda não começou; o navio está no diorama do menu";
             return false;
         }
 
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
+            ultimoMotivoRecusaDestino = "sem combustível operacional";
             PararPorFaltaDeCombustivel();
             return false;
         }
 
         if (!NavalPlacementResolver.IsWaterAtPosition(destino))
         {
+            ultimoMotivoRecusaDestino = "destino fora da água navegável";
             Debug.LogWarning($"[ControleNavioRealista] Destino recusado para {name}: ponto fora da água ({destino.x:F0}, {destino.z:F0}).", this);
             return false;
         }
@@ -1182,7 +1369,19 @@ public class ControleNavioRealista : MonoBehaviour
                 ResolverFolgaNavegacao(),
                 out List<Vector3> rotaAgua))
         {
+            ultimoMotivoRecusaDestino = "rota aquática bloqueada: não há corredor contínuo de água até o destino";
             Debug.LogWarning($"[ControleNavioRealista] Rota recusada para {name}: não existe corredor contínuo sobre água até ({destino.x:F0}, {destino.z:F0}).", this);
+            return false;
+        }
+
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel != null
+            && !combustivel.PossuiAutonomiaParaRota(transform.position, rotaAgua, velocidadeMaxima))
+        {
+            ultimoMotivoRecusaDestino = "autonomia de combustível insuficiente para a rota aquática";
+            Debug.LogWarning(
+                $"[ControleNavioRealista] Destino recusado para {name}: autonomia de combustível insuficiente para a rota aquática.",
+                this);
             return false;
         }
 
@@ -1197,24 +1396,23 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         ControleUnidade controleUnidade = controleUnidadeCache;
-        bool ordemNavalCartelAtiva = controleUnidade != null
+        bool ordemExternaAtiva = controleUnidade != null
             && !string.IsNullOrWhiteSpace(ordemExternaId)
             && controleUnidade.PossuiOrdemMovimentoAtiva
             && controleUnidade.OrdemMovimentoAtual != null
             && controleUnidade.OrdemMovimentoAtual.Id == ordemExternaId
-            && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleNavioRealista)
             && controleUnidade.OrdemMovimentoAtual.Tipo == TipoOrdemMovimento.Naval;
-        if (ordemNavalCartelAtiva
+        if (ordemExternaAtiva
             && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) > 0.01f)
         {
             controleUnidade.AtualizarOrdemMovimentoExterna(
                 ordemExternaId,
-                nameof(ControleNavioRealista),
+                controleUnidade.OrdemMovimentoAtual.Dono,
                 destino,
                 TipoOrdemMovimento.Naval);
         }
 
-        bool ordemCentralAtiva = ordemNavalCartelAtiva || (controleUnidade != null
+        bool ordemCentralAtiva = ordemExternaAtiva || (controleUnidade != null
             && controleUnidade.PossuiOrdemMovimentoAtiva
             && controleUnidade.OrdemMovimentoAtual != null
             && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleUnidade)
@@ -1237,6 +1435,7 @@ public class ControleNavioRealista : MonoBehaviour
                     destino,
                     TipoOrdemMovimento.Naval))
             {
+                ultimoMotivoRecusaDestino = "o controlador central recusou registrar a rota naval";
                 return false;
             }
         }
@@ -1303,6 +1502,7 @@ public class ControleNavioRealista : MonoBehaviour
             // Se estiver em modo passivo, ele vai começar a contar o tempo de novo quando parar.
             if (!destinoAceito)
             {
+                ultimoMotivoRecusaDestino = "NavMesh naval recusou o destino";
                 Debug.LogWarning($"[ControleNavioRealista] NavMesh rejeitou destino para {name} em {destino}.");
             }
             return destinoAceito;
@@ -1321,6 +1521,10 @@ public class ControleNavioRealista : MonoBehaviour
         {
             Debug.LogWarning($"[ControleNavioRealista] NavMesh indisponível para {name}; usando navegação aquática direta.");
             proximoAvisoSemNavMesh = Time.time + 5f;
+        }
+        if (!temDestino)
+        {
+            ultimoMotivoRecusaDestino = "não foi possível iniciar a navegação aquática";
         }
         return temDestino;
     }
@@ -1437,12 +1641,12 @@ public class ControleNavioRealista : MonoBehaviour
         }
     }
 
-    public void DefinirDestinoAtaqueLateral(Vector3 alvo, float deslocamentoLateral = 140f, float recuo = 70f)
+    public bool DefinirDestinoAtaqueLateral(Vector3 alvo, float deslocamentoLateral = 140f, float recuo = 70f)
     {
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
             PararPorFaltaDeCombustivel();
-            return;
+            return false;
         }
 
         DefinirModoCombateTorpedos(true);
@@ -1470,7 +1674,7 @@ public class ControleNavioRealista : MonoBehaviour
 
         Vector3 destinoAtaque = alvo + (lateral * Mathf.Max(40f, deslocamentoLateral)) - (direcaoParaAlvo * Mathf.Max(0f, recuo));
         destinoAtaque.y = transform.position.y;
-        DefinirDestino(destinoAtaque);
+        return DefinirDestino(destinoAtaque);
     }
 
     public bool ModoCombateTorpedosAtivo()
@@ -1485,7 +1689,8 @@ public class ControleNavioRealista : MonoBehaviour
 
     private void TentarAtaqueTorpedoModoAtivo()
     {
-        if (!torpedosNoModoAtivo || !modoCombateTorpedosAtivo
+        if ((!torpedosNoModoAtivo && armamentoSelecionadoHud != ArmamentoHud.Torpedo)
+            || !modoCombateTorpedosAtivo
             || modoOperacao != ModoOperacao.Ativo
             || !UnidadePermiteCombate()
             || Time.time < proximaBuscaTorpedoAtivo)
@@ -1504,6 +1709,51 @@ public class ControleNavioRealista : MonoBehaviour
         {
             LancarTorpedo(alvo.position, alvo);
         }
+    }
+
+    public bool TentarLancarTorpedoManual(Transform alvo, out string motivo)
+    {
+        motivo = string.Empty;
+        if (armamentoSelecionadoHud != ArmamentoHud.Torpedo)
+        {
+            motivo = "torpedo do casco não selecionado na HUD";
+            return false;
+        }
+        if (alvo == null || !EhAlvoNavalParaTorpedo(alvo))
+        {
+            motivo = "torpedo exige alvo naval ou submarino";
+            return false;
+        }
+        Transform raiz = transform.root != null ? transform.root : transform;
+        if (alvo == raiz || alvo.IsChildOf(raiz))
+        {
+            motivo = "alvo pertence à própria unidade";
+            return false;
+        }
+        if (Vector3.Distance(transform.position, alvo.position) > Mathf.Max(1f, alcanceTorpedos))
+        {
+            motivo = "alvo fora do alcance do torpedo";
+            return false;
+        }
+        if (!modoCombateTorpedosAtivo || !UnidadePermiteCombate())
+        {
+            motivo = "sistema de combate naval está passivo";
+            return false;
+        }
+        if (!PodeLancarTorpedoEmAlvo(alvo.position))
+        {
+            motivo = "torpedo sem tubo, munição, em recarga ou fora do arco lateral";
+            return false;
+        }
+
+        int antes = torpedosDisponiveis;
+        LancarTorpedo(alvo.position, alvo);
+        if (torpedosDisponiveis >= antes)
+        {
+            motivo = "lançamento do torpedo não foi concluído";
+            return false;
+        }
+        return true;
     }
 
     private Transform EncontrarAlvoNavalParaTorpedo()
@@ -1648,7 +1898,9 @@ public class ControleNavioRealista : MonoBehaviour
 
     public void LancarTorpedo(Vector3 alvo, Transform alvoT = null)
     {
-        if (!modoCombateTorpedosAtivo || modoOperacao != ModoOperacao.Ativo || !UnidadePermiteCombate())
+        bool selecaoManualAutorizaDisparo = armamentoSelecionadoHud == ArmamentoHud.Torpedo && modoCombateTorpedosAtivo;
+        if ((!modoCombateTorpedosAtivo || (modoOperacao != ModoOperacao.Ativo && !selecaoManualAutorizaDisparo))
+            || !UnidadePermiteCombate())
         {
             Debug.Log($"[{name}] Lancamento de torpedo bloqueado: modo de combate passivo.", this);
             return;

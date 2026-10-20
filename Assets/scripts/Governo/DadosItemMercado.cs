@@ -20,7 +20,10 @@ public enum RecursoMercado
     LigaTitanio,
     ComponentesEletronicos,
     UranioEnriquecido,
-    Agua
+    Agua,
+    Diesel,
+    CombustivelAviacao,
+    CombustivelNaval
 }
 
 [Serializable]

@@ -348,7 +348,7 @@ MonoBehaviour:
   teamID: 1
   nomeDoPais: Hegemonia
   antygavitiEstabilidade: 5
-  tipoUnidade: 0
+  tipoUnidade: 3
   militaresConsumidos: 0
   combustivelPorHora: 0
   energiaConsumida: 0

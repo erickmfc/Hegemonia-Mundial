@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Hegemonia.AI.IA03
@@ -22,8 +23,12 @@ namespace Hegemonia.AI.IA03
         public int FabricasProprias;
         public int EstaleirosProprios;
         public int AeroportosMilitaresProprios;
+        // Compatibilidade pública: representam resultados de missões ofensivas
+        // de destruição de alvo, não batalhas físicas individuais.
         public int BatalhasVencidas;
         public int BatalhasPerdidas;
+        // Soma apenas reposição conhecida de ativos destruídos; dano parcial e
+        // perdas de produção/recursos não fazem parte deste valor.
         public float PrejuizoEconomicoInimigo;
         public float PrejuizoEconomicoProprio;
         public float DanoEstruturalInimigo;
@@ -39,6 +44,7 @@ namespace Hegemonia.AI.IA03
         public int ObjetivosPerdidos;
         public float CapacidadeMilitarRestante;
         public float MomentoDoRelatorio;
+        public float DuracaoConflitoSegundos;
 
         public int TotalDeBatalhas => BatalhasVencidas + BatalhasPerdidas;
         public float Dominio => TotalDeBatalhas > 0 ? BatalhasVencidas / (float)TotalDeBatalhas : 0f;
@@ -60,6 +66,7 @@ namespace Hegemonia.AI.IA03
     public sealed class IA03RelatorioConflito
     {
         private readonly IA03RelatorioSnapshot acumulado = new IA03RelatorioSnapshot();
+        private readonly HashSet<string> eventosDeCombateProcessados = new HashSet<string>(StringComparer.Ordinal);
 
         public IA03RelatorioSnapshot Acumulado => acumulado;
 
@@ -98,13 +105,20 @@ namespace Hegemonia.AI.IA03
             acumulado.ObjetivosPerdidos = 0;
             acumulado.CapacidadeMilitarRestante = 0f;
             acumulado.MomentoDoRelatorio = 0f;
+            acumulado.DuracaoConflitoSegundos = 0f;
+            eventosDeCombateProcessados.Clear();
         }
 
-        public void RegistrarEventoCombate(CartaCombateRegistro.EventoCombate evento, int teamId, int alvoTeamId)
+        public bool RegistrarEventoCombate(CartaCombateRegistro.EventoCombate evento, int teamId, int alvoTeamId)
         {
             if (evento == null || evento.tipo != "UNIDADE DESTRUÍDA")
             {
-                return;
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(evento.id) && !eventosDeCombateProcessados.Add(evento.id))
+            {
+                return false;
             }
 
             if (evento.alvoEhEstrutura)
@@ -117,7 +131,7 @@ namespace Hegemonia.AI.IA03
                 {
                     acumulado.EstruturasInimigasDestruidas++;
                 }
-                return;
+                return true;
             }
 
             if (evento.equipeAlvo == teamId && evento.equipeAtacante == alvoTeamId)
@@ -128,6 +142,8 @@ namespace Hegemonia.AI.IA03
             {
                 acumulado.InimigosDestruidos++;
             }
+
+            return true;
         }
 
         public void RegistrarResultadoCombate(bool venceu)
@@ -225,6 +241,7 @@ namespace Hegemonia.AI.IA03
             int unidadesInimigasConhecidas,
             int forcaPropriaInicial,
             float momento,
+            float duracaoConflitoSegundos,
             Hegemonia.AI.BrainMaster.IA_ForceSnapshot forcaPropria)
         {
             acumulado.UnidadesPropriasDisponiveis = Mathf.Max(0, unidadesPropriasDisponiveis);
@@ -233,6 +250,7 @@ namespace Hegemonia.AI.IA03
                 ? Mathf.Clamp01(unidadesPropriasDisponiveis / (float)forcaPropriaInicial)
                 : 0f;
             acumulado.MomentoDoRelatorio = momento;
+            acumulado.DuracaoConflitoSegundos = Mathf.Max(0f, duracaoConflitoSegundos);
             RegistrarForcasProprias(forcaPropria);
 
             return new IA03RelatorioSnapshot
@@ -269,7 +287,8 @@ namespace Hegemonia.AI.IA03
                 ObjetivosCapturados = acumulado.ObjetivosCapturados,
                 ObjetivosPerdidos = acumulado.ObjetivosPerdidos,
                 CapacidadeMilitarRestante = acumulado.CapacidadeMilitarRestante,
-                MomentoDoRelatorio = acumulado.MomentoDoRelatorio
+                MomentoDoRelatorio = acumulado.MomentoDoRelatorio,
+                DuracaoConflitoSegundos = acumulado.DuracaoConflitoSegundos
             };
         }
     }

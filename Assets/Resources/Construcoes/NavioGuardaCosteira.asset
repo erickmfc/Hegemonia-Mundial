@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Navio Guarda Costeira
   descricao: Navio de busca e salvamento com canhao de autoprotecao. Tripulacao de 15 e capacidade para 250 pessoas.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 4e474ed6550357c4682fa0a33bca6fc1, type: 3}
   itemId: NAVIO_GUARDA_COSTEIRA
   aliases: navio guarda costeira; navio de resgate; busca e salvamento naval
   capacidades: 0

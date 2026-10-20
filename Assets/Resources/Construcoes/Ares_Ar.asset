@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Ares Ar
   descricao: Sistema antiaereo Ares Ar. Custo de campanha por unidade e cartucho cobrado a cada missil lancado.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 7a55720554f1efd4080fcb34b0404e0f, type: 3}
   itemId: defesa.ares_ar
   aliases: ares, ares ar, Ares_Ar, sistema antiaereo, defesa antiaerea
   capacidades: 257

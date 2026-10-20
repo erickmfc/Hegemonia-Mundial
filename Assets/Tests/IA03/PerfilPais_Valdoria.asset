@@ -36,7 +36,7 @@ MonoBehaviour:
   minimoAeronavesPortaAvioes: 1
   intervaloDecisaoSegundos: 45
   minimoDeBatalhasParaAvaliar: 3
-  dominioMinimo: 0.67
+  dominioMinimo: 0.6666667
   prejuizoEconomicoMinimoParaPaz: 0.3
   avaliacaoConflitoLimitadoSegundos: 1500
   avaliacaoGuerraTotalSegundos: 3600

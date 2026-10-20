@@ -295,9 +295,9 @@ public class SistemaMercadoGlobal : MonoBehaviour
 
             float pressao = (demanda - oferta) / 100f;
             float oscilacao = Mathf.Sin(Time.unscaledTime * (0.41f + item.volatilidade) + item.precoBase) * item.volatilidade;
-            float novoPreco = item.precoBase * (1f + pressao + oscilacao);
+            double novoPreco = (double)Mathf.Max(1, item.precoBase) * (1d + pressao + oscilacao);
             int precoAnterior = Mathf.Max(1, item.precoAtual);
-            item.precoAtual = Mathf.Max(1, Mathf.RoundToInt(novoPreco));
+            item.precoAtual = (int)Math.Min(int.MaxValue, Math.Max(1d, Math.Round(novoPreco)));
             item.variacaoPercentual = ((item.precoAtual - precoAnterior) / (float)precoAnterior) * 100f;
             item.demanda = Mathf.Clamp(demanda * 0.92f + item.demanda * 0.08f, 5f, 140f);
             item.oferta = Mathf.Clamp(oferta * 0.92f + item.oferta * 0.08f, 5f, 140f);
@@ -337,12 +337,17 @@ public class SistemaMercadoGlobal : MonoBehaviour
                 ? item.estoqueGlobal
                 : governo.ObterEstoque(vendedorTeamId, recursoId);
         quantidade = Mathf.Min(quantidade, Mathf.Max(0, item.estoqueGlobal), Mathf.Max(0, estoqueVendedor));
-        int total = quantidade * item.precoAtual;
         if (comprador == null || vendedor == null || quantidade <= 0)
         {
             mensagem = "Pais sem oferta disponivel.";
             return false;
         }
+        if ((long)quantidade * Mathf.Max(1, item.precoAtual) > int.MaxValue)
+        {
+            mensagem = "Quantidade excede o limite de valor de uma unica operacao.";
+            return false;
+        }
+        int total = quantidade * Mathf.Max(1, item.precoAtual);
 
         if (ComercioBloqueadoPorGuerra(compradorTeamId, vendedorTeamId, comprador, vendedor))
         {
@@ -449,7 +454,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return false;
         }
 
-        int total = quantidade * item.precoAtual;
+        if ((long)quantidade * Mathf.Max(1, item.precoAtual) > int.MaxValue)
+        {
+            mensagem = "Quantidade excede o limite de valor de uma unica operacao.";
+            return false;
+        }
+        int total = quantidade * Mathf.Max(1, item.precoAtual);
         if (!governo.TentarPagar(compradorTeamId, total))
         {
             mensagem = "Comprador sem dinheiro.";
@@ -531,10 +541,15 @@ public class SistemaMercadoGlobal : MonoBehaviour
             mensagem = "Pais sem oferta disponivel.";
             return false;
         }
+        if (QuantidadeMaximaTransacionavel(item, true, quantidade) < quantidade)
+        {
+            mensagem = "Quantidade excede o limite de valor da compra com frete.";
+            return false;
+        }
 
         int total = quantidade * Mathf.Max(1, item.precoAtual);
         bool entregaSemNavio = DeveEntregarSemNavio(item, true);
-        int frete = entregaSemNavio ? 0 : Mathf.Max(1, Mathf.CeilToInt(total * SistemaLogisticaMercado.FretePercentual));
+        int frete = CalcularFreteMercado(item, true, quantidade);
         if (!governo.TentarPagar(compradorTeamId, total + frete))
         {
             mensagem = "Dinheiro insuficiente para compra e frete.";
@@ -666,6 +681,11 @@ public class SistemaMercadoGlobal : MonoBehaviour
         // aeronave/navio original com o vendedor.
         if (item.equipamentoMilitar)
         {
+            if ((long)quantidade * Mathf.Max(1, item.precoAtual) > int.MaxValue)
+            {
+                mensagem = "Quantidade excede o limite de valor de uma unica operacao.";
+                return false;
+            }
             int totalEquipamento = quantidade * Mathf.Max(1, item.precoAtual);
             if (!governo.TentarPagar(compradorTeamId, totalEquipamento))
             {
@@ -702,9 +722,14 @@ public class SistemaMercadoGlobal : MonoBehaviour
             return true;
         }
 
+        if (QuantidadeMaximaTransacionavel(item, false, quantidade) < quantidade)
+        {
+            mensagem = "Quantidade excede o limite de valor da venda com frete.";
+            return false;
+        }
         int total = quantidade * Mathf.Max(1, item.precoAtual);
         bool entregaSemNavio = DeveEntregarSemNavio(item, false);
-        int frete = entregaSemNavio ? 0 : Mathf.Max(1, Mathf.CeilToInt(total * SistemaLogisticaMercado.FretePercentual));
+        int frete = CalcularFreteMercado(item, false, quantidade);
         if (!governo.TentarPagar(compradorTeamId, total + frete))
         {
             mensagem = "Comprador sem dinheiro para compra e frete.";
@@ -823,22 +848,85 @@ public class SistemaMercadoGlobal : MonoBehaviour
         return necessidade;
     }
 
+    public int CalcularFreteMercado(DadosItemMercado item, bool compra, int quantidade)
+    {
+        if (item == null || quantidade <= 0 || (item.equipamentoMilitar && !compra) || DeveEntregarSemNavio(item, compra))
+            return 0;
+
+        int precoUnitario = Mathf.Max(1, item.precoAtual);
+        int quantidadeSegura = Mathf.Min(quantidade, int.MaxValue / precoUnitario);
+        long subtotal = (long)quantidadeSegura * precoUnitario;
+        int percentualFrete = Mathf.Max(0, Mathf.RoundToInt(SistemaLogisticaMercado.FretePercentual * 100f));
+        if (percentualFrete == 0) return 0;
+        long frete = Math.Max(1L, (subtotal * percentualFrete + 99L) / 100L);
+        return (int)Math.Min(int.MaxValue, frete);
+    }
+
+    public long CalcularTotalMercado(DadosItemMercado item, bool compra, int quantidade)
+    {
+        if (item == null || quantidade <= 0) return 0L;
+        int precoUnitario = Mathf.Max(1, item.precoAtual);
+        if (quantidade > int.MaxValue / precoUnitario) return long.MaxValue;
+        long subtotal = (long)quantidade * precoUnitario;
+        return subtotal + CalcularFreteMercado(item, compra, quantidade);
+    }
+
+    public int QuantidadeMaximaTransacionavel(DadosItemMercado item, bool compra, int quantidadeMaxima)
+    {
+        if (item == null || quantidadeMaxima <= 0) return 0;
+        int limiteSeguro = Mathf.Min(quantidadeMaxima, int.MaxValue / Mathf.Max(1, item.precoAtual));
+        int menor = 0;
+        int maior = limiteSeguro;
+        while (menor < maior)
+        {
+            int meio = menor + (int)(((long)maior - menor + 1L) / 2L);
+            if (CalcularTotalMercado(item, compra, meio) <= int.MaxValue)
+                menor = meio;
+            else
+                maior = meio - 1;
+        }
+        return menor;
+    }
+
+    public int QuantidadeMaximaPorSaldo(DadosItemMercado item, bool compra, long saldo, int quantidadeMaxima)
+    {
+        if (item == null || saldo <= 0 || quantidadeMaxima <= 0) return 0;
+        int limiteSeguro = QuantidadeMaximaTransacionavel(item, compra, quantidadeMaxima);
+        int menor = 0;
+        int maior = limiteSeguro;
+        while (menor < maior)
+        {
+            int meio = menor + (int)(((long)maior - menor + 1L) / 2L);
+            if (CalcularTotalMercado(item, compra, meio) <= saldo)
+                menor = meio;
+            else
+                maior = meio - 1;
+        }
+        return menor;
+    }
+
     public DadosPaisGoverno EncontrarMelhorFornecedor(int compradorTeamId, DadosItemMercado item, int quantidade)
     {
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         if (governo == null || item == null) return null;
+        int quantidadeSolicitada = Mathf.Max(1, quantidade);
+        // O saldo do fornecedor cobre a unidade produzida; o frete é pago pelo comprador.
+        long custoFornecedor = CalcularTotalMercado(item, false, quantidadeSolicitada);
+        SistemaGastosMilitares.GarantirInstancia();
         return governo.Paises
             .Where(p => p != null && p.teamId != compradorTeamId && PodeNegociarComAliado(compradorTeamId, p.teamId, out _)
                 && (item.municaoMilitar
-                    ? SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) >= Mathf.Max(1, quantidade)
+                    ? SistemaGastosMilitares.Instancia != null && SistemaGastosMilitares.Instancia.ObterEstoqueMunicao(p.teamId, item.idMunicaoMilitar) >= quantidadeSolicitada
                     : item.equipamentoMilitar
-                        ? p.saldo >= quantidade * item.precoAtual
-                        : governo.ObterEstoque(p.teamId, item.RecursoIdEfetivo) > 0))
+                        ? custoFornecedor <= int.MaxValue && p.saldo >= custoFornecedor
+                        : governo.ObterEstoque(p.teamId, item.RecursoIdEfetivo) >= quantidadeSolicitada))
             .OrderByDescending(p =>
             {
                 RelacaoPaisGoverno rel;
                 PodeNegociarComAliado(compradorTeamId, p.teamId, out rel);
-                return (rel != null ? rel.valor : 0) * 2f + Mathf.Clamp(p.producao, 0f, 100f) + p.saldo / 10000f;
+                return (rel != null ? rel.valor : 0) * 2f
+                    + (rel != null ? rel.valorBaseHistorico : 0) * 0.5f
+                    + Mathf.Clamp(p.producao, 0f, 100f) + p.saldo / 10000f;
             })
             .FirstOrDefault();
     }
@@ -847,15 +935,16 @@ public class SistemaMercadoGlobal : MonoBehaviour
     {
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         if (governo == null || item == null) return null;
-        int custo = Mathf.Max(1, quantidade) * Mathf.Max(1, item.precoAtual);
+        long custo = CalcularTotalMercado(item, false, Mathf.Max(1, quantidade));
         return governo.Paises
-            .Where(p => p != null && p.teamId != vendedorTeamId && p.saldo >= custo
+            .Where(p => p != null && p.teamId != vendedorTeamId && custo <= int.MaxValue && p.saldo >= custo
                 && PodeNegociarComAliado(vendedorTeamId, p.teamId, out _))
             .OrderByDescending(p =>
             {
                 RelacaoPaisGoverno rel;
                 PodeNegociarComAliado(vendedorTeamId, p.teamId, out rel);
                 return (rel != null ? rel.valor : 0) * 3f
+                    + (rel != null ? rel.valorBaseHistorico : 0) * 0.75f
                     + InteresseDoPais(p, item)
                     + Mathf.Clamp(p.nivelEconomico, 0, 100) * 0.15f;
             })
@@ -1220,15 +1309,27 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         C700TransporteAereo c700 = identidade.gameObject.GetComponentInChildren<C700TransporteAereo>(true);
-        if (c700 != null && aeroportoDestino != null)
+        if (c700 != null && aeroportoDestino != null
+            && aeroportoDestino.RegistrarTransporteAereoRecebido(c700))
         {
-            aeroportoDestino.RegistrarTransporteAereoRecebido(c700);
+            for (int i = 0; i < aeroportos.Length; i++)
+            {
+                GerenciadorAeroporto aeroporto = aeroportos[i];
+                if (aeroporto == null || aeroporto == aeroportoDestino) continue;
+                while (aeroporto.transportesC700NoPatio.Remove(c700)) { }
+            }
         }
 
         Helicoptero helicoptero = identidade.gameObject.GetComponentInChildren<Helicoptero>(true);
-        if (helicoptero != null && aeroportoDestino != null)
+        if (helicoptero != null && aeroportoDestino != null
+            && aeroportoDestino.RegistrarHelicopteroRecebido(helicoptero))
         {
-            aeroportoDestino.RegistrarHelicopteroRecebido(helicoptero);
+            for (int i = 0; i < aeroportos.Length; i++)
+            {
+                GerenciadorAeroporto aeroporto = aeroportos[i];
+                if (aeroporto == null || aeroporto == aeroportoDestino) continue;
+                while (aeroporto.helicopterosDoAeroporto.Remove(helicoptero)) { }
+            }
         }
 
         NavioPetroleiro petroleiro = identidade.gameObject.GetComponentInChildren<NavioPetroleiro>(true);

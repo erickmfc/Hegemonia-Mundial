@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Hegemonia.AI.DEUSA;
 using Hegemonia.AI.IA03;
+using Hegemonia.AI.IA01;
 using Hegemonia.AI.Shared;
 using Hegemonia.AI.Sovereign;
 using UnityEngine;
@@ -66,8 +67,11 @@ namespace Hegemonia.AI.BrainMaster
         [Range(0f, 1f)] public float RivalHatredWeight = 0.45f;
 
         [Header("Economy")]
+        [Tooltip("Compatibilidade com cenas antigas. O caixa inicial real é definido no governo nacional.")]
         public int InitialCredits = 30000;
+        [Tooltip("Compatibilidade com cenas antigas. A renda é processada pelo governo nacional.")]
         public int IncomePerSecond = 60;
+        [Tooltip("Espelho do saldo nacional; não é uma carteira separada da IA.")]
         public int Credits;
 
         [Header("Stability")]
@@ -261,9 +265,10 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Credits = Mathf.Max(0, InitialCredits);
+            Credits = 0;
             LogCheckpointInicialIA03("Awake.runtime-graph.begin");
             EnsureRuntimeGraph(false, false);
+            SincronizarCreditosComTesouroNacional();
             LogCheckpointInicialIA03("Awake.end");
         }
 
@@ -296,6 +301,12 @@ namespace Hegemonia.AI.BrainMaster
 
         private void Update()
         {
+            if (Hegemonia.RTS.RTSGameSession.Instancia != null
+                && Hegemonia.RTS.RTSGameSession.Instancia.Phase == Hegemonia.RTS.RTSSessionPhase.Paused)
+            {
+                return;
+            }
+
             bool traceFirstUpdate = _traceIA03WarValidationStartup && !_firstIA03ValidationUpdateTraced;
             if (traceFirstUpdate)
             {
@@ -358,6 +369,11 @@ namespace Hegemonia.AI.BrainMaster
                     _firstIA03ValidationUpdateTraced = true;
                 }
                 return;
+            }
+
+            if (_ia03Estratega != null && _ia03Estratega.isActiveAndEnabled)
+            {
+                _ia03Estratega.GarantirReservasEstrategicas();
             }
 
             // Consulta o coordenador global para saber o budget disponivel neste frame
@@ -544,8 +560,9 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             // O plano imperial recalcula as metas periodicamente. Reaplicar aqui
-            // mantém o perfil opcional da IA03 como fonte das metas nacionais,
-            // sem adicionar atualização própria por frame.
+            // mantém o perfil opcional da IA03 como piso das metas nacionais,
+            // sem adicionar atualização própria por frame e sem apagar metas
+            // superiores vindas da capacidade, ameaça ou DEUSA.
             if (_ia03Estratega != null)
             {
                 _ia03Estratega.AplicarMetasMilitaresDoPerfil();
@@ -754,21 +771,33 @@ namespace Hegemonia.AI.BrainMaster
             IA_NavalBuildDiagnostics.DrawGizmos(this);
         }
 
-        public bool TrySpend(int amount)
+        public bool TrySpend(long amount)
         {
-            int cost = Mathf.Max(0, amount);
-            if (Credits < cost)
+            long cost = Math.Max(0L, amount);
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = governo != null ? governo.ObterPais(TeamId) : null;
+            if (pais == null || !governo.TentarPagar(TeamId, cost))
             {
+                SincronizarCreditosComTesouroNacional();
                 return false;
             }
 
-            Credits -= cost;
+            SincronizarCreditosComTesouroNacional();
             return true;
         }
 
-        public void Refund(int amount)
+        public void Refund(long amount)
         {
-            Credits += Mathf.Max(0, amount);
+            long refund = Math.Max(0L, amount);
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            if (governo == null || governo.ObterPais(TeamId) == null)
+            {
+                SincronizarCreditosComTesouroNacional();
+                return;
+            }
+
+            governo.AdicionarSaldo(TeamId, refund);
+            SincronizarCreditosComTesouroNacional();
         }
 
         // Ponte de compatibilidade usada pelo IA_CommandExecutor (NovaIA).
@@ -838,6 +867,171 @@ namespace Hegemonia.AI.BrainMaster
             return _commandQueue.Enqueue(request, Time.time, out reason);
         }
 
+        /// <summary>
+        /// Enfileira uma reposição de baixa da IA03 mantendo o item exato do
+        /// catálogo e a reserva idempotente que o executor de produção exige.
+        /// A cobrança e a validação física continuam no ExecuteProduce.
+        /// </summary>
+        public bool TryQueueProductionForIA03Replacement(
+            int teamId,
+            string itemKey,
+            int priority,
+            out string productionOrderId)
+        {
+            productionOrderId = string.Empty;
+            if (teamId != TeamId
+                || IntegrationMode == IA_IntegrationMode.ShadowReadOnly
+                || !HasExecutionAuthority
+                || !EnsureRuntimeOperational(false)
+                || _commandQueue == null
+                || _backendBridge == null)
+            {
+                return false;
+            }
+
+            DadosConstrucao item;
+            if (!_backendBridge.TryResolveItemExact(itemKey, out item) || item == null || item.PrefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            IA01MilitaryAssetKind kind = IA01MilitaryProductionGuard.Classify(item);
+            string unitType = kind == IA01MilitaryAssetKind.Other ? item.GetStableId() : kind.ToString();
+            if (string.IsNullOrWhiteSpace(unitType))
+            {
+                return false;
+            }
+
+            if (!PodeEnfileirarReposicao(item, kind))
+            {
+                return false;
+            }
+
+            int alive = CountOwnedForProductionReplacement(kind);
+            string purpose = "ia03-replacement:" + item.GetStableId();
+            if (!IAAutoProductionRegistry.TryReserveReplacement(
+                    TeamId,
+                    unitType,
+                    purpose,
+                    1,
+                    alive,
+                    out productionOrderId,
+                    Time.time,
+                    180f))
+            {
+                productionOrderId = string.Empty;
+                return false;
+            }
+
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA03EstrategaNacional",
+                "estrategico",
+                "reposição de baixa da missão estratégica",
+                Mathf.Clamp(priority, 1, 1000),
+                "production",
+                purpose,
+                0.35f,
+                new IA_ProduceOrderData
+                {
+                    ItemKey = item.GetStableId(),
+                    PrefabName = item.PrefabDaUnidade.name,
+                    Quantity = 1,
+                    ProductionOrderId = productionOrderId
+                },
+                productionOrderId);
+
+            string reason;
+            if (!_commandQueue.Enqueue(request, Time.time, out reason))
+            {
+                IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+                productionOrderId = string.Empty;
+                return false;
+            }
+
+            IAAutoProductionRegistry.ConfirmQueued(productionOrderId, 0, Time.time);
+            return true;
+        }
+
+        private int CountOwnedForProductionReplacement(IA01MilitaryAssetKind kind)
+        {
+            switch (kind)
+            {
+                case IA01MilitaryAssetKind.Infantry:
+                    return IA01MilitaryProductionGuard.CountOwnedUnique(TeamId, TipoUnidade.Infantaria);
+                case IA01MilitaryAssetKind.Tank:
+                case IA01MilitaryAssetKind.AntiAir:
+                    return IA01MilitaryProductionGuard.CountOwnedUnique(TeamId, TipoUnidade.Veiculo);
+                case IA01MilitaryAssetKind.Fighter:
+                    return IA01MilitaryProductionGuard.CountOwnedUnique(TeamId, TipoUnidade.Aereo);
+                case IA01MilitaryAssetKind.Naval:
+                case IA01MilitaryAssetKind.OilTanker:
+                    return IA01MilitaryProductionGuard.CountOwnedUnique(TeamId, TipoUnidade.Naval);
+                default:
+                    return 0;
+            }
+        }
+
+        private bool PodeEnfileirarReposicao(DadosConstrucao item, IA01MilitaryAssetKind kind)
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            if (governo == null || governo.ObterPais(TeamId) == null || item == null || item.PrefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            long custo = Math.Max(0L, item.ObterPrecoEfetivo());
+            if (governo.ObterSaldoDisponivelParaOperacao(TeamId) < custo)
+            {
+                return false;
+            }
+
+            TipoUnidade tipoFallback = ResolverTipoDeReposicao(item, kind);
+            int efetivo = SistemaGovernoMundial.ObterEfetivoNecessario(item.PrefabDaUnidade, tipoFallback);
+            return efetivo <= 0
+                || governo.PodeProduzirUnidadeComEfetivo(TeamId, item.PrefabDaUnidade, 1, tipoFallback);
+        }
+
+        private static TipoUnidade ResolverTipoDeReposicao(DadosConstrucao item, IA01MilitaryAssetKind kind)
+        {
+            if (item != null)
+            {
+                switch (item.categoria)
+                {
+                    case DadosConstrucao.CategoriaItem.Aeronautica:
+                        return TipoUnidade.Aereo;
+                    case DadosConstrucao.CategoriaItem.Marinha:
+                        return TipoUnidade.Naval;
+                }
+
+                if (item.PrefabDaUnidade != null)
+                {
+                    IdentidadeUnidade identidade = item.PrefabDaUnidade.GetComponent<IdentidadeUnidade>()
+                        ?? item.PrefabDaUnidade.GetComponentInChildren<IdentidadeUnidade>(true);
+                    if (identidade != null && identidade.tipoUnidade != TipoUnidade.Estrutura)
+                    {
+                        return identidade.tipoUnidade;
+                    }
+                }
+            }
+
+            switch (kind)
+            {
+                case IA01MilitaryAssetKind.Infantry:
+                    return TipoUnidade.Infantaria;
+                case IA01MilitaryAssetKind.Tank:
+                case IA01MilitaryAssetKind.AntiAir:
+                    return TipoUnidade.Veiculo;
+                case IA01MilitaryAssetKind.Fighter:
+                    return TipoUnidade.Aereo;
+                case IA01MilitaryAssetKind.Naval:
+                case IA01MilitaryAssetKind.OilTanker:
+                    return TipoUnidade.Naval;
+                default:
+                    return TipoUnidade.Veiculo;
+            }
+        }
+
         public bool QueueProduction(string itemKey, int priority)
         {
             return TryQueueProduction(TeamId, itemKey, priority);
@@ -892,16 +1086,53 @@ namespace Hegemonia.AI.BrainMaster
 
         public bool TryIssueAttack(int teamId, string attackTag, Vector3 worldPoint, int priority)
         {
+            return TryIssueAttackOrder(teamId, attackTag, null, worldPoint, priority, false, 0, false);
+        }
+
+        public bool TryIssueAttackAgainstTeam(int teamId, string attackTag, Transform target, int targetTeamId, int priority)
+        {
+            if (target == null || targetTeamId <= 0 || targetTeamId == teamId)
+            {
+                return false;
+            }
+
+            return TryIssueAttackOrder(teamId, attackTag, target, target.position, priority, true, targetTeamId, false);
+        }
+
+        public bool TryIssueAttackAtCoordinateAgainstTeam(
+            int teamId,
+            string attackTag,
+            Vector3 worldPoint,
+            int targetTeamId,
+            int priority)
+        {
+            if (targetTeamId <= 0 || targetTeamId == teamId)
+            {
+                return false;
+            }
+
+            return TryIssueAttackOrder(teamId, attackTag, null, worldPoint, priority, true, targetTeamId, true);
+        }
+
+        private bool TryIssueAttackOrder(
+            int teamId,
+            string attackTag,
+            Transform target,
+            Vector3 worldPoint,
+            int priority,
+            bool requiresDeclaredWar,
+            int targetTeamId,
+            bool allowCoordinateAttackAgainstKnownEnemy)
+        {
             if (teamId != TeamId || !EnsureRuntimeOperational(false) || _commandQueue == null)
             {
                 return false;
             }
 
-            IA_AttackOrderData attack = new IA_AttackOrderData
-            {
-                TargetPosition = ResolveBackendPoint(worldPoint),
-                Target = null
-            };
+            Vector3 resolvedTargetPosition = ResolveBackendPoint(worldPoint);
+            IA_AttackOrderData attack = allowCoordinateAttackAgainstKnownEnemy
+                ? CreateCoordinateAttackOrderData(resolvedTargetPosition, targetTeamId)
+                : CreateAttackOrderData(target, resolvedTargetPosition, requiresDeclaredWar, targetTeamId);
             FillTeamUnitsForBackend(attack.Units);
             if (attack.Units.Count == 0)
             {
@@ -921,6 +1152,32 @@ namespace Hegemonia.AI.BrainMaster
 
             string reason;
             return _commandQueue.Enqueue(request, Time.time, out reason);
+        }
+
+        private static IA_AttackOrderData CreateAttackOrderData(
+            Transform target,
+            Vector3 targetPosition,
+            bool requiresDeclaredWar,
+            int targetTeamId)
+        {
+            return new IA_AttackOrderData
+            {
+                TargetPosition = targetPosition,
+                Target = target,
+                RequiresDeclaredWar = requiresDeclaredWar,
+                TargetTeamId = targetTeamId
+            };
+        }
+
+        private static IA_AttackOrderData CreateCoordinateAttackOrderData(Vector3 targetPosition, int targetTeamId)
+        {
+            return new IA_AttackOrderData
+            {
+                TargetPosition = targetPosition,
+                RequiresDeclaredWar = true,
+                TargetTeamId = targetTeamId,
+                AllowCoordinateAttackAgainstKnownEnemy = true
+            };
         }
 
         public bool IssueAttack(string attackTag, Vector3 worldPoint, int priority)
@@ -951,12 +1208,23 @@ namespace Hegemonia.AI.BrainMaster
 
         private void TickEconomy(float deltaTime)
         {
-            _incomeTimer += deltaTime;
-            while (_incomeTimer >= 1f)
+            _incomeTimer += Mathf.Max(0f, deltaTime);
+            if (_incomeTimer >= 1f)
             {
-                Credits += Mathf.Max(0, Mathf.RoundToInt(IncomePerSecond * GameDifficultyManager.PerfilAtual.MultiplicadorEconomiaIA));
-                _incomeTimer -= 1f;
+                _incomeTimer %= 1f;
+                SincronizarCreditosComTesouroNacional();
             }
+        }
+
+        private void SincronizarCreditosComTesouroNacional()
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            long saldoDisponivel = governo != null
+                ? governo.ObterSaldoDisponivelParaOperacao(TeamId)
+                : 0L;
+            Credits = saldoDisponivel > 0L
+                ? (int)Math.Min(int.MaxValue, saldoDisponivel)
+                : 0;
         }
 
         private IA_ZoneType ResolveBuildZone(string itemKey)
@@ -1022,6 +1290,11 @@ namespace Hegemonia.AI.BrainMaster
             {
                 IdentidadeUnidade unit = _backendUnitBuffer[i];
                 if (unit == null || unit.teamID != TeamId || unit.tipoUnidade == TipoUnidade.Estrutura)
+                {
+                    continue;
+                }
+
+                if (_ia03Estratega != null && _ia03Estratega.IsUnitReservedForActiveMission(unit.gameObject))
                 {
                     continue;
                 }
@@ -1159,7 +1432,7 @@ namespace Hegemonia.AI.BrainMaster
                 bool requiresConfirmation = request.Type == IA_CommandType.Build || request.Type == IA_CommandType.Produce;
                 if (requiresConfirmation)
                 {
-                    _commandConfirmationService.CaptureBaseline(request, _worldState);
+                    _commandConfirmationService.CaptureBaseline(request, _worldState, _backendBridge);
                 }
 
                 string message;
@@ -1285,7 +1558,30 @@ namespace Hegemonia.AI.BrainMaster
             switch (lane)
             {
                 case IA_CommandLane.BuildHeavy:
-                    return decision == null || decision.AllowHeavyBuild;
+                    IA_BuildOrderData heavyBuild = request.Payload as IA_BuildOrderData;
+                    bool priorityManualNavalBuild = request.Type == IA_CommandType.Build
+                        && heavyBuild != null
+                        && heavyBuild.ForceManualPlacement
+                        && request.Priority >= 975
+                        && (IA_Text.Normalize(heavyBuild.ItemKey).Contains("estaleiro")
+                            || IA_Text.Normalize(heavyBuild.ItemKey).Contains("pier")
+                            || IA_Text.Normalize(heavyBuild.ItemKey).Contains("plataforma"));
+                    if (decision != null && !decision.AllowHeavyBuild && !priorityManualNavalBuild)
+                    {
+                        return false;
+                    }
+
+                    if (priorityManualNavalBuild)
+                    {
+                        if (buildExecuted >= 1)
+                        {
+                            return false;
+                        }
+
+                        buildExecuted++;
+                    }
+
+                    return true;
                 case IA_CommandLane.BuildLight:
                     if ((decision != null && !decision.AllowBuild)
                         || pressure.Estado == EstadoCargaIA.Saturado

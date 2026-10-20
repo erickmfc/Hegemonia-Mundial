@@ -40,11 +40,22 @@ public class ControleUnidade : MonoBehaviour
     private static readonly int VelocidadeAnimatorHash = Animator.StringToHash("Velocidade");
 
     private NavMeshAgent agente;
+    private NavMeshPath caminhoAutonomiaNavMesh;
     private Animator animator; // Referência para as animações
     private bool animatorPossuiVelocidade;
     
     public GameObject anelSelecao; 
     public bool selecionado = false;
+
+    private string ultimoMotivoRecusaOrdem = string.Empty;
+    public string UltimoMotivoRecusaOrdem => ultimoMotivoRecusaOrdem;
+
+    private void DefinirMotivoRecusaOrdem(string motivo)
+    {
+        ultimoMotivoRecusaOrdem = string.IsNullOrWhiteSpace(motivo)
+            ? "o controlador recusou a ordem sem informar o motivo"
+            : motivo;
+    }
 
     [Header("Imigração / Fronteira")]
     public bool aguardandoVisto = false;
@@ -111,6 +122,7 @@ public class ControleUnidade : MonoBehaviour
     private TorretaAntiaerea[] cacheTorretasAntiaereas = System.Array.Empty<TorretaAntiaerea>();
     private LancadorNaval[] cacheLancadoresNavais = System.Array.Empty<LancadorNaval>();
     private ControleSubmarino[] cacheSubmarinos = System.Array.Empty<ControleSubmarino>();
+    private ControleAviaoAC130[] cacheAvioesAC130 = System.Array.Empty<ControleAviaoAC130>();
 
     [Header("Trilha Oficial")]
     [SerializeField] private DominioControleUnidade dominioControleAtual = DominioControleUnidade.Terrestre;
@@ -280,6 +292,8 @@ public class ControleUnidade : MonoBehaviour
             agente.angularSpeed = 720.0f; // Giro instantâneo
             agente.autoBraking = true;
         }
+
+        AtualizarAudioNavalSemControleDedicado();
     }
 
     private void NormalizarMascaraNavMeshTerrestre()
@@ -830,8 +844,10 @@ public class ControleUnidade : MonoBehaviour
         string dono,
         TipoOrdemMovimento tipo)
     {
+        ultimoMotivoRecusaOrdem = string.Empty;
         if (DestinoTerrestreBloqueadoPorDesmilitarizacao(destino))
         {
+            DefinirMotivoRecusaOrdem("destino em região desmilitarizada");
             DiagnosticoDesempenhoJogo.RegistrarEvento(
                 "OrdemRecusada",
                 $"{name}: ordem terrestre recusada para uma zona desmilitarizada");
@@ -840,6 +856,7 @@ public class ControleUnidade : MonoBehaviour
 
         if (c17Transporte != null)
         {
+            DefinirMotivoRecusaOrdem("transporte C-17 deve receber ordem pelo aeroporto");
             Debug.LogWarning($"[C17] Movimento generico recusado para {name}; ordem deve vir do aeroporto.");
             return false;
         }
@@ -852,6 +869,7 @@ public class ControleUnidade : MonoBehaviour
             && (controleAviao.estadoAtual == ControleAviao.EstadoAviao.Pousando
                 || controleAviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga))
         {
+            DefinirMotivoRecusaOrdem("aeronave está concluindo o pouso");
             DiagnosticoDesempenhoJogo.RegistrarEvento(
                 "OrdemRecusada",
                 $"{name}: mover recusado durante a sequência de pouso");
@@ -862,6 +880,7 @@ public class ControleUnidade : MonoBehaviour
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo && !PodeMoverSemTripulacao())
         {
+            DefinirMotivoRecusaOrdem("controle bloqueado: " + motivoBloqueioControle);
             DiagnosticoDesempenhoJogo.RegistrarEvento("OrdemRecusada", $"{name}: mover bloqueado ({motivoBloqueioControle})");
             return false;
         }
@@ -885,12 +904,43 @@ public class ControleUnidade : MonoBehaviour
                 tipo,
                 out foiIdempotente))
         {
+            DefinirMotivoRecusaOrdem("a ordem não pôde ser registrada pelo controlador central");
             return false;
         }
 
         if (foiIdempotente)
         {
+            // A patrulha reserva uma ordem global para toda a rota antes de
+            // o executor universal designar a primeira perna. Quando o
+            // primeiro waypoint coincide com o destino registrado, a
+            // idempotência é correta para o registro, mas ainda precisamos
+            // entregar esse ponto ao executor físico (NavMesh/navio/avião).
+            bool primeiraPernaPatrulhaPendente = !cancelarComportamentos
+                && tipo == TipoOrdemMovimento.Patrulha
+                && ordemControleAtual == OrdemControleUnidade.Patrulhando
+                && controleOrdemMovimento != null
+                && controleOrdemMovimento.Atual != null
+                && controleOrdemMovimento.Atual.Tipo == TipoOrdemMovimento.Patrulha
+                && Vector3.Distance(controleOrdemMovimento.Atual.Destino, destino) <= 0.01f;
+            if (primeiraPernaPatrulhaPendente)
+            {
+                if (!ExecutarMoverParaPonto(destino, false))
+                {
+                    return false;
+                }
+
+                controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
+            }
+
             return true;
+        }
+
+        if (!PossuiAutonomiaTerrestreParaDestino(destino))
+        {
+            DefinirMotivoRecusaOrdem("autonomia de combustível insuficiente para o destino");
+            controleOrdemMovimento.Falhar("autonomia de combustível insuficiente", Time.unscaledTime);
+            LimparDestinoOrdenado();
+            return false;
         }
 
         OrdemControleUnidade ordemAntesDaExecucao = ordemControleAtual;
@@ -902,7 +952,11 @@ public class ControleUnidade : MonoBehaviour
 
         if (!ExecutarMoverParaPonto(destino, cancelarComportamentos))
         {
-            controleOrdemMovimento.Falhar("executor recusou a ordem", Time.unscaledTime);
+            string motivoExecucao = string.IsNullOrWhiteSpace(ultimoMotivoRecusaOrdem)
+                ? "executor de movimento recusou o destino"
+                : ultimoMotivoRecusaOrdem;
+            DefinirMotivoRecusaOrdem(motivoExecucao);
+            controleOrdemMovimento.Falhar(motivoExecucao, Time.unscaledTime);
             LimparDestinoOrdenado();
             // A preparação da ordem acontece antes de chamar o executor aéreo.
             // Se ele recusar (pista/base inválida, combustível ou estado de
@@ -1010,6 +1064,17 @@ public class ControleUnidade : MonoBehaviour
 
     public bool EmitirOrdemPatrulha(IList<Vector3> pontosPatrulha)
     {
+        return EmitirOrdemPatrulha(pontosPatrulha, null, null);
+    }
+
+    /// <summary>
+    /// Emite uma rota de patrulha preservando a identidade do sistema que a
+    /// solicitou. Isso permite que missões estratégicas acompanhem e cancelem
+    /// a rota sem assumir a propriedade de ordens de outras unidades.
+    /// </summary>
+    public bool EmitirOrdemPatrulha(IList<Vector3> pontosPatrulha, string dono, string id)
+    {
+        ultimoMotivoRecusaOrdem = string.Empty;
         if (pontosPatrulha == null || pontosPatrulha.Count == 0)
         {
             return RecusarPatrulha("rota sem pontos");
@@ -1137,10 +1202,14 @@ public class ControleUnidade : MonoBehaviour
         // clique do Menu Satélite tinha sido ignorado.
 
         string assinaturaRota = CalcularAssinaturaRota(rotaFinal);
+        string donoOrdem = string.IsNullOrWhiteSpace(dono) ? nameof(ControleUnidade) : dono;
+        string idOrdem = string.IsNullOrWhiteSpace(id)
+            ? ObterOuCriarIdOrdemPatrulha(assinaturaRota)
+            : id;
         bool ordemPatrulhaIdempotente;
         if (!TentarPrepararOrdemMovimento(
-                ObterOuCriarIdOrdemPatrulha(assinaturaRota),
-                nameof(ControleUnidade),
+                idOrdem,
+                donoOrdem,
                 rotaFinal[0],
                 TipoOrdemMovimento.Patrulha,
                 out ordemPatrulhaIdempotente))
@@ -1157,7 +1226,10 @@ public class ControleUnidade : MonoBehaviour
             {
                 if (!controleAviao.ReceberOrdemPatrulha(rotaFinal))
                 {
-                    return FalharPatrulhaRegistrada("executor aereo recusou a patrulha idempotente");
+                    string motivo = string.IsNullOrWhiteSpace(controleAviao.UltimoMotivoRecusaOrdem)
+                        ? "executor aéreo recusou a patrulha idempotente"
+                        : controleAviao.UltimoMotivoRecusaOrdem;
+                    return FalharPatrulhaRegistrada(motivo);
                 }
             }
             return true;
@@ -1194,7 +1266,10 @@ public class ControleUnidade : MonoBehaviour
             ordemControleAtual = OrdemControleUnidade.Patrulhando;
             if (!controleAviao.ReceberOrdemPatrulha(rotaFinal))
             {
-                return FalharPatrulhaRegistrada("executor aereo recusou a patrulha");
+                string motivo = string.IsNullOrWhiteSpace(controleAviao.UltimoMotivoRecusaOrdem)
+                    ? "executor aéreo recusou a patrulha"
+                    : controleAviao.UltimoMotivoRecusaOrdem;
+                return FalharPatrulhaRegistrada(motivo);
             }
             controleOrdemMovimento.ComecarMonitoramento(Time.unscaledTime);
             DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("orders_emitted");
@@ -1235,6 +1310,7 @@ public class ControleUnidade : MonoBehaviour
     private bool RecusarPatrulha(string motivo)
     {
         string detalhe = string.IsNullOrWhiteSpace(motivo) ? "motivo não informado" : motivo;
+        DefinirMotivoRecusaOrdem(detalhe);
         DiagnosticoDesempenhoJogo.RegistrarEvento(
             "OrdemRecusada",
             $"{name}: patrulha recusada ({detalhe}) ordem={ordemControleAtual}");
@@ -1333,6 +1409,10 @@ public class ControleUnidade : MonoBehaviour
         {
             if (modular != null) modular.alvoPrioritario = alvo;
         }
+        foreach (var lancador in cacheLancadoresNavais)
+        {
+            if (lancador != null) lancador.DefinirAlvoPrioritario(alvo);
+        }
         
         // Também avisa ao avião, inclusive quando o alvo é limpo. Sem a
         // segunda parte uma aeronave ficava presa em modo de ataque e a
@@ -1340,8 +1420,54 @@ public class ControleUnidade : MonoBehaviour
         if (controleAviao != null) controleAviao.alvoPrioritarioIA = alvo != null;
     }
 
+    /// <summary>
+    /// Retorna a prioridade explícita atualmente propagada aos sistemas de
+    /// combate desta unidade. O cache é reutilizado para que consumidores como
+    /// patrulhas não façam buscas globais a cada atualização.
+    /// </summary>
+    public Transform ObterAlvoPrioritarioAtual()
+    {
+        if (cacheCombateSujo) GarantirCacheCombate();
+
+        for (int i = 0; i < cacheSistemasDeTiro.Length; i++)
+        {
+            SistemaDeTiro sistema = cacheSistemasDeTiro[i];
+            if (sistema != null && sistema.alvoPrioritario != null)
+                return sistema.alvoPrioritario;
+        }
+
+        for (int i = 0; i < cacheTorretas.Length; i++)
+        {
+            ControleTorreta torreta = cacheTorretas[i];
+            if (torreta != null && torreta.alvoPrioritario != null)
+                return torreta.alvoPrioritario;
+        }
+
+        for (int i = 0; i < cacheTorretasModulares.Length; i++)
+        {
+            ControleTorretaModular torreta = cacheTorretasModulares[i];
+            if (torreta != null && torreta.alvoPrioritario != null)
+                return torreta.alvoPrioritario;
+        }
+
+        for (int i = 0; i < cacheLancadoresNavais.Length; i++)
+        {
+            LancadorNaval lancador = cacheLancadoresNavais[i];
+            if (lancador != null)
+            {
+                Transform alvo = lancador.ObterAlvoPrioritario();
+                if (alvo != null) return alvo;
+            }
+        }
+
+        return null;
+    }
+
     public bool EmitirMissaoAereaOfensiva(Vector3 pontoAlvo, Transform alvoTransform)
     {
+        Helicoptero helicopteroSemArmas = GetComponent<Helicoptero>();
+        if (helicopteroSemArmas != null && !helicopteroSemArmas.podeAtacar)
+            return false;
         AtualizarTrilhaOficial();
         AtualizarEstadoDeBloqueio();
         if (bloqueioControleAtivo)
@@ -1384,11 +1510,15 @@ public class ControleUnidade : MonoBehaviour
         if (controleNavioRealista != null && alvoTransform != null)
         {
             DefinirModoCombate(true);
+            if (!controleNavioRealista.DefinirDestinoAtaqueLateral(alvoTransform.position))
+            {
+                DefinirModoCombate(false);
+                return false;
+            }
             if (lancadorMisselCaca != null)
             {
                 lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
             }
-            controleNavioRealista.DefinirDestinoAtaqueLateral(alvoTransform.position);
             DefinirAlvoPrioritario(alvoTransform);
             return true;
         }
@@ -1759,6 +1889,7 @@ public class ControleUnidade : MonoBehaviour
     {
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
+            DefinirMotivoRecusaOrdem("sem combustível operacional");
             CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
             if (combustivel != null)
             {
@@ -1775,6 +1906,7 @@ public class ControleUnidade : MonoBehaviour
             if (ehTerrestre && classe == ClassificacaoSuperficieMapa.Agua)
             {
                 // Debug.Log($"[Bloqueio] {name} recusou mover para Água profunda.");
+                DefinirMotivoRecusaOrdem("destino na água, incompatível com unidade terrestre");
                 return false;
             }
         }
@@ -1783,6 +1915,7 @@ public class ControleUnidade : MonoBehaviour
         // Isso evita que uma amostragem genérica do NavMesh escolha a layer Chao.
         if (EhUnidadeNaval() && !NavalPlacementResolver.IsWaterAtPosition(destino))
         {
+            DefinirMotivoRecusaOrdem("destino fora da água navegável");
             Debug.LogWarning($"[ControleUnidade] {name}: destino naval recusado porque está fora da água ({destino.x:F0}, {destino.z:F0}).", this);
             return false;
         }
@@ -1818,7 +1951,12 @@ public class ControleUnidade : MonoBehaviour
             // Uma única porta de entrada mantém a coroutine de voo atual
             // sincronizada com a nova ordem. Alterar apenas alvoGPSVoo aqui
             // permitia que uma patrulha antiga sobrescrevesse o destino.
-            return controleAviao.ReceberOrdemManual(destino);
+            bool aceita = controleAviao.ReceberOrdemManual(destino);
+            if (!aceita)
+            {
+                DefinirMotivoRecusaOrdem(controleAviao.UltimoMotivoRecusaOrdem);
+            }
+            return aceita;
         }
 
         // Compatibilidade somente para prefabs que ainda não têm ControleAviao.
@@ -1857,12 +1995,32 @@ public class ControleUnidade : MonoBehaviour
 
         if (controleNavioRealista != null)
         {
-            return controleNavioRealista.DefinirDestino(destino);
+            string ordemExternaId = controleOrdemMovimento != null
+                && controleOrdemMovimento.PossuiOrdemAtiva
+                && controleOrdemMovimento.Atual != null
+                ? controleOrdemMovimento.Atual.Id
+                : null;
+            bool aceita = controleNavioRealista.DefinirDestino(destino, ordemExternaId);
+            if (!aceita)
+            {
+                DefinirMotivoRecusaOrdem(controleNavioRealista.UltimoMotivoRecusaDestino);
+            }
+            return aceita;
         }
 
         if (controleSubmarino != null)
         {
-            return controleSubmarino.DefinirDestino(destino);
+            string ordemExternaId = controleOrdemMovimento != null
+                && controleOrdemMovimento.PossuiOrdemAtiva
+                && controleOrdemMovimento.Atual != null
+                ? controleOrdemMovimento.Atual.Id
+                : null;
+            bool aceita = controleSubmarino.DefinirDestino(destino, ordemExternaId);
+            if (!aceita)
+            {
+                DefinirMotivoRecusaOrdem(controleSubmarino.UltimoMotivoRecusaDestino);
+            }
+            return aceita;
         }
 
         // Segurança: Se o agente não foi pego no Awake (ex: adicionado depois), pega agora.
@@ -1893,7 +2051,11 @@ public class ControleUnidade : MonoBehaviour
             else
             {
                  // Agente fora do navmesh ou desativado - TENTA RECUPERAR!
-                  if (!gameObject.activeInHierarchy) return false; // Impede erros se o objeto estiver desligado (ex: em construção)
+                  if (!gameObject.activeInHierarchy)
+                  {
+                      DefinirMotivoRecusaOrdem("unidade inativa; não pode receber movimento");
+                      return false; // Impede erros se o objeto estiver desligado (ex: em construção)
+                  }
                  
                  try 
                  {
@@ -1910,6 +2072,7 @@ public class ControleUnidade : MonoBehaviour
                      {
                          if (!pontoNavMeshValido)
                          {
+                             DefinirMotivoRecusaOrdem("unidade fora de uma NavMesh válida");
                              return false;
                          }
                          agente.enabled = true;
@@ -1925,12 +2088,22 @@ public class ControleUnidade : MonoBehaviour
                      {
                           if (controleNavioRealista != null)
                           {
-                              return controleNavioRealista.DefinirDestino(destino);
+                               string ordemExternaId = controleOrdemMovimento != null
+                                   && controleOrdemMovimento.PossuiOrdemAtiva
+                                   && controleOrdemMovimento.Atual != null
+                                   ? controleOrdemMovimento.Atual.Id
+                                   : null;
+                               return controleNavioRealista.DefinirDestino(destino, ordemExternaId);
                           }
 
                          if (controleSubmarino != null)
                          {
-                             return controleSubmarino.DefinirDestino(destino);
+                              string ordemExternaId = controleOrdemMovimento != null
+                                  && controleOrdemMovimento.PossuiOrdemAtiva
+                                  && controleOrdemMovimento.Atual != null
+                                  ? controleOrdemMovimento.Atual.Id
+                                  : null;
+                              return controleSubmarino.DefinirDestino(destino, ordemExternaId);
                          }
 
                          AplicarDestinoNavMeshComCooldown(destino, true);
@@ -1938,13 +2111,117 @@ public class ControleUnidade : MonoBehaviour
                  }
                   catch (System.Exception ex)
                   {
+                      DefinirMotivoRecusaOrdem("falha ao recuperar a navegação: " + ex.Message);
                       Debug.LogWarning($"[ControleUnidade] Falha ao recuperar NavMeshAgent para {name}: {ex.Message}");
                       return false;
                   }
             }
         }
 
-        return agente != null && agente.enabled && agente.isOnNavMesh;
+        bool possuiNavegacaoAtiva = agente != null && agente.enabled && agente.isOnNavMesh;
+        if (!possuiNavegacaoAtiva)
+        {
+            DefinirMotivoRecusaOrdem("unidade sem executor de movimento ativo ou fora da NavMesh");
+        }
+        return possuiNavegacaoAtiva;
+    }
+
+    private bool PossuiAutonomiaTerrestreParaDestino(Vector3 destino)
+    {
+        if (ehAereo
+            || EhUnidadeNaval()
+            || controleAviao != null
+            || controleAviaoCaca != null
+            || helicopteroExterno != null
+            || c700TransporteAereo != null
+            || hovercraftTransporte != null
+            || controleNavioRealista != null
+            || controleSubmarino != null)
+        {
+            return true;
+        }
+
+        if (RegistroSuperficieMapa.TryClassify(destino, out ClassificacaoSuperficieMapa superficie, out _)
+            && superficie == ClassificacaoSuperficieMapa.Agua)
+        {
+            return true;
+        }
+
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null
+            || combustivel.combustivelInfinito
+            || !combustivel.usaCombustivel
+            || combustivel.Capacidade <= 0f)
+        {
+            return true;
+        }
+
+        if (agente == null)
+        {
+            agente = GetComponent<NavMeshAgent>();
+        }
+
+        // O caminho de recuperação existente continua responsável por agentes
+        // desativados ou fora da malha; sem rota calculável aqui não se inventa
+        // uma regra nova para esses casos.
+        if (agente == null || !agente.isActiveAndEnabled || !agente.isOnNavMesh)
+        {
+            return true;
+        }
+
+        if (caminhoAutonomiaNavMesh == null)
+        {
+            caminhoAutonomiaNavMesh = new NavMeshPath();
+        }
+
+        float velocidade = Mathf.Max(1f, agente.speed);
+        if (agente.CalculatePath(destino, caminhoAutonomiaNavMesh)
+            && caminhoAutonomiaNavMesh.status == NavMeshPathStatus.PathComplete)
+        {
+            Vector3 origem = transform.position;
+            Vector3[] cantos = caminhoAutonomiaNavMesh.corners;
+            for (int i = 0; i < cantos.Length; i++)
+            {
+                cantos[i].y = origem.y;
+            }
+
+            bool possuiAutonomia = combustivel.PossuiAutonomiaParaRota(
+                origem,
+                cantos,
+                velocidade);
+            if (possuiAutonomia)
+            {
+                return true;
+            }
+
+            RegistrarRecusaPorAutonomiaTerrestre();
+            return false;
+        }
+
+        // A distância em linha reta é um limite inferior da rota. Se nem esse
+        // trecho cabe no tanque, a ordem certamente não pode ser concluída;
+        // caso contrário, mantemos o tratamento atual de caminhos parciais.
+        Vector3 deslocamentoMinimo = destino - transform.position;
+        deslocamentoMinimo.y = 0f;
+        float distanciaMinima = deslocamentoMinimo.magnitude;
+        float consumoMinimo = combustivel.EstimarConsumoParaDistancia(distanciaMinima, velocidade);
+        if (combustivel.CombustivelAtual + 0.01f >= consumoMinimo)
+        {
+            return true;
+        }
+
+        RegistrarRecusaPorAutonomiaTerrestre();
+        return false;
+    }
+
+    private void RegistrarRecusaPorAutonomiaTerrestre()
+    {
+        Debug.LogWarning(
+            $"[ControleUnidade] Ordem terrestre recusada para {name}: combustível insuficiente para concluir a rota NavMesh.",
+            this);
+        DiagnosticoDesempenhoJogo.RegistrarEvento(
+            "OrdemRecusada",
+            $"{name}: combustível insuficiente para autonomia da rota terrestre");
     }
 
     private void AtualizarEstadoOtimizacao()
@@ -2133,6 +2410,7 @@ public class ControleUnidade : MonoBehaviour
 
         bool alterouAlgo = false;
         modoCombateOficialAtivo = ativo;
+        AtualizarAudioNavalSemControleDedicado();
 
         if (helicopteroExterno != null)
         {
@@ -2216,6 +2494,21 @@ public class ControleUnidade : MonoBehaviour
         }
 
         return alterouAlgo;
+    }
+
+    private void AtualizarAudioNavalSemControleDedicado()
+    {
+        if (!EhUnidadeNaval()
+            || controleNavioRealista != null
+            || controleSubmarino != null
+            || navioPetroleiro != null)
+        {
+            return;
+        }
+
+        // Transportes anfíbios e navios legados sem controlador de motor
+        // dedicado acompanham o estado operacional comum da unidade.
+        AudioRuntime.DefinirAudioNaval(gameObject, modoCombateOficialAtivo);
     }
 
     /// <summary>
@@ -2430,7 +2723,40 @@ public class ControleUnidade : MonoBehaviour
         cacheTorretasAntiaereas = GetComponentsInChildren<TorretaAntiaerea>(true);
         cacheLancadoresNavais = GetComponentsInChildren<LancadorNaval>(true);
         cacheSubmarinos = GetComponentsInChildren<ControleSubmarino>(true);
+        cacheAvioesAC130 = GetComponentsInChildren<ControleAviaoAC130>(true);
         cacheCombateSujo = false;
+    }
+
+    /// <summary>Maior alcance efetivo de arma desta unidade, usando os caches de combate existentes.</summary>
+    public float ObterAlcanceAtaqueMaximo()
+    {
+        if (cacheCombateSujo) GarantirCacheCombate();
+        float alcanceMaximo = 0f;
+
+        for (int i = 0; i < cacheSistemasDeTiro.Length; i++)
+            if (cacheSistemasDeTiro[i] != null) alcanceMaximo = Mathf.Max(alcanceMaximo, cacheSistemasDeTiro[i].alcanceTiro);
+        for (int i = 0; i < cacheTorretas.Length; i++)
+            if (cacheTorretas[i] != null) alcanceMaximo = Mathf.Max(alcanceMaximo, cacheTorretas[i].alcance);
+        for (int i = 0; i < cacheTorretasModulares.Length; i++)
+        {
+            ControleTorretaModular torreta = cacheTorretasModulares[i];
+            if (torreta == null) continue;
+            if (torreta.armas == null || torreta.armas.Count == 0) continue;
+            float alcanceTorreta = 0f;
+            for (int arma = 0; arma < torreta.armas.Count; arma++)
+                if (torreta.armas[arma] != null) alcanceTorreta = Mathf.Max(alcanceTorreta, torreta.armas[arma].alcanceMaximo);
+            alcanceMaximo = Mathf.Max(alcanceMaximo, alcanceTorreta > 0f ? alcanceTorreta : torreta.alcanceRadar);
+        }
+        for (int i = 0; i < cacheTorretasAntiaereas.Length; i++)
+            if (cacheTorretasAntiaereas[i] != null) alcanceMaximo = Mathf.Max(alcanceMaximo, cacheTorretasAntiaereas[i].alcanceArea);
+        for (int i = 0; i < cacheSubmarinos.Length; i++)
+            if (cacheSubmarinos[i] != null) alcanceMaximo = Mathf.Max(alcanceMaximo, cacheSubmarinos[i].alcanceTorpedos, cacheSubmarinos[i].alcanceMisseis);
+        for (int i = 0; i < cacheNaviosRealistas.Length; i++)
+            if (cacheNaviosRealistas[i] != null && cacheNaviosRealistas[i].possuiTorpedos) alcanceMaximo = Mathf.Max(alcanceMaximo, cacheNaviosRealistas[i].alcanceTorpedos);
+        for (int i = 0; i < cacheAvioesAC130.Length; i++)
+            if (cacheAvioesAC130[i] != null) alcanceMaximo = Mathf.Max(alcanceMaximo, cacheAvioesAC130[i].alcanceArmasAC130);
+
+        return Mathf.Max(0f, alcanceMaximo);
     }
 
     [Header("Visual de Alcance")]
@@ -2728,6 +3054,7 @@ public class ControleUnidade : MonoBehaviour
         }
 
         if (!controleOrdemMovimento.TentarIniciarTentativa(Time.unscaledTime)
+            || !PossuiAutonomiaTerrestreParaDestino(ultimoDestinoOrdenado)
             || !ExecutarMoverParaPonto(ultimoDestinoOrdenado, false))
         {
             controleOrdemMovimento.Falhar("recuperacao recusada pelo executor", Time.unscaledTime);

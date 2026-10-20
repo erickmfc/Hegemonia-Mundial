@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Centro Comercial
   descricao: Centro comercial de grande porte com lojas, alimentacao e servicos.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 98d9f81295926564387069be8328a9da, type: 3}
   itemId: centro_comercial_grande
   aliases: centro comercial, shopping, mall, galeria
   capacidades: 0

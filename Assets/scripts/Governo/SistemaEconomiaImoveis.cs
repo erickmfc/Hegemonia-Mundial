@@ -4,6 +4,12 @@ using UnityEngine;
 
 public class SistemaEconomiaImoveis : MonoBehaviour
 {
+    private struct PerfilEconomicoCidadeAbstrata
+    {
+        public float proporcaoComercio;
+        public float rendaPorTrabalhador;
+    }
+
     public static SistemaEconomiaImoveis Instancia { get; private set; }
 
     private static readonly HashSet<EstruturaEconomica> EstruturasRegistradas = new HashSet<EstruturaEconomica>();
@@ -36,6 +42,9 @@ public class SistemaEconomiaImoveis : MonoBehaviour
     private readonly List<Imovel> consumidoresImoveisBuffer = new List<Imovel>();
     private readonly List<GerenciadorAeroporto> aeroportosBuffer = new List<GerenciadorAeroporto>();
     private readonly List<GerenciadorAeroporto> consumidoresAeroportosBuffer = new List<GerenciadorAeroporto>();
+    private readonly List<CidadeEstado> cidadesAbstratasBuffer = new List<CidadeEstado>(16);
+    private readonly Dictionary<string, PerfilEconomicoCidadeAbstrata> perfisEconomicosCidadeAbstrata =
+        new Dictionary<string, PerfilEconomicoCidadeAbstrata>(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<int> objetosContados = new HashSet<int>();
     private float proximoTick;
     private float proximaVarreduraTags;
@@ -121,9 +130,73 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             }
         }
 
+        ContabilizarCidadesAbstratas();
+
         DistribuirEnergia();
         FinalizarSnapshots();
         OnEconomiaImoveisAtualizada?.Invoke();
+    }
+
+    private void ContabilizarCidadesAbstratas()
+    {
+        GerenciadorDivisaoTerritorial gerente = GerenciadorDivisaoTerritorial.Instancia;
+        if (gerente == null) return;
+
+        gerente.CopiarCidadesAbstratas(0, cidadesAbstratasBuffer);
+        for (int i = 0; i < cidadesAbstratasBuffer.Count; i++)
+        {
+            CidadeEstado cidade = cidadesAbstratasBuffer[i];
+            if (cidade == null || !cidade.ehCidadeNaoMaterializada || cidade.teamID < 0) continue;
+
+            DadosEconomiaPais economia = ObterOuCriar(cidade.teamID);
+            int capacidade = Mathf.Max(0, cidade.capacidadeHabitacional);
+            int populacao = Mathf.Clamp(cidade.populacaoCivil, 0, capacidade);
+            int empregos = Mathf.Max(0, cidade.empregosTotais);
+            float eficiencia = Mathf.Clamp01(1f - cidade.estadoDano / 100f);
+
+            // Cidades ainda sem modelo 3D mantêm os mesmos contratos nacionais
+            // de moradia, população e emprego que as cidades materializadas.
+            economia.estruturasContadas = SomarPositivoSaturado(economia.estruturasContadas, 1);
+            economia.moradiaTotal = SomarPositivoSaturado(economia.moradiaTotal, capacidade);
+            economia.populacaoTotal = SomarPositivoSaturado(economia.populacaoTotal, populacao);
+            economia.empregosDisponiveis = SomarPositivoSaturado(economia.empregosDisponiveis, empregos);
+            economia.eficienciaMedia += eficiencia;
+
+            PerfilEconomicoCidadeAbstrata perfil = ObterPerfilEconomicoCidadeAbstrata(cidade.prefabCidade);
+            int empregosComerciais = Mathf.Min(empregos,
+                Mathf.RoundToInt(capacidade * perfil.proporcaoComercio));
+            int empregosOcupados = Mathf.Min(empregosComerciais,
+                Mathf.RoundToInt(populacao * perfil.proporcaoComercio));
+            float receitaComercialPorSegundo = empregosOcupados * perfil.rendaPorTrabalhador * eficiencia;
+            RegistrarFluxoEconomico(economia, TipoEstruturaEconomica.Comercio, receitaComercialPorSegundo);
+            RegistrarFluxoEconomico(economia, TipoEstruturaEconomica.Casa, populacao * rendaPorPopulacao);
+        }
+    }
+
+    private PerfilEconomicoCidadeAbstrata ObterPerfilEconomicoCidadeAbstrata(string chavePrefab)
+    {
+        string chave = string.IsNullOrWhiteSpace(chavePrefab) ? "CidadeModerna" : chavePrefab.Trim();
+        PerfilEconomicoCidadeAbstrata perfil;
+        if (perfisEconomicosCidadeAbstrata.TryGetValue(chave, out perfil)) return perfil;
+
+        perfil = new PerfilEconomicoCidadeAbstrata();
+        DadosConstrucao ficha = Resources.Load<DadosConstrucao>("Construcoes/" + chave);
+        GameObject prefab = ficha != null ? ficha.PrefabDaUnidade : null;
+        CidadeComplexoUrbano modelo = prefab != null ? prefab.GetComponent<CidadeComplexoUrbano>() : null;
+        if (modelo != null)
+        {
+            perfil.proporcaoComercio = Mathf.Clamp01(modelo.proporcaoComercio);
+            perfil.rendaPorTrabalhador = Mathf.Max(0f, modelo.rendaPorTrabalhador);
+        }
+
+        perfisEconomicosCidadeAbstrata[chave] = perfil;
+        return perfil;
+    }
+
+    private static int SomarPositivoSaturado(int valorAtual, int incremento)
+    {
+        long soma = (long)Mathf.Max(0, valorAtual) + Mathf.Max(0, incremento);
+        return (int)Math.Min(int.MaxValue, soma);
     }
 
     private void DistribuirEnergia()
@@ -329,7 +402,15 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         economia.energiaConsumida += estrutura.energiaConsumida;
         economia.combustivelConsumido += estrutura.combustivelConsumido;
         economia.militaresNecessarios += estrutura.militaresNecessarios;
-        RegistrarFluxoEconomico(economia, estrutura.tipo, estrutura.dinheiroGerado * eficiencia);
+        TipoEstruturaEconomica tipoReceita = estrutura.tipo;
+        if (tipoReceita == TipoEstruturaEconomica.PredioResidencial
+            && estrutura.GetComponent<CidadeComplexoUrbano>() != null)
+        {
+            // A estrutura mantém a classificação residencial para capacidade,
+            // enquanto a renda que ela emite é a receita comercial da cidade.
+            tipoReceita = TipoEstruturaEconomica.Comercio;
+        }
+        RegistrarFluxoEconomico(economia, tipoReceita, estrutura.dinheiroGerado * eficiencia);
         float manutencaoExtra = 0f;
         switch (estrutura.tipo)
         {

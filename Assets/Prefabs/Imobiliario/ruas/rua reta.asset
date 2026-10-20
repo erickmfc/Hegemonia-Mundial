@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Rua reta
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 0b28654fe8cda634494cf4ed50d46845, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

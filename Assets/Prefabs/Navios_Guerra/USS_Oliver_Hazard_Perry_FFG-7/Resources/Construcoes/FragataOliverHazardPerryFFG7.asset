@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: Fragata Oliver Hazard Perry (FFG-7)
   descricao: "Fragata de m\xEDsseis guiados da classe Oliver Hazard Perry (FFG-7),
     para patrulha e escolta naval."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 7a03d0290dce8d74ab1d8a12aa7ec0e7, type: 3}
   itemId: FFG7_OLIVER_HAZARD_PERRY
   aliases: USS Oliver Hazard Perry; FFG-7; classe Oliver Hazard Perry; fragata Perry
   capacidades: 0

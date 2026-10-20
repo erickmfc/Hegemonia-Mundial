@@ -7,6 +7,12 @@ using Hegemonia.AI.BrainMaster;
 public class SistemaGovernoMundial : MonoBehaviour
 {
     public const string MoedaMestreNome = "Dolar Hegemonico (DH)";
+    public const long SaldoInicialNacionalPorIAEmPartidaNova = 10000000000L;
+    public const int ComidaInicialNacionalPorIAEmPartidaNova = 10000;
+    public const int EfetivoMinimoInfantaria = 1;
+    public const int EfetivoMinimoVeiculo = 1;
+    public const int EfetivoMinimoNaval = 4;
+    public const int EfetivoMinimoAereo = 2;
     public static SistemaGovernoMundial Instancia { get; private set; }
     private static bool encerrando;
 
@@ -27,8 +33,12 @@ public class SistemaGovernoMundial : MonoBehaviour
     private float proximoTick;
     private float proximaDiplomaciaIA;
     private readonly Dictionary<int, long> reservasFundacao = new Dictionary<int, long>();
+    private readonly Dictionary<int, long> reservasFinanceirasEstrategicas = new Dictionary<int, long>();
+    private readonly Dictionary<int, long> reservasManpowerEstrategicas = new Dictionary<int, long>();
     private readonly List<ComplexoGovernamental> sedesCache = new List<ComplexoGovernamental>(16);
+    private readonly HashSet<string> listenersAtualizacaoComAviso = new HashSet<string>();
     private float proximaAtualizacaoSedes;
+    private bool reconciliandoEstoqueComidaCulturas;
 
     public IReadOnlyList<DadosPaisGoverno> Paises => paises;
     public IReadOnlyList<RelacaoPaisGoverno> Relacoes => relacoes;
@@ -36,7 +46,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public void NotificarGovernoAtualizado()
     {
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     public static void GarantirInstancia()
@@ -133,7 +143,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             relacoes.Add(new RelacaoPaisGoverno { teamA = 1, teamB = 5, valor = 28, tratadoComercial = true, pedidoPendente = true });
         }
 
-        GarantirPosturasIniciais();
+        GarantirBasesHistoricas(migrarHostilidadeLegada: false);
 
         foreach (DadosPaisGoverno pais in paises)
         {
@@ -146,19 +156,11 @@ public class SistemaGovernoMundial : MonoBehaviour
         SincronizarJogador();
     }
 
-    private void GarantirPosturasIniciais()
+    private void GarantirBasesHistoricas(bool migrarHostilidadeLegada)
     {
         foreach (RelacaoPaisGoverno rel in relacoes)
         {
-            if (rel == null) continue;
-            if (rel.posturaAParaB == PosturaRelacaoPais.Neutro && rel.valor >= 50)
-                rel.posturaAParaB = PosturaRelacaoPais.Amigo;
-            else if (rel.posturaAParaB == PosturaRelacaoPais.Neutro && rel.valor <= -50)
-                rel.posturaAParaB = PosturaRelacaoPais.Inimigo;
-            if (rel.posturaBParaA == PosturaRelacaoPais.Neutro && rel.valor >= 50)
-                rel.posturaBParaA = PosturaRelacaoPais.Amigo;
-            else if (rel.posturaBParaA == PosturaRelacaoPais.Neutro && rel.valor <= -50)
-                rel.posturaBParaA = PosturaRelacaoPais.Inimigo;
+            GarantirBaseHistorica(rel, migrarHostilidadeLegada);
         }
     }
 
@@ -199,7 +201,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             ? noticiasSalvas.Where(noticia => !string.IsNullOrWhiteSpace(noticia)).ToList()
             : new List<string>();
 
-        GarantirPosturasIniciais();
+        GarantirBasesHistoricas(migrarHostilidadeLegada: true);
         for (int i = 0; i < paises.Count; i++)
         {
             GarantirCatalogosNacionais(paises[i]);
@@ -208,7 +210,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         RegistroNacoesGoverno.GarantirInstancia();
         RegistroNacoesGoverno.Instancia?.Sincronizar(paises);
         SistemaFederacoesGlobais.GarantirInstancia();
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -249,7 +251,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         GarantirCatalogosNacionais(pais);
         if (mudou)
         {
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
         }
     }
 
@@ -261,10 +263,37 @@ public class SistemaGovernoMundial : MonoBehaviour
     public RelacaoPaisGoverno ObterRelacao(int a, int b)
     {
         RelacaoPaisGoverno rel = relacoes.FirstOrDefault(r => r != null && r.Envolve(a, b));
-        if (rel != null) return rel;
-        rel = new RelacaoPaisGoverno { teamA = a, teamB = b, valor = 0, tratadoComercial = true };
+        if (rel != null)
+        {
+            GarantirBaseHistorica(rel, migrarHostilidadeLegada: false);
+            return rel;
+        }
+        rel = new RelacaoPaisGoverno
+        {
+            teamA = a,
+            teamB = b,
+            valor = 0,
+            valorBaseHistorico = 0,
+            baseHistoricaInicializada = true,
+            tratadoComercial = true
+        };
         relacoes.Add(rel);
         return rel;
+    }
+
+    private static void GarantirBaseHistorica(RelacaoPaisGoverno rel, bool migrarHostilidadeLegada)
+    {
+        if (rel == null || rel.baseHistoricaInicializada) return;
+
+        rel.valorBaseHistorico = Mathf.Clamp(rel.valor, -100, 100);
+        rel.baseHistoricaInicializada = true;
+        if (migrarHostilidadeLegada && !rel.guerraDeclarada && !rel.cessarFogoAtivo && rel.valor <= -50)
+        {
+            if (rel.posturaAParaB == PosturaRelacaoPais.Inimigo)
+                rel.posturaAParaB = PosturaRelacaoPais.Neutro;
+            if (rel.posturaBParaA == PosturaRelacaoPais.Inimigo)
+                rel.posturaBParaA = PosturaRelacaoPais.Neutro;
+        }
     }
 
     public PosturaRelacaoPais ObterPostura(int origemTeamId, int alvoTeamId)
@@ -293,11 +322,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         rel.DefinirPostura(origemTeamId, postura);
-        if (postura == PosturaRelacaoPais.Amigo) rel.valor = Mathf.Clamp(rel.valor + 5, -100, 100);
-        else if (postura == PosturaRelacaoPais.Inimigo) rel.valor = Mathf.Clamp(rel.valor - 8, -100, 100);
         RegistrarNoticia(origem.nomePais + " declarou " + postura + " em relacao a " + alvo.nomePais + ".");
         mensagem = "Postura definida: " + postura + ".";
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -382,7 +409,8 @@ public class SistemaGovernoMundial : MonoBehaviour
             DadosComercioNacional comercio = SistemaComercioNacional.ObterResumo(pais.teamId);
             
             AplicarEconomiaImoveis(pais, economia, comercio);
-            SistemaPopulacao.Processar(pais, economia);
+            int mortesAntesDoCiclo = pais.mortosAcumulados;
+            SistemaPopulacao.Processar(pais, economia, false);
             CidadeComplexoUrbano.SincronizarPopulacaoNacional(pais.teamId, pais.populacaoCivil);
             if (cultura.totalEstruturas > 0)
             {
@@ -528,7 +556,11 @@ public class SistemaGovernoMundial : MonoBehaviour
                 // Aplica suavizando (quanto maior a diferença, mais lenta a mudança)
                 // Isso evita oscilações bruscas de 0→100 em poucos ticks
                 float pesoSuavizacao = Mathf.Lerp(1f, 0.5f, Mathf.Abs(deltaFelicidade) / 5f);
-                pais.felicidade = Mathf.Clamp(pais.felicidade + deltaFelicidade * pesoSuavizacao + bonusCartelAtivo, 0f, 100f);
+                float felicidadeAnterior = pais.felicidade;
+                float felicidadeCalculada = Mathf.Clamp(felicidadeAnterior + deltaFelicidade * pesoSuavizacao + bonusCartelAtivo, 0f, 100f);
+                pais.felicidade = SistemaPopulacao.ImpedirGanhoFelicidadeEmCrise(
+                    pais, economia, pais.mortosAcumulados > mortesAntesDoCiclo,
+                    felicidadeAnterior, felicidadeCalculada);
             }
             // ─────────────────────────────────────────────────────────────────────
 
@@ -536,20 +568,43 @@ public class SistemaGovernoMundial : MonoBehaviour
 
             if (pais.teamId != teamJogador)
             {
-                pais.saldo += Mathf.RoundToInt(Mathf.Max(1f, pais.rendaPorSegundo - pais.gastosPorSegundo));
+                pais.saldo += Mathf.RoundToInt(pais.rendaPorSegundo - pais.gastosPorSegundo);
                 if (economia != null)
                 {
-                    pais.comida = Mathf.Max(0, pais.comida + Mathf.RoundToInt(economia.comidaProduzida - Mathf.Max(1f, pais.populacao * 0.01f)));
-                    pais.petroleo = Mathf.Max(0, pais.petroleo + Mathf.RoundToInt(economia.petroleoProduzido - economia.industriaProduzida * 0.10f));
+                    int variacaoPetroleo = Mathf.RoundToInt(economia.petroleoProduzido - economia.industriaProduzida * 0.10f);
+                    if (pais.tecnologiaExtracaoConcluida)
+                    {
+                        variacaoPetroleo += 50;
+                    }
+
+                    SistemaIndustrialNacional estoqueIndustrial = SistemaIndustrialNacional.Instancia;
+                    if (estoqueIndustrial != null)
+                    {
+                        string teamKey = pais.teamId.ToString();
+                        if (variacaoPetroleo > 0)
+                        {
+                            estoqueIndustrial.TentarAdicionar(teamKey, IndustriaIds.PetroleoBruto, variacaoPetroleo);
+                        }
+                        else if (variacaoPetroleo < 0)
+                        {
+                            double disponivel = estoqueIndustrial.ObterQuantidadePais(pais.teamId, IndustriaIds.PetroleoBruto);
+                            double consumir = Math.Min(disponivel, -(double)variacaoPetroleo);
+                            if (consumir > 0d)
+                            {
+                                estoqueIndustrial.TentarConsumir(teamKey, IndustriaIds.PetroleoBruto, consumir);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        pais.petroleo = Mathf.Max(0, pais.petroleo + variacaoPetroleo);
+                    }
+
                     pais.energia = Mathf.Max(0, pais.energia + Mathf.RoundToInt(economia.energiaProduzida - economia.energiaConsumida * 0.85f));
                     pais.aco = Mathf.Max(0, pais.aco + Mathf.RoundToInt(economia.industriaProduzida * 0.55f));
                     pais.armamentos = Mathf.Max(0, pais.armamentos + Mathf.RoundToInt(economia.industriaProduzida * (pais.pesoMilitarismo > 0.65f ? 0.22f : 0.08f)));
                     
-                    if (pais.tecnologiaExtracaoConcluida)
-                    {
-                        pais.petroleo += 50;
-                        pais.aco += 50;
-                    }
+                    if (pais.tecnologiaExtracaoConcluida) pais.aco += 50;
                 }
             }
 
@@ -561,7 +616,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         AtualizarReferenciasMoeda();
         GerarPedidosDeAjudaAutomaticos();
 
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     public void SincronizarJogador()
@@ -573,6 +628,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         jogador.saldo = gr.dinheiro;
         jogador.comida = gr.comida;
+        ReconciliarEstoqueComidaCulturas(teamJogador);
         jogador.petroleo = gr.petroleo;
         jogador.energia = gr.energia;
         jogador.aco = gr.aco;
@@ -644,7 +700,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         if (mudou)
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
     }
 
     public bool AjustarImposto(int teamId, string categoria, int deltaFaixas)
@@ -691,7 +747,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (pais.planoEstrategico == valor) return false;
         pais.planoEstrategico = valor;
         RegistrarNoticia(pais.nomePais + " mudou o foco nacional para " + valor + ".");
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -749,7 +805,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         pesquisa.diaInicio = DiaAtual();
         pesquisa.emAndamento = true;
         mensagem = "Pesquisa iniciada: " + pesquisa.nome + ".";
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -809,7 +865,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         tecnologia.diaInicio = DiaAtual();
         tecnologia.emAndamento = true;
         mensagem = "Tecnologia em desenvolvimento: " + tecnologia.nome + ".";
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -866,7 +922,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         laboratorio.diaInicio = DiaAtual();
         laboratorio.emExpansao = true;
         mensagem = "Expansao iniciada: " + laboratorio.nome + ".";
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -880,7 +936,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         GarantirCatalogosNacionais(pais);
         pais.sateliteDefesa.manutencaoAutomatica = manutencaoAutomatica;
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     public bool InvestirNoSatelite(int teamId, int aporte, out string mensagem)
@@ -909,7 +965,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.sateliteDefesa.integridade = Mathf.Clamp(pais.sateliteDefesa.integridade + aporte / 40f, 0f, 100f);
         pais.sateliteDefesa.desempenho = Mathf.Clamp(pais.sateliteDefesa.desempenho + aporte / 50f, 0f, 100f);
         mensagem = "Aporte orbital aplicado ao satelite nacional.";
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -984,7 +1040,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             SincronizarJogador();
         }
 
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -1010,7 +1066,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
         rel.pedidoPendente = true;
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -1018,30 +1074,47 @@ public class SistemaGovernoMundial : MonoBehaviour
     {
         mensagem = string.Empty;
         if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
-        return CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.Alianca, RecursoMercado.Nenhum, 1, 1,
+        bool criada = CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.Alianca, RecursoMercado.Nenhum, 1, 1,
             "Proposta formal de alianca e cooperacao mutua.", "alianca:" + teamJogador + ":" + alvoTeamId);
+        mensagem = criada
+            ? "Proposta de alianca enviada para " + NomePais(alvoTeamId) + "."
+            : "Ja existe uma proposta de alianca pendente ou o sistema recusou o envio.";
+        return criada;
     }
 
     public bool CriarPropostaPactoJogador(int alvoTeamId, out string mensagem)
     {
         mensagem = string.Empty;
         if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
-        return CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.PactoDefensivo, RecursoMercado.Nenhum, 1, 1,
+        bool criada = CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.PactoDefensivo, RecursoMercado.Nenhum, 1, 1,
             "Pacto defensivo com consulta e apoio mutuo.", "pacto:" + teamJogador + ":" + alvoTeamId);
+        mensagem = criada
+            ? "Proposta de pacto defensivo enviada para " + NomePais(alvoTeamId) + "."
+            : "Ja existe uma proposta de pacto defensivo pendente ou o sistema recusou o envio.";
+        return criada;
     }
 
     public bool CriarPropostaCessarFogoJogador(int alvoTeamId, out string mensagem)
     {
         mensagem = string.Empty;
         if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
-        return CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.CessarFogo, RecursoMercado.Nenhum, 1, 1,
+        bool criada = CriarPropostaJogador(alvoTeamId, TipoPropostaInternacional.CessarFogo, RecursoMercado.Nenhum, 1, 1,
             "Proposta de cessar-fogo e abertura de negociacao de paz.", "cessar-fogo:" + teamJogador + ":" + alvoTeamId);
+        mensagem = criada
+            ? "Proposta de cessar-fogo enviada para " + NomePais(alvoTeamId) + "."
+            : "Ja existe uma proposta de cessar-fogo pendente ou o sistema recusou o envio.";
+        return criada;
     }
 
     private bool ValidarAlvoDiplomatico(int alvoTeamId, out string mensagem)
     {
         mensagem = string.Empty;
-        if (alvoTeamId <= 0 || alvoTeamId == teamJogador || ObterPais(alvoTeamId) == null)
+        bool identidadeAtiva = IdentidadeIA.TodasIdentidades != null
+            && IdentidadeIA.TodasIdentidades.Any(identidade => identidade != null
+                && identidade.teamID == alvoTeamId
+                && identidade.estaAtivo
+                && !identidade.eliminado);
+        if (alvoTeamId <= 0 || alvoTeamId == teamJogador || ObterPais(alvoTeamId) == null || !identidadeAtiva)
         {
             mensagem = "Selecione uma nacao ativa diferente da sua.";
             return false;
@@ -1055,6 +1128,11 @@ public class SistemaGovernoMundial : MonoBehaviour
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null) return false;
 
+        if (ObterSaldoDisponivelParaOperacao(teamId) < valor)
+        {
+            return false;
+        }
+
         if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
         {
             if (!GerenciadorRecursos.Instancia.TentarGastar(custoDinheiro: valor)) return false;
@@ -1062,13 +1140,181 @@ public class SistemaGovernoMundial : MonoBehaviour
             return true;
         }
 
-        long reservaProtegida;
-        reservasFundacao.TryGetValue(teamId, out reservaProtegida);
-        if (pais.saldo < valor || pais.saldo - valor < reservaProtegida) return false;
+        if (pais.saldo < valor) return false;
 
         pais.saldo -= valor;
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
+    }
+
+    public bool PodeMobilizarEfetivo(int teamId, int quantidade)
+    {
+        if (quantidade <= 0) return true;
+        long disponivel = ObterManpowerDisponivelParaMobilizacao(teamId);
+        long reserva = ObterReservaManpowerEstrategica(teamId);
+        return disponivel >= quantidade && disponivel - quantidade >= reserva;
+    }
+
+    public long ObterManpowerDisponivelParaMobilizacao(int teamId)
+    {
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null) return 0L;
+
+        return (long)Mathf.Max(0, pais.alistaveis) + Mathf.Max(0, pais.populacaoCivil);
+    }
+
+    public long ObterManpowerDisponivelAlemDaReserva(int teamId)
+    {
+        long disponivel = ObterManpowerDisponivelParaMobilizacao(teamId);
+        long reserva = Math.Max(0L, ObterReservaManpowerEstrategica(teamId));
+        return Math.Max(0L, disponivel - Math.Min(disponivel, reserva));
+    }
+
+    public bool TentarMobilizarEfetivo(int teamId, int quantidade)
+    {
+        if (quantidade <= 0) return true;
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null || !PodeMobilizarEfetivo(teamId, quantidade)) return false;
+
+        int recrutados = Mathf.Min(Mathf.Max(0, pais.alistaveis), quantidade);
+        pais.alistaveis = Mathf.Max(0, pais.alistaveis - recrutados);
+        int civisConvertidos = quantidade - recrutados;
+        pais.populacaoCivil = Mathf.Max(0, pais.populacaoCivil - civisConvertidos);
+        pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva) + quantidade;
+        NotificarGovernoAtualizadoSeguro();
+        return true;
+    }
+
+    /// <summary>
+    /// Valida o efetivo declarado na identidade do prefab antes de aceitar
+    /// pedidos de produção. A quantidade cobre todo o lote para evitar cobrar
+    /// e enfileirar mais unidades do que a reserva nacional pode sustentar.
+    /// </summary>
+    public bool PodeProduzirUnidadeComEfetivo(int teamId, GameObject prefab, int quantidade = 1)
+    {
+        return PodeProduzirUnidadeComEfetivo(teamId, prefab, quantidade, false, TipoUnidade.Estrutura);
+    }
+
+    public bool PodeProduzirUnidadeComEfetivo(int teamId, GameObject prefab, int quantidade, TipoUnidade tipoFallback)
+    {
+        return PodeProduzirUnidadeComEfetivo(teamId, prefab, quantidade, true, tipoFallback);
+    }
+
+    private bool PodeProduzirUnidadeComEfetivo(int teamId, GameObject prefab, int quantidade, bool possuiTipoFallback, TipoUnidade tipoFallback)
+    {
+        if (prefab == null || quantidade <= 0) return quantidade <= 0;
+
+        int efetivoPorUnidade = possuiTipoFallback
+            ? ObterEfetivoNecessario(prefab, tipoFallback)
+            : ObterEfetivoNecessario(prefab);
+        if (efetivoPorUnidade == 0) return true;
+
+        long efetivoTotal = (long)efetivoPorUnidade * quantidade;
+        return efetivoTotal <= int.MaxValue
+            && PodeMobilizarEfetivo(teamId, (int)efetivoTotal);
+    }
+
+    public static int ObterEfetivoNecessario(GameObject prefab)
+    {
+        return ObterEfetivoNecessario(prefab, false, TipoUnidade.Estrutura);
+    }
+
+    public static int ObterEfetivoNecessario(GameObject prefab, TipoUnidade tipoFallback)
+    {
+        return ObterEfetivoNecessario(prefab, true, tipoFallback);
+    }
+
+    private static int ObterEfetivoNecessario(GameObject prefab, bool possuiTipoFallback, TipoUnidade tipoFallback)
+    {
+        IdentidadeUnidade identidade = ResolverIdentidadeComEfetivo(prefab);
+        if (identidade != null && identidade.militaresConsumidos > 0) return identidade.militaresConsumidos;
+
+        // Os prefabs legados deixam esse campo em zero. Reutiliza os mesmos
+        // mínimos de tripulação já exibidos pelo Quartel, em vez de tratar a
+        // ausência de dado como produção sem custo de pessoal.
+        TipoUnidade tipo = possuiTipoFallback ? tipoFallback : (identidade != null ? identidade.tipoUnidade : TipoUnidade.Estrutura);
+        switch (tipo)
+        {
+            case TipoUnidade.Infantaria: return EfetivoMinimoInfantaria;
+            case TipoUnidade.Veiculo: return EfetivoMinimoVeiculo;
+            case TipoUnidade.Naval: return EfetivoMinimoNaval;
+            case TipoUnidade.Aereo: return EfetivoMinimoAereo;
+            default: return 0;
+        }
+    }
+
+    /// <summary>
+    /// Registra o efetivo de uma unidade recém-criada usando a mesma reserva
+    /// nacional compartilhada por fábricas, aeroportos e estaleiros.
+    /// </summary>
+    public bool TentarMobilizarEfetivoDaUnidade(int teamId, GameObject unidade)
+    {
+        if (unidade == null) return false;
+
+        IdentidadeUnidade identidade = ResolverIdentidadeComEfetivo(unidade);
+        if (identidade == null) return true;
+
+        int quantidade = ObterEfetivoNecessario(unidade);
+        if (quantidade == 0) return true;
+        if (!TentarMobilizarEfetivo(teamId, quantidade)) return false;
+
+        // Preserva o número que IdentidadeUnidade libera e contabiliza como
+        // baixa quando a unidade for destruída.
+        identidade.teamID = teamId;
+        identidade.militaresConsumidos = quantidade;
+        return true;
+    }
+
+    /// <summary>
+    /// Reverte uma mobilização provisória quando a criação/entrega de um lote
+    /// falha. O efetivo volta a ficar disponível e a unidade não é contabilizada
+    /// como baixa quando o chamador destruir o objeto temporário.
+    /// </summary>
+    public int LiberarEfetivoMobilizadoSemBaixa(int teamId, GameObject unidade)
+    {
+        if (unidade == null) return 0;
+
+        IdentidadeUnidade[] identidades = unidade.GetComponentsInChildren<IdentidadeUnidade>(true);
+        int quantidade = 0;
+        for (int i = 0; i < identidades.Length; i++)
+        {
+            IdentidadeUnidade identidade = identidades[i];
+            if (identidade == null) continue;
+            quantidade += Mathf.Max(0, identidade.militaresConsumidos);
+            identidade.militaresConsumidos = 0;
+        }
+
+        if (quantidade <= 0) return 0;
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null) return 0;
+
+        pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva - quantidade);
+        pais.alistaveis = Mathf.Max(0, pais.alistaveis + quantidade);
+        pais.populacao = Mathf.Clamp(
+            pais.populacaoCivil + pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis,
+            0,
+            pais.populacaoMaxima);
+        NotificarGovernoAtualizadoSeguro();
+        return quantidade;
+    }
+
+    private static IdentidadeUnidade ResolverIdentidadeComEfetivo(GameObject objeto)
+    {
+        if (objeto == null) return null;
+
+        IdentidadeUnidade identidadeRaiz = objeto.GetComponent<IdentidadeUnidade>();
+        if (identidadeRaiz != null && identidadeRaiz.militaresConsumidos > 0) return identidadeRaiz;
+
+        IdentidadeUnidade[] identidades = objeto.GetComponentsInChildren<IdentidadeUnidade>(true);
+        for (int i = 0; i < identidades.Length; i++)
+        {
+            if (identidades[i] != null && identidades[i].militaresConsumidos > 0)
+            {
+                return identidades[i];
+            }
+        }
+
+        return identidadeRaiz != null ? identidadeRaiz : (identidades.Length > 0 ? identidades[0] : null);
     }
 
     /// <summary>
@@ -1099,10 +1345,162 @@ public class SistemaGovernoMundial : MonoBehaviour
         return reservasFundacao.TryGetValue(teamId, out valor) ? valor : 0L;
     }
 
+    public void DefinirReservaFinanceiraEstrategica(int teamId, long valor)
+    {
+        if (teamId <= 0)
+        {
+            return;
+        }
+
+        if (valor <= 0)
+        {
+            reservasFinanceirasEstrategicas.Remove(teamId);
+            return;
+        }
+
+        reservasFinanceirasEstrategicas[teamId] = valor;
+    }
+
+    public void LiberarReservaFinanceiraEstrategica(int teamId)
+    {
+        if (teamId > 0)
+        {
+            reservasFinanceirasEstrategicas.Remove(teamId);
+        }
+    }
+
+    public long ObterReservaFinanceiraEstrategica(int teamId)
+    {
+        long valor;
+        return reservasFinanceirasEstrategicas.TryGetValue(teamId, out valor) ? valor : 0L;
+    }
+
+    public void DefinirReservaManpowerEstrategica(int teamId, long valor)
+    {
+        if (teamId <= 0)
+        {
+            return;
+        }
+
+        if (valor <= 0)
+        {
+            reservasManpowerEstrategicas.Remove(teamId);
+            return;
+        }
+
+        reservasManpowerEstrategicas[teamId] = valor;
+    }
+
+    public void LiberarReservaManpowerEstrategica(int teamId)
+    {
+        if (teamId > 0)
+        {
+            reservasManpowerEstrategicas.Remove(teamId);
+        }
+    }
+
+    public long ObterReservaManpowerEstrategica(int teamId)
+    {
+        long valor;
+        return reservasManpowerEstrategicas.TryGetValue(teamId, out valor) ? valor : 0L;
+    }
+
     public long ObterSaldoDisponivelParaOperacao(int teamId)
     {
         DadosPaisGoverno pais = ObterPais(teamId);
-        return pais == null ? 0L : Math.Max(0L, pais.saldo - ObterReservaFundacao(teamId));
+        if (pais == null)
+        {
+            return 0L;
+        }
+
+        long reservaFundacao = Math.Max(0L, ObterReservaFundacao(teamId));
+        long reservaEstrategica = Math.Max(0L, ObterReservaFinanceiraEstrategica(teamId));
+        long reservaTotal = reservaFundacao > long.MaxValue - reservaEstrategica
+            ? long.MaxValue
+            : reservaFundacao + reservaEstrategica;
+        return Math.Max(0L, pais.saldo - Math.Min(pais.saldo, reservaTotal));
+    }
+
+    public bool DefinirSaldoNacional(int teamId, long valor)
+    {
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+            return false;
+
+        pais.saldo = Math.Max(0L, valor);
+        if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
+        {
+            GerenciadorRecursos.Instancia.dinheiro = pais.saldo;
+            GerenciadorRecursos.Instancia.NotificarAtualizacao();
+            SincronizarJogador();
+        }
+
+        NotificarGovernoAtualizadoSeguro();
+        return true;
+    }
+
+    public int AplicarSaldoInicialPartidaNovaParaIAsAtivas(int playerTeamId)
+    {
+        IA_BrainMaster[] brains = FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        HashSet<int> teamsAplicados = new HashSet<int>();
+        for (int i = 0; i < brains.Length; i++)
+        {
+            IA_BrainMaster brain = brains[i];
+            if (brain == null || !brain.isActiveAndEnabled || !brain.gameObject.activeInHierarchy
+                || brain.TeamId <= 0 || brain.TeamId == playerTeamId
+                || !teamsAplicados.Add(brain.TeamId))
+            {
+                continue;
+            }
+
+            if (DefinirSaldoNacional(brain.TeamId, SaldoInicialNacionalPorIAEmPartidaNova))
+            {
+                brain.Credits = (int)Math.Min(int.MaxValue, ObterSaldoDisponivelParaOperacao(brain.TeamId));
+            }
+            else
+            {
+                teamsAplicados.Remove(brain.TeamId);
+            }
+        }
+
+        return teamsAplicados.Count;
+    }
+
+    public int AplicarComidaInicialPartidaNovaParaIAsAtivas(int playerTeamId)
+    {
+        IA_BrainMaster[] brains = FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        HashSet<int> teamsAplicados = new HashSet<int>();
+        bool estoqueAlterado = false;
+        for (int i = 0; i < brains.Length; i++)
+        {
+            IA_BrainMaster brain = brains[i];
+            if (brain == null || !brain.isActiveAndEnabled || !brain.gameObject.activeInHierarchy
+                || brain.TeamId <= 0 || brain.TeamId == playerTeamId
+                || !teamsAplicados.Add(brain.TeamId))
+            {
+                continue;
+            }
+
+            DadosPaisGoverno pais = ObterPais(brain.TeamId);
+            if (pais == null)
+            {
+                teamsAplicados.Remove(brain.TeamId);
+                continue;
+            }
+
+            if (pais.comida != ComidaInicialNacionalPorIAEmPartidaNova)
+            {
+                pais.comida = ComidaInicialNacionalPorIAEmPartidaNova;
+                estoqueAlterado = true;
+            }
+        }
+
+        if (estoqueAlterado)
+        {
+            NotificarGovernoAtualizadoSeguro();
+        }
+
+        return teamsAplicados.Count;
     }
 
     public void AdicionarSaldo(int teamId, long valor)
@@ -1120,7 +1518,35 @@ public class SistemaGovernoMundial : MonoBehaviour
             pais.saldo += valor;
         }
 
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
+    }
+
+    private void NotificarGovernoAtualizadoSeguro()
+    {
+        Action listeners = OnGovernoAtualizado;
+        if (listeners == null) return;
+
+        Delegate[] invocationList = listeners.GetInvocationList();
+        for (int i = 0; i < invocationList.Length; i++)
+        {
+            Action listener = (Action)invocationList[i];
+            try
+            {
+                listener.Invoke();
+            }
+            catch (Exception exception)
+            {
+                string listenerId = listener.Method.DeclaringType != null
+                    ? listener.Method.DeclaringType.FullName + "." + listener.Method.Name
+                    : listener.Method.Name;
+                if (listenersAtualizacaoComAviso.Add(listenerId))
+                {
+                    Debug.LogWarning(
+                        $"[SistemaGovernoMundial] Listener de OnGovernoAtualizado falhou: {listenerId}: {exception.GetType().Name}: {exception.Message}",
+                        this);
+                }
+            }
+        }
     }
 
     public int ObterEstoque(int teamId, RecursoMercado recurso)
@@ -1166,10 +1592,68 @@ public class SistemaGovernoMundial : MonoBehaviour
         SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
         if (industrial != null)
         {
-            return Mathf.RoundToInt((float)industrial.Armazem.ObterDisponivel(teamId.ToString(), recursoId));
+            string chaveArmazem = NormalizarIdArmazem(recursoId);
+            return Mathf.RoundToInt((float)industrial.Armazem.ObterDisponivel(teamId.ToString(), chaveArmazem));
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// Recompõe o estoque agregado a partir das culturas nacionais. Culturas
+    /// são armazenadas separadamente, mas também precisam aparecer no estoque
+    /// geral de comida usado pelo HUD, mercado e consumo populacional.
+    /// </summary>
+    public void ReconciliarEstoqueComidaCulturas(int teamId)
+    {
+        if (reconciliandoEstoqueComidaCulturas) return;
+        DadosPaisGoverno pais = ObterPais(teamId);
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (pais == null) return;
+        AgriculturaNacional.GarantirCapacidadeArmazenamento(pais, teamId == teamJogador);
+        if (industrial == null) return;
+
+        reconciliandoEstoqueComidaCulturas = true;
+        try
+        {
+            long totalCulturas = 0L;
+            for (int i = 0; i < AgriculturaNacional.QuantidadeCulturas; i++)
+            {
+                totalCulturas = Math.Min(int.MaxValue, totalCulturas + Math.Max(0,
+                    ObterEstoque(teamId, AgriculturaNacional.ObterIdCultura(i))));
+            }
+
+            long estoqueAnteriorDeCulturas = Math.Min(
+                Math.Max(0, pais.comida), Math.Max(0, pais.estoqueAgricolaTotal));
+            long estoqueGenerico = Math.Max(0L, pais.comida - estoqueAnteriorDeCulturas);
+            long comidaTotalCorreta = Math.Min(int.MaxValue, estoqueGenerico + totalCulturas);
+            int diferencaComida = (int)comidaTotalCorreta - pais.comida;
+            pais.estoqueAgricolaTotal = (int)totalCulturas;
+            if (diferencaComida != 0)
+                AlterarEstoque(teamId, RecursoMercado.Comida, diferencaComida);
+
+            if (teamId == teamJogador)
+            {
+                GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+                if (recursos != null) recursos.comida = pais.comida;
+
+                DadosArmazemRecursos armazem = GerenciadorArmazens.Instancia != null
+                    ? GerenciadorArmazens.Instancia.armazemRecursos : null;
+                if (armazem != null)
+                    armazem.alimentos = Mathf.Clamp(pais.comida, 0, Mathf.Max(0, armazem.alimentosMaximo));
+            }
+        }
+        finally
+        {
+            reconciliandoEstoqueComidaCulturas = false;
+        }
+    }
+
+    private static string NormalizarIdArmazem(string recursoId)
+    {
+        return string.IsNullOrWhiteSpace(recursoId)
+            ? string.Empty
+            : IA_Text.Normalize(recursoId).Replace(' ', '_');
     }
 
     public void AdicionarEstoque(int teamId, RecursoMercado recurso, int quantidade)
@@ -1238,7 +1722,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         RegistrarNoticia(NomePais(proposta.origemTeamId) + " enviou proposta: " + proposta.motivo);
         OnPropostaCriada?.Invoke(proposta);
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return true;
     }
 
@@ -1348,7 +1832,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         if (alterou)
         {
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
         }
     }
 
@@ -1416,7 +1900,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             relRecusa.valor = Mathf.Clamp(relRecusa.valor - 2, -100, 100);
             relRecusa.pedidoPendente = false;
             mensagem = "Proposta recusada.";
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
             return true;
         }
 
@@ -1427,7 +1911,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             proposta.expiraEm = Time.unscaledTime + 75f;
             ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId).pedidoPendente = true;
             mensagem = "Contraoferta enviada.";
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
             return true;
         }
 
@@ -1436,14 +1920,14 @@ public class SistemaGovernoMundial : MonoBehaviour
             proposta.status = novoStatus;
             ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId).pedidoPendente = false;
             mensagem = "Proposta atualizada.";
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
             return true;
         }
 
         bool executou = ExecutarProposta(proposta, out mensagem);
         proposta.status = executou ? StatusPropostaInternacional.Executada : StatusPropostaInternacional.Pendente;
         ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId).pedidoPendente = !executou;
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         return executou;
     }
 
@@ -1834,6 +2318,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.estabilidade = Mathf.Clamp(pais.estabilidade - 14f, 0f, 100f);
         RelacaoPaisGoverno rel = ObterRelacao(teamJogador, teamId);
         rel.guerraDeclarada = true;
+        rel.cessarFogoAtivo = false;
         rel.valor = Mathf.Clamp(rel.valor - 35, -100, 100);
         RegistrarNoticia("Guerra declarada envolvendo " + pais.nomePais + ".");
         SistemaMercadoGlobal.Instancia?.SimularMercado();
@@ -1858,7 +2343,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         pais.diaFimBonusFelicidadeCartel = DiaAtual() + Mathf.Max(1, duracaoDias);
         pais.felicidade = Mathf.Clamp(pais.felicidade + (novoBonus - anterior), 0f, 100f);
         RegistrarNoticia("A populacao comemora a eliminacao de membros do cartel: +10% de felicidade por 2 dias.");
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     /// <summary>Registra a agressao e grava o agressor como inimigo do alvo.</summary>
@@ -1885,6 +2370,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (relacao != null)
         {
             relacao.guerraDeclarada = true;
+            relacao.cessarFogoAtivo = false;
             relacao.valor = Mathf.Clamp(relacao.valor - 35, -100, 100);
             relacao.posturaAParaB = PosturaRelacaoPais.Inimigo;
             relacao.posturaBParaA = PosturaRelacaoPais.Inimigo;
@@ -1896,7 +2382,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
         SistemaMercadoGlobal.Instancia?.SimularMercado();
         ProcessarEconomia();
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     public void ProporAlianca(int alvoTeamId)
@@ -1910,16 +2396,69 @@ public class SistemaGovernoMundial : MonoBehaviour
             rel.tratadoComercial = true;
         }
         RegistrarNoticia("Proposta de alianca enviada para " + NomePais(alvoTeamId) + ".");
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     public void RomperAlianca(int alvoTeamId)
     {
-        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
+        TentarRomperAlianca(alvoTeamId, out _);
+    }
+
+    public bool TentarRomperAlianca(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+
+        RelacaoPaisGoverno rel = relacoes != null
+            ? relacoes.FirstOrDefault(r => r != null && r.Envolve(teamJogador, alvoTeamId))
+            : null;
+        if (rel == null || !rel.pactoMilitar)
+        {
+            mensagem = "Nao existe pacto defensivo ativo com essa nacao.";
+            return false;
+        }
+
         rel.pactoMilitar = false;
         rel.valor = Mathf.Clamp(rel.valor - 22, -100, 100);
-        RegistrarNoticia("Alianca rompida com " + NomePais(alvoTeamId) + ".");
-        OnGovernoAtualizado?.Invoke();
+        mensagem = "Alianca rompida com " + NomePais(alvoTeamId) + ".";
+        RegistrarNoticia(mensagem);
+        NotificarGovernoAtualizadoSeguro();
+        return true;
+    }
+
+    public bool TentarRomperAcordo(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+
+        RelacaoPaisGoverno rel = relacoes != null
+            ? relacoes.FirstOrDefault(r => r != null && r.Envolve(teamJogador, alvoTeamId))
+            : null;
+        if (rel == null || (!rel.pactoMilitar && !rel.tratadoComercial))
+        {
+            mensagem = "Nao existe pacto defensivo ou tratado comercial ativo com essa nacao.";
+            return false;
+        }
+
+        List<string> acordosRompidos = new List<string>();
+        if (rel.pactoMilitar)
+        {
+            rel.pactoMilitar = false;
+            acordosRompidos.Add("pacto defensivo");
+        }
+        bool rompeuTratadoComercial = rel.tratadoComercial;
+        if (rompeuTratadoComercial)
+        {
+            rel.tratadoComercial = false;
+            acordosRompidos.Add("tratado comercial");
+        }
+
+        rel.valor = Mathf.Clamp(rel.valor - 22, -100, 100);
+        mensagem = "Acordo(s) rompido(s) com " + NomePais(alvoTeamId) + ": " + string.Join(" e ", acordosRompidos) + ".";
+        RegistrarNoticia(mensagem);
+        if (rompeuTratadoComercial) SistemaMercadoGlobal.Instancia?.SimularMercado();
+        NotificarGovernoAtualizadoSeguro();
+        return true;
     }
 
     public void ProporPactoDefensivo(int alvoTeamId)
@@ -1929,35 +2468,72 @@ public class SistemaGovernoMundial : MonoBehaviour
         rel.pactoMilitar = rel.valor >= 45;
         rel.pedidoPendente = !rel.pactoMilitar;
         RegistrarNoticia("Pacto defensivo negociado com " + NomePais(alvoTeamId) + ".");
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     public void AplicarSancao(int alvoTeamId)
     {
+        TentarAplicarSancao(alvoTeamId, out _);
+    }
+
+    public bool TentarAplicarSancao(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+
         DadosPaisGoverno alvo = ObterPais(alvoTeamId);
-        if (alvo == null) return;
+        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
+        if (rel.sancaoAtiva)
+        {
+            mensagem = "Essa nacao ja esta sob sancao do seu governo.";
+            return false;
+        }
+
         alvo.sancionado = true;
         alvo.estabilidade = Mathf.Clamp(alvo.estabilidade - 8f, 0f, 100f);
-        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
         rel.sancaoAtiva = true;
-        rel.tratadoComercial = false;
         rel.valor = Mathf.Clamp(rel.valor - 18, -100, 100);
-        RegistrarNoticia("Sancoes aplicadas contra " + alvo.nomePais + ".");
+        mensagem = "Sancoes aplicadas contra " + alvo.nomePais + ".";
+        RegistrarNoticia(mensagem);
         SistemaMercadoGlobal.Instancia?.SimularMercado();
         ProcessarEconomia();
+        NotificarGovernoAtualizadoSeguro();
+        return true;
     }
 
     public void RemoverSancao(int alvoTeamId)
     {
+        TentarRemoverSancao(alvoTeamId, out _);
+    }
+
+    public bool TentarRemoverSancao(int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+
         DadosPaisGoverno alvo = ObterPais(alvoTeamId);
-        if (alvo == null) return;
-        alvo.sancionado = false;
-        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
+        RelacaoPaisGoverno rel = relacoes != null
+            ? relacoes.FirstOrDefault(r => r != null && r.Envolve(teamJogador, alvoTeamId))
+            : null;
+        if (rel == null || !rel.sancaoAtiva)
+        {
+            mensagem = "Nao existe sancao ativa do seu governo contra essa nacao.";
+            return false;
+        }
+
         rel.sancaoAtiva = false;
-        rel.tratadoComercial = true;
+        bool sancaoDiplomaticaRestante = relacoes != null && relacoes.Any(r => r != null
+            && r.sancaoAtiva && (r.teamA == alvoTeamId || r.teamB == alvoTeamId));
+        bool inadimplenciaRestante = alvo.emprestimos != null
+            && alvo.emprestimos.Any(emprestimo => emprestimo != null && emprestimo.inadimplente);
+        alvo.sancionado = sancaoDiplomaticaRestante || inadimplenciaRestante;
         rel.valor = Mathf.Clamp(rel.valor + 12, -100, 100);
-        RegistrarNoticia("Sancoes removidas de " + alvo.nomePais + ".");
+        mensagem = "Sancoes removidas de " + alvo.nomePais + ".";
+        RegistrarNoticia(mensagem);
+        SistemaMercadoGlobal.Instancia?.SimularMercado();
         ProcessarEconomia();
+        NotificarGovernoAtualizadoSeguro();
+        return true;
     }
 
     public bool AplicarEmbargo(int alvoTeamId, RecursoMercado recurso, out string mensagem)
@@ -1980,7 +2556,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         rel.embargos.Add(recurso);
         RegistrarNoticia("Embargo de " + recurso + " aplicado contra " + NomePais(alvoTeamId) + ".");
         SistemaMercadoGlobal.Instancia?.SimularMercado();
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         mensagem = "Embargo de " + recurso + " ativo.";
         return true;
     }
@@ -1996,7 +2572,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
         RegistrarNoticia("Embargo de " + recurso + " removido de " + NomePais(alvoTeamId) + ".");
         SistemaMercadoGlobal.Instancia?.SimularMercado();
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
         mensagem = "Embargo removido.";
         return true;
     }
@@ -2061,6 +2637,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             RelacaoPaisGoverno rel = ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId);
             rel.guerraDeclarada = false;
+            rel.cessarFogoAtivo = true;
             rel.pedidoPendente = false;
             rel.valor = Mathf.Clamp(rel.valor + 25, -100, 100);
             DadosPaisGoverno origem = ObterPais(proposta.origemTeamId);
@@ -2342,6 +2919,9 @@ public class SistemaGovernoMundial : MonoBehaviour
             case RecursoMercado.Aco: return "aco";
             case RecursoMercado.Armamentos: return "armamentos";
             case RecursoMercado.Uranio: return "uranio";
+            case RecursoMercado.Diesel: return IndustriaIds.Diesel;
+            case RecursoMercado.CombustivelAviacao: return IndustriaIds.CombustivelAviacao;
+            case RecursoMercado.CombustivelNaval: return IndustriaIds.CombustivelNaval;
             default: return string.Empty;
         }
     }
@@ -2393,7 +2973,7 @@ public class SistemaGovernoMundial : MonoBehaviour
                 industrial.RemoverEstoque(teamId, recurso, -delta);
             }
 
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
             return;
         }
 
@@ -2480,7 +3060,7 @@ public class SistemaGovernoMundial : MonoBehaviour
                 break;
         }
 
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     private void AlterarEstoque(int teamId, string recursoId, int delta)
@@ -2490,16 +3070,18 @@ public class SistemaGovernoMundial : MonoBehaviour
             return;
         }
 
-        if (EhIdCulturaAgricola(recursoId))
+        string chaveArmazem = NormalizarIdArmazem(recursoId);
+
+        if (EhIdCulturaAgricola(chaveArmazem))
         {
             SistemaIndustrialNacional armazemAgricola = SistemaIndustrialNacional.Instancia;
             if (armazemAgricola == null) return;
-            if (delta < 0 && !armazemAgricola.Armazem.TentarConsumir(teamId.ToString(), recursoId, -delta)) return;
-            if (delta > 0) armazemAgricola.Armazem.Adicionar(teamId.ToString(), recursoId, delta);
+            if (delta < 0 && !armazemAgricola.Armazem.TentarConsumir(teamId.ToString(), chaveArmazem, -delta)) return;
+            if (delta > 0) armazemAgricola.Armazem.Adicionar(teamId.ToString(), chaveArmazem, delta);
             DadosPaisGoverno paisAgricola = ObterPais(teamId);
             paisAgricola.estoqueAgricolaTotal = Mathf.Max(0, paisAgricola.estoqueAgricolaTotal + delta);
             AlterarEstoque(teamId, RecursoMercado.Comida, delta);
-            OnGovernoAtualizado?.Invoke();
+            NotificarGovernoAtualizadoSeguro();
             return;
         }
 
@@ -2518,19 +3100,24 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         if (delta >= 0)
         {
-            industrial.Armazem.Adicionar(teamId.ToString(), recursoId, delta);
+            industrial.TentarAdicionar(teamId.ToString(), chaveArmazem, delta);
         }
         else
         {
-            industrial.Armazem.TentarConsumir(teamId.ToString(), recursoId, -delta);
+            industrial.TentarConsumir(teamId.ToString(), chaveArmazem, -delta);
         }
 
-        OnGovernoAtualizado?.Invoke();
+        NotificarGovernoAtualizadoSeguro();
     }
 
     private static bool EhIdCulturaAgricola(string recursoId)
     {
-        string id = IA_Text.Normalize(recursoId);
+        // IA_Text.Normalize converts underscores to spaces. Culture inventory IDs
+        // are persisted with underscores, so normalize separators without losing
+        // the canonical key used by the national warehouse.
+        string id = recursoId == null
+            ? string.Empty
+            : recursoId.Trim().ToLowerInvariant().Replace('-', '_').Replace(' ', '_');
         return id == "comida_milho" || id == "comida_batata" || id == "comida_feijao"
             || id == "comida_trigo" || id == "comida_arroz" || id == "comida_cana"
             || id == "comida_soja" || id == "comida_cafe" || id == "comida_cacau"
@@ -2597,6 +3184,15 @@ public class SistemaGovernoMundial : MonoBehaviour
                 return true;
             case "uranio_enriquecido":
                 recurso = RecursoMercado.UranioEnriquecido;
+                return true;
+            case "diesel":
+                recurso = RecursoMercado.Diesel;
+                return true;
+            case "combustivel_aviacao":
+                recurso = RecursoMercado.CombustivelAviacao;
+                return true;
+            case "combustivel_naval":
+                recurso = RecursoMercado.CombustivelNaval;
                 return true;
             default:
                 return false;

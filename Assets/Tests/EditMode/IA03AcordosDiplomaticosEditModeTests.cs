@@ -201,6 +201,10 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
             Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.False,
                 "A mudança genérica do proprietário por cessão não pode confirmar a captura da missão.");
             Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False);
+            object report = estratega.GetType().GetProperty("RelatorioAtual").GetValue(estratega, null);
+            Assert.That(Field(report, "ObjetivosCapturados"), Is.EqualTo(0),
+                "Cessão diplomática não deve ser classificada como objetivo militar capturado.");
+            Assert.That(Field(report, "ObjetivosPerdidos"), Is.EqualTo(0));
             Assert.That(Field(estratega, "missaoAtiva"), Is.SameAs(missao));
             Assert.That(Field(estratega, "estadoDaMissao").ToString(), Is.EqualTo("EmAndamento"));
 
@@ -209,6 +213,8 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
             Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.False);
             Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False,
                 "A reversão diplomática também não representa perda física da missão.");
+            Assert.That(Field(report, "ObjetivosCapturados"), Is.EqualTo(0));
+            Assert.That(Field(report, "ObjetivosPerdidos"), Is.EqualTo(0));
             Assert.That(Field(estratega, "missaoAtiva"), Is.SameAs(missao));
             Assert.That(Field(estratega, "estadoDaMissao").ToString(), Is.EqualTo("EmAndamento"));
         }
@@ -299,14 +305,17 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
             Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.True,
                 "O consumidor IA03 deve receber o evento físico e confirmar o objetivo da missão.");
             Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False);
+            object report = estratega.GetType().GetProperty("RelatorioAtual").GetValue(estratega, null);
+            Assert.That(Field(report, "ObjetivosCapturados"), Is.EqualTo(1),
+                "A captura militar do território explicitamente associado à missão deve contar uma vez.");
+            Assert.That(Field(report, "ObjetivosPerdidos"), Is.EqualTo(0));
             VincularUnidadeAMissao(estratega, unidadeObject);
             Invocar(estratega, "ProcessarMissaoAtiva", 2f);
             Assert.That(Field(estratega, "estadoDaMissao").ToString(), Is.EqualTo("Sucesso"));
             Assert.That(Field(estratega, "missaoAtiva"), Is.Null);
             Assert.That(Field(estratega, "creatyAtivo"), Is.Null);
             Assert.That(((IList)Field(estratega, "unidadesAtivasNaMissao")).Count, Is.EqualTo(0));
-            object relatorio = estratega.GetType().GetProperty("RelatorioAtual").GetValue(estratega, null);
-            Assert.That(Field(relatorio, "BatalhasVencidas"), Is.EqualTo(0),
+            Assert.That(Field(report, "BatalhasVencidas"), Is.EqualTo(0),
                 "O sucesso territorial conclui a missão, mas não aumenta vitórias em batalha.");
         }
         finally
@@ -360,10 +369,14 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         estrategaObject.SetActive(false);
         Component brain = estrategaObject.AddComponent(brainType);
         SetField(brain, "TeamId", 2);
+        SetField(brain, "IntegrationMode", Enum.Parse(brainType.GetField("IntegrationMode").FieldType, "Hybrid"));
         Component estratega = estrategaObject.AddComponent(strategaType);
         SetField(estratega, "brain", brain);
         SetField(estratega, "paisAlvoTeamId", 3);
         SetField(estratega, "equipeAlvoAtiva", 3);
+        SetField(estratega, "nivelDeConflito", Enum.Parse(
+            ResolverTipo("Hegemonia.AI.IA03.IA03NivelConflito"),
+            "ConflitoLimitado"));
 
         creatyObject = new GameObject("Creaty teste missão de captura");
         creatyObject.SetActive(false);

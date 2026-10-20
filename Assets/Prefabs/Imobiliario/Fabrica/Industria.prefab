@@ -431,6 +431,7 @@ GameObject:
   - component: {fileID: 201763895567664331}
   - component: {fileID: 4683805455654585372}
   - component: {fileID: -6384350001288307623}
+  - component: {fileID: 6701593300001001}
   m_Layer: 0
   m_Name: Industria
   m_TagString: Imovel
@@ -913,3 +914,31 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.550093, y: 0.16241813, z: 0.80650806}
   m_Center: {x: 0.038798273, y: 0.013252839, z: -0.022530079}
+--- !u!114 &6701593300001001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3498817272670655626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 367aaae37e633674387111b3ed658737, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::EstruturaEconomica
+  tipo: 31
+  teamId: 0
+  capacidadePopulacional: 0
+  populacaoAtual: 0
+  empregosGerados: 0
+  energiaConsumida: 260
+  energiaProduzida: 0
+  combustivelConsumido: 0
+  militaresNecessarios: 0
+  comidaProduzida: 0
+  petroleoProduzido: 0
+  industriaProduzida: 0
+  dinheiroGerado: 0
+  manutencaoAlimentosPorDia: 0
+  status: 3
+  eficiencia: 0

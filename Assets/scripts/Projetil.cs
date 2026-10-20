@@ -57,13 +57,22 @@ public class Projetil : MonoBehaviour
             + " frame=" + Time.frameCount
             + " shooter=" + (donoAtual != null ? donoAtual.name : "<null>")
             + " shooterTeam=" + (identidadeDono != null ? identidadeDono.teamID.ToString() : "<sem-identidade>")
+            + " shooterIdentity=" + FormatarIdentidadeProbe(identidadeDono)
             + " turretComponentId=" + torreta.GetInstanceID()
             + " turretPath=" + CaminhoProbeDisparo(torreta.transform)
             + " barrel=" + (cano != null ? CaminhoProbeDisparo(cano) : "<null>")
             + " projectile=" + name
             + " target=" + (alvo != null ? alvo.name : "<null>")
-            + " targetTeam=" + (identidadeAlvo != null ? identidadeAlvo.teamID.ToString() : "<sem-identidade>"),
+            + " targetTeam=" + (identidadeAlvo != null ? identidadeAlvo.teamID.ToString() : "<sem-identidade>")
+            + " targetIdentity=" + FormatarIdentidadeProbe(identidadeAlvo),
             this);
+    }
+
+    private static string FormatarIdentidadeProbe(IdentidadeUnidade identidade)
+    {
+        return identidade != null
+            ? identidade.name + "#" + identidade.GetInstanceID()
+            : "<sem-identidade>";
     }
 
     private static string CaminhoProbeDisparo(Transform alvo)
@@ -351,8 +360,11 @@ public class Projetil : MonoBehaviour
                     + " frame=" + Time.frameCount
                     + " shooter=" + (dono != null ? dono.name : "<null>")
                     + " shooterTeam=" + (identidadeDono != null ? identidadeDono.teamID.ToString() : "<sem-identidade>")
+                    + " shooterIdentity=" + FormatarIdentidadeProbe(identidadeDono)
                     + " target=" + alvo.name
-                    + " targetTeam=" + (identidadeAlvo != null ? identidadeAlvo.teamID.ToString() : "<sem-identidade>"),
+                    + " targetTeam=" + (identidadeAlvo != null ? identidadeAlvo.teamID.ToString() : "<sem-identidade>")
+                    + " targetIdentity=" + FormatarIdentidadeProbe(identidadeAlvo)
+                    + " targetPath=" + CaminhoProbeDisparo(alvo.transform),
                     this);
             }
 #endif

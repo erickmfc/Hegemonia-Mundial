@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Prédio Comercial
   descricao: Espaço comercial para mercados, lojas, restaurantes e serviços.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 209e58ce08d68824bb638c085c8f6e2d, type: 3}
   itemId: predio_comercial_pequeno
   aliases: predio comercial, comercio, loja, mercado
   capacidades: 0

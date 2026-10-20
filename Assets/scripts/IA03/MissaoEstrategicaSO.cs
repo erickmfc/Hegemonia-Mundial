@@ -24,6 +24,8 @@ namespace Hegemonia.AI.IA03
         [SerializeField] private List<IA03TipoCreaty> creatysPermitidos = new List<IA03TipoCreaty>();
         [SerializeField] private IA03AlvoPreferencial alvo = IA03AlvoPreferencial.Nenhum;
         [SerializeField] private IA03TipoOrdem tipoOrdem = IA03TipoOrdem.Mover;
+        [SerializeField, Tooltip("Permite somente patrulhas não ofensivas durante a paz.")]
+        private bool permitePatrulhaEmPaz;
         [SerializeField] private bool exigePortaAvioes;
         [SerializeField] private bool exigeSubmarino;
         [SerializeField] private bool exigeTransporteNaval;
@@ -50,6 +52,7 @@ namespace Hegemonia.AI.IA03
         public IReadOnlyList<IA03TipoCreaty> CreatysPermitidos => creatysPermitidos;
         public IA03AlvoPreferencial Alvo => alvo;
         public IA03TipoOrdem TipoOrdem => tipoOrdem;
+        public bool PermitePatrulhaEmPaz => permitePatrulhaEmPaz;
         public bool ExigePortaAvioes => exigePortaAvioes;
         public bool ExigeSubmarino => exigeSubmarino;
         public bool ExigeTransporteNaval => exigeTransporteNaval;
@@ -62,21 +65,22 @@ namespace Hegemonia.AI.IA03
 
         public bool Aceita(IA03NivelConflito nivel, IA03TipoCreaty tipoCreaty)
         {
-            if (nivel > nivelMenosGrave || nivel < nivelMaisGrave)
+            bool patrulhaSeguraEmPaz = nivel == IA03NivelConflito.Paz
+                && permitePatrulhaEmPaz
+                && tipoOrdem == IA03TipoOrdem.Patrulhar
+                && (tipoMissao == IA03TipoMissao.Patrulha || tipoMissao == IA03TipoMissao.PatrulhaSubmarino)
+                && (tipoCreaty == IA03TipoCreaty.PatrulhaTerrestre
+                    || tipoCreaty == IA03TipoCreaty.PatrulhaNaval
+                    || tipoCreaty == IA03TipoCreaty.PatrulhaAerea
+                    || tipoCreaty == IA03TipoCreaty.PatrulhaSubmarino);
+            if (!patrulhaSeguraEmPaz && (nivel > nivelMenosGrave || nivel < nivelMaisGrave))
             {
                 return false;
             }
 
-            if (!OperacaoPermitidaNoNivel(nivel)
-                || !CreatyPermitidoNoNivel(nivel, tipoCreaty)
-                || exigePortaAvioes
-                || exigeTransporteNaval
-                || exigePresidente
-                || tipoCreaty == IA03TipoCreaty.ZonaPortaAvioes
-                || tipoCreaty == IA03TipoCreaty.EmbarqueTransporte
-                || tipoCreaty == IA03TipoCreaty.DesembarqueAnfibio
-                || tipoCreaty == IA03TipoCreaty.HelipontoDiplomatico
-                || tipoCreaty == IA03TipoCreaty.RecepcaoPresidencial)
+            if (!PapelObrigatorioConfigurado()
+                || (!patrulhaSeguraEmPaz && !OperacaoPermitidaNoNivel(nivel))
+                || !CreatyPermitidoNoNivel(patrulhaSeguraEmPaz ? IA03NivelConflito.Tensao : nivel, tipoCreaty, tipoMissao))
             {
                 return false;
             }
@@ -88,49 +92,95 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
-            return creatysPermitidos == null || creatysPermitidos.Count == 0 || creatysPermitidos.Contains(tipoCreaty);
+            if (creatysPermitidos == null || creatysPermitidos.Count == 0 || creatysPermitidos.Contains(tipoCreaty))
+            {
+                return true;
+            }
+
+            // A lista declarada escolhe o ponto inicial da missão. Os pontos
+            // finais da rota encadeada também precisam ser aceitos pelo trecho
+            // seguinte, sem aparecer como candidatos de início.
+            return (tipoMissao == IA03TipoMissao.InvasaoAnfibia
+                    && tipoCreaty == IA03TipoCreaty.DesembarqueAnfibio)
+                   || (tipoMissao == IA03TipoMissao.VisitaPresidencial
+                       && tipoCreaty == IA03TipoCreaty.RecepcaoPresidencial);
         }
 
         private bool OperacaoPermitidaNoNivel(IA03NivelConflito nivel)
         {
-            if (tipoMissao == IA03TipoMissao.GrupoPortaAvioes
-                || tipoMissao == IA03TipoMissao.InvasaoAnfibia
-                || tipoMissao == IA03TipoMissao.VisitaPresidencial)
-            {
-                return false;
-            }
-
             switch (nivel)
             {
                 case IA03NivelConflito.Tensao:
                     return tipoMissao == IA03TipoMissao.Patrulha
                            || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
-                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo
+                           || tipoMissao == IA03TipoMissao.VisitaPresidencial;
                 case IA03NivelConflito.AvancoMilitar:
                     return tipoMissao == IA03TipoMissao.Patrulha
                            || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
                            || tipoMissao == IA03TipoMissao.Avanco
-                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo
+                           || tipoMissao == IA03TipoMissao.GrupoPortaAvioes;
                 case IA03NivelConflito.ConflitoLimitado:
                     return tipoMissao == IA03TipoMissao.Patrulha
                            || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
                            || tipoMissao == IA03TipoMissao.Avanco
                            || tipoMissao == IA03TipoMissao.AtaqueLimitado
-                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo
+                           || tipoMissao == IA03TipoMissao.GrupoPortaAvioes
+                           || tipoMissao == IA03TipoMissao.InvasaoAnfibia;
                 case IA03NivelConflito.GuerraTotal:
                     return tipoMissao == IA03TipoMissao.Patrulha
                            || tipoMissao == IA03TipoMissao.PatrulhaSubmarino
                            || tipoMissao == IA03TipoMissao.Avanco
                            || tipoMissao == IA03TipoMissao.AtaqueLimitado
                            || tipoMissao == IA03TipoMissao.GuerraTotal
-                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo;
+                           || tipoMissao == IA03TipoMissao.DefesaDeObjetivo
+                           || tipoMissao == IA03TipoMissao.GrupoPortaAvioes
+                           || tipoMissao == IA03TipoMissao.InvasaoAnfibia;
                 default:
                     return false;
             }
         }
 
-        private static bool CreatyPermitidoNoNivel(IA03NivelConflito nivel, IA03TipoCreaty tipo)
+        private bool PapelObrigatorioConfigurado()
         {
+            switch (tipoMissao)
+            {
+                case IA03TipoMissao.GrupoPortaAvioes:
+                    return exigePortaAvioes;
+                case IA03TipoMissao.InvasaoAnfibia:
+                    return exigeTransporteNaval;
+                case IA03TipoMissao.VisitaPresidencial:
+                    return exigePresidente;
+                default:
+                    return true;
+            }
+        }
+
+        private static bool CreatyPermitidoNoNivel(
+            IA03NivelConflito nivel,
+            IA03TipoCreaty tipo,
+            IA03TipoMissao missao)
+        {
+            switch (missao)
+            {
+                case IA03TipoMissao.GrupoPortaAvioes:
+                    return tipo == IA03TipoCreaty.ZonaPortaAvioes
+                           && (nivel == IA03NivelConflito.AvancoMilitar
+                               || nivel == IA03NivelConflito.ConflitoLimitado
+                               || nivel == IA03NivelConflito.GuerraTotal);
+                case IA03TipoMissao.InvasaoAnfibia:
+                    return (tipo == IA03TipoCreaty.EmbarqueTransporte
+                            || tipo == IA03TipoCreaty.DesembarqueAnfibio)
+                           && (nivel == IA03NivelConflito.ConflitoLimitado
+                               || nivel == IA03NivelConflito.GuerraTotal);
+                case IA03TipoMissao.VisitaPresidencial:
+                    return (tipo == IA03TipoCreaty.HelipontoDiplomatico
+                            || tipo == IA03TipoCreaty.RecepcaoPresidencial)
+                           && nivel == IA03NivelConflito.Tensao;
+            }
+
             bool creatyDePatrulha = tipo == IA03TipoCreaty.PatrulhaTerrestre
                                     || tipo == IA03TipoCreaty.PatrulhaNaval
                                     || tipo == IA03TipoCreaty.PatrulhaAerea

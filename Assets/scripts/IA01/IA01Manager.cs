@@ -228,6 +228,11 @@ namespace Hegemonia.AI.IA01
 
         private void Update()
         {
+            if (RTSGameSession.Instancia != null && RTSGameSession.Instancia.Phase == RTSSessionPhase.Paused)
+            {
+                return;
+            }
+
             if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
             {
                 return;
@@ -277,7 +282,9 @@ namespace Hegemonia.AI.IA01
 
         private bool ExecutarTickGlobal(float agora)
         {
-            if (!isActiveAndEnabled || ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
+            if (!isActiveAndEnabled
+                || (RTSGameSession.Instancia != null && RTSGameSession.Instancia.Phase == RTSSessionPhase.Paused)
+                || ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
             {
                 return true;
             }
@@ -343,7 +350,7 @@ namespace Hegemonia.AI.IA01
                 return false;
             }
 
-            return AIControlAuthority.CanIssue(claim.TeamId, claim.OwnerKey);
+            return AIControlAuthority.CanIssueProduction(claim.TeamId, claim.OwnerKey);
         }
 
         private void ClaimProductionAuthority(IA01Controller controller)
@@ -355,7 +362,7 @@ namespace Hegemonia.AI.IA01
 
             int instanceId = controller.GetInstanceID();
             string ownerKey = "IA01Production:" + controller.TeamId + ":" + instanceId;
-            AIControlAuthority.Claim(controller.TeamId, ownerKey, IA01ProductionAuthorityPriority);
+            AIControlAuthority.ClaimProduction(controller.TeamId, ownerKey, IA01ProductionAuthorityPriority);
             productionAuthorityClaims[instanceId] = new ProductionAuthorityClaim
             {
                 TeamId = controller.TeamId,
@@ -377,7 +384,7 @@ namespace Hegemonia.AI.IA01
                 return;
             }
 
-            AIControlAuthority.Release(claim.TeamId, claim.OwnerKey);
+            AIControlAuthority.ReleaseProduction(claim.TeamId, claim.OwnerKey);
             productionAuthorityClaims.Remove(instanceId);
         }
 
@@ -385,7 +392,7 @@ namespace Hegemonia.AI.IA01
         {
             foreach (ProductionAuthorityClaim claim in productionAuthorityClaims.Values)
             {
-                AIControlAuthority.Release(claim.TeamId, claim.OwnerKey);
+                AIControlAuthority.ReleaseProduction(claim.TeamId, claim.OwnerKey);
             }
 
             productionAuthorityClaims.Clear();

@@ -37,7 +37,7 @@ namespace Hegemonia.AI.DEUSA
             }
             else if (habitacao != null && habitacao.PrecisaCasas)
             {
-                PlanoEconomico = "ConstruirCasas";
+                PlanoEconomico = "ExpandirCidade";
             }
             else if (politica.PriorizarIndustria)
             {

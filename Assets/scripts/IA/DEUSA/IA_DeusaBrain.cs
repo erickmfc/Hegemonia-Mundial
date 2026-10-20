@@ -135,6 +135,16 @@ namespace Hegemonia.AI.DEUSA
                 prioridadesAtuais = new List<IA_DeusaPrioridade>();
             }
 
+            // IA_BrainMaster e a identidade autoritativa configurada na cena.
+            // Herda somente campos ausentes, preservando nomes DEUSA explicitos.
+            if (_brain != null)
+            {
+                if (string.IsNullOrWhiteSpace(identidade.nomePais))
+                    identidade.nomePais = _brain.NationName;
+                if (string.IsNullOrWhiteSpace(identidade.nomeMoeda))
+                    identidade.nomeMoeda = _brain.CurrencyName;
+            }
+
             identidade.GarantirDefaults(_brain != null ? _brain.TeamId : 1, config.personalidade, config.modoInicial);
             _baseMaxCommandsPerFrame = _brain != null ? Mathf.Max(1, _brain.MaxCommandsPerFrame) : 4;
             _performance.Reset(Time.time + (_brain != null ? _brain.TeamId * 0.43f : Random.value));
@@ -401,7 +411,7 @@ namespace Hegemonia.AI.DEUSA
             prioridadesAtuais.Clear();
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaHQ, DeusaTipoPrioridade.ConstruirHQ, 100, "Garantir prefeitura/HQ operacional.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaEnergia, DeusaTipoPrioridade.ConstruirEnergia, 99, "Deficit energetico bloqueando crescimento.");
-            AdicionarPrioridade(_construcao != null && _construcao.PrecisaCasas, DeusaTipoPrioridade.ConstruirCasa, 96, "Pressao populacional pede novas casas.");
+            AdicionarPrioridade(_construcao != null && _construcao.PrecisaCasas, DeusaTipoPrioridade.ConstruirCasa, 96, "Pressao habitacional pede expansao urbana por cidade completa.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaQuartel, DeusaTipoPrioridade.ConstruirQuartel, 92, "Abrir quartel para defesa e espionagem.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaIndustria, DeusaTipoPrioridade.ConstruirIndustria, 90, "Base industrial ainda insuficiente.");
             AdicionarPrioridade(_construcao != null && _construcao.PrecisaRadar, DeusaTipoPrioridade.ConstruirRadar, 88, "Cobertura de radar e defesa critica.");
@@ -537,7 +547,7 @@ namespace Hegemonia.AI.DEUSA
                 return;
             }
 
-            if (_construcao.PrecisaCasas && TentarEnfileirarConstrucao("deusa_casas", 96, 10f, IA_ZoneType.Core, "casa", "imovel", "predio"))
+            if (_construcao.PrecisaCasas && TentarEnfileirarConstrucao("deusa_expansao_urbana", 96, 10f, IA_ZoneType.Core, "urbana.cidade moderna", "cidade nova aurora"))
             {
                 return;
             }
@@ -849,7 +859,7 @@ namespace Hegemonia.AI.DEUSA
 
             if (_construcao.PrecisaCasas)
             {
-                return "Casas";
+                return "Expansao urbana";
             }
 
             if (_construcao.PrecisaQuartel)

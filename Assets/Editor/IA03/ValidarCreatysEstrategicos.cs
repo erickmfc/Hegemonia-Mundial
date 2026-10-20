@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using Hegemonia.AI.IA03;
+using Hegemonia.AI.BrainMaster;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -27,6 +28,8 @@ namespace Hegemonia.AI.IA03.EditorTools
 
                 HashSet<string> ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 GameObject[] roots = scene.GetRootGameObjects();
+                List<IA03EstrategaNacional> strategists = new List<IA03EstrategaNacional>();
+                List<IA_BrainMaster> brainMasters = new List<IA_BrainMaster>();
                 for (int rootIndex = 0; rootIndex < roots.Length; rootIndex++)
                 {
                     CreatyEstrategico[] creatys = roots[rootIndex].GetComponentsInChildren<CreatyEstrategico>(true);
@@ -35,7 +38,12 @@ namespace Hegemonia.AI.IA03.EditorTools
                         encontrados++;
                         avisos += ValidarCreaty(creatys[i], scene.name, ids, true);
                     }
+
+                    strategists.AddRange(roots[rootIndex].GetComponentsInChildren<IA03EstrategaNacional>(true));
+                    brainMasters.AddRange(roots[rootIndex].GetComponentsInChildren<IA_BrainMaster>(true));
                 }
+
+                avisos += ValidarIntegracaoCena(scene.name, strategists, brainMasters);
             }
 
             string[] prefabs = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" });
@@ -69,6 +77,69 @@ namespace Hegemonia.AI.IA03.EditorTools
             }
 
             Debug.Log("IA03 Creatys: " + encontrados + " componente(s), " + avisos + " aviso(s). A validação não alterou cenas nem prefabs.");
+        }
+
+        private static int ValidarIntegracaoCena(
+            string nomeCena,
+            List<IA03EstrategaNacional> strategists,
+            List<IA_BrainMaster> brainMasters)
+        {
+            int avisos = 0;
+            for (int i = 0; i < strategists.Count; i++)
+            {
+                IA03EstrategaNacional strategist = strategists[i];
+                if (strategist == null)
+                {
+                    continue;
+                }
+
+                if (strategist.GetComponent<IA_BrainMaster>() == null)
+                {
+                    Debug.LogWarning("IA03 [" + nomeCena + "] " + strategist.name
+                        + ": estrategista sem BrainMaster no mesmo GameObject.", strategist);
+                    avisos++;
+                }
+
+                if (!strategist.TemPerfilConfigurado)
+                {
+                    Debug.LogWarning("IA03 [" + nomeCena + "] " + strategist.name
+                        + ": estrategista desativado ou sem perfil nacional; não será registrado como módulo.", strategist);
+                    avisos++;
+                }
+            }
+
+            if (brainMasters.Count > 0 && strategists.Count == 0)
+            {
+                Debug.Log("IA03 [" + nomeCena + "]: " + brainMasters.Count
+                    + " BrainMaster(s) sem IA03EstrategaNacional. A camada IA03 é opcional; confirmar que esta composição é intencional.");
+            }
+            else if (brainMasters.Count > 0)
+            {
+                int configurados = 0;
+                for (int i = 0; i < strategists.Count; i++)
+                {
+                    IA03EstrategaNacional strategist = strategists[i];
+                    if (strategist != null
+                        && strategist.isActiveAndEnabled
+                        && strategist.TemPerfilConfigurado
+                        && strategist.GetComponent<IA_BrainMaster>() != null)
+                    {
+                        configurados++;
+                    }
+                }
+
+                Debug.Log("IA03 [" + nomeCena + "]: " + brainMasters.Count
+                    + " BrainMaster(s), " + strategists.Count + " estrategista(s), " + configurados
+                    + " estrategista(s) ativo(s) com perfil e BrainMaster local. A validação não infere autoridade econômica nem modo de integração.");
+            }
+
+            if (strategists.Count > 0 && brainMasters.Count == 0)
+            {
+                Debug.LogWarning("IA03 [" + nomeCena + "]: há estrategista(s) IA03, mas nenhum BrainMaster para executar ordens.");
+                avisos++;
+            }
+
+            return avisos;
         }
 
         private static int ValidarCreaty(CreatyEstrategico creaty, string origem, HashSet<string> ids, bool verificarSuperficie)

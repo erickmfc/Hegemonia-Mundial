@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Monumento Nacional
   descricao: Monumento cultural de grande porte, simbolo nacional e ponto turistico.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: de49287c8d84ac84ba554ed6d3737bd9, type: 3}
   itemId: monumento_nacional
   aliases: monumento, piramide, maravilha, cultura, turismo
   capacidades: 0

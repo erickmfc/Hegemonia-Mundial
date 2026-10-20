@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Predio Hard
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 45c21f32085315e4099b45b19ef693de, type: 3}
   itemId: residencial.apartamento_grande
   aliases: apartamento grande, torre residencial, predio alto, edificio residencial
   capacidades: 16777281

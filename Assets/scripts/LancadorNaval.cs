@@ -7,6 +7,8 @@ using Hegemonia.RTS;
 public class LancadorNaval : MonoBehaviour
 {
     public enum ModoOperacao { Passivo, Manual, Automatico }
+    public enum TipoMissilNaval { Tridente, Kh23Cruzeiro }
+    public enum ArmamentoHud { Automatico, MissilNaval, Torpedo }
 
     [Header("Configurações do Lançador")]
     public ModoOperacao modoAtual = ModoOperacao.Automatico;
@@ -14,6 +16,10 @@ public class LancadorNaval : MonoBehaviour
     public Transform[] pontosDeSaida; // Onde os mísseis nascem (bocas do VLS)
     public Transform[] pontosDeSaidaTorpedo; // Onde os torpedos nascem (tubos de torpedo)
     public GameObject prefabMissel; // O prefab que tem o script MisselNaval
+    [Tooltip("Munição de cruzeiro adicional. Cada navio escolhe qual dos dois mísseis usar no campo Tipo de Míssil Naval.")]
+    public GameObject prefabMisselCruzeiro;
+    [Tooltip("Escolha individual por navio. O padrão preserva a munição Tridente usada pelos prefabs existentes.")]
+    public TipoMissilNaval tipoMissilNaval = TipoMissilNaval.Tridente;
     public GameObject prefabTorpedo; // Munição secundária naval; mantido para preservar o Inspector
     [Tooltip("Se ativo, torpedos ficam reservados para o comando ATIVO do navio e nao saem pelo automatico da tecla I.")]
     public bool torpedosSomenteNoModoAtivo = false;
@@ -56,6 +62,7 @@ public class LancadorNaval : MonoBehaviour
     private int indicePontoSaidaTorpedo = 0; // Para alternar entre tubos de torpedo
     private AudioSource audioSource;
     private Transform alvoAtual;
+    private Transform alvoPrioritarioIA;
 
     // --- Identidade Própria ---
     private IdentidadeUnidade minhaIdentidade;
@@ -67,6 +74,9 @@ public class LancadorNaval : MonoBehaviour
     private bool modoPassivoForcadoPeloControle;
 
     public bool ModoPassivo => modoAtual == ModoOperacao.Passivo;
+    public GameObject PrefabMissilSelecionado => tipoMissilNaval == TipoMissilNaval.Kh23Cruzeiro
+        ? prefabMisselCruzeiro
+        : prefabMissel;
     public bool EstaRecarregando => salvaEmAndamento || TempoRecargaRestante > 0f;
     public float TempoRecargaRestante => tempoUltimoDisparoConfirmado < 0f
         ? 0f
@@ -106,7 +116,30 @@ public class LancadorNaval : MonoBehaviour
     private bool limitarAutomaticoAAlvosAutorizados;
     private float proximaVarreduraAutomatica = 0f;
     private bool salvaEmAndamento;
+    // Runtime-only: o Inspector continua definindo as cargas, e a HUD escolhe
+    // qual delas o disparo real deve usar nesta sessão.
+    private ArmamentoHud armamentoSelecionadoHud = ArmamentoHud.Automatico;
     private const float AlcanceRadarMinimo = 2000f;
+
+    public ArmamentoHud ArmamentoSelecionadoHud => armamentoSelecionadoHud;
+
+    public bool DefinirArmamentoHud(ArmamentoHud armamento)
+    {
+        if (armamento == ArmamentoHud.MissilNaval && PrefabMissilSelecionado == null) return false;
+        if (armamento == ArmamentoHud.Torpedo
+            && (prefabTorpedo == null || prefabTorpedo.GetComponent<Torpedo>() == null)) return false;
+        armamentoSelecionadoHud = armamento;
+        return true;
+    }
+
+    public bool DefinirTipoMissilHud(TipoMissilNaval tipo)
+    {
+        GameObject prefab = tipo == TipoMissilNaval.Kh23Cruzeiro ? prefabMisselCruzeiro : prefabMissel;
+        if (prefab == null) return false;
+        tipoMissilNaval = tipo;
+        armamentoSelecionadoHud = ArmamentoHud.MissilNaval;
+        return true;
+    }
 
     /// <summary>
     /// Perfil leve usado pela IA. Mantem a municao configurada no prefab, mas
@@ -199,27 +232,28 @@ public class LancadorNaval : MonoBehaviour
 
     IEnumerator PreaquecerMisseisSemTravada()
     {
-        if (prefabMissel == null)
+        GameObject prefabSelecionado = PrefabMissilSelecionado;
+        if (prefabSelecionado == null)
         {
             yield break;
         }
 
-        int prefabId = prefabMissel.GetInstanceID();
+        int prefabId = prefabSelecionado.GetInstanceID();
         int quantidade = Mathf.Clamp(tirosPorSalva + 2, 4, 8);
         if (prefabsPreaquecidos.Contains(prefabId)
             || prefabsEmPreaquecimento.Contains(prefabId)
-            || PoolDeObjetosCombate.ObterQuantidadePreaquecida(prefabMissel) >= quantidade)
+            || PoolDeObjetosCombate.ObterQuantidadePreaquecida(prefabSelecionado) >= quantidade)
         {
             yield break;
         }
 
         prefabsEmPreaquecimento.Add(prefabId);
-        DiagnosticoDesempenhoJogo.RegistrarEvento("Pool", "Prewarm naval agendado: " + prefabMissel.name);
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Pool", "Prewarm naval agendado: " + prefabSelecionado.name);
         yield return new WaitForSeconds(1.5f);
-        yield return PoolDeObjetosCombate.PrewarmIncremental(prefabMissel, quantidade, 1);
+        yield return PoolDeObjetosCombate.PrewarmIncremental(prefabSelecionado, quantidade, 1);
         prefabsEmPreaquecimento.Remove(prefabId);
         prefabsPreaquecidos.Add(prefabId);
-        DiagnosticoDesempenhoJogo.RegistrarEvento("Pool", "Prewarm naval concluido: " + prefabMissel.name);
+        DiagnosticoDesempenhoJogo.RegistrarEvento("Pool", "Prewarm naval concluido: " + prefabSelecionado.name);
     }
 
     void CriarVisualizadorAlcance()
@@ -329,6 +363,10 @@ public class LancadorNaval : MonoBehaviour
         else
         {
             tempoParaAtivarAutomatico = 0f;
+            if (novoModo == ModoOperacao.Passivo)
+            {
+                alvoPrioritarioIA = null;
+            }
         }
 
         modoAtual = novoModo;
@@ -356,6 +394,7 @@ public class LancadorNaval : MonoBehaviour
 
             DefinirModoIA(ModoOperacao.Passivo, false);
             alvoAtual = null;
+            alvoPrioritarioIA = null;
             return;
         }
 
@@ -368,6 +407,26 @@ public class LancadorNaval : MonoBehaviour
         {
             DefinirModoIA(ModoOperacao.Automatico, true);
         }
+    }
+
+    /// <summary>
+    /// Mantem um alvo ofensivo explicito recebido pelo BrainMaster ou pelo
+    /// comando naval. A busca automatica continua usando a autorizacao
+    /// diplomatica; este canal somente impede que uma ordem explicita seja
+    /// perdida quando o lancador alterna para o modo automatico.
+    /// </summary>
+    public void DefinirAlvoPrioritario(Transform alvo)
+    {
+        alvoPrioritarioIA = alvo;
+        if (alvo == null)
+        {
+            alvoAtual = null;
+        }
+    }
+
+    public Transform ObterAlvoPrioritario()
+    {
+        return alvoPrioritarioIA;
     }
 
     /// <summary>
@@ -455,9 +514,31 @@ public class LancadorNaval : MonoBehaviour
             return false;
         }
 
-        if (prefabMissel == null && prefabTorpedo == null)
+        if (armamentoSelecionadoHud == ArmamentoHud.MissilNaval && municaoTotal <= 0)
         {
-            motivo = "nenhum prefab de missil ou torpedo configurado";
+            motivo = "sem municao para o missil naval selecionado";
+            return false;
+        }
+
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo)
+        {
+            if (prefabTorpedo == null || torpedosTotal <= 0)
+            {
+                motivo = "torpedo selecionado sem prefab ou municao";
+                return false;
+            }
+            if (alvo == null || !EhAlvoNavalOuSubmarino(alvo))
+            {
+                motivo = "torpedo exige um contato naval ou submarino selecionado";
+                return false;
+            }
+        }
+
+        if (PrefabMissilSelecionado == null && prefabTorpedo == null)
+        {
+            motivo = tipoMissilNaval == TipoMissilNaval.Kh23Cruzeiro
+                ? "prefab do missil Kh-23 de cruzeiro nao configurado"
+                : "nenhum prefab de missil ou torpedo configurado";
             return false;
         }
 
@@ -536,6 +617,9 @@ public class LancadorNaval : MonoBehaviour
     {
         // Só permite atirar manualmente se ESTIVER SELECIONADO
         if (meuControle == null || !meuControle.selecionado) return;
+        // O Menu Comando recebe o clique e fornece coordenadas do mapa tático.
+        // Não converta o mesmo input novamente pelo raycast da câmera principal.
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
 
         bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool cliqueDireitoDeDisparo = Input.GetMouseButtonDown(1) && !teclaModificadora;
@@ -586,14 +670,57 @@ public class LancadorNaval : MonoBehaviour
         if (!PodeAtirar() || Time.time < proximaVarreduraAutomatica) return;
         proximaVarreduraAutomatica = Time.time + Mathf.Max(0.20f, intervaloVarreduraAutomatica);
 
-        // 1. Escaneia a área em busca de TODOS os alvos válidos
-        List<Transform> alvosValidos = BuscarTodosInimigos();
+        // 1. Uma ordem ofensiva explicita tem prioridade sobre a varredura.
+        // Ela pode iniciar uma agressao e, portanto, nao exige que a guerra
+        // ja esteja registrada. O impacto continua passando pelo SistemaDeDanos,
+        // que registra a agressao diplomatica. Sem alvo explicito, o radar
+        // automatico permanece estritamente limitado a guerra declarada.
+        List<Transform> alvosValidos;
+        if (alvoPrioritarioIA != null)
+        {
+            bufferAlvosValidos.Clear();
+            Transform alvoExplicito = ResolverTransformAlvo(alvoPrioritarioIA);
+            if (AlvoPrioritarioValido(alvoExplicito))
+            {
+                bufferAlvosValidos.Add(alvoExplicito);
+            }
+            alvosValidos = bufferAlvosValidos;
+        }
+        else
+        {
+            // 2. Escaneia a área em busca de TODOS os alvos válidos
+            alvosValidos = BuscarTodosInimigos();
+        }
 
         if (alvosValidos.Count > 0 && !salvaEmAndamento)
         {
-            // 2. Calcula distribuição de mísseis
+            // 3. Calcula distribuição de mísseis
             StartCoroutine(DispararSalvaInteligente(alvosValidos));
         }
+    }
+
+    private bool AlvoPrioritarioValido(Transform alvo)
+    {
+        if (alvo == null || !alvo.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (alvo == minhaRaiz || alvo.IsChildOf(minhaRaiz))
+        {
+            return false;
+        }
+
+        if (!ControleSubmarino.PodeSerAlvoConvencional(alvo)
+            || Vector3.Distance(transform.position, alvo.position) > alcanceRadar)
+        {
+            return false;
+        }
+
+        SistemaDeDanos vida = alvo.GetComponent<SistemaDeDanos>()
+            ?? alvo.GetComponentInParent<SistemaDeDanos>();
+        return vida == null || vida.vidaAtual > 0f;
     }
 
     bool PodeAtirar()
@@ -952,9 +1079,10 @@ public class LancadorNaval : MonoBehaviour
         
         // Simulação de dano do Míssil (seguro contra nulos se for um lançador apenas de torpedo)
         float danoMissel = 200f; 
-        if (prefabMissel != null)
+        GameObject prefabSelecionado = PrefabMissilSelecionado;
+        if (prefabSelecionado != null)
         {
-            MisselNaval refMissel = prefabMissel.GetComponent<MisselNaval>();
+            MisselNaval refMissel = prefabSelecionado.GetComponent<MisselNaval>();
             if (refMissel != null) danoMissel = refMissel.dano;
         }
 
@@ -1095,19 +1223,12 @@ public class LancadorNaval : MonoBehaviour
         // Vai checar limites depois de decidir qual disparar
 
 
-        if (prefabMissel == null && prefabTorpedo == null) return; // Segurança
+        GameObject prefabMissilSelecionado = PrefabMissilSelecionado;
+        if (prefabMissilSelecionado == null && prefabTorpedo == null) return; // Segurança
 
-        bool alvoNavalOuSubmarino = false;
-        if (alvoFixo != null)
-        {
-            alvoNavalOuSubmarino = alvoFixo.GetComponentInParent<ControleNavioRealista>() != null || 
-                                   alvoFixo.GetComponentInChildren<ControleNavioRealista>() != null ||
-                                   alvoFixo.GetComponentInParent<ControleSubmarino>() != null || 
-                                   alvoFixo.GetComponentInChildren<ControleSubmarino>() != null ||
-                                   TagSafe.Matches(alvoFixo, "Navio") || TagSafe.Matches(alvoFixo, "Submarino");
-        }
+        bool alvoNavalOuSubmarino = EhAlvoNavalOuSubmarino(alvoFixo);
 
-        GameObject prefabASpawnar = prefabMissel;
+        GameObject prefabASpawnar = prefabMissilSelecionado;
         bool usarMunicaoSecundaria = false;
         bool torpedoPrioritario = comandoAtivo && torpedosSomenteNoModoAtivo;
         bool podeUsarTorpedoNesteLancador = torpedoPrioritario || !torpedosSomenteNoModoAtivo;
@@ -1116,14 +1237,25 @@ public class LancadorNaval : MonoBehaviour
         // realmente engajam alvos navais com a arma esperada.
         // Quando o prefab reserva torpedos para o comando ativo, uma ordem
         // manual contra alvo naval usa essa arma antes dos misseis.
-        if (alvoNavalOuSubmarino && torpedoPrioritario && prefabTorpedo != null && torpedosTotal > 0)
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo)
+        {
+            if (!alvoNavalOuSubmarino || prefabTorpedo == null || torpedosTotal <= 0) return;
+            prefabASpawnar = prefabTorpedo;
+            usarMunicaoSecundaria = true;
+        }
+        else if (armamentoSelecionadoHud == ArmamentoHud.MissilNaval)
+        {
+            if (prefabMissilSelecionado == null || municaoTotal <= 0) return;
+            prefabASpawnar = prefabMissilSelecionado;
+        }
+        else if (alvoNavalOuSubmarino && torpedoPrioritario && prefabTorpedo != null && torpedosTotal > 0)
         {
             prefabASpawnar = prefabTorpedo;
             usarMunicaoSecundaria = true;
         }
-        else if (alvoNavalOuSubmarino && prefabMissel != null && municaoTotal > 0)
+        else if (alvoNavalOuSubmarino && prefabMissilSelecionado != null && municaoTotal > 0)
         {
-            prefabASpawnar = prefabMissel;
+            prefabASpawnar = prefabMissilSelecionado;
         }
         else if (alvoNavalOuSubmarino && podeUsarTorpedoNesteLancador && prefabTorpedo != null && torpedosTotal > 0)
         {
@@ -1223,6 +1355,17 @@ public class LancadorNaval : MonoBehaviour
             audioSource.pitch = pitchSom;
             audioSource.PlayOneShot(somDisparo);
         }
+    }
+
+    private static bool EhAlvoNavalOuSubmarino(Transform alvo)
+    {
+        if (alvo == null) return false;
+        return alvo.GetComponentInParent<ControleNavioRealista>() != null
+            || alvo.GetComponentInChildren<ControleNavioRealista>() != null
+            || alvo.GetComponentInParent<ControleSubmarino>() != null
+            || alvo.GetComponentInChildren<ControleSubmarino>() != null
+            || TagSafe.Matches(alvo, "Navio")
+            || TagSafe.Matches(alvo, "Submarino");
     }
     
     // Desenha o raio do radar no editor para facilitar ajuste

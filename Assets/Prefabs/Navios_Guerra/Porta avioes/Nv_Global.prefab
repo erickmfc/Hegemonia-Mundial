@@ -1001,6 +1001,7 @@ GameObject:
   - component: {fileID: 1563804390412248996}
   - component: {fileID: 6412091030879375888}
   - component: {fileID: 838744789157926086}
+  - component: {fileID: 7000000000000000039}
   m_Layer: 0
   m_Name: Nv_Global
   m_TagString: Navio
@@ -1682,3 +1683,32 @@ MonoBehaviour:
   alcanceRadar: 60000
   alcanceConfiguradoNoPrefab: 1
   radarLigado: 0
+--- !u!114 &7000000000000000039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585688427160210609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 1000
+  intervaloVarreduraSegundos: 0.5
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1

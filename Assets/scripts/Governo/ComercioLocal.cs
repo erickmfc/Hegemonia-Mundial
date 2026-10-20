@@ -344,6 +344,7 @@ public sealed class SistemaComercioNacional : MonoBehaviour
     public static DadosComercioNacional ObterResumo(int teamId)
     {
         GarantirInstancia();
+        if (Instancia == null) return new DadosComercioNacional();
         DadosComercioNacional resumo;
         return Instancia.relatorios.TryGetValue(Mathf.Max(1, teamId), out resumo) ? resumo : new DadosComercioNacional();
     }

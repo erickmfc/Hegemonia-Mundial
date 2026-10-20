@@ -47,6 +47,9 @@ public sealed class RescueIncident
     public float CreatedAtRealtime;
     public int LastUpdatedGameDay;
     public RescueIncidentType IncidentType;
+    // Indica que os sobreviventes restantes deste incidente estao fisicamente em balsas.
+    // Campo aditivo: saves anteriores continuam desserializando como false.
+    public bool UsaBalsasSalvamento;
     public int ThreatLevel;
     public RescueIncidentState State = RescueIncidentState.Ativo;
     public bool IsSignalActive = true;

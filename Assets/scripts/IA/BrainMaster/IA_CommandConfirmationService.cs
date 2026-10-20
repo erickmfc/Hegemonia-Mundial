@@ -22,7 +22,23 @@ namespace Hegemonia.AI.BrainMaster
 
         public void CaptureBaseline(IA_CommandRequest request, IA_WorldState world)
         {
+            CaptureBaseline(request, world, null);
+        }
+
+        public void CaptureBaseline(IA_CommandRequest request, IA_WorldState world, IA_BackendBridge backend)
+        {
             if (request == null || world == null) return;
+
+            IA_ProduceOrderData produce = request.Payload as IA_ProduceOrderData;
+            if (produce != null && string.IsNullOrWhiteSpace(produce.PrefabName) && backend != null)
+            {
+                DadosConstrucao item;
+                if (backend.TryResolveItem(produce.ItemKey, out item) && item != null && item.PrefabDaUnidade != null)
+                {
+                    produce.PrefabName = item.PrefabDaUnidade.name;
+                }
+            }
+
             _pending[request.Id] = new PendingConfirmation
             {
                 Request = request,
@@ -88,7 +104,8 @@ namespace Hegemonia.AI.BrainMaster
         private static int CountMatching(IA_CommandRequest request, IA_WorldState world)
         {
             string key = ResolveItemKey(request);
-            if (string.IsNullOrEmpty(key)) return 0;
+            string prefabKey = ResolvePrefabKey(request);
+            if (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(prefabKey)) return 0;
             List<GameObject> source = request.Type == IA_CommandType.Build ? world.OwnStructures : world.OwnUnits;
             int count = 0;
             for (int i = 0; i < source.Count; i++)
@@ -99,7 +116,9 @@ namespace Hegemonia.AI.BrainMaster
                 string name = metadata != null
                     ? IA_Text.Normalize(obj.name + " " + metadata.ItemId + " " + metadata.DisplayName + " " + metadata.Aliases + " " + metadata.SourcePrefabName)
                     : IA_Text.Normalize(obj.name);
-                if (name.Contains(key) || key.Contains(name)) count++;
+                bool matchesItem = !string.IsNullOrEmpty(key) && (name.Contains(key) || key.Contains(name));
+                bool matchesPrefab = !string.IsNullOrEmpty(prefabKey) && name.Contains(prefabKey);
+                if (matchesItem || matchesPrefab) count++;
             }
             return count;
         }
@@ -110,6 +129,12 @@ namespace Hegemonia.AI.BrainMaster
             if (build != null) return IA_Text.Normalize(build.ItemKey);
             IA_ProduceOrderData produce = request.Payload as IA_ProduceOrderData;
             return produce != null ? IA_Text.Normalize(produce.ItemKey) : string.Empty;
+        }
+
+        private static string ResolvePrefabKey(IA_CommandRequest request)
+        {
+            IA_ProduceOrderData produce = request.Payload as IA_ProduceOrderData;
+            return produce != null ? IA_Text.Normalize(produce.PrefabName) : string.Empty;
         }
     }
 }

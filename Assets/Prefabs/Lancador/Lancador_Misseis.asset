@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: Lancador de Misseis
   descricao: Base de lancamento de misseis balisticos. Permite ataques de longo alcance
     em qualquer ponto do mapa.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: d341ed6c0ec6e974da3913d09f9c844f, type: 3}
   prefabDaUnidade: {fileID: 9039162609791174952, guid: 6aa367d023ba40240bf6422161824177, type: 3}
   preco: 3000
   categoria: 4

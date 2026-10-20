@@ -620,6 +620,21 @@ MonoBehaviour:
   prefabCargaVisual: {fileID: 208337448308930263, guid: db69bdab9213be8479d3479d4cdec1da, type: 3}
   criarCargaVisualSeNaoHouverPrefab: 1
   escalaCarga: 0.85
+--- !u!114 &850130654118741065
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6062016681428944115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 15000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0
 --- !u!1 &7274965533083979759
 GameObject:
   m_ObjectHideFlags: 0
@@ -935,18 +950,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1755303001731869649, guid: 381434430a122784eb661519b4f92583, type: 3}
   m_PrefabInstance: {fileID: 6354770670370959924}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &850130654118741065
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6062016681428944115}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 15000
-  alcanceConfiguradoNoPrefab: 1
-  radarLigado: 0

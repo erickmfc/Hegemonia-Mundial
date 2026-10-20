@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: F200
   descricao: Fragata F200 para defesa e patrulha naval.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 2c14e1d13df278a4ca29554561081206, type: 3}
   itemId: F200
   aliases: F-200; fragata F200
   capacidades: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Armazem Militar
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: eb7d634bf709ea044bfa2143d2ee4548, type: 3}
   prefabDaUnidade: {fileID: 3669478538382344930, guid: 4450ac096de922e4081a1aa4b7fe9692, type: 3}
   preco: 100
   categoria: 4

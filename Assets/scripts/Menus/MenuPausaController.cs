@@ -26,6 +26,12 @@ public class MenuPausaController : MonoBehaviour
     private GameObject raizMenu;
     private Text statusText;
     private GameObject statusBoxObject;
+    private GameObject hudTempoObject;
+    private Text textoVelocidade;
+    private Text textoBotaoPausa;
+    private float velocidadeHUDAnterior = -1f;
+    private float velocidadeFallbackAtual = 1f;
+    private bool estadoPausaHUDAnterior;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void CriarBootstrap()
@@ -51,8 +57,18 @@ public class MenuPausaController : MonoBehaviour
         // desativado. Nesse caso o painel já não existe, mas o relogio e as
         // IAs continuam acreditando que a partida está pausada.
         EstaPausado = false;
-        Time.timeScale = 1f;
-        AudioListener.pause = false;
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (relogio != null)
+        {
+            relogio.ResetSimulationSpeed();
+            relogio.SetPaused(false);
+        }
+        else
+        {
+            velocidadeFallbackAtual = Hegemonia.RTS.RTSSimulationClock.NormalizarVelocidade(1f);
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+        }
 
         Scene cenaAtiva = SceneManager.GetActiveScene();
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
@@ -86,10 +102,14 @@ public class MenuPausaController : MonoBehaviour
             return;
         }
 
+        ProcessarAtalhosTempo();
+
         if (Input.GetKeyDown(KeyCode.Escape) && !EstaDigitandoEmCampoTexto())
         {
             AlternarMenu();
         }
+
+        AtualizarHUDTempo();
     }
 
     private void OnDestroy()
@@ -119,11 +139,9 @@ public class MenuPausaController : MonoBehaviour
             ConstruirInterface();
         }
 
-        Time.timeScale = 0f;
-        AudioListener.pause = true;
+        DefinirPausaSimulacao(true);
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
-        EstaPausado = true;
         raizMenu.SetActive(true);
         // O aviso de pausa nao deve ficar por cima do ultimo botao (principalmente
         // "Sair para menu principal"). Os avisos de salvar/carregar continuam
@@ -141,10 +159,185 @@ public class MenuPausaController : MonoBehaviour
 
     private void RestaurarFluxoNormal()
     {
-        Time.timeScale = 1f;
-        AudioListener.pause = false;
-        EstaPausado = false;
+        DefinirPausaSimulacao(false);
         FecharMenuVisual();
+    }
+
+    private void DefinirPausaSimulacao(bool pausado)
+    {
+        Hegemonia.RTS.RTSGameSession sessao = Hegemonia.RTS.RTSGameSession.Instancia;
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+
+        if (relogio != null)
+        {
+            relogio.SetPaused(pausado);
+        }
+        else if (sessao != null)
+        {
+            sessao.SetPaused(pausado);
+        }
+
+        if (relogio == null)
+        {
+            bool pausaEfetiva = sessao != null
+                ? sessao.Phase == Hegemonia.RTS.RTSSessionPhase.Paused
+                : pausado;
+            bool partidaFinalizada = sessao != null
+                && sessao.Phase == Hegemonia.RTS.RTSSessionPhase.Finished;
+            Time.timeScale = pausaEfetiva || partidaFinalizada ? 0f : velocidadeFallbackAtual;
+            AudioListener.pause = pausaEfetiva || partidaFinalizada;
+        }
+
+        if (sessao != null)
+        {
+            EstaPausado = sessao.Phase == Hegemonia.RTS.RTSSessionPhase.Paused;
+        }
+        else if (relogio != null)
+        {
+            EstaPausado = relogio.Paused;
+        }
+        else
+        {
+            EstaPausado = pausado;
+        }
+
+        // Ao sair de uma tela de resultado, preserve o fluxo atual de troca de cena.
+        if (!pausado && sessao != null && sessao.Phase == Hegemonia.RTS.RTSSessionPhase.Finished)
+        {
+            Time.timeScale = 1f;
+            AudioListener.pause = false;
+            velocidadeFallbackAtual = 1f;
+        }
+    }
+
+    private void ProcessarAtalhosTempo()
+    {
+        if (EstaDigitandoEmCampoTexto()) return;
+
+        if (Input.GetKeyDown(KeyCode.Alpha4)) AlternarHUDTempo();
+
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        SincronizarEstadoPausa();
+        if (Input.GetKeyDown(KeyCode.Alpha6)) AlternarPausaTempo();
+        if (Input.GetKeyDown(KeyCode.Alpha7))
+        {
+            if (relogio != null) relogio.AdjustSimulationSpeed(-1);
+            else AjustarVelocidadeFallback(-1);
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha8))
+        {
+            if (relogio != null) relogio.AdjustSimulationSpeed(1);
+            else AjustarVelocidadeFallback(1);
+        }
+    }
+
+    private void AlternarHUDTempo()
+    {
+        if (hudTempoObject == null) return;
+        hudTempoObject.SetActive(!hudTempoObject.activeSelf);
+    }
+
+    private void AlternarPausaTempo()
+    {
+        if (EstaPausado)
+        {
+            RestaurarFluxoNormal();
+        }
+        else
+        {
+            DefinirPausaSimulacao(true);
+        }
+
+        AtualizarHUDTempo();
+    }
+
+    private void ReduzirVelocidadeTempo()
+    {
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (relogio != null) relogio.AdjustSimulationSpeed(-1);
+        else AjustarVelocidadeFallback(-1);
+        AtualizarHUDTempo();
+    }
+
+    private void AumentarVelocidadeTempo()
+    {
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (relogio != null) relogio.AdjustSimulationSpeed(1);
+        else AjustarVelocidadeFallback(1);
+        AtualizarHUDTempo();
+    }
+
+    private void RestaurarVelocidadeNormal()
+    {
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (relogio != null) relogio.ResetSimulationSpeed();
+        else DefinirVelocidadeFallback(1f);
+        AtualizarHUDTempo();
+    }
+
+    private void AjustarVelocidadeFallback(int direcao)
+    {
+        float proxima = Hegemonia.RTS.RTSSimulationClock.ProximaVelocidade(velocidadeFallbackAtual, direcao);
+        DefinirVelocidadeFallback(proxima);
+    }
+
+    private void DefinirVelocidadeFallback(float velocidade)
+    {
+        float normalizada = Hegemonia.RTS.RTSSimulationClock.NormalizarVelocidade(velocidade);
+        if (normalizada > 1f && GovernadorGameplayRTS.BloquearAceleracaoTempo(out string motivoBloqueio))
+        {
+            normalizada = 1f;
+            HUDAjudaRTS.MostrarMensagemTemporaria(motivoBloqueio, 2.8f);
+        }
+
+        velocidadeFallbackAtual = normalizada;
+        if (!EstaPausado)
+        {
+            Time.timeScale = velocidadeFallbackAtual;
+        }
+    }
+
+    private void SincronizarEstadoPausa()
+    {
+        Hegemonia.RTS.RTSGameSession sessao = Hegemonia.RTS.RTSGameSession.Instancia;
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (sessao != null)
+        {
+            EstaPausado = sessao.Phase == Hegemonia.RTS.RTSSessionPhase.Paused;
+        }
+        else if (relogio != null)
+        {
+            EstaPausado = relogio.Paused;
+        }
+    }
+
+    private void AtualizarHUDTempo()
+    {
+        SincronizarEstadoPausa();
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (relogio == null && !EstaPausado
+            && !Mathf.Approximately(Time.timeScale, velocidadeFallbackAtual))
+        {
+            // Outros sistemas podem forcar 1x (por exemplo, quando a aceleracao
+            // e bloqueada). Mantem o HUD e a retomada alinhados ao valor real.
+            velocidadeFallbackAtual = Hegemonia.RTS.RTSSimulationClock.NormalizarVelocidade(Time.timeScale);
+        }
+
+        float velocidade = relogio != null
+            ? relogio.SimulationSpeed
+            : Hegemonia.RTS.RTSSimulationClock.NormalizarVelocidade(velocidadeFallbackAtual);
+
+        if (textoVelocidade != null && !Mathf.Approximately(velocidadeHUDAnterior, velocidade))
+        {
+            textoVelocidade.text = Hegemonia.RTS.RTSSimulationClock.RotuloVelocidade(velocidade);
+            velocidadeHUDAnterior = velocidade;
+        }
+
+        if (textoBotaoPausa != null && estadoPausaHUDAnterior != EstaPausado)
+        {
+            textoBotaoPausa.text = EstaPausado ? "RETOMAR 6" : "PAUSAR 6";
+            estadoPausaHUDAnterior = EstaPausado;
+        }
     }
 
     private void RetomarJogo()
@@ -316,6 +509,7 @@ public class MenuPausaController : MonoBehaviour
         statusText = CriarTexto("Status", statusBox, string.Empty, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-32f, 0f));
         statusBoxObject.SetActive(false);
         CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 22f), new Vector2(-48f, 20f));
+        ConstruirHUDTempo();
     }
 
     private void RecriarInterface()
@@ -328,6 +522,11 @@ public class MenuPausaController : MonoBehaviour
             raizMenu = null;
             statusText = null;
             statusBoxObject = null;
+            hudTempoObject = null;
+            textoVelocidade = null;
+            textoBotaoPausa = null;
+            velocidadeHUDAnterior = -1f;
+            estadoPausaHUDAnterior = false;
         }
 
         ConstruirInterface();
@@ -335,6 +534,65 @@ public class MenuPausaController : MonoBehaviour
         {
             FecharMenuVisual();
         }
+    }
+
+    private void ConstruirHUDTempo()
+    {
+        RectTransform faixa = CriarPainel("ControlesTempoSimulacao", canvasMenu.transform,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f),
+            new Vector2(430f, 62f), new Color(0.025f, 0.075f, 0.09f, 0.92f));
+        hudTempoObject = faixa.gameObject;
+        Outline borda = faixa.gameObject.AddComponent<Outline>();
+        borda.effectColor = corBorda;
+        borda.effectDistance = new Vector2(1.5f, -1.5f);
+
+        textoVelocidade = CriarTexto("VelocidadeAtual", faixa, "1x", 20, FontStyle.Bold,
+            TextAnchor.MiddleCenter, corTexto, new Vector2(0f, 0f), new Vector2(0f, 1f),
+            new Vector2(24f, 0f), new Vector2(56f, 0f));
+
+        textoBotaoPausa = CriarBotaoCompactoTempo(faixa, "PausarTempo", "PAUSAR 6",
+            new Vector2(-17f, 0f), new Vector2(108f, 42f), AlternarPausaTempo, true);
+        CriarBotaoCompactoTempo(faixa, "ReduzirTempo", "- 7",
+            new Vector2(-101f, 0f), new Vector2(58f, 42f), ReduzirVelocidadeTempo, false);
+        CriarBotaoCompactoTempo(faixa, "AumentarTempo", "+ 8",
+            new Vector2(68f, 0f), new Vector2(58f, 42f), AumentarVelocidadeTempo, false);
+        CriarBotaoCompactoTempo(faixa, "VelocidadeNormal", "1x",
+            new Vector2(150f, 0f), new Vector2(72f, 42f), RestaurarVelocidadeNormal, false);
+        AtualizarHUDTempo();
+    }
+
+    private Text CriarBotaoCompactoTempo(Transform parent, string nome, string titulo,
+        Vector2 posicao, Vector2 tamanho, UnityEngine.Events.UnityAction acao, bool destaque)
+    {
+        GameObject botaoObject = new GameObject(nome);
+        botaoObject.transform.SetParent(parent, false);
+
+        RectTransform rect = botaoObject.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = posicao;
+        rect.sizeDelta = tamanho;
+
+        Image fundo = botaoObject.AddComponent<Image>();
+        fundo.color = destaque ? corBotaoDestaque : corBotao;
+
+        Button botao = botaoObject.AddComponent<Button>();
+        ColorBlock cores = botao.colors;
+        cores.normalColor = fundo.color;
+        cores.highlightedColor = corBotaoHover;
+        cores.pressedColor = new Color(fundo.color.r * 0.84f, fundo.color.g * 0.84f, fundo.color.b * 0.84f, fundo.color.a);
+        cores.selectedColor = corBotaoHover;
+        cores.fadeDuration = 0.08f;
+        botao.colors = cores;
+        botao.onClick.AddListener(acao);
+
+        Text label = CriarTexto("Label", botaoObject.transform, titulo, 17, FontStyle.Bold,
+            TextAnchor.MiddleCenter, corTexto, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-6f, -2f));
+        label.resizeTextForBestFit = true;
+        label.resizeTextMinSize = 12;
+        label.resizeTextMaxSize = 17;
+        return label;
     }
 
     private RectTransform CriarPainel(string nome, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta, Color cor)

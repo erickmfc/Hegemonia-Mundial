@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Predio Comercial
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: a33e683a0a2521649a82f72fd7eeeba6, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: ac130
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: b8cb613e1aad6c34f99b8de6e1c69274, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

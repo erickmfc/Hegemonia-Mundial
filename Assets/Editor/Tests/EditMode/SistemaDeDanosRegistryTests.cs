@@ -14,6 +14,12 @@ public sealed class SistemaDeDanosRegistryTests
         {
             if (objects[i] != null)
             {
+                IdentidadeUnidade identity = objects[i].GetComponent<IdentidadeUnidade>();
+                if (identity != null)
+                {
+                    RegistroEntidadesJogo.Unregister(identity);
+                }
+
                 Object.DestroyImmediate(objects[i]);
             }
         }
@@ -49,6 +55,11 @@ public sealed class SistemaDeDanosRegistryTests
         IdentidadeUnidade identity = instance.AddComponent<IdentidadeUnidade>();
         identity.teamID = teamId;
         identity.tipoUnidade = type;
+        // MonoBehaviour lifecycle callbacks do not run for ordinary runtime
+        // components created by an EditMode test. This test exercises the
+        // damage resolver's registered-entity contract, so register through
+        // the same public boundary used by IdentidadeUnidade.OnEnable.
+        RegistroEntidadesJogo.Register(identity);
         return instance;
     }
 }

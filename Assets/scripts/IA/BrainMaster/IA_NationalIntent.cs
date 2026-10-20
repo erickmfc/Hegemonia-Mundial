@@ -17,7 +17,7 @@ namespace Hegemonia.AI.BrainMaster
         public int Priority;
         public float Urgency;
         public float Risk;
-        public float EstimatedCost;
+        public long EstimatedCost;
         public float ExpectedBenefit;
         public float ValidUntil;
         public bool Feasible = true;
@@ -26,9 +26,11 @@ namespace Hegemonia.AI.BrainMaster
         public string RejectionReason;
         [NonSerialized] public IA_CommandRequest Command;
 
-        public float Score(float availableBudget, float nationalRisk, float styleBias)
+        public float Score(long availableBudget, float nationalRisk, float styleBias)
         {
-            float affordability = availableBudget <= 0f ? -EstimatedCost : Mathf.Clamp01(availableBudget / Mathf.Max(1f, EstimatedCost));
+            float affordability = availableBudget <= 0L
+                ? -(float)EstimatedCost
+                : Mathf.Clamp01((float)availableBudget / Mathf.Max(1f, (float)EstimatedCost));
             return Priority + Urgency * 0.8f + ExpectedBenefit * 0.7f + styleBias + affordability * 15f - Risk * 0.8f - nationalRisk * 0.5f;
         }
     }
@@ -70,7 +72,7 @@ namespace Hegemonia.AI.BrainMaster
 
     public sealed class IA_StrategyArbiter
     {
-        public IA_NationalIntent Select(IA_NationalIntentBoard board, float now, float availableBudget, float nationalRisk, float styleBias)
+        public IA_NationalIntent Select(IA_NationalIntentBoard board, float now, long availableBudget, float nationalRisk, float styleBias)
         {
             if (board == null) return null;
             List<IA_NationalIntent> candidates = board.Snapshot(now);
@@ -104,7 +106,11 @@ namespace Hegemonia.AI.BrainMaster
             _nextRouteTime = now + Interval;
             float risk = _context.CombatPressure != null && _context.CombatPressure.EnemyVisible ? 30f : 0f;
             float styleBias = (_context.Brain.IndustryWeight - _context.Brain.MilitarismWeight) * 10f;
-            IA_NationalIntent intent = _context.StrategyArbiter.Select(_context.IntentBoard, now, _context.Brain.Credits, risk, styleBias);
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            long saldoDisponivel = governo != null
+                ? governo.ObterSaldoDisponivelParaOperacao(_context.Brain.TeamId)
+                : Math.Max(0L, _context.Brain.Credits);
+            IA_NationalIntent intent = _context.StrategyArbiter.Select(_context.IntentBoard, now, saldoDisponivel, risk, styleBias);
             if (intent == null || intent.Command == null) return;
 
             string reason;

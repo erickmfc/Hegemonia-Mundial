@@ -16,6 +16,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private const int LocalNavMeshAgentTypeId = 0;
     private const int LocalNavMeshTileSize = 256;
     private const float LocalNavMeshVoxelSize = 4f;
+    private const int MaximumCachedTerrainTiles = 9;
+    private const int MaximumTerrainRowsPerFrame = 8;
+    private const float AltitudeModeHysteresis = 1000f;
 
     private static readonly ProfilerMarker BuildDesiredSetMarker = new ProfilerMarker("GlobalTerrainStreamer.BuildDesiredSet");
     private static readonly ProfilerMarker ApplyVisibleTilesMarker = new ProfilerMarker("GlobalTerrainStreamer.ApplyVisibleTiles");
@@ -53,6 +56,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     public bool showDiagnostics = true;
 
     private readonly Dictionary<Vector2Int, Terrain> loadedTiles = new Dictionary<Vector2Int, Terrain>(16);
+    private readonly Dictionary<Vector2Int, int> tileLastUsedOrder = new Dictionary<Vector2Int, int>(16);
     private readonly HashSet<Vector2Int> desiredTiles = new HashSet<Vector2Int>();
     private readonly List<Vector2Int> removalBuffer = new List<Vector2Int>(16);
     private readonly float[] alphaWeights = new float[6];
@@ -60,22 +64,71 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private Camera farClipCamera;
     private float farClipBeforeLocalStreaming;
     private bool localFarClipLimited;
-    private int totalTreeInstances;
+    private int tileUseOrder;
     private int lastGenerationMilliseconds;
     private int lastLocalNavMeshBuildMilliseconds;
     private PackageNavMeshSurface localNavMeshSurface;
     private NavMeshData runtimeLocalNavMeshData;
     private string committedNavMeshTileSet = string.Empty;
     private string failedNavMeshTileSet;
+    private bool altitudeModeInitialized;
+    private bool macroTerrainMode;
+    private bool localTerrainSuspended;
 
-    public int ActiveTileCount => loadedTiles.Count;
+    public int ActiveTileCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (Vector2Int coordinate in desiredTiles)
+            {
+                if (loadedTiles.TryGetValue(coordinate, out Terrain terrain)
+                    && terrain != null && terrain.enabled && terrain.gameObject.activeInHierarchy)
+                    count++;
+            }
+            return count;
+        }
+    }
     public int DesiredTileCount => desiredTiles.Count;
-    public int ActiveTreeCount => totalTreeInstances;
+    public int CachedTileCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (KeyValuePair<Vector2Int, Terrain> pair in loadedTiles)
+            {
+                Terrain terrain = pair.Value;
+                if (!desiredTiles.Contains(pair.Key) && terrain != null
+                    && !terrain.gameObject.activeInHierarchy)
+                    count++;
+            }
+            return count;
+        }
+    }
+    public bool IsMacroTerrainMode => macroTerrainMode;
+    public int ActiveTreeCount
+    {
+        get
+        {
+            int count = 0;
+            foreach (Vector2Int coordinate in desiredTiles)
+            {
+                if (loadedTiles.TryGetValue(coordinate, out Terrain terrain)
+                    && terrain != null && terrain.enabled && terrain.gameObject.activeInHierarchy
+                    && terrain.terrainData != null)
+                    count += terrain.terrainData.treeInstanceCount;
+            }
+            return count;
+        }
+    }
     public int LastGenerationMilliseconds => lastGenerationMilliseconds;
     public int LastLocalNavMeshBuildMilliseconds => lastLocalNavMeshBuildMilliseconds;
 
     private void OnEnable()
     {
+        altitudeModeInitialized = false;
+        macroTerrainMode = false;
+        localTerrainSuspended = false;
         if (Application.isPlaying)
             EnsureLocalNavMeshSurface();
 
@@ -98,6 +151,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             if (globalTerrain != null)
                 globalTerrain.enabled = true;
         }
+        altitudeModeInitialized = false;
+        macroTerrainMode = false;
+        localTerrainSuspended = false;
 
         if (localFarClipLimited && farClipCamera != null)
             farClipCamera.farClipPlane = farClipBeforeLocalStreaming;
@@ -117,7 +173,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             return;
         }
 
-        if (camera.transform.position.y >= detailTerrainBelowAltitude)
+        UpdateAltitudeMode(camera);
+        if (macroTerrainMode)
         {
             // CameraController recalculates its global far plane as the camera
             // crosses this threshold. Leave that value untouched in macro view.
@@ -168,6 +225,32 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         camera.farClipPlane = Mathf.Min(farClipBeforeLocalStreaming, desiredFarClip);
     }
 
+    private void UpdateAltitudeMode(Camera camera)
+    {
+        if (camera == null)
+            return;
+
+        bool previousMode = macroTerrainMode;
+        float altitude = camera.transform.position.y;
+        if (!altitudeModeInitialized)
+        {
+            macroTerrainMode = altitude >= detailTerrainBelowAltitude;
+            altitudeModeInitialized = true;
+        }
+        else if (macroTerrainMode)
+        {
+            if (altitude <= detailTerrainBelowAltitude - AltitudeModeHysteresis)
+                macroTerrainMode = false;
+        }
+        else if (altitude >= detailTerrainBelowAltitude + AltitudeModeHysteresis)
+        {
+            macroTerrainMode = true;
+        }
+
+        if (previousMode != macroTerrainMode)
+            localTerrainSuspended = false;
+    }
+
     private IEnumerator StreamContinuously()
     {
         // Let the existing surface initializer inspect the scene while the
@@ -199,18 +282,30 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             {
                 globalTerrain.gameObject.SetActive(true);
                 globalTerrain.enabled = true;
+                if (!localTerrainSuspended)
+                {
+                    SuspendLocalTerrainForMacroView();
+                    localTerrainSuspended = true;
+                }
                 yield return new WaitForSecondsRealtime(refreshInterval);
                 continue;
             }
 
-            if (camera.transform.position.y >= detailTerrainBelowAltitude)
+            UpdateAltitudeMode(camera);
+            if (macroTerrainMode)
             {
                 globalTerrain.gameObject.SetActive(true);
                 globalTerrain.enabled = true;
-                RemoveAllTiles();
+                if (!localTerrainSuspended)
+                {
+                    SuspendLocalTerrainForMacroView();
+                    localTerrainSuspended = true;
+                }
                 yield return new WaitForSecondsRealtime(refreshInterval);
                 continue;
             }
+
+            localTerrainSuspended = false;
 
             globalTerrain.gameObject.SetActive(true);
 
@@ -235,7 +330,10 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                     workTicks => generationWorkTicks += workTicks);
                 lastGenerationMilliseconds = (int)(generationWorkTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
                 if (terrain != null)
+                {
                     loadedTiles.Add(coordinate, terrain);
+                    TouchTile(coordinate);
+                }
 
                 created++;
                 if (created >= Mathf.Max(1, tilesCreatedPerFrame))
@@ -273,7 +371,10 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 float minZ = world.MapMinZ + z * size;
                 if (!world.ContainsLand(minX, minZ, minX + size, minZ + size, 10))
                     continue;
-                desiredTiles.Add(new Vector2Int(x, z));
+                Vector2Int coordinate = new Vector2Int(x, z);
+                desiredTiles.Add(coordinate);
+                if (loadedTiles.ContainsKey(coordinate))
+                    TouchTile(coordinate);
             }
         }
     }
@@ -331,9 +432,10 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             }
         }
 
-        // Keep the coarse Terrain as the visual/collider fallback while the
-        // streamed local navmesh is built on a worker thread.
-        globalTerrain.enabled = true;
+        // The streamed tiles now provide the local visual and colliders.
+        // TerrainCollider is a separate component, so hiding this coarse
+        // Terrain renderer avoids two overlapping surfaces while NavMesh builds.
+        globalTerrain.enabled = false;
 
         bool navMeshReady = false;
         yield return BuildLocalNavMeshAsync(tileSet, ready => navMeshReady = ready);
@@ -346,6 +448,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         else
         {
             ClearLocalNavMesh();
+            HideDesiredTerrainRenderers();
             failedNavMeshTileSet = tileSet;
             globalTerrain.enabled = true;
         }
@@ -541,13 +644,47 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         }
 
         bool dataTransferredToTerrain = false;
+        GameObject tileObject = null;
+        Terrain terrainComponent = null;
         try
         {
+            long terrainStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+            using (CreateTerrainObjectMarker.Auto())
+                tileObject = Terrain.CreateTerrainGameObject(data);
+            using (ConfigureTerrainObjectMarker.Auto())
+            {
+                tileObject.name = "TerrainTile_" + coordinate.x.ToString("D2") + "_" + coordinate.y.ToString("D2");
+                tileObject.transform.SetParent(transform, true);
+                tileObject.transform.position = new Vector3(minX, world.terrainBaseY, minZ);
+                tileObject.layer = LayerMask.NameToLayer("Chao") >= 0 ? LayerMask.NameToLayer("Chao") : 0;
+
+                terrainComponent = tileObject.GetComponent<Terrain>();
+                TerrainCollider colliderComponent = tileObject.GetComponent<TerrainCollider>();
+                terrainComponent.drawInstanced = true;
+                terrainComponent.materialTemplate = globalTerrain.materialTemplate;
+                // Keep the initial radius conservative until LateUpdate applies
+                // the camera-altitude target. Nearby trees stay visible while
+                // their authored prefab LODGroup supplies the distant impostor.
+                // Keep Unity's generated billboard at the cull edge to avoid
+                // its blue fallback.
+                terrainComponent.treeDistance = 250f;
+                terrainComponent.treeBillboardDistance = 250f;
+                terrainComponent.treeCrossFadeLength = 0f;
+                terrainComponent.detailObjectDistance = 0f;
+                // Keep local field/forest terrain layers active through the requested 5–20 km band.
+                terrainComponent.basemapDistance = 20000f;
+                terrainComponent.enabled = false;
+                if (colliderComponent != null) colliderComponent.enabled = false;
+            }
+            addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - terrainStarted);
+
             int resolution = data.heightmapResolution;
             float[,] heights;
             using (AllocateHeightBufferMarker.Auto())
                 heights = new float[resolution, resolution];
-            int rowsPerFrame = Mathf.Max(1, terrainRowsPerFrame);
+            // Keep authored scene values intact while limiting the amount of
+            // terrain sampling performed in one frame during streamed loads.
+            int rowsPerFrame = Mathf.Clamp(terrainRowsPerFrame, 1, MaximumTerrainRowsPerFrame);
             for (int rowStart = 0; rowStart < resolution; rowStart += rowsPerFrame)
             {
                 int rowCount = Mathf.Min(rowsPerFrame, resolution - rowStart);
@@ -619,47 +756,19 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             }
             yield return ConfigureVegetationIncremental(data, minX, minZ, size, addWorkTicks);
 
-            long terrainStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-            GameObject tileObject;
-            using (CreateTerrainObjectMarker.Auto())
-                tileObject = Terrain.CreateTerrainGameObject(data);
-            Terrain terrainComponent;
-            using (ConfigureTerrainObjectMarker.Auto())
-            {
-                tileObject.name = "TerrainTile_" + coordinate.x.ToString("D2") + "_" + coordinate.y.ToString("D2");
-                tileObject.transform.SetParent(transform, true);
-                tileObject.transform.position = new Vector3(minX, world.terrainBaseY, minZ);
-                tileObject.layer = LayerMask.NameToLayer("Chao") >= 0 ? LayerMask.NameToLayer("Chao") : 0;
-
-                terrainComponent = tileObject.GetComponent<Terrain>();
-                TerrainCollider colliderComponent = tileObject.GetComponent<TerrainCollider>();
-                terrainComponent.drawInstanced = true;
-                terrainComponent.materialTemplate = globalTerrain.materialTemplate;
-                // Keep the initial radius conservative until LateUpdate applies
-                // the camera-altitude target. Nearby trees stay visible while
-                // their authored prefab LODGroup supplies the distant impostor.
-                // Keep Unity's generated billboard at the cull edge to avoid
-                // its blue fallback.
-                terrainComponent.treeDistance = 250f;
-                terrainComponent.treeBillboardDistance = 250f;
-                terrainComponent.treeCrossFadeLength = 0f;
-                terrainComponent.detailObjectDistance = 0f;
-                // Keep local field/forest terrain layers active through the requested 5–20 km band.
-                terrainComponent.basemapDistance = 20000f;
-                terrainComponent.enabled = false;
-                if (colliderComponent != null) colliderComponent.enabled = false;
-
-                MarcadorSuperficieMapa marker = tileObject.AddComponent<MarcadorSuperficieMapa>();
-                marker.DefinirTipo(TipoSuperficieMapa.Chao);
-            }
+            MarcadorSuperficieMapa marker = tileObject.AddComponent<MarcadorSuperficieMapa>();
+            marker.DefinirTipo(TipoSuperficieMapa.Chao);
             dataTransferredToTerrain = true;
-            addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - terrainStarted);
             onComplete(terrainComponent);
         }
         finally
         {
             if (!dataTransferredToTerrain && data != null)
+            {
+                if (tileObject != null)
+                    Destroy(tileObject);
                 Destroy(data);
+            }
         }
     }
 
@@ -858,7 +967,6 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         long setTreesStarted = System.Diagnostics.Stopwatch.GetTimestamp();
         using (ApplyVegetationInstancesMarker.Auto())
             data.SetTreeInstances(trees.ToArray(), true);
-        totalTreeInstances += trees.Count;
         addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - setTreesStarted);
     }
 
@@ -889,18 +997,90 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
             for (int i = 0; i < removalBuffer.Count; i++)
             {
-                Terrain terrain = loadedTiles[removalBuffer[i]];
-                if (terrain != null)
-                {
-                    totalTreeInstances -= terrain.terrainData != null ? terrain.terrainData.treeInstanceCount : 0;
-                    TerrainData data = terrain.terrainData;
-                    Destroy(terrain.gameObject);
-                    if (data != null) Destroy(data);
-                }
-                loadedTiles.Remove(removalBuffer[i]);
+                if (loadedTiles.TryGetValue(removalBuffer[i], out Terrain terrain))
+                    SetTerrainTileActive(terrain, false);
             }
-            totalTreeInstances = Mathf.Max(0, totalTreeInstances);
+
+            // Keep only a small LRU window so nearby revisits reuse TerrainData
+            // and vegetation without allowing the runtime cache to grow forever.
+            while (removalBuffer.Count > MaximumCachedTerrainTiles)
+            {
+                int oldestIndex = 0;
+                int oldestUseOrder = int.MaxValue;
+                for (int i = 0; i < removalBuffer.Count; i++)
+                {
+                    int useOrder = tileLastUsedOrder.TryGetValue(removalBuffer[i], out int lastUsed)
+                        ? lastUsed
+                        : 0;
+                    if (useOrder >= oldestUseOrder) continue;
+                    oldestUseOrder = useOrder;
+                    oldestIndex = i;
+                }
+
+                Vector2Int coordinate = removalBuffer[oldestIndex];
+                DestroyTerrainTile(coordinate);
+                removalBuffer.RemoveAt(oldestIndex);
+            }
         }
+    }
+
+    private void TouchTile(Vector2Int coordinate)
+    {
+        tileUseOrder++;
+        tileLastUsedOrder[coordinate] = tileUseOrder;
+    }
+
+    private void SetTerrainTileActive(Terrain terrain, bool active)
+    {
+        if (terrain == null)
+            return;
+
+        if (!active)
+        {
+            TerrainCollider inactiveCollider = terrain.GetComponent<TerrainCollider>();
+            if (inactiveCollider != null) inactiveCollider.enabled = false;
+            terrain.enabled = false;
+            terrain.gameObject.SetActive(false);
+            return;
+        }
+
+        terrain.gameObject.SetActive(true);
+        terrain.enabled = true;
+        TerrainCollider collider = terrain.GetComponent<TerrainCollider>();
+        if (collider != null) collider.enabled = true;
+    }
+
+    private void HideDesiredTerrainRenderers()
+    {
+        foreach (Vector2Int coordinate in desiredTiles)
+        {
+            if (!loadedTiles.TryGetValue(coordinate, out Terrain terrain) || terrain == null)
+                continue;
+            // Keep the local TerrainCollider available while restoring the
+            // coarse renderer after a failed NavMesh update.
+            terrain.enabled = false;
+        }
+    }
+
+    private void SuspendLocalTerrainForMacroView()
+    {
+        desiredTiles.Clear();
+        foreach (Terrain terrain in loadedTiles.Values)
+            SetTerrainTileActive(terrain, false);
+        ClearLocalNavMesh();
+        RemoveStaleTiles();
+    }
+
+    private void DestroyTerrainTile(Vector2Int coordinate)
+    {
+        if (loadedTiles.TryGetValue(coordinate, out Terrain terrain) && terrain != null)
+        {
+            TerrainData data = terrain.terrainData;
+            Destroy(terrain.gameObject);
+            if (data != null) Destroy(data);
+        }
+        loadedTiles.Remove(coordinate);
+        tileLastUsedOrder.Remove(coordinate);
     }
 
     private void RemoveAllTiles()
@@ -937,8 +1117,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             if (data != null) Destroy(data);
 
         loadedTiles.Clear();
+        tileLastUsedOrder.Clear();
         desiredTiles.Clear();
-        totalTreeInstances = 0;
+        tileUseOrder = 0;
     }
 
     private static void ConfigureTerrainRendering(Terrain terrain, bool vegetation)

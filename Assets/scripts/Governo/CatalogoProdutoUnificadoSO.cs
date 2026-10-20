@@ -36,6 +36,7 @@ public sealed class IngredienteProduto
 [Serializable]
 public sealed class CatalogoProdutoUnificadoItem
 {
+    [NonSerialized] public bool receitaMilitarPorFichaAutoritativa;
     public string id = string.Empty;
     public string nome = string.Empty;
     [TextArea(2, 6)] public string descricao = string.Empty;
@@ -61,6 +62,7 @@ public sealed class CatalogoProdutoUnificadoItem
     [TextArea(2, 4)] public string dicaMaterialFaltante = string.Empty;
     [TextArea(2, 4)] public string dicaEstruturaFaltante = string.Empty;
     [TextArea(2, 4)] public string dicaPesquisaFaltante = string.Empty;
+    [TextArea(2, 4)] public string motivoProducaoIndisponivel = string.Empty;
     public List<string> aliases = new List<string>();
 
     public void Normalizar()
@@ -75,6 +77,7 @@ public sealed class CatalogoProdutoUnificadoItem
         dicaMaterialFaltante = NormalizarTexto(dicaMaterialFaltante);
         dicaEstruturaFaltante = NormalizarTexto(dicaEstruturaFaltante);
         dicaPesquisaFaltante = NormalizarTexto(dicaPesquisaFaltante);
+        motivoProducaoIndisponivel = NormalizarTexto(motivoProducaoIndisponivel);
         materiais = NormalizarMateriais(materiais);
         estruturasNecessarias = NormalizarLista(estruturasNecessarias);
         pesquisasNecessarias = NormalizarLista(pesquisasNecessarias);

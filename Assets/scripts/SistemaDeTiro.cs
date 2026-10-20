@@ -40,6 +40,8 @@ public class SistemaDeTiro : MonoBehaviour
     public float tempoRecarga = 2.0f; // Tempo para trocar o pente
     private int balasAtuais;
     private bool recarregando = false;
+    /// <summary>Indica se o pente tem munição ou está em recarga para a próxima missão.</summary>
+    public bool PossuiCapacidadeDeDisparo => capacidadePente > 0 && (balasAtuais > 0 || recarregando);
 
     [Header("Configuração de Alcance e Balística")]
     public float alcanceTiro = 50f;   // Distância máxima (Visual e Lógica)

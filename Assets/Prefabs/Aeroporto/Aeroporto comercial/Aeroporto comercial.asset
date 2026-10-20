@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Aeroporto comercial
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: b0aad3eae68455e4facbdf0b70e98954, type: 3}
   itemId: aeroporto_comercial
   aliases: aeroporto comercial, terminal civil, commercial airport, aeroporto civil
   capacidades: 25168465

@@ -50,6 +50,7 @@ GameObject:
   - component: {fileID: 6131070000000007}
   - component: {fileID: 6131070000000008}
   - component: {fileID: 6131070000000009}
+  - component: {fileID: 7000000000000000023}
   m_Layer: 0
   m_Name: H uh60
   m_TagString: Aereo
@@ -176,6 +177,7 @@ MonoBehaviour:
   nomeAnimacaoDecolagem: Fly
   tempoPreparacaoDecolagem: 1.1
   helicopteroTransporte: 0
+  podeAtacar: 1
   pousarNoDestinoTatico: 0
   desembarcarAutomaticamenteAoPousar: 1
   raioTransferenciaNavio: 35
@@ -292,6 +294,7 @@ MonoBehaviour:
   limiteBaixoPercentual: 0.25
   preencherAoIniciar: 1
   pararAoEsvaziar: 1
+  versaoAumentoCapacidadeClasse: 0
   mostrarIndicadorMundo: 1
   offsetIndicador: {x: 0, y: 3.2, z: 0}
   intervaloIndicador: 0.25
@@ -337,6 +340,36 @@ MonoBehaviour:
   velocidadeTraseira: 1200
   eixoPrincipal: 1
   eixoTraseiro: 0
+--- !u!114 &7000000000000000023
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 863107209073616245}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 1000
+  intervaloVarreduraSegundos: 0.5
+  intervaloReconhecimentoEmPazSegundos: 2
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1
 --- !u!1 &3835900507798068310
 GameObject:
   m_ObjectHideFlags: 0

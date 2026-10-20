@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Boeing E-3 Sentry
   descricao: "Aeronave AWACS de reconhecimento, vigilancia e retransmissao de contatos."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 253954a29a6153e4aa92c7fb84a9f529, type: 3}
   itemId: boeing_e3_sentry
   aliases: "E-3, E3, AWACS, Sentry, Boeing E-3"
   capacidades: 34603154

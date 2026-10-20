@@ -8,6 +8,20 @@ using UnityEngine.TestTools;
 
 public sealed class CombatEndToEndPlayModeTests
 {
+    private sealed class DiplomacyFixtureSnapshot
+    {
+        public Component government;
+        public object previousGovernment;
+        public PropertyInfo instanceProperty;
+        public GameObject createdGovernmentRoot;
+        public System.Collections.IList relations;
+        public object relation;
+        public bool relationExisted;
+        public object postureA;
+        public object postureB;
+        public object ceasefire;
+    }
+
     [UnityTest]
     public IEnumerator EnemyTurretIdentifiesTargetFiresProjectileAndAppliesDamage()
     {
@@ -16,6 +30,7 @@ public sealed class CombatEndToEndPlayModeTests
         GameObject cano = new GameObject("CanoCombate");
         GameObject projetilPrefab = new GameObject("ProjetilCombatePrefab");
         GameObject donoDoProjetil = null;
+        DiplomacyFixtureSnapshot diplomacy = null;
 
         try
         {
@@ -51,6 +66,7 @@ public sealed class CombatEndToEndPlayModeTests
             SetField(projetil, "tempoDeVida", 3f);
             SetField(torreta, "municaoPrefab", projetilPrefab);
 
+            diplomacy = PrepararPosturaHostil(2, 1);
             alvo.SetActive(true);
             yield return null;
             atirador.SetActive(true);
@@ -87,11 +103,20 @@ public sealed class CombatEndToEndPlayModeTests
         }
         finally
         {
+            RestaurarPostura(diplomacy);
+            DestruirProjeteisDoAtacante(atirador);
             UnityEngine.Object.Destroy(alvo);
             UnityEngine.Object.Destroy(atirador);
             UnityEngine.Object.Destroy(projetilPrefab);
             UnityEngine.Object.Destroy(cano);
         }
+
+        yield return null;
+        PropertyInfo instancia = ResolveType("SistemaGovernoMundial").GetProperty(
+            "Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        object instanciaRestaurada = instancia.GetValue(null);
+        Assert.That(instanciaRestaurada, Is.SameAs(diplomacy != null ? diplomacy.previousGovernment : null),
+            "A fixture deve restaurar o singleton diplomático que existia antes do teste.");
     }
 
     [UnityTest]
@@ -145,5 +170,134 @@ public sealed class CombatEndToEndPlayModeTests
     private static object ReadField(object target, string name)
     {
         return target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetValue(target);
+    }
+
+    private static DiplomacyFixtureSnapshot PrepararPosturaHostil(int teamAtacante, int teamAlvo)
+    {
+        Type governoType = ResolveType("SistemaGovernoMundial");
+        PropertyInfo instancia = governoType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        MethodInfo setInstancia = instancia.GetSetMethod(true);
+        object governoAnterior = instancia.GetValue(null);
+        Component governo = governoAnterior as Component;
+        GameObject raizGovernoFixture = null;
+        if (governo == null)
+        {
+            // A fixture precisa apenas da lista de relações consultada pela torreta.
+            // Evita GarantirInstancia(), que cria um singleton persistente e serviços
+            // nacionais que não pertencem a este teste.
+            raizGovernoFixture = new GameObject("CombatEndToEnd_DiplomacyFixture");
+            raizGovernoFixture.SetActive(false);
+            governo = raizGovernoFixture.AddComponent(governoType);
+            setInstancia.Invoke(null, new[] { (object)governo });
+        }
+        DiplomacyFixtureSnapshot snapshot = new DiplomacyFixtureSnapshot
+        {
+            government = governo,
+            previousGovernment = governoAnterior,
+            instanceProperty = instancia,
+            createdGovernmentRoot = raizGovernoFixture
+        };
+
+        try
+        {
+            Assert.That(governo, Is.Not.Null, "A fixture de combate automático precisa do sistema diplomático do jogo.");
+            System.Collections.IList relacoes = ReadField(governo, "relacoes") as System.Collections.IList;
+            snapshot.relations = relacoes;
+            Assert.That(relacoes, Is.Not.Null);
+
+            object relacao = null;
+            for (int i = 0; i < relacoes.Count; i++)
+            {
+                object candidata = relacoes[i];
+                if (candidata == null) continue;
+                int teamA = Convert.ToInt32(ReadField(candidata, "teamA"));
+                int teamB = Convert.ToInt32(ReadField(candidata, "teamB"));
+                if ((teamA == teamAtacante && teamB == teamAlvo)
+                    || (teamA == teamAlvo && teamB == teamAtacante))
+                {
+                    relacao = candidata;
+                    break;
+                }
+            }
+
+            snapshot.relationExisted = relacao != null;
+            if (relacao == null)
+            {
+                MethodInfo obterRelacao = governoType.GetMethod(
+                    "ObterRelacao", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                relacao = obterRelacao.Invoke(governo, new object[] { teamAtacante, teamAlvo });
+            }
+
+            snapshot.relation = relacao;
+            snapshot.postureA = ReadField(relacao, "posturaAParaB");
+            snapshot.postureB = ReadField(relacao, "posturaBParaA");
+            snapshot.ceasefire = ReadField(relacao, "cessarFogoAtivo");
+
+            Type posturaType = ResolveType("PosturaRelacaoPais");
+            object inimigo = Enum.Parse(posturaType, "Inimigo");
+            SetField(relacao, "posturaAParaB", inimigo);
+            SetField(relacao, "posturaBParaA", inimigo);
+            SetField(relacao, "cessarFogoAtivo", false);
+            return snapshot;
+        }
+        catch
+        {
+            RestaurarPostura(snapshot);
+            throw;
+        }
+    }
+
+    private static void RestaurarPostura(DiplomacyFixtureSnapshot snapshot)
+    {
+        if (snapshot == null) return;
+        if (snapshot.relation != null && snapshot.relationExisted)
+        {
+            SetField(snapshot.relation, "posturaAParaB", snapshot.postureA);
+            SetField(snapshot.relation, "posturaBParaA", snapshot.postureB);
+            SetField(snapshot.relation, "cessarFogoAtivo", snapshot.ceasefire);
+        }
+        else if (snapshot.relation != null)
+        {
+            snapshot.relations?.Remove(snapshot.relation);
+        }
+
+        if (snapshot.instanceProperty != null)
+        {
+            snapshot.instanceProperty.GetSetMethod(true)?.Invoke(null, new[] { snapshot.previousGovernment });
+        }
+
+        if (snapshot.createdGovernmentRoot != null)
+        {
+            UnityEngine.Object.Destroy(snapshot.createdGovernmentRoot);
+        }
+    }
+
+    private static void DestruirProjeteisDoAtacante(GameObject atacante)
+    {
+        if (atacante == null) return;
+
+        Type tipoProjetil = ResolveType("Projetil");
+        FieldInfo ativosNoMapa = tipoProjetil.GetField("ativosNoMapa", BindingFlags.Static | BindingFlags.NonPublic);
+        MethodInfo obterDono = tipoProjetil.GetMethod("GetDono", BindingFlags.Instance | BindingFlags.Public);
+        System.Collections.IEnumerable ativos = ativosNoMapa != null
+            ? ativosNoMapa.GetValue(null) as System.Collections.IEnumerable
+            : null;
+        if (ativos == null || obterDono == null) return;
+
+        System.Collections.Generic.List<GameObject> projeteisDoTeste = new System.Collections.Generic.List<GameObject>();
+        foreach (object ativo in ativos)
+        {
+            Component projetil = ativo as Component;
+            if (projetil == null || (obterDono.Invoke(projetil, null) as GameObject) != atacante) continue;
+            projeteisDoTeste.Add(projetil.gameObject);
+        }
+
+        for (int i = 0; i < projeteisDoTeste.Count; i++)
+        {
+            if (projeteisDoTeste[i] != null)
+            {
+                UnityEngine.Object.Destroy(projeteisDoTeste[i]);
+            }
+        }
     }
 }

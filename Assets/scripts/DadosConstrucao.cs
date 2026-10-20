@@ -99,6 +99,28 @@ public class DadosConstrucao : ScriptableObject
     [Tooltip("Produção de energia do perfil nuclear. Zero usa 30.000 MW equivalentes.")]
     public float energiaNuclear;
 
+    [Header("Receita de produção da ficha")]
+    [Tooltip("Receita unitária por ficha. Sem valores aprovados, deixe desmarcada e registre como pendente de balanceamento. Rotas de produção legadas válidas continuam funcionando.")]
+    [SerializeField] private ReceitaProducaoFicha receitaProducao = new ReceitaProducaoFicha();
+
+    public ReceitaProducaoFicha ReceitaProducao
+    {
+        get
+        {
+            if (receitaProducao == null)
+            {
+                receitaProducao = new ReceitaProducaoFicha();
+            }
+
+            return receitaProducao;
+        }
+    }
+
+    public bool TryValidarReceitaProducao(out string motivo)
+    {
+        return ReceitaProducao.TryValidar(out motivo);
+    }
+
     [Header("Balanceamento em Dados")]
     public DadosBalanceamentoUnidade balanceamento;
 
@@ -228,6 +250,22 @@ public class DadosConstrucao : ScriptableObject
         }
 
         return (GetResolvedCapabilities() & capability) == capability;
+    }
+
+    public bool RequerReceitaMilitarParaProducao()
+    {
+        if (!HasCapability(IA_ConstructionCapability.Unit)
+            || HasCapability(IA_ConstructionCapability.Commercial)
+            || HasCapability(IA_ConstructionCapability.Civil)
+            || HasCapability(IA_ConstructionCapability.CommercialAircraft))
+        {
+            return false;
+        }
+
+        return HasCapability(IA_ConstructionCapability.Military)
+            || categoria == CategoriaItem.Exercito
+            || categoria == CategoriaItem.Marinha
+            || categoria == CategoriaItem.Aeronautica;
     }
 
     public IEnumerable<string> GetExplicitAliases()
@@ -478,5 +516,69 @@ public class DadosConstrucao : ScriptableObject
         }
 
         return result;
+    }
+}
+
+[System.Serializable]
+public sealed class ReceitaProducaoFicha
+{
+    [Tooltip("Indica que os custos desta ficha foram preenchidos e revisados.")]
+    public bool configurada;
+
+    [Tooltip("Insumos do armazém industrial nacional usados para produzir uma unidade.")]
+    public List<MaterialNecessarioIndustrial> materiaisNecessarios = new List<MaterialNecessarioIndustrial>();
+
+    [Min(0)]
+    [Tooltip("Consumo unitário nas mesmas unidades internas usadas pelas receitas industriais.")]
+    public int energiaNecessaria;
+
+    [Min(0)]
+    [Tooltip("Duração unitária em dias do jogo. O preço monetário segue ObterPrecoEfetivo().")]
+    public int diasNecessarios;
+
+    public bool TryValidar(out string motivo)
+    {
+        motivo = string.Empty;
+        if (!configurada)
+        {
+            motivo = "receita da ficha ainda não configurada";
+            return false;
+        }
+
+        if (diasNecessarios <= 0)
+        {
+            motivo = "duração da receita deve ser maior que zero dia";
+            return false;
+        }
+
+        if (energiaNecessaria < 0)
+        {
+            motivo = "consumo de energia da receita não pode ser negativo";
+            return false;
+        }
+
+        if (materiaisNecessarios == null)
+        {
+            motivo = "lista de materiais da receita está ausente";
+            return false;
+        }
+
+        for (int i = 0; i < materiaisNecessarios.Count; i++)
+        {
+            MaterialNecessarioIndustrial material = materiaisNecessarios[i];
+            if (material == null || string.IsNullOrWhiteSpace(material.recursoId))
+            {
+                motivo = "a receita contém material sem ID";
+                return false;
+            }
+
+            if (material.quantidade <= 0d || double.IsNaN(material.quantidade) || double.IsInfinity(material.quantidade))
+            {
+                motivo = "a receita contém quantidade de material inválida: " + material.recursoId;
+                return false;
+            }
+        }
+
+        return true;
     }
 }

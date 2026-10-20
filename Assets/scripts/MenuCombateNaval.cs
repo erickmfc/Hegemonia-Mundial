@@ -274,10 +274,55 @@ public sealed class MenuCombateNaval : MonoBehaviour
             GUILayout.Label("Vários alvos por navio: respeita as autorizações e a capacidade do lançador.");
         }
 
+        DesenharServicosHelicopteros(controle);
+
         if (!string.IsNullOrEmpty(feedback) && Time.unscaledTime < feedbackAte)
             GUILayout.Label(feedback);
         GUILayout.EndVertical();
         if (janela) GUILayout.EndArea();
+    }
+
+    private static void DesenharServicosHelicopteros(ControleUnidade controle)
+    {
+        if (controle == null) return;
+        ControleNavioRealista navio = controle.GetComponent<ControleNavioRealista>()
+            ?? controle.GetComponentInChildren<ControleNavioRealista>(true);
+        if (navio == null || navio.GetComponent<GerenciadorPortaAvioes>() != null) return;
+
+        GUILayout.Space(6f);
+        GUILayout.Label("CONVÉS — HELICÓPTEROS");
+        if (!navio.PodeReceberHelicopterosCreaty)
+        {
+            GUILayout.Label("Sem vaga operacional: conecte um ponto de pouso do convés ao Creaty deste navio.");
+            return;
+        }
+
+        IdentidadeUnidade identidadeNavio = controle.GetComponent<IdentidadeUnidade>()
+            ?? controle.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (identidadeNavio == null) return;
+        Helicoptero[] helicos = Object.FindObjectsByType<Helicoptero>(FindObjectsSortMode.None);
+        bool encontrou = false;
+        for (int i = 0; i < helicos.Length; i++)
+        {
+            Helicoptero heli = helicos[i];
+            if (heli == null || !heli.gameObject.activeInHierarchy) continue;
+            IdentidadeUnidade identidadeHeli = heli.GetComponent<IdentidadeUnidade>()
+                ?? heli.GetComponentInChildren<IdentidadeUnidade>(true);
+            if (identidadeHeli == null || identidadeHeli.teamID != identidadeNavio.teamID) continue;
+            encontrou = true;
+            GUILayout.BeginHorizontal("box");
+            GUILayout.Label(heli.name + " — " + heli.ObterEstadoOperacionalAeroporto(), GUILayout.ExpandWidth(true));
+            if (heli.EstaEstacionadoNoAeroporto() && heli.ObterVagaAeroporto() != null
+                && (heli.ObterVagaAeroporto() == navio.transform || heli.ObterVagaAeroporto().IsChildOf(navio.transform)))
+            {
+                if (GUILayout.Button("Abastecer / rearmar", GUILayout.Width(150f)))
+                    SetFeedback(navio.TentarServirHelicopteroCreaty(heli) ? "Serviço do convés aplicado." : "Sem combustível ou armamento para completar.");
+            }
+            else if (GUILayout.Button("Chamar", GUILayout.Width(82f)))
+                SetFeedback(navio.SolicitarPousoHelicopteroCreaty(heli) ? "Helicóptero recebeu a ordem de pouso." : "Não há vaga livre ou o navio não pode receber esta unidade.");
+            GUILayout.EndHorizontal();
+        }
+        if (!encontrou) GUILayout.Label("Nenhum helicóptero ativo desta equipe foi encontrado.");
     }
 
     private static void DesenharBotaoModo(ControleUnidade controle, Modo modo, string rotulo, Modo atual)
@@ -302,6 +347,13 @@ public sealed class MenuCombateNaval : MonoBehaviour
         limitarAutomaticoPorUnidade[id] = filtrarAlvos;
         bool ativo = modo != Modo.Passivo;
         controle.DefinirModoCombate(ativo);
+
+        ControleNavioRealista[] naviosRealistas = controle.GetComponentsInChildren<ControleNavioRealista>(true);
+        for (int i = 0; i < naviosRealistas.Length; i++)
+        {
+            if (naviosRealistas[i] == null) continue;
+            naviosRealistas[i].DefinirModoCombateTorpedos(ativo);
+        }
 
         List<Transform> validos = modo == Modo.Automatico ? autorizados : new List<Transform>();
         LancadorNaval[] lancadores = controle.GetComponentsInChildren<LancadorNaval>(true);
@@ -453,6 +505,15 @@ public sealed class MenuCombateNaval : MonoBehaviour
             disparou |= ok;
             if (!ok) SetFeedback("Submarino: " + motivo);
         }
+        ControleNavioRealista[] naviosRealistas = controle.GetComponentsInChildren<ControleNavioRealista>(true);
+        for (int i = 0; i < naviosRealistas.Length; i++)
+        {
+            if (naviosRealistas[i] == null
+                || naviosRealistas[i].ArmamentoSelecionadoHud != ControleNavioRealista.ArmamentoHud.Torpedo) continue;
+            bool ok = naviosRealistas[i].TentarLancarTorpedoManual(alvo, out string motivo);
+            disparou |= ok;
+            if (!ok) SetFeedback("Torpedo do casco: " + motivo);
+        }
         ControleTorreta[] torretas = controle.GetComponentsInChildren<ControleTorreta>(true);
         for (int i = 0; i < torretas.Length; i++)
             if (torretas[i] != null && torretas[i].DefinirAlvoManual(alvo)) disparou = true;
@@ -468,15 +529,27 @@ public sealed class MenuCombateNaval : MonoBehaviour
     private static void ProcessarCliqueDeAlvo()
     {
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
-        Camera cameraPrincipal = Camera.main;
-        if (cameraPrincipal == null) return;
-        Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
-        if (!Physics.Raycast(raio, out RaycastHit hit, Mathf.Infinity))
+        Camera cameraInteracao = MapaGeralController.ObterCameraDeInteracao();
+        if (cameraInteracao == null) cameraInteracao = Camera.main;
+        if (cameraInteracao == null) return;
+
+        Ray raio = cameraInteracao.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(raio, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        if (hits.Length == 0)
         {
-            SetFeedback("O clique não atingiu uma superfície do mapa.");
-            aguardandoPonto = false;
+            Plane planoMar = new Plane(Vector3.up, NavalPlacementResolver.ResolveSeaLevel());
+            if (planoMar.Raycast(raio, out float distanciaPlano))
+                DispararEmPonto(raio.GetPoint(distanciaPlano));
+            else
+            {
+                SetFeedback("O clique não atingiu uma superfície do mapa.");
+                aguardandoPonto = false;
+            }
             return;
         }
+
+        RaycastHit hit = hits[0];
         IdentidadeUnidade idAlvo = hit.transform.GetComponentInParent<IdentidadeUnidade>();
         Transform alvo = idAlvo != null ? idAlvo.transform : null;
         if (alvo != null && alvos.Contains(alvo)) EngajarAlvo(unidade, alvo);

@@ -36,6 +36,7 @@ namespace Hegemonia.AI.BrainMaster
             public bool IsEconomy;
             public bool IsTransport;
             public bool IsOilTanker;
+            public bool IsCargoShip;
             public bool IsGroundTransport;
             public bool IsHoverTransport;
             public bool IsNavalTransport;
@@ -467,7 +468,13 @@ namespace Hegemonia.AI.BrainMaster
 
         public bool TryGetEnemyStrategicAnchor(Vector3 fromPosition, out Vector3 position)
         {
+            return TryGetEnemyStrategicAnchor(fromPosition, out position, out _);
+        }
+
+        public bool TryGetEnemyStrategicAnchor(Vector3 fromPosition, out Vector3 position, out int targetTeamId)
+        {
             position = Vector3.zero;
+            targetTeamId = 0;
             float bestScore = float.MinValue;
             Vector3 flatFrom = Flatten(fromPosition);
 
@@ -523,6 +530,7 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     bestScore = score;
                     position = snap.Transform.position;
+                    targetTeamId = snap.Identity.teamID;
                 }
             }
 
@@ -999,6 +1007,7 @@ namespace Hegemonia.AI.BrainMaster
                 obs.Transform = snap.Transform;
                 obs.Position = snap.Transform.position;
                 obs.UnitName = snap.Identity.name;
+                obs.TeamId = snap.TeamId;
                 obs.Domain = snap.Cache.Domain;
                 obs.IsStructure = snap.Cache.IsStructure;
                 obs.ThreatScore = EstimateThreat(obs.UnitName, obs.Domain, obs.IsStructure);
@@ -1031,6 +1040,7 @@ namespace Hegemonia.AI.BrainMaster
                 observation.Position = knownContact.lastKnownPosition;
                 observation.LastSeenTime = knownContact.lastSeenAt;
                 observation.ForgetAt = knownContact.lastKnownExpiresAt;
+                observation.TeamId = knownContact.targetTeamId;
                 if (!knownContact.currentlyVisible)
                     observation.Transform = null;
             }
@@ -1365,6 +1375,7 @@ namespace Hegemonia.AI.BrainMaster
             _forceSnapshot.AircraftCarriers = 0;
             _forceSnapshot.Submarines = 0;
             _forceSnapshot.OilTankers = 0;
+            _forceSnapshot.CargoShips = 0;
             _forceSnapshot.CoastalDefenseShips = 0;
             _forceSnapshot.AttackFleetShips = 0;
             _forceSnapshot.GroundTransports = 0;
@@ -1401,6 +1412,11 @@ namespace Hegemonia.AI.BrainMaster
             if (entry.IsOilTanker)
             {
                 _forceSnapshot.OilTankers++;
+            }
+
+            if (entry.IsCargoShip)
+            {
+                _forceSnapshot.CargoShips++;
             }
 
             if (entry.Domain == IA_Domain.Naval && !entry.IsSubmarine && !entry.IsOilTanker && !entry.IsNavalTransport)
@@ -1576,9 +1592,12 @@ namespace Hegemonia.AI.BrainMaster
                                 || obj.GetComponent<ControleAviaoCaca>() != null) && !hasCommercialAircraft;
             bool hasHelicopter = (metadataIsUnit && metadata.IsHelicopter) || obj.GetComponent<Helicoptero>() != null;
             bool hasSubmarine = obj.GetComponent<ControleSubmarino>() != null || n.Contains("leviathan") || n.Contains("wraith") || n.Contains("mako");
+            bool hasCargoShip = obj.GetComponent<NavioCargaMercado>() != null || n.Contains("cargueiro") || n.Contains("navio de carga");
             bool isOilTanker = (metadataIsUnit && metadata.IsOilTanker) || obj.GetComponent<NavioPetroleiro>() != null || n.Contains("petroleiro") || n.Contains("petrolifero") || n.Contains("tanker");
-            bool isNavalTransportComp = (metadataIsUnit && metadata.IsNavalTransport) || obj.GetComponent<NavioTransporteTropas>() != null;
-            bool hasNaval = (metadataIsUnit && metadata.IsNavalDomain) || obj.GetComponent<ControleNavioRealista>() != null || isOilTanker || isNavalTransportComp || n.Contains("navio") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("sovereign") || n.Contains("vindicator") || n.Contains("arrowhead");
+            bool isNavalTransportComp = (metadataIsUnit && metadata.IsNavalTransport)
+                                        || obj.GetComponent<NavioTransporteTropas>() != null
+                                        || hasCargoShip;
+            bool hasNaval = (metadataIsUnit && metadata.IsNavalDomain) || obj.GetComponent<ControleNavioRealista>() != null || isOilTanker || isNavalTransportComp || hasCargoShip || n.Contains("navio") || n.Contains("corveta") || n.Contains("destroy") || n.Contains("ironclad") || n.Contains("sovereign") || n.Contains("vindicator") || n.Contains("arrowhead");
             bool hasAgent = obj.GetComponent<NavMeshAgent>() != null;
             bool mobileByScript = !hasAgent
                                   && (hasAircraft
@@ -1640,6 +1659,7 @@ namespace Hegemonia.AI.BrainMaster
             bool isHover = n.Contains("hover") || n.Contains("houver");
             bool isTransport = (metadataIsUnit && metadata.IsTransport)
                                || isOilTanker
+                               || hasCargoShip
                                || n.Contains("transporte")
                                || n.Contains("truck")
                                || n.Contains("caminhao")
@@ -1674,9 +1694,10 @@ namespace Hegemonia.AI.BrainMaster
                 IsMilitary = hasMetadata ? metadata.IsMilitary : n.Contains("militar") || n.Contains("quartel") || n.Contains("fabrica") || n.Contains("tenda") || n.Contains("aeroporto"),
                 IsTransport = isTransport,
                 IsOilTanker = isOilTanker,
+                IsCargoShip = hasCargoShip,
                 IsGroundTransport = (n.Contains("truck") || n.Contains("caminhao") || n.Contains("transporte")) && domain == IA_Domain.Land,
                 IsHoverTransport = isHover,
-                IsNavalTransport = domain == IA_Domain.Naval && (isOilTanker || isNavalTransportComp || n.Contains("liberty") || n.Contains("transporte") || isHover || n.Contains("ww")),
+                IsNavalTransport = domain == IA_Domain.Naval && (isOilTanker || isNavalTransportComp || hasCargoShip || n.Contains("liberty") || n.Contains("transporte") || isHover || n.Contains("ww")),
                 IsAircraftCarrier = hasCarrierComponent,
                 IsSubmarine = hasSubmarine || n.Contains("sub"),
                 IsInfantry = n.Contains("sold") || n.Contains("rifle") || n.Contains("infan"),

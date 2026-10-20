@@ -166,6 +166,21 @@ namespace Hegemonia.AI.BrainMaster
             if (pais.energia < energiaMin) return RecursoMercado.Energia;
             if (pais.comida < comidaMin) return RecursoMercado.Comida;
             if (pais.petroleo < petroleoMin) return RecursoMercado.Petroleo;
+
+            // Combustíveis militares são estoques refinados separados do óleo
+            // bruto. Em guerra, o diretor compra o primeiro combustível de
+            // domínio abaixo da reserva operacional; não trata petróleo como
+            // substituto instantâneo.
+            if (pais.emGuerra || pais.perfilIA == PerfilPaisIA.Militarista)
+            {
+                if (ObterEstoqueIndustrial(pais.teamId, IndustriaIds.Diesel) < ReservaCombustivelMilitar)
+                    return RecursoMercado.Diesel;
+                if (ObterEstoqueIndustrial(pais.teamId, IndustriaIds.CombustivelAviacao) < ReservaCombustivelMilitar)
+                    return RecursoMercado.CombustivelAviacao;
+                if (ObterEstoqueIndustrial(pais.teamId, IndustriaIds.CombustivelNaval) < ReservaCombustivelMilitar)
+                    return RecursoMercado.CombustivelNaval;
+            }
+
             if (pais.aco < acoMin) return RecursoMercado.Aco;
             if (pais.armamentos < armasMin) return RecursoMercado.Armamentos;
             return RecursoMercado.Nenhum;
@@ -190,7 +205,27 @@ namespace Hegemonia.AI.BrainMaster
             if (pais.petroleo > 1100) return RecursoMercado.Petroleo;
             if (pais.aco > 850) return RecursoMercado.Aco;
             if (pais.armamentos > 750) return RecursoMercado.Armamentos;
+
+            // Só oferta combustível acima de duas reservas de guerra. Uma
+            // venda parcial do diretor não invade o piso estratégico.
+            if (ObterEstoqueIndustrial(pais.teamId, IndustriaIds.Diesel) > ReservaCombustivelMilitar * 2)
+                return RecursoMercado.Diesel;
+            if (ObterEstoqueIndustrial(pais.teamId, IndustriaIds.CombustivelAviacao) > ReservaCombustivelMilitar * 2)
+                return RecursoMercado.CombustivelAviacao;
+            if (ObterEstoqueIndustrial(pais.teamId, IndustriaIds.CombustivelNaval) > ReservaCombustivelMilitar * 2)
+                return RecursoMercado.CombustivelNaval;
             return RecursoMercado.Nenhum;
+        }
+
+        private static int ReservaCombustivelMilitar => Mathf.RoundToInt(
+            (float)IntegracaoMercadoIndustrial.ReservaMinimaPadrao(IndustriaIds.Diesel));
+
+        private static int ObterEstoqueIndustrial(int teamId, string recursoId)
+        {
+            SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+            return industrial != null
+                ? Mathf.Max(0, Mathf.RoundToInt((float)industrial.ObterQuantidadePais(teamId, recursoId)))
+                : 0;
         }
 
         private static string ResolveInvestmentFocus(DadosPaisGoverno pais, DadosEconomiaPais economia, IA_NationalDecisionState state)

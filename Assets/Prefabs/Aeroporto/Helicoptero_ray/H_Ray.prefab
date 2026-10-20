@@ -10449,6 +10449,9 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 1545829622376895587, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 7000000000000000013}
+    - targetCorrespondingSourceObject: {fileID: 1545829622376895587, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 2728483784893593294}
   m_SourcePrefab: {fileID: 100100000, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
 --- !u!1 &458387404620224011 stripped
@@ -10485,3 +10488,32 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4186404912646762751, guid: c2eba231e80cb144f9b67a9ca99e8463, type: 3}
   m_PrefabInstance: {fileID: 1382437081529959016}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &7000000000000000013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 1382437081529959016}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 458387404620224011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 1
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 10000
+  intervaloVarreduraSegundos: 0.5
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1

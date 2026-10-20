@@ -93,7 +93,7 @@ public sealed class ReformaGameplayRegressionTests
     }
 
     [Test]
-    public void AircraftRequestsReturnAtReserveAndRefillsAtBase()
+    public void AircraftWaitsAtBaseWhenNationalFuelStockIsUnavailable()
     {
         Component aircraft = Create("ControleAviao");
         Component airport = Create("GerenciadorAeroporto");
@@ -110,7 +110,12 @@ public sealed class ReformaGameplayRegressionTests
         Assert.IsTrue((bool)Read(aircraft, "ordemParaRetorno"));
         Assert.IsTrue((bool)Read(aircraft, "retomarMissaoAposAbastecer"));
         Call(aircraft, "ProcessarServicoDeBaseAposPouso");
-        Assert.AreEqual(100f, Read(fuel, "combustivelAtual"));
+        Assert.AreEqual(29f, Read(fuel, "combustivelAtual"),
+            "Sem identidade e estoque nacional, o serviço não pode criar combustível.");
+        Set(aircraft, "estadoAtual", Enum.Parse(TypeOf("ControleAviao+EstadoAviao"), "ProntoNoPatio"));
+        Call(aircraft, "TentarRetomarMissaoAposReabastecimento");
+        Assert.IsTrue((bool)Read(aircraft, "retomarMissaoAposAbastecer"),
+            "A missão deve continuar pendente enquanto o tanque não volta à reserva operacional.");
         Assert.AreEqual(4, Read(launcher, "municaoAtual"));
     }
 
@@ -402,6 +407,8 @@ public sealed class ReformaGameplayRegressionTests
         Set(atlas, "emGuerra", true);
         Set(atlas, "rivalTeamId", 3);
         Set(atlas, "saldo", 9876543210L);
+        Set(atlas, "petroleo", 5432);
+        Set(atlas, "estoqueAgricolaTotal", 8765);
         object carmesim = Activator.CreateInstance(TypeOf("DadosPaisGoverno"));
         Set(carmesim, "teamId", 3);
         Set(carmesim, "nomePais", "Carmesim");
@@ -416,7 +423,24 @@ public sealed class ReformaGameplayRegressionTests
         Set(relacao, "guerraDeclarada", true);
         Set(relacao, "sancaoAtiva", true);
         Set(relacao, "valor", -100);
+        Set(relacao, "valorBaseHistorico", -72);
+        Set(relacao, "baseHistoricaInicializada", true);
+        Set(relacao, "posturaAParaB", Enum.Parse(TypeOf("PosturaRelacaoPais"), "Inimigo"));
+        Set(relacao, "posturaBParaA", Enum.Parse(TypeOf("PosturaRelacaoPais"), "Neutro"));
         ((IList)Read(governo, "relacoes")).Add(relacao);
+
+        object relacaoCessarFogo = Activator.CreateInstance(TypeOf("RelacaoPaisGoverno"));
+        Set(relacaoCessarFogo, "teamA", 1);
+        Set(relacaoCessarFogo, "teamB", 2);
+        Set(relacaoCessarFogo, "valor", 35);
+        Set(relacaoCessarFogo, "valorBaseHistorico", 50);
+        Set(relacaoCessarFogo, "baseHistoricaInicializada", true);
+        Set(relacaoCessarFogo, "tratadoComercial", true);
+        Set(relacaoCessarFogo, "pactoMilitar", true);
+        Set(relacaoCessarFogo, "cessarFogoAtivo", true);
+        Set(relacaoCessarFogo, "posturaAParaB", Enum.Parse(TypeOf("PosturaRelacaoPais"), "Amigo"));
+        Set(relacaoCessarFogo, "posturaBParaA", Enum.Parse(TypeOf("PosturaRelacaoPais"), "Neutro"));
+        ((IList)Read(governo, "relacoes")).Add(relacaoCessarFogo);
 
         object proposta = Activator.CreateInstance(TypeOf("PropostaInternacional"));
         Set(proposta, "id", "cessar-fogo-1");
@@ -432,15 +456,137 @@ public sealed class ReformaGameplayRegressionTests
         Assert.That((bool)Read(paises[0], "emGuerra"), Is.True);
         Assert.That((int)Read(paises[0], "rivalTeamId"), Is.EqualTo(3));
         Assert.That((long)Read(paises[0], "saldo"), Is.EqualTo(9876543210L));
+        Assert.That((int)Read(paises[0], "petroleo"), Is.EqualTo(5432));
+        Assert.That((int)Read(paises[0], "estoqueAgricolaTotal"), Is.EqualTo(8765));
         IList relacoes = (IList)Read(governoRestaurado, "relacoes");
+        Assert.That(relacoes, Has.Count.EqualTo(2));
         Assert.That((bool)Read(relacoes[0], "guerraDeclarada"), Is.True);
         Assert.That((bool)Read(relacoes[0], "sancaoAtiva"), Is.True);
+        Assert.That((int)Read(relacoes[0], "valorBaseHistorico"), Is.EqualTo(-72));
+        Assert.That((bool)Read(relacoes[0], "baseHistoricaInicializada"), Is.True);
+        Assert.That(Read(relacoes[0], "posturaAParaB").ToString(), Is.EqualTo("Inimigo"));
+        Assert.That(Read(relacoes[0], "posturaBParaA").ToString(), Is.EqualTo("Neutro"));
+        Assert.That((bool)Read(relacoes[1], "cessarFogoAtivo"), Is.True);
+        Assert.That((bool)Read(relacoes[1], "tratadoComercial"), Is.True);
+        Assert.That((bool)Read(relacoes[1], "pactoMilitar"), Is.True);
+        Assert.That((int)Read(relacoes[1], "valor"), Is.EqualTo(35));
+        Assert.That((int)Read(relacoes[1], "valorBaseHistorico"), Is.EqualTo(50));
+        Assert.That(Read(relacoes[1], "posturaAParaB").ToString(), Is.EqualTo("Amigo"));
         IList propostas = (IList)Read(governoRestaurado, "propostas");
         Assert.That((string)Read(propostas[0], "id"), Is.EqualTo("cessar-fogo-1"));
     }
 
     [Test]
-    public void CarrierServiceRefuelsAndReloadsAircraftBeforeOperationalResume()
+    public void CentralSaveGameCapturesSerializesAndRestoresGovernmentState()
+    {
+        Type governmentType = TypeOf("SistemaGovernoMundial");
+        Type nationRegistryType = TypeOf("RegistroNacoesGoverno");
+        Type federationType = TypeOf("SistemaFederacoesGlobais");
+        PropertyInfo governmentInstance = governmentType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public);
+        PropertyInfo nationRegistryInstance = nationRegistryType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public);
+        PropertyInfo federationInstance = federationType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public);
+        object previousGovernment = governmentInstance.GetValue(null, null);
+        object previousNationRegistry = nationRegistryInstance.GetValue(null, null);
+        object previousFederation = federationInstance.GetValue(null, null);
+        GameObject governmentRoot = new GameObject("Regression_Save_Government");
+        GameObject registryRoot = new GameObject("Regression_Save_Nation_Registry");
+        GameObject federationRoot = new GameObject("Regression_Save_Federations");
+        GameObject saveRoot = new GameObject("Regression_Save_System");
+        objects.Add(governmentRoot);
+        objects.Add(registryRoot);
+        objects.Add(federationRoot);
+        objects.Add(saveRoot);
+        governmentRoot.SetActive(false);
+        registryRoot.SetActive(false);
+        federationRoot.SetActive(false);
+        saveRoot.SetActive(false);
+
+        Component government = governmentRoot.AddComponent(governmentType);
+        Component nationRegistry = registryRoot.AddComponent(nationRegistryType);
+        Component federation = federationRoot.AddComponent(federationType);
+        Component saveSystem = saveRoot.AddComponent(TypeOf("SistemaSaveGame"));
+        governmentInstance.GetSetMethod(true).Invoke(null, new[] { government });
+        nationRegistryInstance.GetSetMethod(true).Invoke(null, new[] { nationRegistry });
+        federationInstance.GetSetMethod(true).Invoke(null, new[] { federation });
+
+        try
+        {
+            Set(government, "teamJogador", 4);
+            IList countries = (IList)Read(government, "paises");
+            countries.Clear();
+            object country = Activator.CreateInstance(TypeOf("DadosPaisGoverno"));
+            Set(country, "teamId", 4);
+            Set(country, "nomePais", "Valdoria");
+            Set(country, "saldo", 9876543210L);
+            Set(country, "petroleo", 5432);
+            countries.Add(country);
+
+            IList relations = (IList)Read(government, "relacoes");
+            relations.Clear();
+            object relation = Activator.CreateInstance(TypeOf("RelacaoPaisGoverno"));
+            Set(relation, "teamA", 4);
+            Set(relation, "teamB", 3);
+            Set(relation, "valor", -64);
+            Set(relation, "valorBaseHistorico", -82);
+            Set(relation, "baseHistoricaInicializada", true);
+            Set(relation, "guerraDeclarada", true);
+            Set(relation, "posturaAParaB", Enum.Parse(TypeOf("PosturaRelacaoPais"), "Inimigo"));
+            Set(relation, "posturaBParaA", Enum.Parse(TypeOf("PosturaRelacaoPais"), "Neutro"));
+            relations.Add(relation);
+
+            IList proposals = (IList)Read(government, "propostas");
+            proposals.Clear();
+            object proposal = Activator.CreateInstance(TypeOf("PropostaInternacional"));
+            Set(proposal, "id", "save-ceasefire-4-3");
+            Set(proposal, "origemTeamId", 4);
+            Set(proposal, "alvoTeamId", 3);
+            proposals.Add(proposal);
+            ((IList)Read(government, "noticias")).Clear();
+            ((IList)Read(government, "noticias")).Add("estado diplomático de save");
+
+            Set(saveSystem, "dadosAtuais", Activator.CreateInstance(TypeOf("DadosDoJogo")));
+            MethodInfo capture = TypeOf("SistemaSaveGame").GetMethod("CapturarEstadoGovernoMundial", Members);
+            MethodInfo apply = TypeOf("SistemaSaveGame").GetMethod("AplicarEstadoGovernoMundial", Members);
+            Assert.That(capture, Is.Not.Null);
+            Assert.That(apply, Is.Not.Null);
+            capture.Invoke(saveSystem, null);
+
+            object capturedData = Read(saveSystem, "dadosAtuais");
+            string json = JsonUtility.ToJson(capturedData);
+            object loadedData = JsonUtility.FromJson(json, TypeOf("DadosDoJogo"));
+            Set(saveSystem, "dadosAtuais", loadedData);
+
+            countries.Clear();
+            relations.Clear();
+            proposals.Clear();
+            ((IList)Read(government, "noticias")).Clear();
+            apply.Invoke(saveSystem, null);
+
+            Assert.That(Read(government, "teamJogador"), Is.EqualTo(4));
+            IList restoredCountries = (IList)Read(government, "paises");
+            Assert.That(restoredCountries, Has.Count.EqualTo(1));
+            Assert.That(Read(restoredCountries[0], "nomePais"), Is.EqualTo("Valdoria"));
+            Assert.That(Read(restoredCountries[0], "saldo"), Is.EqualTo(9876543210L));
+            Assert.That(Read(restoredCountries[0], "petroleo"), Is.EqualTo(5432));
+            IList restoredRelations = (IList)Read(government, "relacoes");
+            Assert.That(restoredRelations, Has.Count.EqualTo(1));
+            Assert.That(Read(restoredRelations[0], "valorBaseHistorico"), Is.EqualTo(-82));
+            Assert.That(Read(restoredRelations[0], "guerraDeclarada"), Is.True);
+            Assert.That(Read(restoredRelations[0], "posturaAParaB").ToString(), Is.EqualTo("Inimigo"));
+            Assert.That(((IList)Read(government, "propostas")), Has.Count.EqualTo(1));
+            Assert.That(Read(((IList)Read(government, "propostas"))[0], "id"), Is.EqualTo("save-ceasefire-4-3"));
+            Assert.That(((IList)Read(government, "noticias")), Does.Contain("estado diplomático de save"));
+        }
+        finally
+        {
+            governmentInstance.GetSetMethod(true).Invoke(null, new[] { previousGovernment });
+            nationRegistryInstance.GetSetMethod(true).Invoke(null, new[] { previousNationRegistry });
+            federationInstance.GetSetMethod(true).Invoke(null, new[] { previousFederation });
+        }
+    }
+
+    [Test]
+    public void CarrierServiceCannotGrantFreeFuelButStillReloadsAircraft()
     {
         Component aircraft = Create("ControleAviao");
         Component fuel = aircraft.gameObject.AddComponent(TypeOf("CombustivelUnidade"));
@@ -458,7 +604,8 @@ public sealed class ReformaGameplayRegressionTests
         Assert.IsNotNull(service);
         service.Invoke(null, new object[] { aircraft, true });
 
-        Assert.AreEqual(100f, Read(fuel, "combustivelAtual"));
+        Assert.AreEqual(30f, Read(fuel, "combustivelAtual"),
+            "Um serviço de porta-aviões sem estoque nacional não pode conceder combustível grátis.");
         Assert.AreEqual(6, Read(launcher, "municaoAtual"));
     }
 

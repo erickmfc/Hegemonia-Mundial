@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: F201
   descricao: Fragata F201 para defesa e patrulha naval.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 569faf43d2f620b41ae12a77d5e9eade, type: 3}
   itemId: F201
   aliases: F-201; fragata F201
   capacidades: 0

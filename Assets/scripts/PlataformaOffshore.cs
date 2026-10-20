@@ -25,8 +25,10 @@ public class PlataformaOffshore : MonoBehaviour
         }
     }
     [Header("Limites de Produção")]
-    public int producaoMinima = 2315;
-    public int producaoMaxima = 5000;
+    [Tooltip("Produção mínima escalada em 55x em relação ao valor anterior de 2.315 unidades/s.")]
+    public int producaoMinima = 127325;
+    [Tooltip("Produção máxima escalada em 55x em relação ao valor anterior de 5.000 unidades/s.")]
+    public int producaoMaxima = 275000;
 
     [Header("Configuração Geológica")]
     public float sementeDoMapa = 100.5f; 
@@ -34,7 +36,8 @@ public class PlataformaOffshore : MonoBehaviour
 
     [Header("Armazenamento Interno")]
     public int petroleoArmazenado = 0;
-    public int capacidadeArmazenamento = 50000; // Tanque
+    [Tooltip("Tanque padrão escalado em 55x para acompanhar a produção da plataforma.")]
+    public int capacidadeArmazenamento = 2750000; // Tanque
 
     [Header("Status Atual (Apenas Leitura)")]
     public int producaoAtualDestaPlataforma;

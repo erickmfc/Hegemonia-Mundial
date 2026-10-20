@@ -194,6 +194,9 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 7000000000000000053}
+    - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 7448622118968382722}
     - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       insertIndex: -1
@@ -216,6 +219,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3566589360737395444}
+    - targetCorrespondingSourceObject: {fileID: 191448, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7594665151963438629}
   m_SourcePrefab: {fileID: 100100000, guid: 5207a5f30f74a4f07a1b577bb2131063, type: 3}
 --- !u!4 &8362449112992000846 stripped
 Transform:
@@ -326,6 +332,7 @@ MonoBehaviour:
   - {fileID: 765438539151934518}
   municaoPrefab: {fileID: 4904590025691999903, guid: 08e9d536354a0c649a7f67a606438415, type: 3}
   limitarInclinacao: 1
+  inverterSentidoPitch: 1
   elevacaoMinima: -10
   elevacaoMaxima: 80
   somTiro: {fileID: 8300000, guid: ec9f47083560ce74e87495f678b41437, type: 3}
@@ -500,3 +507,51 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!114 &7594665151963438629
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8362449112992261118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed9bc4ad9777558469eb687ec9a495c6, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ConstructionMetadata
+  _itemId: tank south
+  _displayName: Tank South
+  _aliases:
+  _sourcePrefabName: Tank_Unity
+  _category: 0
+  _capabilities: 6
+  _estimatedReplacementCost: 18000000
+--- !u!114 &7000000000000000053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 8362449112992172070}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8362449112992261118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 200
+  intervaloVarreduraSegundos: 0.5
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1

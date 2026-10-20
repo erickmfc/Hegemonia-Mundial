@@ -11,6 +11,7 @@ internal static class EntrarNoMenuAoDarPlay
     // Mantem o fluxo oficial pelo menu sem interromper e reiniciar o Play Mode.
     private const string CaminhoMenuPrincipal = "Assets/_Recovery/Cena menu P.unity";
     private const string CaminhoMapaGlobalRTS = "Assets/Scenes/GlobalMapRTS.unity";
+    private const string CaminhoPreviewEnterprise = "Assets/Scenes/EnterpriseFlightDeckPreview.unity";
 
     static EntrarNoMenuAoDarPlay()
     {
@@ -50,6 +51,7 @@ internal static class EntrarNoMenuAoDarPlay
             || string.IsNullOrWhiteSpace(caminho)
             || ConfiguracaoCenasJogo.EhCenaDeMenu(cena.name)
             || string.Equals(caminho, CaminhoMapaGlobalRTS, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(caminho, CaminhoPreviewEnterprise, StringComparison.OrdinalIgnoreCase)
             || caminho.StartsWith("Assets/Tests/PlayMode/", StringComparison.OrdinalIgnoreCase)
             || caminho.StartsWith("Assets/InitTestScene", StringComparison.OrdinalIgnoreCase);
     }

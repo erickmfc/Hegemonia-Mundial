@@ -134,6 +134,9 @@ public static class IntegracaoMercadoIndustrial
             case RecursoMercado.LigaTitanio: return IndustriaIds.LigaTitanio;
             case RecursoMercado.ComponentesEletronicos: return IndustriaIds.ComponentesEletronicos;
             case RecursoMercado.UranioEnriquecido: return IndustriaIds.UranioEnriquecido;
+            case RecursoMercado.Diesel: return IndustriaIds.Diesel;
+            case RecursoMercado.CombustivelAviacao: return IndustriaIds.CombustivelAviacao;
+            case RecursoMercado.CombustivelNaval: return IndustriaIds.CombustivelNaval;
             default: return string.Empty;
         }
     }
@@ -320,6 +323,21 @@ public static class IntegracaoMercadoIndustrial
         if (string.Equals(recursoId, IndustriaIds.PetroleoBruto, StringComparison.OrdinalIgnoreCase))
         {
             return RecursoMercado.Petroleo;
+        }
+
+        if (string.Equals(recursoId, IndustriaIds.Diesel, StringComparison.OrdinalIgnoreCase))
+        {
+            return RecursoMercado.Diesel;
+        }
+
+        if (string.Equals(recursoId, IndustriaIds.CombustivelAviacao, StringComparison.OrdinalIgnoreCase))
+        {
+            return RecursoMercado.CombustivelAviacao;
+        }
+
+        if (string.Equals(recursoId, IndustriaIds.CombustivelNaval, StringComparison.OrdinalIgnoreCase))
+        {
+            return RecursoMercado.CombustivelNaval;
         }
 
         return RecursoMercado.Nenhum;

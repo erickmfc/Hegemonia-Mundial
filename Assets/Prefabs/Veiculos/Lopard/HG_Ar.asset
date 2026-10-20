@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: HG Ar
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 9f83f565e27877b4d874ac9c04917bcb, type: 3}
   prefabDaUnidade: {fileID: 574422798335757279, guid: e4c3210095b245b41a80494bd47dbb9b, type: 3}
   preco: 100
   categoria: 0

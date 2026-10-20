@@ -32,7 +32,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 7500000000000000006}
+  - {fileID: 5662529924405434359}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &7500000000000000003
@@ -81,6 +81,7 @@ MonoBehaviour:
   petroleoProduzido: 0
   industriaProduzida: 0
   dinheiroGerado: 30
+  manutencaoAlimentosPorDia: 0
   status: 0
   eficiencia: 1
 --- !u!114 &7500000000000000005
@@ -96,8 +97,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tema: 1
-  nomeCidade: Nova Metrópole Central
+  nomeCidade: "Nova Metr\xF3pole Central"
   teamId: 1
+  capacidadeHospitalarInicial: 400000
+  possuiRedeSaudeBasica: 1
   capacidadeHabitacional: 1200000
   populacaoResidente: 600000
   qualidadeVida: 85
@@ -123,7 +126,7 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: b530c7746301c0e49bd557b9a848effd, type: 3}
---- !u!4 &7500000000000000006 stripped
+--- !u!4 &5662529924405434359 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2774220344278030320, guid: b530c7746301c0e49bd557b9a848effd, type: 3}
   m_PrefabInstance: {fileID: 7500000000000000007}

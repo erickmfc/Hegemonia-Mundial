@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Nav_tropa
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: f769ae54864fa8d4e97fbae531e0816b, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

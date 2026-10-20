@@ -16,7 +16,7 @@ MonoBehaviour:
   itemId: logistica.truck_abastecimento
   aliases: truck, caminhao tanque, caminhão tanque, abastecimento
   descricao: Caminhão logístico que detecta unidades aliadas com combustível baixo. Segure R para carregar usando o combustível disponível do país.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 0762300bb8ff9234bb4a14b56631545f, type: 3}
   prefabDaUnidade: {fileID: 2514188056602423208, guid: c76a52c58271c9f44849d592b3685c27, type: 3}
   preco: 100
   categoria: 0

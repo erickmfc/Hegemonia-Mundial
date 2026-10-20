@@ -15,8 +15,25 @@ MonoBehaviour:
   nomeItem: Usina Grande
   descricao: Gera 200 MW de energia.
   icone: {fileID: 0}
-  prefabDaUnidade: {fileID: 0}
+  itemId: 
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 2923545206617589512, guid: a47ef382ab734ed7acb468bfca236460, type: 3}
   preco: 3500
+  precoDefinitivo: 0
   categoria: 5
+  escalaPoder: 0
+  strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
+  receitaProducao:
+    configurada: 0
+    materiaisNecessarios: []
+    energiaNecessaria: 0
+    diasNecessarios: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

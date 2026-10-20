@@ -32,11 +32,12 @@ public abstract class GuardaCosteiraUnidade : MonoBehaviour
     [SerializeField, Min(1f)] protected float distanciaChegada = 25f;
 
     protected SistemaDeDanos danos;
+    private IdentidadeUnidade identidadeUnidade;
     private float cronometroBusca;
     private float proximaBusca;
 
-    public int TeamId => teamId;
-    public int NationId => nationId;
+    public int TeamId => identidadeUnidade != null ? Mathf.Max(1, identidadeUnidade.teamID) : teamId;
+    public int NationId => identidadeUnidade != null ? Mathf.Max(1, identidadeUnidade.teamID) : nationId;
     public string RescueUnitId => string.IsNullOrWhiteSpace(rescueUnitId) ? name + "-" + GetInstanceID() : rescueUnitId;
     public int CapacidadeResgate => Mathf.Max(1, capacidadeResgate);
     public int Tripulacao => Mathf.Max(1, tripulacao);
@@ -58,15 +59,13 @@ public abstract class GuardaCosteiraUnidade : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(rescueUnitId)) rescueUnitId = name + "-" + GetInstanceID();
         danos = GetComponent<SistemaDeDanos>() ?? GetComponentInParent<SistemaDeDanos>();
-        if (danos != null)
+        identidadeUnidade = GetComponent<IdentidadeUnidade>()
+            ?? GetComponentInParent<IdentidadeUnidade>()
+            ?? GetComponentInChildren<IdentidadeUnidade>(true);
+        if (identidadeUnidade != null)
         {
-            danos.OnDano -= AoReceberDano;
-            danos.OnDano += AoReceberDano;
-        }
-        if (nationId <= 0)
-        {
-            IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>() ?? GetComponentInParent<IdentidadeUnidade>();
-            if (identidade != null) nationId = identidade.teamID;
+            teamId = identidadeUnidade.teamID;
+            nationId = identidadeUnidade.teamID;
         }
     }
 
@@ -74,6 +73,11 @@ public abstract class GuardaCosteiraUnidade : MonoBehaviour
     {
         SistemaGuardaCosteira.GarantirInstancia();
         if (SistemaGuardaCosteira.Instancia != null) SistemaGuardaCosteira.Instancia.RegistrarUnidade(this);
+        if (danos != null)
+        {
+            danos.OnDano -= AoReceberDano;
+            danos.OnDano += AoReceberDano;
+        }
     }
 
     protected virtual void OnDisable()

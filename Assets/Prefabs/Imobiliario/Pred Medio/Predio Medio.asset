@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Predio Medio
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 4330639175a18a043baac4f7fedee9eb, type: 3}
   itemId: residencial.apartamento_medio
   aliases: apartamento, apartamentos, predio medio, edificio residencial
   capacidades: 16777281

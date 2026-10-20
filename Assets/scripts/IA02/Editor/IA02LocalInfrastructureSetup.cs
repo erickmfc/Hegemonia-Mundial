@@ -52,7 +52,7 @@ public static class IA02LocalInfrastructureSetup
         new LocalDefinition("ia02.local.construtor_veiculos", "IA02 Create - Construtor de Veiculos", "Assets/Prefabs/Construtor de Veiculos/Construtor de Veiculos.asset", IA02StrategicRole.MilitaryProduction, IA02BuildDomain.Land, "abertura.militar.construtor_veiculos"),
         new LocalDefinition("ia02.local.aeroporto_militar", "IA02 Create - Aeroporto Militar", "Assets/Prefabs/Aeroporto/Aeroporto militar.asset", IA02StrategicRole.Airfield, IA02BuildDomain.Airfield, "abertura.aereo.aeroporto_militar", true),
         new LocalDefinition("ia02.local.aeroporto_comercial", "IA02 Create - Aeroporto Comercial", "Assets/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.asset", IA02StrategicRole.Airfield, IA02BuildDomain.Airfield, "abertura.aereo.aeroporto_comercial", true),
-        new LocalDefinition("ia02.local.estaleiro", "IA02 Create - Estaleiro Naval", "Assets/Prefabs/Estaleiro Marinho/Estaleiro_Naval.asset", IA02StrategicRole.Shipyard, IA02BuildDomain.Coastal, "naval.naval.estaleiro", false, true)
+        new LocalDefinition("ia02.local.estaleiro", "IA02 Create - Estaleiro Naval", "Assets/Resources/Construcoes/Estaleiro_Naval.asset", IA02StrategicRole.Shipyard, IA02BuildDomain.Coastal, "naval.naval.estaleiro", false, true)
     };
 
     private static readonly LocalDefinition PierDefinition =

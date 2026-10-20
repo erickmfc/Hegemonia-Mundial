@@ -254,6 +254,9 @@ public class DadosPaisGoverno
     [Header("Agricultura nacional")]
     [Min(0)] public int capacidadeAgricola = 30;
     [Min(0)] public int investimentoAgricolaSemanal = 100;
+    [Range(0f, 0.25f)] public float investimentoAgricolaPercentualSemanal;
+    public bool investimentoAgricolaPercentualAtivo;
+    [Min(0)] public long ultimaCobrancaAgricola;
     public bool investimentoAgricolaSemRecursos;
     [Min(0)] public int producaoAgricolaDiaria;
     [Min(0)] public int estoqueAgricolaTotal;
@@ -366,6 +369,8 @@ public class RelacaoPaisGoverno
     public int teamA;
     public int teamB;
     [Range(-100, 100)] public int valor;
+    [Range(-100, 100)] public int valorBaseHistorico;
+    public bool baseHistoricaInicializada;
     public bool tratadoComercial = true;
     public bool pactoMilitar;
     public bool pedidoPendente;
@@ -379,6 +384,21 @@ public class RelacaoPaisGoverno
     public List<RecursoMercado> embargos = new List<RecursoMercado>();
     public PosturaRelacaoPais posturaAParaB = PosturaRelacaoPais.Neutro;
     public PosturaRelacaoPais posturaBParaA = PosturaRelacaoPais.Neutro;
+
+    /// <summary>
+    /// Afinidade usada para ponderar decisões estratégicas e comerciais. A
+    /// opinião atual continua sendo dominante; a base histórica influencia
+    /// decisões sem conceder autorização de combate.
+    /// </summary>
+    public int ValorDiplomaticoEstrategico
+    {
+        get
+        {
+            float combinado = Mathf.Clamp(valor, -100, 100) * 0.75f
+                + Mathf.Clamp(valorBaseHistorico, -100, 100) * 0.25f;
+            return Mathf.RoundToInt(Mathf.Clamp(combinado, -100f, 100f));
+        }
+    }
 
     public bool Envolve(int a, int b)
     {

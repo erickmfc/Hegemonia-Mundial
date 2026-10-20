@@ -29,6 +29,10 @@ public class ControleAviao : MonoBehaviour
     }
 
     public enum EstadoAviao { ReservaHangar, Taxiando, ProntoNoPatio, Decolando, EmMissao, Pousando, RetornandoPraVaga }
+
+    private string ultimoMotivoRecusaOrdem = string.Empty;
+    private string ultimoDiagnosticoAutonomia = string.Empty;
+    public string UltimoMotivoRecusaOrdem => ultimoMotivoRecusaOrdem;
     
     [Header("=== ESTADO ATUAL ===")]
     public EstadoAviao estadoAtual = EstadoAviao.ReservaHangar;
@@ -38,6 +42,16 @@ public class ControleAviao : MonoBehaviour
         EstadoAviao estadoAnterior = estadoAtual;
         estadoAtual = novoEstado;
         bool motorLigado = novoEstado != EstadoAviao.ReservaHangar && novoEstado != EstadoAviao.ProntoNoPatio;
+        bool estavaEstacionado = estadoAnterior == EstadoAviao.ReservaHangar
+            || estadoAnterior == EstadoAviao.ProntoNoPatio;
+        bool iniciouSaida = novoEstado == EstadoAviao.Taxiando || novoEstado == EstadoAviao.Decolando;
+        if (estavaEstacionado && iniciouSaida)
+            AudioRuntime.DefinirAudioPartidaAerea(gameObject, true);
+        else if (novoEstado == EstadoAviao.EmMissao
+            || novoEstado == EstadoAviao.ReservaHangar
+            || novoEstado == EstadoAviao.ProntoNoPatio)
+            AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
+
         AudioRuntime.DefinirMotorAereo(gameObject, motorLigado);
         if (novoEstado == EstadoAviao.ProntoNoPatio)
         {
@@ -66,6 +80,11 @@ public class ControleAviao : MonoBehaviour
         }
     }
     [HideInInspector] public GerenciadorAeroporto aeroportoOrigem;
+    [HideInInspector] public GerenciadorAeroporto baseEstacionamentoAtual;
+    [NonSerialized] private GerenciadorAeroporto destinoPousoEscolhido;
+    [NonSerialized] private bool destinoManualDefinido;
+    public GerenciadorAeroporto DestinoPousoEscolhido => destinoPousoEscolhido != null ? destinoPousoEscolhido : aeroportoOrigem;
+    public bool DestinoManualDefinido => destinoManualDefinido;
     [HideInInspector] public Transform vagaRetorno;
     [HideInInspector] public bool aguardandoCliqueRadar = false;
     [NonSerialized] private GerenciadorAeroporto baseDestinoRetornoPendente;
@@ -189,6 +208,9 @@ public class ControleAviao : MonoBehaviour
         {
             aeroportoOrigem = GetComponentInParent<GerenciadorAeroporto>();
         }
+        if (baseEstacionamentoAtual == null)
+            baseEstacionamentoAtual = GetComponentInParent<GerenciadorAeroporto>() ?? aeroportoOrigem;
+        if (destinoPousoEscolhido == null) destinoPousoEscolhido = aeroportoOrigem;
 
         GarantirAltitudeMinimaMilitar();
 
@@ -279,6 +301,35 @@ public class ControleAviao : MonoBehaviour
         {
             altitudeVoo = Mathf.Max(AltitudeMinimaVooEfetiva, altitudeVoo);
         }
+    }
+
+    /// <summary>
+    /// Altitude de cruzeiro usada pelas rotas e ordens da aeronave. O HUD pode
+    /// alterar este valor sem mover a aeronave enquanto ela estiver estacionada;
+    /// a nova altura passa a ser aplicada assim que o voo for iniciado.
+    /// </summary>
+    public bool DefinirAltitudeVoo(float novaAltitude)
+    {
+        float minima = Mathf.Max(AltitudeMinimaVooEfetiva, 60f);
+        float valor = Mathf.Clamp(novaAltitude, minima, 5000f);
+        bool mudou = !Mathf.Approximately(altitudeVoo, valor);
+        altitudeVoo = valor;
+
+        if (alvoGPSVoo != Vector3.zero)
+        {
+            alvoGPSVoo.y = Mathf.Max(AltitudePisoFisicoNaPosicao(alvoGPSVoo), altitudeVoo);
+        }
+        if (centroDaPatrulha != Vector3.zero)
+        {
+            centroDaPatrulha.y = Mathf.Max(AltitudePisoFisicoNaPosicao(centroDaPatrulha), altitudeVoo);
+        }
+
+        return mudou;
+    }
+
+    public bool AjustarAltitudeVoo(float variacao)
+    {
+        return DefinirAltitudeVoo(altitudeVoo + variacao);
     }
 
     private void OnDestroy()
@@ -1304,6 +1355,11 @@ public class ControleAviao : MonoBehaviour
         }
 
         GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+        if (carrier == null)
+        {
+            yield return StartCoroutine(PousarEmAeroportoAposVooCarrier());
+            yield break;
+        }
         if (carrier != null && carrier.SolicitarPousoOperacionalV2(this))
         {
             yield break;
@@ -1332,12 +1388,14 @@ public class ControleAviao : MonoBehaviour
         // não segue voando sem missão nem chega a ficar sem combustível.
         if (carrier != null)
         {
-            Vector3 aproximacao = ObterPontoAproximacaoDaBase(carrier);
-            aproximacao.y = Mathf.Max(transform.position.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
-            alvoGPSVoo = aproximacao;
-
             while (estadoAtual == EstadoAviao.EmMissao)
             {
+                // O porta-aviões pode navegar durante o retorno. Recalcule o
+                // ponto enquanto a aeronave voa para não perseguir a posição
+                // antiga registrada no início da aproximação.
+                Vector3 aproximacao = ObterPontoAproximacaoDaBase(carrier);
+                aproximacao.y = Mathf.Max(transform.position.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
+                alvoGPSVoo = aproximacao;
                 Vector3 diferenca = transform.position - aproximacao;
                 diferenca.y = 0f;
                 if (diferenca.sqrMagnitude <= 120f * 120f)
@@ -1357,12 +1415,69 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
+    private IEnumerator PousarEmAeroportoAposVooCarrier()
+    {
+        GerenciadorAeroporto destino = aeroportoOrigem;
+        if (destino == null) yield break;
+        while (estadoAtual == EstadoAviao.EmMissao && destino != null)
+        {
+            Transform vaga = destino.ObterPrimeiraVagaLivre();
+            if (vaga != null && destino.waypointsDecida != null && destino.waypointsDecida.Count >= 2
+                && destino.waypointsDecida[0] != null && destino.waypointsDecida[1] != null)
+            {
+                vagaRetorno = vaga;
+                Vector3 aproximacao = destino.waypointsDecida[0].position;
+                aproximacao.y = Mathf.Max(aproximacao.y, altitudeVoo, AltitudeMinimaVooEfetiva);
+                alvoGPSVoo = aproximacao;
+                while (estadoAtual == EstadoAviao.EmMissao
+                    && Vector2.Distance(new Vector2(transform.position.x, transform.position.z), new Vector2(aproximacao.x, aproximacao.z)) > 300f)
+                {
+                    aproximacao = destino.waypointsDecida[0].position;
+                    aproximacao.y = Mathf.Max(aproximacao.y, altitudeVoo, AltitudeMinimaVooEfetiva);
+                    alvoGPSVoo = aproximacao;
+                    yield return null;
+                }
+                if (estadoAtual != EstadoAviao.EmMissao) yield break;
+                estaEmModoVooFisico = false;
+                DefinirEstado(EstadoAviao.Pousando);
+                List<Transform> caminho = new List<Transform>();
+                for (int i = 1; i < destino.waypointsDecida.Count; i++)
+                    if (destino.waypointsDecida[i] != null) caminho.Add(destino.waypointsDecida[i]);
+                yield return StartCoroutine(SeguirCaminhoDeWaypoints(caminho, velocidadeSolo * 2.4f, velocidadeSolo * 2.4f, false, false, true));
+                if (!ultimoMovimentoWaypointConcluido)
+                {
+                    estaEmModoVooFisico = false;
+                    DefinirEstado(EstadoAviao.ReservaHangar);
+                    destino.GuardarNoHangarAutomatico(this);
+                    yield break;
+                }
+                transform.SetParent(vaga, true);
+                transform.localPosition = new Vector3(0f, ObterAlturaEstacionamento(), 0f);
+                baseEstacionamentoAtual = destino;
+                destinoPousoEscolhido = destino;
+                if (!destino.avioesNoPatio.Contains(this)) destino.avioesNoPatio.Add(this);
+                DefinirEstado(EstadoAviao.ProntoNoPatio);
+                ordemParaRetorno = false;
+                ProcessarServicoDeBaseAposPouso();
+                yield break;
+            }
+            // O destino fica registrado enquanto aguarda pista/vaga; nunca muda automaticamente.
+            Vector3 espera = destino.transform.position + transform.forward * Mathf.Max(600f, raioOrbitaMissao);
+            espera.y = Mathf.Max(destino.transform.position.y + altitudeVoo, AltitudeMinimaVooEfetiva);
+            alvoGPSVoo = espera;
+            yield return new WaitForSeconds(1f);
+            destino = aeroportoOrigem;
+        }
+    }
+
     /// <summary>
     /// Chamado pelo pouso V2 depois que a aeronave ficou parada no convés.
     /// Reabastece, rearma e só então libera uma eventual patrulha salva.
     /// </summary>
     public void ConcluirRetornoOperacionalNoCarrier()
     {
+        baseEstacionamentoAtual = aeroportoOrigem;
+        destinoPousoEscolhido = aeroportoOrigem;
         estaEmModoVooFisico = false;
         ordemParaRetorno = false;
         DefinirEstado(EstadoAviao.ProntoNoPatio);
@@ -1451,14 +1566,22 @@ public class ControleAviao : MonoBehaviour
     /// </summary>
     public bool ReceberOrdemManual(Vector3 destino)
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null
-            || !VetorDeVooValido(destino))
+        ultimoMotivoRecusaOrdem = string.Empty;
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
         {
+            ultimoMotivoRecusaOrdem = "transporte C-17 deve receber ordem pelo aeroporto";
+            return false;
+        }
+
+        if (!VetorDeVooValido(destino))
+        {
+            ultimoMotivoRecusaOrdem = "coordenada de destino inválida";
             return false;
         }
 
         if (!PodeIgnorarFaltaDeCombustivel() && !CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
+            ultimoMotivoRecusaOrdem = "sem combustível operacional";
             PararPorFaltaDeCombustivel();
             return false;
         }
@@ -1469,11 +1592,13 @@ public class ControleAviao : MonoBehaviour
         // contrário uma ordem inválida deixava o pouso sem um destino válido.
         if (estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.RetornandoPraVaga)
         {
+            ultimoMotivoRecusaOrdem = "aeronave está concluindo o pouso";
             return false;
         }
 
         if (!PodeIniciarVooDaBase())
         {
+            ultimoMotivoRecusaOrdem = "base de origem sem rota de pouso válida";
             Debug.LogWarning(
                 $"[ControleAviao] Ordem manual recusada para {name}: base de origem sem rota de pouso válida.",
                 this);
@@ -1482,6 +1607,7 @@ public class ControleAviao : MonoBehaviour
 
         if (!PodeExecutarMissaoComRetorno(destino))
         {
+            ultimoMotivoRecusaOrdem = ultimoDiagnosticoAutonomia;
             Debug.LogWarning(
                 $"[ControleAviao] Ordem manual recusada para {name}: autonomia insuficiente para ida e retorno seguro.",
                 this);
@@ -1504,12 +1630,14 @@ public class ControleAviao : MonoBehaviour
 
         if (estadoAtual == EstadoAviao.ProntoNoPatio)
         {
+            PlanejarBaseRetornoSegura(destino);
             IniciarMissaoCompleta(destino);
             return true;
         }
 
         if (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando)
         {
+            PlanejarBaseRetornoSegura(destino);
             // A rotina de voo lê centroDaPatrulha/alvoGPSVoo continuamente.
             // Não iniciamos uma segunda rotina nem interrompemos o taxi de
             // uma aeronave que ainda está saindo da base.
@@ -1522,10 +1650,12 @@ public class ControleAviao : MonoBehaviour
 
         if (estadoAtual == EstadoAviao.Taxiando || estadoAtual == EstadoAviao.ReservaHangar)
         {
+            PlanejarBaseRetornoSegura(destino);
             missaoManualPendente = true;
             return true;
         }
 
+        ultimoMotivoRecusaOrdem = "estado atual não permite receber ordem manual de voo";
         return false;
     }
 
@@ -1535,9 +1665,16 @@ public class ControleAviao : MonoBehaviour
     /// </summary>
     public bool ReceberOrdemPatrulha(IList<Vector3> rota)
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null
-            || rota == null || rota.Count == 0)
+        ultimoMotivoRecusaOrdem = string.Empty;
+        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
         {
+            ultimoMotivoRecusaOrdem = "transporte C-17 deve receber ordem pelo aeroporto";
+            return false;
+        }
+
+        if (rota == null || rota.Count == 0)
+        {
+            ultimoMotivoRecusaOrdem = "rota de patrulha sem pontos";
             return false;
         }
 
@@ -1545,17 +1682,20 @@ public class ControleAviao : MonoBehaviour
         {
             if (!VetorDeVooValido(rota[i]))
             {
+                ultimoMotivoRecusaOrdem = "rota contém coordenada inválida";
                 return false;
             }
         }
 
         if (estadoAtual == EstadoAviao.Pousando || estadoAtual == EstadoAviao.RetornandoPraVaga)
         {
+            ultimoMotivoRecusaOrdem = "aeronave está concluindo o pouso";
             return false;
         }
 
         if (!PodeIniciarVooDaBase())
         {
+            ultimoMotivoRecusaOrdem = "base de origem sem rota de pouso válida";
             Debug.LogWarning(
                 $"[ControleAviao] Patrulha recusada para {name}: base de origem sem rota de pouso válida.",
                 this);
@@ -1583,6 +1723,7 @@ public class ControleAviao : MonoBehaviour
 
         if (!PodeExecutarMissaoComRetorno(pontoMaisDistante))
         {
+            ultimoMotivoRecusaOrdem = ultimoDiagnosticoAutonomia;
             Debug.LogWarning(
                 $"[ControleAviao] Patrulha recusada para {name}: autonomia insuficiente para o setor e retorno seguro.",
                 this);
@@ -1593,6 +1734,7 @@ public class ControleAviao : MonoBehaviour
         RegistrarPatrulha(rota);
         if (rotaPatrulhaSalva.Count == 0)
         {
+            ultimoMotivoRecusaOrdem = "nenhum ponto de patrulha válido após normalizar a rota";
             return false;
         }
 
@@ -1617,6 +1759,7 @@ public class ControleAviao : MonoBehaviour
 
         if (estadoAtual == EstadoAviao.ProntoNoPatio)
         {
+            PlanejarBaseRetornoSegura(pontoMaisDistante);
             IniciarMissaoCompleta(rotaPatrulhaSalva[0]);
             return true;
         }
@@ -1626,11 +1769,17 @@ public class ControleAviao : MonoBehaviour
         {
             if (estadoAtual == EstadoAviao.ReservaHangar || estadoAtual == EstadoAviao.Taxiando)
             {
+                PlanejarBaseRetornoSegura(pontoMaisDistante);
                 patrulhaPendente = true;
+            }
+            else
+            {
+                PlanejarBaseRetornoSegura(pontoMaisDistante);
             }
             return true;
         }
 
+        ultimoMotivoRecusaOrdem = "estado atual não permite iniciar patrulha";
         return false;
     }
 
@@ -1681,13 +1830,15 @@ public class ControleAviao : MonoBehaviour
     /// <summary>
     /// Confere a autonomia antes de liberar uma nova missão. A validação é
     /// usada tanto pelo jogador quanto pelas IAs: uma aeronave não deve sair
-    /// se não houver combustível para ir, entrar no circuito da área e voltar
-    /// à mesma base que a lançou.
+    /// se não houver combustível para chegar ao setor, completar um circuito
+    /// curto e voltar a uma base aliada operacional com reserva segura.
     /// </summary>
     public bool PodeExecutarMissaoComRetorno(Vector3 destino)
     {
+        ultimoDiagnosticoAutonomia = string.Empty;
         if (!PodeIniciarVooDaBase())
         {
+            ultimoDiagnosticoAutonomia = "base de origem sem rota de pouso válida";
             return false;
         }
 
@@ -1697,8 +1848,92 @@ public class ControleAviao : MonoBehaviour
             return true;
         }
 
-        GerenciadorAeroporto baseRetorno = EncontrarMelhorBaseRetorno();
+        GerenciadorAeroporto baseRetorno = EncontrarBaseRetornoViavel(destino, out float consumoNecessario, out float reserva);
         if (baseRetorno == null)
+        {
+            float minimo = consumoNecessario + reserva;
+            ultimoDiagnosticoAutonomia = consumoNecessario > 0f && !float.IsInfinity(minimo)
+                ? $"autonomia insuficiente: {combustivel.Percentual * 100f:F0}% no tanque; rota e reserva exigem {minimo / Mathf.Max(1f, combustivel.Capacidade) * 100f:F0}%. Reabasteça ou escolha setor/base aliada mais próxima"
+                : "sem base aliada operacional com vaga e rota de pouso para o retorno";
+            return false;
+        }
+        bool alcanceSuficiente = combustivel.CombustivelAtual >= consumoNecessario + reserva;
+        if (!alcanceSuficiente)
+            ultimoDiagnosticoAutonomia = "autonomia insuficiente para completar a missão e retornar com reserva";
+        return alcanceSuficiente;
+    }
+
+    private GerenciadorAeroporto EncontrarBaseRetornoViavel(Vector3 destino, out float consumoNecessario, out float reserva)
+    {
+        consumoNecessario = 0f;
+        reserva = 0f;
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel)
+        {
+            return EncontrarMelhorBaseRetorno();
+        }
+
+        reserva = combustivel.Capacidade * Mathf.Clamp(reservaMinimaRetornoPercentual, 0.30f, 0.45f);
+        destino.y = transform.position.y;
+
+        if (destinoManualDefinido)
+        {
+            GerenciadorAeroporto baseEscolhida = EncontrarMelhorBaseRetorno();
+            return baseEscolhida != null && CalcularConsumoMissaoAteBase(destino, baseEscolhida, combustivel, out consumoNecessario)
+                && combustivel.CombustivelAtual >= consumoNecessario + reserva ? baseEscolhida : null;
+        }
+
+        // Mantém a base de origem quando ela ainda oferece autonomia. Se não,
+        // procura outra base aliada operacional, com vaga livre e pista válida.
+        GerenciadorAeroporto origem = BasePodeReceberRetorno(aeroportoOrigem) ? aeroportoOrigem : null;
+        if (origem != null && CalcularConsumoMissaoAteBase(destino, origem, combustivel, out consumoNecessario)
+            && combustivel.CombustivelAtual >= consumoNecessario + reserva)
+        {
+            return origem;
+        }
+
+        RegistroEntidadesJogo.FillAeroportos(basesRetornoBuffer);
+        GerenciadorAeroporto melhorBase = null;
+        float menorDistanciaTotal = float.MaxValue;
+        float menorConsumo = float.MaxValue;
+        float menorConsumoPossivel = consumoNecessario > 0f ? consumoNecessario : float.MaxValue;
+        for (int i = 0; i < basesRetornoBuffer.Count; i++)
+        {
+            GerenciadorAeroporto candidata = basesRetornoBuffer[i];
+            if (candidata == origem || !BasesDaMesmaEquipe(this, candidata) || !PodeReceberPouso(candidata))
+            {
+                continue;
+            }
+
+            if (!CalcularConsumoMissaoAteBase(destino, candidata, combustivel, out float consumoCandidata))
+            {
+                continue;
+            }
+            menorConsumoPossivel = Mathf.Min(menorConsumoPossivel, consumoCandidata);
+            if (combustivel.CombustivelAtual < consumoCandidata + reserva)
+                continue;
+
+            Vector3 pontoBase = ObterPontoAproximacaoDaBase(candidata);
+            pontoBase.y = transform.position.y;
+            float distanciaTotal = Vector3.Distance(transform.position, destino) + Vector3.Distance(destino, pontoBase);
+            if (distanciaTotal < menorDistanciaTotal)
+            {
+                menorDistanciaTotal = distanciaTotal;
+                menorConsumo = consumoCandidata;
+                melhorBase = candidata;
+            }
+        }
+
+        consumoNecessario = menorConsumo < float.MaxValue
+            ? menorConsumo
+            : menorConsumoPossivel < float.MaxValue ? menorConsumoPossivel : 0f;
+        return melhorBase;
+    }
+
+    private bool CalcularConsumoMissaoAteBase(Vector3 destino, GerenciadorAeroporto baseRetorno, CombustivelUnidade combustivel, out float consumoNecessario)
+    {
+        consumoNecessario = 0f;
+        if (baseRetorno == null || combustivel == null)
         {
             return false;
         }
@@ -1706,18 +1941,41 @@ public class ControleAviao : MonoBehaviour
         Vector3 pontoRetorno = ObterPontoAproximacaoDaBase(baseRetorno);
         destino.y = transform.position.y;
         pontoRetorno.y = transform.position.y;
-
         float ida = Vector3.Distance(transform.position, destino);
         float volta = Vector3.Distance(destino, pontoRetorno);
-        // Uma volta curta dentro do setor absorve desvios de aproximação e
-        // impede que a reserva seja calculada como se a aeronave desse meia
-        // volta no instante em que chega ao alvo.
         float circuitoMinimo = Mathf.Clamp(raioOrbitaMissao * Mathf.PI * 0.5f, 180f, 900f);
-        float consumoNecessario = combustivel.EstimarConsumoParaDistancia(
+        consumoNecessario = combustivel.EstimarConsumoParaDistancia(
             ida + volta + circuitoMinimo,
             Mathf.Max(60f, velocidadeMaximaVoo));
-        float reserva = combustivel.Capacidade * Mathf.Clamp(reservaMinimaRetornoPercentual, 0.30f, 0.45f);
-        return combustivel.CombustivelAtual >= consumoNecessario + reserva;
+        return !float.IsNaN(consumoNecessario) && !float.IsInfinity(consumoNecessario);
+    }
+
+    private void PlanejarBaseRetornoSegura(Vector3 destino)
+    {
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null || !combustivel.usaCombustivel || destinoManualDefinido)
+        {
+            baseDestinoRetornoPendente = null;
+            return;
+        }
+
+        GerenciadorAeroporto baseSegura = EncontrarBaseRetornoViavel(destino, out _, out _);
+        if (baseSegura != aeroportoOrigem)
+        {
+            destinoPousoEscolhido = baseSegura;
+            baseDestinoRetornoPendente = baseSegura;
+            // A aeronave já está em voo: pode transferir a base de retorno
+            // agora, sem afetar os waypoints da decolagem que já terminou.
+            if (estadoAtual == EstadoAviao.EmMissao)
+            {
+                AplicarBaseDestinoRetornoPendente();
+            }
+            Debug.Log($"[ControleAviao] {name}: retorno da missão planejado via base aliada {baseSegura.name} por autonomia.", this);
+        }
+        else
+        {
+            baseDestinoRetornoPendente = null;
+        }
     }
 
     private Vector3 NormalizarDestinoDeVoo(Vector3 destino)
@@ -1754,6 +2012,13 @@ public class ControleAviao : MonoBehaviour
         // no mesmo frame do spawn. Resolve uma base aliada válida antes de
         // iniciar o pouso; sem isso a ordem ficava marcada, mas a coroutine de
         // retorno não tinha pista, aproximação nem vaga para usar.
+        if (destinoManualDefinido && destinoPousoEscolhido != null
+            && (!destinoPousoEscolhido.gameObject.activeInHierarchy || !BasePodeReceberRetorno(destinoPousoEscolhido)))
+        {
+            Debug.LogWarning($"[ControleAviao] Destino escolhido para {name} continua registrado, mas está indisponível; aguardando escolha do jogador.", this);
+            return;
+        }
+
         GerenciadorAeroporto baseRetorno = EncontrarMelhorBaseRetorno();
         if (baseRetorno == null || !BasePodeReceberRetorno(baseRetorno))
         {
@@ -1821,24 +2086,13 @@ public class ControleAviao : MonoBehaviour
         {
             return;
         }
+        destinoPousoEscolhido = novaBase;
 
         bool baseDiferente = aeroportoOrigem != null && novaBase != aeroportoOrigem;
 
-        if (baseDiferente && estadoAtual == EstadoAviao.EmMissao
-            && aeroportoOrigem is GerenciadorPortaAvioes)
-        {
-            // A rotina operacional do porta-aviões já capturou o convés e a
-            // fila de pouso de origem. Trocar a referência no meio do voo
-            // faria a coroutine perder o carrier e terminar sem pousar.
-            // Conclua primeiro o retorno seguro à base atual; uma nova
-            // transferência pode ser solicitada quando estiver estacionado.
-            Debug.LogWarning($"[ControleAviao] Transferência de {name} durante voo naval adiada até o pouso atual.");
-            ComandoRetornarBase();
-            return;
-        }
-
         if (estadoAtual == EstadoAviao.EmMissao)
         {
+            destinoPousoEscolhido = novaBase;
             if (baseDiferente)
             {
                 baseDestinoRetornoPendente = novaBase;
@@ -1921,6 +2175,57 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
+    public bool SelecionarDestinoPouso(GerenciadorAeroporto destino, bool ordenarRetornoSeEmVoo = true)
+    {
+        if (!BasePodeReceberRetorno(destino) || !BasesDaMesmaEquipe(this, destino)) return false;
+        if (destino != aeroportoOrigem && destino.ObterPrimeiraVagaLivre() == null) return false;
+        destinoPousoEscolhido = destino;
+        destinoManualDefinido = true;
+        if ((estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando) && ordenarRetornoSeEmVoo)
+            DefinirBaseAlternativaEIniciarRetorno(destino);
+        else if (estadoAtual == EstadoAviao.ProntoNoPatio || estadoAtual == EstadoAviao.ReservaHangar)
+            baseDestinoRetornoPendente = destino;
+        return true;
+    }
+
+    public static bool BasesDaMesmaEquipe(ControleAviao aviao, GerenciadorAeroporto baseCandidata)
+    {
+        if (aviao == null || baseCandidata == null) return false;
+        IdentidadeUnidade identidadeAviao = aviao.GetComponent<IdentidadeUnidade>() ?? aviao.GetComponentInParent<IdentidadeUnidade>();
+        IdentidadeUnidade identidadeBase = baseCandidata.GetComponent<IdentidadeUnidade>();
+        int equipeAviao = identidadeAviao != null ? identidadeAviao.teamID : 1;
+        int equipeBase = identidadeBase != null ? identidadeBase.teamID : 1;
+        return equipeAviao == equipeBase;
+    }
+
+    public static bool PodeReceberPouso(GerenciadorAeroporto baseCandidata)
+    {
+        if (baseCandidata == null || !baseCandidata.gameObject.activeInHierarchy || !BasePodeReceberRetorno(baseCandidata)) return false;
+        return baseCandidata.ObterPrimeiraVagaLivre() != null;
+    }
+
+    public static void ListarDestinosPouso(ControleAviao aviao, List<GerenciadorAeroporto> resultados)
+    {
+        if (resultados == null) return;
+        resultados.Clear();
+        if (aviao == null) return;
+        RegistroEntidadesJogo.FillAeroportos(resultados);
+        for (int i = resultados.Count - 1; i >= 0; i--)
+        {
+            GerenciadorAeroporto candidata = resultados[i];
+            if (!BasesDaMesmaEquipe(aviao, candidata) || !PodeReceberPouso(candidata)) resultados.RemoveAt(i);
+        }
+    }
+
+    public static string RotuloBase(GerenciadorAeroporto baseAerea)
+    {
+        if (baseAerea == null) return "Base indisponível";
+        IdentidadeUnidade id = baseAerea.GetComponent<IdentidadeUnidade>();
+        string equipe = id != null && !string.IsNullOrWhiteSpace(id.nomeDoPais)
+            ? $"Equipe {id.teamID} · {id.nomeDoPais}" : $"Equipe {(id != null ? id.teamID : 1)}";
+        return $"{baseAerea.name.Replace("(Clone)", "").Trim()} — {equipe}";
+    }
+
     private void AplicarBaseDestinoRetornoPendente()
     {
         GerenciadorAeroporto destino = baseDestinoRetornoPendente;
@@ -1938,12 +2243,50 @@ public class ControleAviao : MonoBehaviour
         }
 
         aeroportoOrigem = destino;
+        destinoPousoEscolhido = destino;
         vagaRetorno = null;
         baseDestinoRetornoPendente = null;
         if (destino is GerenciadorPortaAvioes)
         {
             DefinirProtecaoCombustivelCarrier(true);
         }
+    }
+
+    public void RestaurarBasesSalvas(GerenciadorAeroporto estacionamento, GerenciadorAeroporto destino, bool destinoManual = false, bool estavaEmVoo = false)
+    {
+        if (estacionamento != null) baseEstacionamentoAtual = estacionamento;
+        if (destino != null)
+        {
+            destinoPousoEscolhido = destino;
+            destinoManualDefinido = destinoManual;
+            if (estavaEmVoo)
+            {
+                aeroportoOrigem = destino;
+            }
+            else
+            {
+                if (estacionamento != null) aeroportoOrigem = estacionamento;
+                baseDestinoRetornoPendente = destino != aeroportoOrigem ? destino : null;
+            }
+        }
+        else if (estacionamento != null)
+        {
+            destinoPousoEscolhido = estacionamento;
+            aeroportoOrigem = estacionamento;
+        }
+    }
+
+    public string ObterResumoLocalizacao()
+    {
+        GerenciadorAeroporto baseAtual = baseEstacionamentoAtual;
+        if (baseAtual == null && estadoAtual != EstadoAviao.EmMissao && estadoAtual != EstadoAviao.Decolando)
+            baseAtual = GetComponentInParent<GerenciadorAeroporto>();
+        string local = baseAtual != null ? RotuloBase(baseAtual) : "Em voo / sem base registrada";
+        string setor = estadoAtual == EstadoAviao.ReservaHangar ? "hangar"
+            : estadoAtual == EstadoAviao.ProntoNoPatio ? (baseAtual is GerenciadorPortaAvioes ? "convés" : "pátio")
+            : estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando ? "em voo" : estadoAtual.ToString();
+        GerenciadorAeroporto destino = DestinoPousoEscolhido;
+        return $"{local} ({setor}) → {(destino != null ? RotuloBase(destino) : "sem destino")}";
     }
 
     public void RegistrarMissaoManual(Vector3 destino)
@@ -2183,6 +2526,10 @@ public class ControleAviao : MonoBehaviour
 
     private GerenciadorAeroporto EncontrarMelhorBaseRetorno()
     {
+        if (destinoManualDefinido)
+            return destinoPousoEscolhido != null && destinoPousoEscolhido.gameObject.activeInHierarchy
+                && BasePodeReceberRetorno(destinoPousoEscolhido) ? destinoPousoEscolhido : null;
+
         // A missão pertence à base que lançou a aeronave. Nunca troca
         // silenciosamente para outro aeroporto ou porta-aviões aliado.
         if (BasePodeReceberRetorno(aeroportoOrigem))
@@ -2277,6 +2624,20 @@ public class ControleAviao : MonoBehaviour
     private void ProcessarRetomadaAposReabastecimento()
     {
         if (!retomarMissaoAposAbastecer || estadoAtual != EstadoAviao.ProntoNoPatio)
+        {
+            return;
+        }
+
+        // O serviço pode ser solicitado quando o estoque nacional acabou.
+        // Nesse caso, preserve a missão pendente e mantenha o avião na base;
+        // o aeroporto tentará novamente após cada ciclo de abastecimento.
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (!PodeIgnorarFaltaDeCombustivel()
+            && combustivel != null
+            && combustivel.usaCombustivel
+            && !combustivel.combustivelInfinito
+            && combustivel.Capacidade > 0f
+            && combustivel.Percentual < 0.99f)
         {
             return;
         }
@@ -2829,6 +3190,8 @@ public class ControleAviao : MonoBehaviour
 
             // 6. Estaciona: parentar à própria vaga e alinhar
             transform.SetParent(vagaRetorno, true);
+            baseEstacionamentoAtual = aeroportoOrigem;
+            destinoPousoEscolhido = aeroportoOrigem;
             float alturaOffset = carrier != null ? Mathf.Min(0.25f, ObterAlturaEstacionamento() * 0.1f) : ObterAlturaEstacionamento();
             transform.localPosition = new Vector3(0f, alturaOffset, 0f);
 
@@ -2915,7 +3278,10 @@ public class ControleAviao : MonoBehaviour
 
         if (combustivel.Percentual <= Mathf.Clamp01(percentualMinimo))
         {
-            combustivel.PreencherSemCusto();
+            ServicoAbastecimento.TentarAbastecer(
+                combustivel,
+                combustivel.Capacidade - combustivel.CombustivelAtual,
+                out _);
         }
     }
 

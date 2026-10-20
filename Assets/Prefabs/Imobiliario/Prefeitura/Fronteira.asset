@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Fronteira
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: ffef57976ae9687419ede142272591f9, type: 3}
   prefabDaUnidade: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
   preco: 1000
   categoria: 6

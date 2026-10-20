@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: C-400
   descricao: Aeronave de transporte para levar infantaria e veiculos a pontos de
     terreno seco.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 198da78f644f15d43b1ea399c22b90cd, type: 3}
   itemId: aeronautica.c400
   aliases: c400, transporte aereo, aviao cargueiro
   capacidades: 0

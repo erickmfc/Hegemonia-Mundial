@@ -213,7 +213,7 @@ public class CameraUnidadeHUD : MonoBehaviour
             }
 
             Vector3 targetPos = targetUnit.transform.position;
-            Vector3 desiredPosition = targetUnit.transform.TransformPoint(localOffset);
+            Vector3 desiredPosition = targetPos + ObterOrientacaoHorizontal(targetUnit.transform) * localOffset;
             transform.position = desiredPosition;
             transform.LookAt(targetPos + Vector3.up * (factor * 0.4f + 0.5f));
         }
@@ -412,13 +412,9 @@ public class CameraUnidadeHUD : MonoBehaviour
         
         // Aplica a rotação em volta da unidade
         Quaternion addRot = Quaternion.Euler(0f, currentRotationY, 0f);
-        bool unidadeAerea = targetUnit.DominioAtual == DominioControleUnidade.Aereo
-            || targetUnit.GetComponent<Helicoptero>() != null
-            || targetUnit.GetComponent<ControleAviao>() != null
-            || targetUnit.GetComponent<C700TransporteAereo>() != null;
-        Quaternion baseRotacao = unidadeAerea
-            ? Quaternion.Euler(0f, targetUnit.transform.eulerAngles.y, 0f)
-            : targetUnit.transform.rotation;
+        // O acompanhamento orbita pelo rumo, mas não converte pitch/roll do
+        // casco ou do veículo em deslocamentos laterais/verticais da câmera.
+        Quaternion baseRotacao = ObterOrientacaoHorizontal(targetUnit.transform);
         Vector3 rotatedOffset = addRot * (baseRotacao * localOffset);
         Vector3 desiredPosition = targetPos + rotatedOffset;
 
@@ -436,6 +432,11 @@ public class CameraUnidadeHUD : MonoBehaviour
         Quaternion targetRotation = Quaternion.LookRotation(lookTarget - transform.position);
         float fatorRotacaoNormal = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * Time.deltaTime);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, fatorRotacaoNormal);
+    }
+
+    private static Quaternion ObterOrientacaoHorizontal(Transform unidade)
+    {
+        return Quaternion.Euler(0f, unidade.eulerAngles.y, 0f);
     }
 
     private void ProcessarMarcacaoAlvos()

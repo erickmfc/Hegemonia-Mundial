@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c9b9ae18bb8d2147a018fbe06e9ca97, type: 3}
+  m_Name: Missao_InvasaoAnfibia
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.MissaoEstrategicaSO
+  idMissao: TEST-INVASAO-ANFIBIA
+  nomeMissao: Invasao anfibia IA03
+  objetivo: Deslocar transporte e forca terrestre do embarque ao desembarque
+  tipoMissao: 6
+  nivelMenosGrave: 2
+  nivelMaisGrave: 1
+  dominio: 3
+  quantidadeMinimaDeUnidades: 2
+  prioridade: 70
+  tempoMaximoSegundos: 1800
+  creatysPermitidos: 09000000
+  alvo: 0
+  tipoOrdem: 0
+  exigePortaAvioes: 0
+  exigeSubmarino: 0
+  exigeTransporteNaval: 1
+  exigePresidente: 0
+  minimoNaviosEscolta: 0
+  minimoAeronaves: 0
+  condicaoDeSucesso: 0
+  condicaoDeFracasso: 3
+  tempoMinimoDePermanenciaSegundos: 0

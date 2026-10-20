@@ -9,6 +9,74 @@ using UnityEngine.TestTools;
 public sealed class MisseisAlvoMovelPlayModeTests
 {
     [UnityTest]
+    public IEnumerator MisselCruzeiroNavalSobeAteAltitudeConfiguradaAntesDeIniciarCruzeiro()
+    {
+        GameObject misselObjeto = new GameObject("MisselCruzeiroNavalSubidaTeste");
+        try
+        {
+            Type misselType = ResolveType("MisselNaval");
+            Component missel = misselObjeto.AddComponent(misselType);
+            SetField(misselType, missel, "subirAteAltitudeCruzeiro", true);
+            SetField(misselType, missel, "altitudeCruzeiroAcimaDoLancamento", 5f);
+            SetField(misselType, missel, "velocidadeSubidaCruzeiro", 20f);
+            SetField(misselType, missel, "tempoEjecao", 0.05f);
+            SetField(misselType, missel, "velocidadeCruzeiro", 20f);
+            SetField(misselType, missel, "velocidadeMergulho", 20f);
+
+            yield return null;
+            misselType.GetMethod("IniciarAtaque", BindingFlags.Instance | BindingFlags.Public,
+                null, new[] { typeof(Vector3), typeof(Transform), typeof(Transform) }, null)
+                .Invoke(missel, new object[] { new Vector3(100f, 0f, 0f), null, null });
+
+            float deadline = Time.realtimeSinceStartup + 2f;
+            while (misselObjeto.transform.position.y < 4.8f && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Assert.That(misselObjeto.transform.position.y, Is.EqualTo(5f).Within(0.5f),
+                "O perfil de cruzeiro deve atingir a altitude configurada antes de avançar para o alvo.");
+
+            float xAntesDoCruzeiro = misselObjeto.transform.position.x;
+            yield return new WaitForSeconds(0.2f);
+            Assert.That(misselObjeto.transform.position.x, Is.GreaterThan(xAntesDoCruzeiro + 0.1f),
+                "Depois da subida, o míssil deve iniciar o cruzeiro na direção do alvo.");
+        }
+        finally
+        {
+            UnityEngine.Object.Destroy(misselObjeto);
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator LancadorNavalPermiteSelecionarMisseisPorNavio()
+    {
+        Type lancadorType = ResolveType("LancadorNaval");
+        GameObject navio = new GameObject("NavioSelecaoMissilTeste");
+        GameObject tridente = new GameObject("TridenteTeste");
+        GameObject kh23 = new GameObject("Kh23Teste");
+        try
+        {
+            Component lancador = navio.AddComponent(lancadorType);
+            SetField(lancadorType, lancador, "prefabMissel", tridente);
+            SetField(lancadorType, lancador, "prefabMisselCruzeiro", kh23);
+            PropertyInfo selecionado = lancadorType.GetProperty("PrefabMissilSelecionado", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(selecionado, Is.Not.Null);
+            Assert.That(selecionado.GetValue(lancador), Is.SameAs(tridente));
+
+            object escolhaCruzeiro = Enum.Parse(lancadorType.GetNestedType("TipoMissilNaval"), "Kh23Cruzeiro");
+            SetField(lancadorType, lancador, "tipoMissilNaval", escolhaCruzeiro);
+            Assert.That(selecionado.GetValue(lancador), Is.SameAs(kh23));
+        }
+        finally
+        {
+            UnityEngine.Object.Destroy(navio);
+            UnityEngine.Object.Destroy(tridente);
+            UnityEngine.Object.Destroy(kh23);
+        }
+
+        yield return null;
+    }
+
+    [UnityTest]
     public IEnumerator MisselNavalComecaAVirarParaOAlvoDuranteOBoost()
     {
         Type misselType = ResolveType("MisselNaval");

@@ -52,7 +52,9 @@ public class MenuComandoController : MonoBehaviour
     private float mapaZoom = 1.0f;
     private Vector2 mapaCentro = Vector2.zero;
     private Vector2 centroMapaDetectado = Vector2.zero;
+    private Vector2 metadesMapaDetectadas;
     private bool limitesMapaInicializados;
+    private bool mouseSobreMapaTatico;
 
     // Elementos do mapa
     private VisualElement mapaUnidadesLayer;
@@ -156,6 +158,9 @@ public class MenuComandoController : MonoBehaviour
     private Label hudCardExpandedDescription;
     private VisualElement hudCardExpanded;
     private VisualElement hudCardOriginalParent;
+    private VisualElement hudWeaponControls;
+    private int hudWeaponControlsUnitId;
+    private readonly List<HudWeaponOption> hudWeaponOptions = new List<HudWeaponOption>(24);
     private HudCardInfo hudCardExpandedInfo;
     private int hudCardOriginalIndex = -1;
     private bool hudExpandida = true;
@@ -166,6 +171,7 @@ public class MenuComandoController : MonoBehaviour
     private float proximaAtualizacaoContextual;
     private bool modoLancamentoMissilMapaAtivo = false;
     private bool modoMoverMapaAtivo = false;
+    private bool ignorarClickMarcadorAposOrdem;
     private int indiceArrasteFormacao = -1;
     private Vector2 posicaoInicioArrasteFormacao;
     private bool arrasteSlotFormacaoReconhecido;
@@ -183,6 +189,13 @@ public class MenuComandoController : MonoBehaviour
         public string TitleFallback;
         public string DescriptionKey;
         public string DescriptionFallback;
+    }
+
+    private sealed class HudWeaponOption
+    {
+        public Button Button;
+        public Func<string> Label;
+        public Func<bool> Selected;
     }
 
     // Mapa — cache de VisualElements por instância
@@ -306,6 +319,14 @@ public class MenuComandoController : MonoBehaviour
         return controle;
     }
 
+    private static CombustivelUnidade ObterCombustivelUnidade(GameObject unidade)
+    {
+        if (unidade == null) return null;
+        CombustivelUnidade combustivel = unidade.GetComponent<CombustivelUnidade>()
+            ?? unidade.GetComponentInChildren<CombustivelUnidade>(true);
+        return combustivel != null ? combustivel : unidade.GetComponentInParent<CombustivelUnidade>();
+    }
+
     private static bool UnidadeAptaParaPatrulha(ControleUnidade unidade)
     {
         if (unidade == null) return false;
@@ -326,6 +347,31 @@ public class MenuComandoController : MonoBehaviour
             identidade,
             unidade,
             out _);
+    }
+
+    private static string MotivoInaptidaoParaPatrulha(GameObject objeto)
+    {
+        if (objeto == null) return "unidade removida";
+        ControleUnidade unidade = objeto.GetComponent<ControleUnidade>();
+        if (unidade == null) return "ControleUnidade ausente";
+
+        if (!unidade.EhUnidadeNaval()
+            && !NavalPlacementResolver.IsLogisticsVessel(unidade.gameObject))
+        {
+            return "executor de patrulha incompatível";
+        }
+
+        IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInParent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (!NavalPlacementResolver.IsNavalPatrolCapable(identidade, unidade, out string motivo))
+        {
+            return string.IsNullOrWhiteSpace(motivo)
+                ? "navio sem executor de patrulha militar"
+                : motivo;
+        }
+
+        return "executor de patrulha incompatível";
     }
 
     // Timer
@@ -481,13 +527,13 @@ public class MenuComandoController : MonoBehaviour
             centroMapaDetectado = new Vector2(
                 (minXGlobal + maxXGlobal) * 0.5f,
                 (minZGlobal + maxZGlobal) * 0.5f);
-            float metadeGlobal = Mathf.Max(
-                (maxXGlobal - minXGlobal) * 0.5f,
-                (maxZGlobal - minZGlobal) * 0.5f);
-            mundoMetade = Mathf.Max(metadeConfigurada, metadeGlobal);
+            metadesMapaDetectadas = new Vector2(
+                Mathf.Max(metadeConfigurada, (maxXGlobal - minXGlobal) * 0.5f),
+                Mathf.Max(metadeConfigurada, (maxZGlobal - minZGlobal) * 0.5f));
+            mundoMetade = Mathf.Max(metadesMapaDetectadas.x, metadesMapaDetectadas.y);
             mapaCentro = centroMapaDetectado;
             limitesMapaInicializados = true;
-            Debug.Log($"[MenuComando] Limites do mapa tático pela definição global: centro=({centroMapaDetectado.x:F0}, {centroMapaDetectado.y:F0}) metade={mundoMetade:F0}.");
+            Debug.Log($"[MenuComando] Limites do mapa tático pela definição global: centro=({centroMapaDetectado.x:F0}, {centroMapaDetectado.y:F0}) metades=({metadesMapaDetectadas.x:F0}, {metadesMapaDetectadas.y:F0}).");
             return;
         }
 
@@ -573,6 +619,7 @@ public class MenuComandoController : MonoBehaviour
             centroMapaDetectado = Vector2.zero;
             mapaCentro = centroMapaDetectado;
             mundoMetade = metadeConfigurada;
+            metadesMapaDetectadas = Vector2.one * metadeConfigurada;
             limitesMapaInicializados = true;
             Debug.LogWarning($"[MenuComando] Nenhum Terrain ativo encontrado; usando limite configurado de {mundoMetade:F0}.");
             return;
@@ -585,11 +632,13 @@ public class MenuComandoController : MonoBehaviour
         maxZ += margem;
 
         centroMapaDetectado = new Vector2((minX + maxX) * 0.5f, (minZ + maxZ) * 0.5f);
-        float metadeTerrain = Mathf.Max((maxX - minX) * 0.5f, (maxZ - minZ) * 0.5f);
+        metadesMapaDetectadas = new Vector2(
+            Mathf.Max(metadeConfigurada, (maxX - minX) * 0.5f),
+            Mathf.Max(metadeConfigurada, (maxZ - minZ) * 0.5f));
 
         // Nunca reduz a área configurada anteriormente; apenas amplia quando
         // o mapa/terreno da cena for maior.
-        mundoMetade = Mathf.Max(metadeConfigurada, metadeTerrain);
+        mundoMetade = Mathf.Max(metadesMapaDetectadas.x, metadesMapaDetectadas.y);
         mapaCentro = centroMapaDetectado;
         limitesMapaInicializados = true;
 
@@ -603,8 +652,8 @@ public class MenuComandoController : MonoBehaviour
             AtualizarLimitesMapa();
         }
 
-        float limitePanX = Mathf.Max(0f, mundoMetade - rangeX * 0.5f);
-        float limitePanZ = Mathf.Max(0f, mundoMetade - rangeZ * 0.5f);
+        float limitePanX = Mathf.Max(0f, metadesMapaDetectadas.x - rangeX * 0.5f);
+        float limitePanZ = Mathf.Max(0f, metadesMapaDetectadas.y - rangeZ * 0.5f);
         mapaCentro.x = Mathf.Clamp(mapaCentro.x, centroMapaDetectado.x - limitePanX, centroMapaDetectado.x + limitePanX);
         mapaCentro.y = Mathf.Clamp(mapaCentro.y, centroMapaDetectado.y - limitePanZ, centroMapaDetectado.y + limitePanZ);
     }
@@ -766,6 +815,8 @@ public class MenuComandoController : MonoBehaviour
 
         if (!menuAberto) return;
 
+        ControlarPanMapaTatico();
+
         // V continua alternando a câmera de um drone selecionado. Em outros
         // casos, encaminha o atalho para o Pier em vez de consumi-lo abaixo
         // junto com as demais teclas bloqueadas pelo Menu Comando.
@@ -790,7 +841,7 @@ public class MenuComandoController : MonoBehaviour
         }
 
         // Atalho: tecla A seleciona todas as unidades aliadas no mapa
-        if (Input.GetKeyDown(KeyCode.A))
+        if (Input.GetKeyDown(KeyCode.A) && !mouseSobreMapaTatico)
         {
             SelecionarTodasUnidadesAliadas();
         }
@@ -835,9 +886,14 @@ public class MenuComandoController : MonoBehaviour
 
             if (desenhadorOrdens != null && desenhadorOrdens.modoPatrulhaAtivo)
             {
-                desenhadorOrdens.ConfirmarPatrulhaDoMenu();
-                SetText(ordemFeedback, "✔ Patrulha confirmada.");
-                AdicionarLog("OPS", "Patrulha confirmada via teclado.", "normal");
+                int aceitas = desenhadorOrdens.ConfirmarPatrulhaDoMenu();
+                string resumo = string.IsNullOrWhiteSpace(desenhadorOrdens.UltimoResumoPatrulha)
+                    ? (aceitas > 0 ? $"Patrulha aceita por {aceitas} unidade(s)." : "Nenhuma unidade aceitou a patrulha.")
+                    : desenhadorOrdens.UltimoResumoPatrulha;
+                SetText(ordemFeedback, resumo);
+                AdicionarLog("OPS", aceitas > 0
+                    ? $"Patrulha aceita por {aceitas} unidade(s)."
+                    : "Patrulha recusada por todos os controladores selecionados.", aceitas > 0 ? "normal" : "alerta");
             }
         }
 
@@ -974,7 +1030,7 @@ public class MenuComandoController : MonoBehaviour
         var miniMapa = miniMapaCache;
         if (miniMapa != null)
         {
-            miniMapa.gameObject.SetActive(false);
+            miniMapa.SuprimirPorMenuComando(true);
         }
 
         bool restaurouPersistencia = RestaurarSelecaoPersistida();
@@ -1133,6 +1189,7 @@ public class MenuComandoController : MonoBehaviour
     {
         if (!menuAberto) return;
         menuAberto = false;
+        mouseSobreMapaTatico = false;
         modoLancamentoMissilMapaAtivo = false;
         modoMoverMapaAtivo = false;
 
@@ -1171,7 +1228,7 @@ public class MenuComandoController : MonoBehaviour
         var miniMapa = miniMapaCache;
         if (miniMapa != null)
         {
-            miniMapa.gameObject.SetActive(true);
+            miniMapa.SuprimirPorMenuComando(false);
         }
 
         SalvarSelecaoPersistida();
@@ -1372,6 +1429,9 @@ public class MenuComandoController : MonoBehaviour
         // Registro de ouvintes de eventos para Zoom, Pan e Cliques no Mapa
         if (painelMapa != null)
         {
+            painelMapa.RegisterCallback<PointerEnterEvent>(_ => mouseSobreMapaTatico = true);
+            painelMapa.RegisterCallback<PointerLeaveEvent>(_ => mouseSobreMapaTatico = false);
+
             // Zoom com scroll do mouse
             painelMapa.RegisterCallback<WheelEvent>(evt =>
             {
@@ -1383,14 +1443,17 @@ public class MenuComandoController : MonoBehaviour
             // O mapa aceita cliques e zoom, mas não pode ser deslocado pelo mouse.
             painelMapa.RegisterCallback<PointerDownEvent>(evt =>
             {
+                ignorarClickMarcadorAposOrdem = evt.button == 0
+                    && OrdemMapaAtiva()
+                    && CliqueSobreMarcadorMapa(evt.target as VisualElement);
                 if (evt.button == 0) // Botão esquerdo
                 {
-                    OnMapClicked(evt.localPosition);
+                    OnMapClicked(painelMapa.WorldToLocal(evt.position));
                     evt.StopPropagation();
                 }
                 else if (evt.button == 1) // Botão direito
                 {
-                    OnMapRightClicked(evt.localPosition);
+                    OnMapRightClicked(painelMapa.WorldToLocal(evt.position));
                     evt.StopPropagation();
                 }
             });
@@ -1468,7 +1531,8 @@ public class MenuComandoController : MonoBehaviour
 
         bool outraInterfaceAberta = Construtor.EmModoConstrucaoAtivo
             || GerenciadorQuartel.InterfaceAberta
-            || MenuGoverno.EstaAberto;
+            || MenuGoverno.EstaAberto
+            || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
         AtualizarVisibilidadeHudTatico();
         if (menuAberto || outraInterfaceAberta)
         {
@@ -1485,6 +1549,7 @@ public class MenuComandoController : MonoBehaviour
                 if (contextoFeedback != null) contextoFeedback.text = string.Empty;
                 ResetarHudTaticoSemSelecao();
             }
+            AtualizarControlesArmamentoHud();
             return;
         }
 
@@ -1586,11 +1651,16 @@ public class MenuComandoController : MonoBehaviour
         }
 
         AtualizarHudTatico(unidadeSelecionadaMenu, grupo);
+        AtualizarControlesArmamentoHud();
     }
 
     private void AtualizarVisibilidadeHudTatico()
     {
-        bool podeExibir = !menuAberto;
+        bool podeExibir = !menuAberto
+            && !Construtor.EmModoConstrucaoAtivo
+            && !GerenciadorQuartel.InterfaceAberta
+            && !MenuGoverno.EstaAberto
+            && !IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
         if (barraComandoContextual != null)
             barraComandoContextual.style.display = podeExibir && hudExpandida ? DisplayStyle.Flex : DisplayStyle.None;
         if (hudDockReabrir != null)
@@ -1631,6 +1701,9 @@ public class MenuComandoController : MonoBehaviour
         DefinirTextoHudLocalizado("hud-card-condition", "card.condition", "CONDIÇÃO DA UNIDADE");
         DefinirTextoHudLocalizado("hud-condition-label", "condition.status", "ESTADO");
         DefinirTextoHudLocalizado("hud-condition-detail", "status.no_data", "SEM DADOS");
+        DefinirTextoHudLocalizado("hud-altitude-down", "altitude.down", "− 20 m");
+        DefinirTextoHudLocalizado("hud-altitude-up", "altitude.up", "+ 20 m");
+        DefinirTextoHudLocalizado("hud-altitude-order", "altitude.order", "ALTITUDE —");
         DefinirTextoHudLocalizado("hud-context-rtb", "quick.rtb", "BASE ↗");
         DefinirTextoHudLocalizado("hud-card-formation", "card.formation", "FORMAÇÃO");
         DefinirTextoHudLocalizado("hud-formation-label", "formation.selection", "SELEÇÃO TÁTICA");
@@ -1693,6 +1766,8 @@ public class MenuComandoController : MonoBehaviour
         DefinirTooltipHud("hud-roe-free", "roe.free.tooltip", "Engaja automaticamente qualquer alvo válido detectado.");
         DefinirTooltipHud("hud-speed-down", "speed.down.tooltip", "Reduz a velocidade das unidades móveis selecionadas em 10%.");
         DefinirTooltipHud("hud-speed-up", "speed.up.tooltip", "Aumenta a velocidade das unidades móveis selecionadas em 10%.");
+        DefinirTooltipHud("hud-altitude-down", "altitude.down.tooltip", "Reduz a altitude da aeronave selecionada em 20 metros.");
+        DefinirTooltipHud("hud-altitude-up", "altitude.up.tooltip", "Aumenta a altitude da aeronave selecionada em 20 metros.");
         DefinirTooltipHud("hud-ai-manual", "ai.manual.tooltip", "Armamento aguarda uma ordem direta do jogador.");
         DefinirTooltipHud("hud-ai-assist", "ai.assist.tooltip", "Engajamento automático limitado aos alvos autorizados.");
         DefinirTooltipHud("hud-ai-auto", "ai.auto.tooltip", "Engajamento automático de qualquer alvo válido detectado.");
@@ -1769,6 +1844,7 @@ public class MenuComandoController : MonoBehaviour
         DefinirTextoHud("hud-condition-label", TextoHud("condition.status", "ESTADO"));
         DefinirTextoHud("hud-condition", "—");
         DefinirTextoHud("hud-condition-detail", TextoHud("status.no_data", "SEM DADOS"));
+        AtualizarControlesAltitudeHud(null, false);
         DefinirTextoHud("hud-integrity", string.Format(TextoHud("integrity.status", "INTEGRIDADE  {0}"), "—"));
         DefinirTextoHud("hud-readiness", string.Format(TextoHud("readiness.status", "PRONTIDÃO  {0}"), "—"));
         DefinirTextoHud("hud-formation-label", TextoHud("formation.none", "SEM FORMAÇÃO"));
@@ -1823,6 +1899,8 @@ public class MenuComandoController : MonoBehaviour
         VincularBotaoHud("hud-ai-auto", () => AplicarModoCombateHud(MenuCombateNaval.Modo.Automatico, false));
         VincularBotaoHud("hud-speed-down", () => AjustarVelocidadeSelecaoHud(-0.1f));
         VincularBotaoHud("hud-speed-up", () => AjustarVelocidadeSelecaoHud(0.1f));
+        VincularBotaoHud("hud-altitude-down", () => AjustarAltitudeSelecaoHud(-20f));
+        VincularBotaoHud("hud-altitude-up", () => AjustarAltitudeSelecaoHud(20f));
         VincularBotaoHud("hud-context-rtb", () => ExecutarOrdemContextual("VOLTAR_BASE"));
         VincularBotaoHud("quick-patrol", () => ExecutarOrdemContextual("PATRULHAR"));
         VincularBotaoHud("quick-escort", ExecutarEscoltaHud);
@@ -1959,7 +2037,7 @@ public class MenuComandoController : MonoBehaviour
         if (card.ClassListContains("formation-card")) return new HudCardInfo { TitleKey = "card.formation", TitleFallback = "FORMAÇÃO", DescriptionKey = "cardinfo.formation", DescriptionFallback = "Escolha o líder e reorganize as unidades. F3 ativa a edição por arraste." };
         if (card.ClassListContains("roe-card")) return new HudCardInfo { TitleKey = "card.roe", TitleFallback = "POSTURA / REGRAS DE FOGO", DescriptionKey = "cardinfo.roe", DescriptionFallback = "Defina quando o armamento pode disparar: passivo, sob ordem, contra alvos autorizados ou livre." };
         if (card.ClassListContains("sensors-card")) return new HudCardInfo { TitleKey = "card.sensors", TitleFallback = "SENSORES / EMCON", DescriptionKey = "cardinfo.sensors", DescriptionFallback = "Alterne o radar. Radar ligado consome energia e pode ser detectado; outros sensores aparecem quando a unidade os possui." };
-        if (card.ClassListContains("weapons-card")) return new HudCardInfo { TitleKey = "card.weapons", TitleFallback = "ARMAMENTO", DescriptionKey = "cardinfo.weapons", DescriptionFallback = "Consulte os tipos de arma e a munição disponível na unidade." };
+        if (card.ClassListContains("weapons-card")) return new HudCardInfo { TitleKey = "card.weapons", TitleFallback = "ARMAMENTO", DescriptionKey = "cardinfo.weapons", DescriptionFallback = "Escolha qual sistema instalado deve disparar. Automático preserva a seleção normal do controlador." };
         if (card.ClassListContains("counter-card")) return new HudCardInfo { TitleKey = "card.countermeasures", TitleFallback = "CONTRAMEDIDAS", DescriptionKey = "cardinfo.countermeasures", DescriptionFallback = "Confira chaff e iscas acústicas quando esses sistemas estiverem instalados." };
         if (card.ClassListContains("waypoint-card")) return new HudCardInfo { TitleKey = "card.waypoints", TitleFallback = "PATRULHA / PONTOS DE ROTA", DescriptionKey = "cardinfo.waypoints", DescriptionFallback = "Veja a ordem de rota e use Patrulha para marcar pontos no mapa." };
         if (card.ClassListContains("automation-card")) return new HudCardInfo { TitleKey = "card.automation", TitleFallback = "IA / AUTOMAÇÃO", DescriptionKey = "cardinfo.automation", DescriptionFallback = "Manual aguarda ordens do jogador; Assistência limita o automático a alvos autorizados; Automático engaja alvos válidos detectados." };
@@ -1983,6 +2061,7 @@ public class MenuComandoController : MonoBehaviour
         card.AddToClassList("hud-card-expanded-content");
         hudCardScroll.Add(card);
         AtualizarTextoCardHudExpandido();
+        if (card.ClassListContains("weapons-card")) AtualizarControlesArmamentoHud(true);
         hudCardOverlay.style.display = DisplayStyle.Flex;
         hudCardPanel.BringToFront();
     }
@@ -1996,8 +2075,231 @@ public class MenuComandoController : MonoBehaviour
             hudCardExpandedDescription.text = TextoHud(hudCardExpandedInfo.DescriptionKey, hudCardExpandedInfo.DescriptionFallback);
     }
 
+    private void AtualizarControlesArmamentoHud(bool reconstruir = false)
+    {
+        if (hudCardExpanded == null || !hudCardExpanded.ClassListContains("weapons-card") || hudCardScroll == null)
+            return;
+
+        int unidadeId = unidadeSelecionadaMenu != null ? unidadeSelecionadaMenu.GetInstanceID() : 0;
+        bool precisaReconstruir = reconstruir || hudWeaponControls == null || hudWeaponControlsUnitId != unidadeId;
+        if (precisaReconstruir)
+        {
+            if (hudWeaponControls != null) hudWeaponControls.RemoveFromHierarchy();
+            hudWeaponControls = new VisualElement { name = "hud-weapon-controls" };
+            hudWeaponControls.AddToClassList("hud-weapon-controls");
+            hudWeaponOptions.Clear();
+            hudWeaponControlsUnitId = unidadeId;
+            hudCardScroll.Add(hudWeaponControls);
+            ConstruirControlesArmamentoHud(unidadeSelecionadaMenu);
+        }
+
+        for (int i = 0; i < hudWeaponOptions.Count; i++)
+        {
+            HudWeaponOption opcao = hudWeaponOptions[i];
+            if (opcao?.Button == null) continue;
+            opcao.Button.text = opcao.Label != null ? opcao.Label() : "ARMAMENTO";
+            bool selecionada = opcao.Selected != null && opcao.Selected();
+            opcao.Button.EnableInClassList("roe-selected", selecionada);
+        }
+    }
+
+    private void ConstruirControlesArmamentoHud(ControleUnidade unidade)
+    {
+        if (hudWeaponControls == null) return;
+        if (unidade == null)
+        {
+            AdicionarStatusArmamentoHud("Selecione uma unidade para controlar o armamento.");
+            return;
+        }
+
+        int quantidade = 0;
+        LancadorNaval[] lancadores = unidade.GetComponentsInChildren<LancadorNaval>(true);
+        for (int i = 0; i < lancadores.Length; i++)
+        {
+            LancadorNaval lancador = lancadores[i];
+            if (!PertenceAUnidadeHud(lancador, unidade)) continue;
+            AdicionarCabecalhoArmamentoHud("LANÇADOR NAVAL · " + lancador.name);
+            AdicionarOpcaoArmamentoHud(
+                () => "AUTOMÁTICO",
+                () => lancador.ArmamentoSelecionadoHud == LancadorNaval.ArmamentoHud.Automatico,
+                () => lancador.DefinirArmamentoHud(LancadorNaval.ArmamentoHud.Automatico));
+            if (lancador.prefabMissel != null)
+            {
+                AdicionarOpcaoArmamentoHud(
+                    () => "MÍSSIL NAVAL · " + lancador.municaoTotal + "/" + Mathf.Max(lancador.municaoTotal, lancador.municaoMaxima),
+                    () => lancador.ArmamentoSelecionadoHud == LancadorNaval.ArmamentoHud.MissilNaval
+                        && lancador.tipoMissilNaval == LancadorNaval.TipoMissilNaval.Tridente,
+                    () => lancador.DefinirTipoMissilHud(LancadorNaval.TipoMissilNaval.Tridente));
+            }
+            if (lancador.prefabMisselCruzeiro != null)
+            {
+                AdicionarOpcaoArmamentoHud(
+                    () => "MÍSSIL DE CRUZEIRO · " + lancador.municaoTotal + "/" + Mathf.Max(lancador.municaoTotal, lancador.municaoMaxima),
+                    () => lancador.ArmamentoSelecionadoHud == LancadorNaval.ArmamentoHud.MissilNaval
+                        && lancador.tipoMissilNaval == LancadorNaval.TipoMissilNaval.Kh23Cruzeiro,
+                    () => lancador.DefinirTipoMissilHud(LancadorNaval.TipoMissilNaval.Kh23Cruzeiro));
+            }
+            if (lancador.prefabTorpedo != null)
+            {
+                if (lancador.prefabTorpedo.GetComponent<Torpedo>() != null)
+                {
+                    AdicionarOpcaoArmamentoHud(
+                        () => "TORPEDO · " + lancador.torpedosTotal + "/" + Mathf.Max(lancador.torpedosTotal, lancador.torpedosMaximos),
+                        () => lancador.ArmamentoSelecionadoHud == LancadorNaval.ArmamentoHud.Torpedo,
+                        () => lancador.DefinirArmamentoHud(LancadorNaval.ArmamentoHud.Torpedo));
+                }
+            }
+            quantidade++;
+        }
+
+        ControleSubmarino[] submarinos = unidade.GetComponentsInChildren<ControleSubmarino>(true);
+        for (int i = 0; i < submarinos.Length; i++)
+        {
+            ControleSubmarino submarino = submarinos[i];
+            if (!PertenceAUnidadeHud(submarino, unidade)) continue;
+            AdicionarCabecalhoArmamentoHud("ARMAMENTO SUBMARINO · " + submarino.name);
+            AdicionarOpcaoArmamentoHud(
+                () => "AUTOMÁTICO",
+                () => submarino.ArmamentoSelecionadoHud == ControleSubmarino.ArmamentoHud.Automatico,
+                () => submarino.DefinirArmamentoHud(ControleSubmarino.ArmamentoHud.Automatico));
+            if (submarino.prefabMisselSubmarino != null)
+            {
+                AdicionarOpcaoArmamentoHud(
+                    () => "MÍSSIL SUBMARINO · " + submarino.misseisDisponiveis + "/" + (submarino.locaisDisparo != null ? submarino.locaisDisparo.Length : 0),
+                    () => submarino.ArmamentoSelecionadoHud == ControleSubmarino.ArmamentoHud.Missil,
+                    () => submarino.DefinirArmamentoHud(ControleSubmarino.ArmamentoHud.Missil));
+            }
+            if (submarino.prefabTorpedo != null && submarino.prefabTorpedo.GetComponent<Torpedo>() != null
+                && submarino.TemTuboTorpedoConfigurado)
+            {
+                AdicionarOpcaoArmamentoHud(
+                    () => "TORPEDO · " + submarino.torpedosDisponiveis,
+                    () => submarino.ArmamentoSelecionadoHud == ControleSubmarino.ArmamentoHud.Torpedo,
+                    () => submarino.DefinirArmamentoHud(ControleSubmarino.ArmamentoHud.Torpedo));
+            }
+            quantidade++;
+        }
+
+        ControleNavioRealista[] navios = unidade.GetComponentsInChildren<ControleNavioRealista>(true);
+        for (int i = 0; i < navios.Length; i++)
+        {
+            ControleNavioRealista navio = navios[i];
+            if (!PertenceAUnidadeHud(navio, unidade) || !navio.possuiTorpedos || navio.prefabTorpedo == null
+                || navio.prefabTorpedo.GetComponent<Torpedo>() == null || !navio.TemTuboTorpedoConfigurado) continue;
+            AdicionarCabecalhoArmamentoHud("ARMAMENTO DO CASCO · " + navio.name);
+            AdicionarOpcaoArmamentoHud(
+                () => "AUTOMÁTICO",
+                () => navio.ArmamentoSelecionadoHud == ControleNavioRealista.ArmamentoHud.Automatico,
+                () => navio.DefinirArmamentoHud(ControleNavioRealista.ArmamentoHud.Automatico));
+            AdicionarOpcaoArmamentoHud(
+                () => "TORPEDO DO CASCO · " + navio.torpedosDisponiveis + "/" + Mathf.Max(navio.torpedosDisponiveis, navio.MaximoTorpedosConfigurado),
+                () => navio.ArmamentoSelecionadoHud == ControleNavioRealista.ArmamentoHud.Torpedo,
+                () => navio.DefinirArmamentoHud(ControleNavioRealista.ArmamentoHud.Torpedo));
+            quantidade++;
+        }
+
+        ControleTorreta[] torretas = unidade.GetComponentsInChildren<ControleTorreta>(true);
+        for (int i = 0; i < torretas.Length; i++)
+        {
+            ControleTorreta torreta = torretas[i];
+            if (!PertenceAUnidadeHud(torreta, unidade)) continue;
+            bool temCanhao = torreta.PossuiCanhaoConfiguradoHud;
+            if (torreta.misselPrefab == null && !temCanhao) continue;
+            AdicionarCabecalhoArmamentoHud((torreta.EhAntiAereo ? "DEFESA AÉREA · " : "TORRETA · ") + torreta.name);
+            AdicionarOpcaoArmamentoHud(
+                () => "AUTOMÁTICO",
+                () => torreta.ArmamentoSelecionadoHud == ControleTorreta.ArmamentoHud.Automatico,
+                () => torreta.DefinirArmamentoHud(ControleTorreta.ArmamentoHud.Automatico));
+            if (torreta.misselPrefab != null)
+            {
+                AdicionarOpcaoArmamentoHud(
+                    () => (torreta.EhAntiAereo ? "MÍSSIL AR · " : "MÍSSIL · ") + torreta.MisseisAtuaisHud + "/" + torreta.MisseisMaximosHud,
+                    () => torreta.ArmamentoSelecionadoHud == ControleTorreta.ArmamentoHud.Missil,
+                    () => torreta.DefinirArmamentoHud(ControleTorreta.ArmamentoHud.Missil));
+            }
+            if (temCanhao)
+            {
+                AdicionarOpcaoArmamentoHud(
+                    () => "TIRO DE CANHÃO · " + torreta.MunicaoAtual + "/" + torreta.MunicaoMaxima,
+                    () => torreta.ArmamentoSelecionadoHud == ControleTorreta.ArmamentoHud.Canhao,
+                    () => torreta.DefinirArmamentoHud(ControleTorreta.ArmamentoHud.Canhao));
+            }
+            quantidade++;
+        }
+
+        ControleTorretaModular[] torretasModulares = unidade.GetComponentsInChildren<ControleTorretaModular>(true);
+        for (int i = 0; i < torretasModulares.Length; i++)
+        {
+            ControleTorretaModular torreta = torretasModulares[i];
+            if (!PertenceAUnidadeHud(torreta, unidade) || torreta.armas == null || torreta.armas.Count == 0) continue;
+            AdicionarCabecalhoArmamentoHud("ARMAS INSTALADAS · " + torreta.name);
+            AdicionarOpcaoArmamentoHud(
+                () => "AUTOMÁTICO",
+                () => torreta.IndiceArmaSelecionadaHud < 0,
+                () => torreta.DefinirArmaHud(-1));
+            for (int j = 0; j < torreta.armas.Count; j++)
+            {
+                int indiceArma = j;
+                ModuloArma arma = torreta.armas[j];
+                if (arma == null || arma.municaoPrefab == null || arma.pontosDisparo == null || arma.pontosDisparo.Length == 0) continue;
+                string nomeArma = string.IsNullOrWhiteSpace(arma.nomeArma) ? "ARMA " + (j + 1) : arma.nomeArma;
+                AdicionarOpcaoArmamentoHud(
+                    () => nomeArma + " · " + (arma.tamanhoCartucho <= 0 ? "∞" : arma.municaoAtual + "/" + arma.tamanhoCartucho),
+                    () => torreta.IndiceArmaSelecionadaHud == indiceArma,
+                    () => torreta.DefinirArmaHud(indiceArma));
+            }
+            quantidade++;
+        }
+
+        if (quantidade == 0)
+            AdicionarStatusArmamentoHud("Esta unidade não expõe armas selecionáveis neste painel.");
+    }
+
+    private bool PertenceAUnidadeHud(Component sistema, ControleUnidade unidade)
+    {
+        if (sistema == null || unidade == null) return false;
+        return sistema.GetComponentInParent<ControleUnidade>() == unidade;
+    }
+
+    private void AdicionarCabecalhoArmamentoHud(string texto)
+    {
+        Label cabecalho = new Label(texto);
+        cabecalho.AddToClassList("card-copy");
+        cabecalho.AddToClassList("mono");
+        hudWeaponControls.Add(cabecalho);
+    }
+
+    private void AdicionarStatusArmamentoHud(string texto)
+    {
+        Label status = new Label(texto);
+        status.AddToClassList("card-copy");
+        status.AddToClassList("mono");
+        hudWeaponControls.Add(status);
+    }
+
+    private void AdicionarOpcaoArmamentoHud(Func<string> rotulo, Func<bool> selecionada, Func<bool> aplicar)
+    {
+        if (hudWeaponControls == null || aplicar == null) return;
+        Button botao = new Button(() =>
+        {
+            bool aplicado = aplicar();
+            if (contextoFeedback != null)
+                contextoFeedback.text = aplicado ? "Armamento definido para o sistema escolhido." : "Sistema indisponível nesta unidade.";
+            AtualizarControlesArmamentoHud();
+        }) { text = rotulo != null ? rotulo() : "ARMAMENTO" };
+        botao.AddToClassList("system-row");
+        botao.AddToClassList("mono");
+        botao.tooltip = "Selecionar este armamento. Sem munição, ele não troca para outra arma.";
+        hudWeaponControls.Add(botao);
+        hudWeaponOptions.Add(new HudWeaponOption { Button = botao, Label = rotulo, Selected = selecionada });
+    }
+
     private void FecharCardHudExpandido()
     {
+        if (hudWeaponControls != null) hudWeaponControls.RemoveFromHierarchy();
+        hudWeaponControls = null;
+        hudWeaponControlsUnitId = 0;
+        hudWeaponOptions.Clear();
         if (hudCardExpanded != null)
         {
             if (hudCardScroll != null && hudCardExpanded.parent == hudCardScroll)
@@ -2108,6 +2410,69 @@ public class MenuComandoController : MonoBehaviour
         }
 
         AtualizarBarraComandoContextual();
+    }
+
+    private void AjustarAltitudeSelecaoHud(float variacao)
+    {
+        SincronizarSelecaoComJogo();
+        unidadesSelecionadasMenu.RemoveAll(unidade => unidade == null);
+        if (unidadesSelecionadasMenu.Count == 0)
+        {
+            if (contextoFeedback != null)
+                contextoFeedback.text = TextoHud("feedback.select_ally", "Selecione uma unidade aliada.");
+            return;
+        }
+
+        int alteradas = 0;
+        int semControleAereo = 0;
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (unidade == null) continue;
+            ControleAviao aviao = unidade.GetComponentInChildren<ControleAviao>(true);
+            if (aviao == null)
+            {
+                semControleAereo++;
+                continue;
+            }
+
+            if (aviao.AjustarAltitudeVoo(variacao)) alteradas++;
+        }
+
+        if (contextoFeedback != null)
+        {
+            contextoFeedback.text = alteradas > 0
+                ? string.Format(TextoHud("altitude.feedback", "ALTITUDE {0}20 m · {1}/{2} AERONAVES"), variacao > 0f ? "+" : "−", alteradas, unidadesSelecionadasMenu.Count)
+                : semControleAereo == unidadesSelecionadasMenu.Count
+                    ? TextoHud("altitude.unavailable", "Nenhuma aeronave selecionada possui controle de altitude.")
+                    : TextoHud("altitude.limit", "Altitude já está no limite permitido.");
+        }
+
+        AtualizarBarraComandoContextual();
+    }
+
+    private void AtualizarControlesAltitudeHud(ControleAviao aviaoFoco, bool possuiAeronave)
+    {
+        if (root == null) return;
+        VisualElement controles = root.Q<VisualElement>("hud-altitude-controls");
+        Button diminuir = root.Q<Button>("hud-altitude-down");
+        Button aumentar = root.Q<Button>("hud-altitude-up");
+        Label indicador = root.Q<Label>("hud-altitude-order");
+
+        bool disponivel = possuiAeronave && aviaoFoco != null;
+        if (controles != null) controles.style.display = disponivel ? DisplayStyle.Flex : DisplayStyle.None;
+        if (diminuir != null) diminuir.SetEnabled(disponivel);
+        if (aumentar != null) aumentar.SetEnabled(disponivel);
+        if (indicador == null) return;
+
+        if (!disponivel)
+        {
+            indicador.text = TextoHud("altitude.order", "ALTITUDE —");
+            return;
+        }
+
+        float altitude = Mathf.Max(aviaoFoco.altitudeVoo, aviaoFoco.AltitudeMinimaVooEfetiva);
+        indicador.text = string.Format(TextoHud("altitude.order_value", "ALVO {0} m"), altitude.ToString("F0"));
     }
 
     private static MenuCombateNaval.Modo ObterModoCombateHud(ControleUnidade unidade)
@@ -2504,19 +2869,23 @@ public class MenuComandoController : MonoBehaviour
         else if (unidade.EhUnidadeAerea())
         {
             DefinirTextoHud("hud-condition-label", TextoHud("condition.altitude", "ALTITUDE"));
-            DefinirTextoHud("hud-condition", $"{unidade.transform.position.y:F0} {TextoHud("unit.metres", "m")}");
+            float altitudeAtual = aviao != null ? aviao.transform.position.y : unidade.transform.position.y;
+            DefinirTextoHud("hud-condition", $"{altitudeAtual:F0} {TextoHud("unit.metres", "m")}");
             DefinirTextoHud("hud-condition-detail", aviao != null
                 ? TraduzirEstadoHud(aviao.estadoAtual.ToString())
                 : TraduzirEstadoHud(unidade.OrdemAtual.ToString()));
+            AtualizarControlesAltitudeHud(aviao, true);
         }
         else if (navio != null)
         {
+            AtualizarControlesAltitudeHud(null, false);
             DefinirTextoHud("hud-condition-label", TextoHud("condition.keel", "CALADO"));
             DefinirTextoHud("hud-condition", TextoHud("state.na", "N/D"));
             DefinirTextoHud("hud-condition-detail", TraduzirEstadoHud(unidade.OrdemAtual.ToString()));
         }
         else
         {
+            AtualizarControlesAltitudeHud(null, false);
             DefinirTextoHud("hud-condition-label", TextoHud("condition.terrain", "TERRENO / ORDEM"));
             DefinirTextoHud("hud-condition", TraduzirEstadoHud(unidade.OrdemAtual.ToString()));
             DefinirTextoHud("hud-condition-detail", string.Format(
@@ -3015,8 +3384,8 @@ public class MenuComandoController : MonoBehaviour
         }
 
         // Calcula a nova janela de visualização baseada no Zoom e Pan
-        float rangeX = (mundoMetade * 2f) / mapaZoom;
-        float rangeZ = (mundoMetade * 2f) / mapaZoom;
+        float rangeX = (metadesMapaDetectadas.x * 2f) / mapaZoom;
+        float rangeZ = (metadesMapaDetectadas.y * 2f) / mapaZoom;
         float xMin = mapaCentro.x - rangeX / 2f;
         float zMin = mapaCentro.y - rangeZ / 2f;
 
@@ -3308,6 +3677,13 @@ public class MenuComandoController : MonoBehaviour
             var capturedCu = cu;
             container.RegisterCallback<ClickEvent>(evt =>
             {
+                if (ignorarClickMarcadorAposOrdem)
+                {
+                    ignorarClickMarcadorAposOrdem = false;
+                    evt.StopPropagation();
+                    return;
+                }
+
                 if (container.ClassListContains("contato-antigo"))
                 {
                     evt.StopPropagation();
@@ -3317,14 +3693,9 @@ public class MenuComandoController : MonoBehaviour
                 if (desenhadorOrdens == null)
                     desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
-                if (modoMoverMapaAtivo
-                    || (desenhadorOrdens != null && (desenhadorOrdens.modoPatrulhaAtivo || desenhadorOrdens.modoSeguirAtivo || desenhadorOrdens.modoAtaqueAtivo)))
+                if (OrdemMapaAtiva())
                 {
-                    if (painelMapa != null)
-                    {
-                        Vector2 localMousePosOnMap = painelMapa.WorldToLocal(evt.position);
-                        OnMapClicked(localMousePosOnMap);
-                    }
+                    // PointerDown do painel já enviou a ordem para este clique.
                     evt.StopPropagation();
                     return;
                 }
@@ -4073,7 +4444,7 @@ public class MenuComandoController : MonoBehaviour
                     maxHp += sd.vidaMaxima;
                 }
 
-                CombustivelUnidade cbu = u.GetComponent<CombustivelUnidade>();
+                CombustivelUnidade cbu = ObterCombustivelUnidade(u.gameObject);
                 if (cbu != null && cbu.Capacidade > 0f)
                 {
                     somaFuel += cbu.CombustivelAtual;
@@ -4175,7 +4546,7 @@ public class MenuComandoController : MonoBehaviour
         }
 
         // Combustível
-        CombustivelUnidade cbuSingle = cu.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade cbuSingle = ObterCombustivelUnidade(cu.gameObject);
         if (cbuSingle != null && cbuSingle.Capacidade > 0f)
         {
             float fuelPct = Mathf.Clamp01(cbuSingle.CombustivelAtual / cbuSingle.Capacidade);
@@ -4413,7 +4784,7 @@ public class MenuComandoController : MonoBehaviour
             velMps = ObterVelocidadeTelemetria(unidadeSelecionadaMenu.gameObject, velMps);
             SetText(sitrepVel, $"{velMps * 3.6f:F0} KM/H");
 
-            CombustivelUnidade cbu = unidadeSelecionadaMenu.GetComponent<CombustivelUnidade>();
+            CombustivelUnidade cbu = ObterCombustivelUnidade(unidadeSelecionadaMenu.gameObject);
             if (cbu != null && cbu.Capacidade > 0f)
             {
                 float fuelPct = Mathf.Clamp01(cbu.CombustivelAtual / cbu.Capacidade);
@@ -4602,12 +4973,32 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
+        var unidadesExcluidasPatrulha = new List<string>();
         if (ordem == "PATRULHAR")
         {
-            snapshot.RemoveAll(u => u == null || !UnidadeAptaParaPatrulha(u.GetComponent<ControleUnidade>()));
+            var unidadesAptas = new List<GameObject>(snapshot.Count);
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                GameObject objeto = snapshot[i];
+                ControleUnidade unidade = objeto != null ? objeto.GetComponent<ControleUnidade>() : null;
+                if (UnidadeAptaParaPatrulha(unidade))
+                {
+                    unidadesAptas.Add(objeto);
+                    continue;
+                }
+
+                string motivo = MotivoInaptidaoParaPatrulha(objeto);
+                string detalhe = $"{(objeto != null ? objeto.name : "unidade")}: {motivo}";
+                unidadesExcluidasPatrulha.Add(detalhe);
+                AdicionarLog("OPS", $"{detalhe}; não incluída na patrulha militar.", "alerta");
+            }
+            snapshot = unidadesAptas;
             if (snapshot.Count == 0)
             {
-                SetText(ordemFeedback, "⚠ Nenhuma unidade selecionada possui patrulha compatível.");
+                string motivo = unidadesExcluidasPatrulha.Count > 0
+                    ? string.Join("; ", unidadesExcluidasPatrulha.GetRange(0, Mathf.Min(2, unidadesExcluidasPatrulha.Count)))
+                    : "selecione uma unidade com controlador de patrulha";
+                SetText(ordemFeedback, "⚠ Nenhuma unidade selecionada possui patrulha compatível. " + motivo);
                 return;
             }
         }
@@ -4695,18 +5086,42 @@ public class MenuComandoController : MonoBehaviour
                 break;
 
             case "LANCAR_MISSIL":
-                modoLancamentoMissilMapaAtivo = true;
                 modoMoverMapaAtivo = false;
                 if (desenhadorOrdens != null) desenhadorOrdens.CancelarModo();
                 FecharPainelSeguimento();
+                int lancadoresAreaPreparados = 0;
                 foreach (var u in unidadesSelecionadasMenu)
                 {
                     if (u == null) continue;
-                    SiloLancadorEstrategico silo = u.GetComponent<SiloLancadorEstrategico>();
-                    if (silo != null) silo.ArmarMarcacaoAlvo();
+                    SiloLancadorEstrategico[] silos = u.GetComponentsInChildren<SiloLancadorEstrategico>(true);
+                    for (int i = 0; i < silos.Length; i++)
+                    {
+                        if (silos[i] == null || !silos[i].isActiveAndEnabled) continue;
+                        silos[i].ArmarMarcacaoAlvo();
+                        lancadoresAreaPreparados++;
+                    }
+
+                    LancadorNaval[] lancadoresNavais = u.GetComponentsInChildren<LancadorNaval>(true);
+                    for (int i = 0; i < lancadoresNavais.Length; i++)
+                    {
+                        if (lancadoresNavais[i] != null && lancadoresNavais[i].isActiveAndEnabled)
+                            lancadoresAreaPreparados++;
+                    }
+
+                    ControleSubmarino[] submarinos = u.GetComponentsInChildren<ControleSubmarino>(true);
+                    for (int i = 0; i < submarinos.Length; i++)
+                    {
+                        if (submarinos[i] != null && submarinos[i].isActiveAndEnabled)
+                            lancadoresAreaPreparados++;
+                    }
                 }
-                SetText(ordemFeedback, "LANÇAMENTO ARMADO: clique no mapa para marcar a área de impacto.");
-                AdicionarLog("OPS", $"{snapshot.Count} unidade(s): marcação de alvo estratégico iniciada", "alerta");
+                modoLancamentoMissilMapaAtivo = lancadoresAreaPreparados > 0;
+                SetText(ordemFeedback, modoLancamentoMissilMapaAtivo
+                    ? $"LANÇAMENTO ARMADO ({lancadoresAreaPreparados} lançador(es)): clique no mapa para marcar o destino. Navios e submarinos precisam estar em modo manual."
+                    : "⚠ A seleção não possui silo, lançador naval ou submarino compatível com alvo por área.");
+                AdicionarLog("OPS", modoLancamentoMissilMapaAtivo
+                    ? $"Marcação de alvo preparada para {lancadoresAreaPreparados} lançador(es)."
+                    : "Marcação de alvo recusada: seleção sem lançador de área compatível.", modoLancamentoMissilMapaAtivo ? "alerta" : "normal");
                 break;
 
             case "MOVER":
@@ -4727,7 +5142,10 @@ public class MenuComandoController : MonoBehaviour
                 if (desenhadorOrdens != null)
                 {
                     desenhadorOrdens.IniciarModoPatrulha(snapshot);
-                    SetText(ordemFeedback, $"✔ [{snapshot.Count} UDS] → PATRULHANDO\nClique no mapa para marcar pontos. ENTER confirma. ESC ou Botão Direito cancela.");
+                    string avisoExcluidas = unidadesExcluidasPatrulha.Count > 0
+                        ? $"\n{unidadesExcluidasPatrulha.Count} unidade(s) excluída(s); motivos no registro OPS."
+                        : string.Empty;
+                    SetText(ordemFeedback, $"✔ [{snapshot.Count} UDS] → PATRULHA ARMADA\nSatélite: clique esquerdo marca; ENTER confirma; ESC/botão direito cancela. Mapa M: botão direito confirma.{avisoExcluidas}");
                     AdicionarLog("OPS", $"{snapshot.Count} unidades: modo patrulha iniciado — clique no mapa", "normal");
                 }
                 else
@@ -5052,13 +5470,13 @@ public class MenuComandoController : MonoBehaviour
                 float normX = localMousePos.x / W;
                 float normY = localMousePos.y / H;
 
-                float rangeXAntigo = (mundoMetade * 2f) / zoomAntigo;
-                float rangeZAntigo = (mundoMetade * 2f) / zoomAntigo;
+                float rangeXAntigo = (metadesMapaDetectadas.x * 2f) / zoomAntigo;
+                float rangeZAntigo = (metadesMapaDetectadas.y * 2f) / zoomAntigo;
                 float mundoMouseX = (mapaCentro.x - rangeXAntigo / 2f) + normX * rangeXAntigo;
                 float mundoMouseZ = (mapaCentro.y - rangeZAntigo / 2f) + (1f - normY) * rangeZAntigo;
 
-                float rangeXNovo = (mundoMetade * 2f) / mapaZoom;
-                float rangeZNovo = (mundoMetade * 2f) / mapaZoom;
+                float rangeXNovo = (metadesMapaDetectadas.x * 2f) / mapaZoom;
+                float rangeZNovo = (metadesMapaDetectadas.y * 2f) / mapaZoom;
 
                 mapaCentro.x = mundoMouseX - (normX - 0.5f) * rangeXNovo;
                 mapaCentro.y = mundoMouseZ - (0.5f - normY) * rangeZNovo;
@@ -5068,13 +5486,34 @@ public class MenuComandoController : MonoBehaviour
         }
     }
 
+    private void ControlarPanMapaTatico()
+    {
+        if (painelMapa == null || !mouseSobreMapaTatico || !limitesMapaInicializados)
+            return;
+
+        float horizontal = (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow) ? 1f : 0f)
+            - (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow) ? 1f : 0f);
+        float vertical = (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) ? 1f : 0f)
+            - (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow) ? 1f : 0f);
+        Vector2 direcao = new Vector2(horizontal, vertical);
+        if (direcao.sqrMagnitude <= 0.0001f)
+            return;
+
+        direcao.Normalize();
+        float larguraVista = (metadesMapaDetectadas.x * 2f) / Mathf.Max(0.2f, mapaZoom);
+        float alturaVista = (metadesMapaDetectadas.y * 2f) / Mathf.Max(0.2f, mapaZoom);
+        float passoPorSegundo = Mathf.Max(100f, larguraVista * 0.18f);
+        mapaCentro += direcao * (passoPorSegundo * Time.unscaledDeltaTime);
+        LimitarCentroMapa(larguraVista, alturaVista);
+    }
+
     private Vector3 ConverterLocalParaMundo(Vector2 localPos)
     {
         float W = painelMapa != null ? painelMapa.resolvedStyle.width : 500f;
         float H = painelMapa != null ? painelMapa.resolvedStyle.height : 500f;
 
-        float rangeX = (mundoMetade * 2f) / mapaZoom;
-        float rangeZ = (mundoMetade * 2f) / mapaZoom;
+        float rangeX = (metadesMapaDetectadas.x * 2f) / mapaZoom;
+        float rangeZ = (metadesMapaDetectadas.y * 2f) / mapaZoom;
 
         float normX = W > 0 ? (localPos.x / W) : 0.5f;
         float normY = H > 0 ? (localPos.y / H) : 0.5f;
@@ -5085,9 +5524,35 @@ public class MenuComandoController : MonoBehaviour
         return new Vector3(worldX, 0f, worldZ);
     }
 
+    private bool OrdemMapaAtiva()
+    {
+        return modoLancamentoMissilMapaAtivo || modoMoverMapaAtivo
+            || (desenhadorOrdens != null && (desenhadorOrdens.modoPatrulhaAtivo
+                || desenhadorOrdens.modoSeguirAtivo || desenhadorOrdens.modoAtaqueAtivo));
+    }
+
+    private bool CliqueSobreMarcadorMapa(VisualElement alvo)
+    {
+        for (VisualElement atual = alvo; atual != null && atual != painelMapa; atual = atual.parent)
+        {
+            if (atual.ClassListContains("mapa-unidade"))
+                return true;
+        }
+        return false;
+    }
+
     private void OnMapClicked(Vector2 localPos)
     {
-        Vector3 worldPos = ConverterLocalParaMundo(localPos);
+        ProcessarCliqueMapaTatico(ConverterLocalParaMundo(localPos));
+    }
+
+    private void ProcessarCliqueMapaTatico(Vector3 worldPos)
+    {
+        if (!DestinoDentroDoMapaGlobal(worldPos))
+        {
+            SetText(ordemFeedback, "⚠ Ponto fora dos limites do mapa global. Escolha um destino dentro da área jogável.");
+            return;
+        }
 
         if (modoLancamentoMissilMapaAtivo)
         {
@@ -5113,7 +5578,7 @@ public class MenuComandoController : MonoBehaviour
         {
             bool adicionado = desenhadorOrdens.AdicionarPontoPatrulhaDoMenu(worldPos);
             SetText(ordemFeedback, adicionado
-                ? $"✔ Ponto de patrulha adicionado em {worldPos.x:F0}, {worldPos.z:F0}\nENTER confirma. ESC ou Botão Direito cancela."
+                ? $"✔ Ponto de patrulha adicionado em {worldPos.x:F0}, {worldPos.z:F0}\nSatélite: ENTER confirma; ESC/botão direito cancela. No Mapa M, botão direito confirma."
                 : "⚠ Ponto naval ignorado: escolha uma área de água.");
         }
         else if (desenhadorOrdens.modoSeguirAtivo)
@@ -5135,19 +5600,114 @@ public class MenuComandoController : MonoBehaviour
         else if (desenhadorOrdens.modoAtaqueAtivo)
         {
             GameObject alvo = EncontrarUnidadeProxima(worldPos, 150f, true);
-            desenhadorOrdens.AplicarOrdemAtaqueDoMenu(worldPos, alvo != null ? alvo.transform : null);
-            if (alvo != null)
+            int aceitas = desenhadorOrdens.AplicarOrdemAtaqueDoMenu(worldPos, alvo != null ? alvo.transform : null);
+            if (aceitas > 0 && alvo != null)
             {
-                SetText(ordemFeedback, $"✔ Ordem ATAQUE enviada contra {alvo.name}.");
-                AdicionarLog("OPS", $"Ataque ao alvo {ObterNomeExibicao(alvo)} confirmado.", "alerta");
-                SetText(ordemFeedback, $"ATAQUE confirmado contra {ObterNomeExibicao(alvo)}.");
+                SetText(ordemFeedback, $"✔ Ataque aceito por {aceitas} unidade(s) contra {ObterNomeExibicao(alvo)}.");
+                AdicionarLog("OPS", $"Ataque aceito por {aceitas} unidade(s) contra {ObterNomeExibicao(alvo)}.", "alerta");
+            }
+            else if (aceitas > 0)
+            {
+                SetText(ordemFeedback, $"✔ Ataque de área aceito por {aceitas} unidade(s) para {worldPos.x:F0}, {worldPos.z:F0}.");
+                AdicionarLog("OPS", $"Ataque de área aceito por {aceitas} unidade(s) em {worldPos.x:F0}, {worldPos.z:F0}.", "alerta");
             }
             else
             {
-                SetText(ordemFeedback, $"✔ Ordem ATAQUE DE ÁREA enviada para {worldPos.x:F0}, {worldPos.z:F0}.");
-                AdicionarLog("OPS", $"Ataque de área confirmado em {worldPos.x:F0}, {worldPos.z:F0}.", "alerta");
+                SetText(ordemFeedback, "⚠ Nenhuma unidade aceitou o ataque. Confira combustível, alcance e tipo de alvo.");
+                AdicionarLog("OPS", $"Ataque recusado em {worldPos.x:F0}, {worldPos.z:F0}.", "alerta");
             }
         }
+    }
+
+    /// <summary>
+    /// Encaminha cliques feitos no Mapa M para a ordem ativa do menu satélite.
+    /// O ponto recebido já vem da câmera do Mapa M, não da câmera principal nem
+    /// da projeção do miniplano do menu.
+    /// </summary>
+    public bool TentarProcessarCliqueMapaM(Vector3 posicaoMundo, int botao)
+    {
+        if (!menuAberto)
+        {
+            return false;
+        }
+
+        if (desenhadorOrdens == null)
+        {
+            desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
+        }
+
+        bool modoPatrulha = desenhadorOrdens != null && desenhadorOrdens.modoPatrulhaAtivo;
+        bool modoSeguir = desenhadorOrdens != null && desenhadorOrdens.modoSeguirAtivo;
+        bool modoAtaque = desenhadorOrdens != null && desenhadorOrdens.modoAtaqueAtivo;
+
+        if (botao == 0)
+        {
+            if (!modoLancamentoMissilMapaAtivo && !modoMoverMapaAtivo
+                && !modoPatrulha && !modoSeguir && !modoAtaque)
+            {
+                return false;
+            }
+
+            ProcessarCliqueMapaTatico(posicaoMundo);
+            return true;
+        }
+
+        if (botao != 1)
+        {
+            return false;
+        }
+
+        // No Mapa M o botão direito confirma a rota de patrulha, como no
+        // controle legado do mapa. A interface do satélite ainda pode cancelar
+        // pelo botão direito diretamente sobre o próprio painel.
+        if (modoPatrulha)
+        {
+            int aceitas = desenhadorOrdens.ConfirmarPatrulhaDoMenu();
+            string resumo = string.IsNullOrWhiteSpace(desenhadorOrdens.UltimoResumoPatrulha)
+                ? (aceitas > 0 ? $"Patrulha enviada para {aceitas} unidade(s)." : "Nenhuma unidade aceitou a patrulha.")
+                : desenhadorOrdens.UltimoResumoPatrulha;
+            SetText(ordemFeedback, resumo);
+            AdicionarLog("OPS", $"Patrulha confirmada no Mapa M: {aceitas} aceita(s).", aceitas > 0 ? "normal" : "alerta");
+            return true;
+        }
+
+        // Para MOVER e lançamento por área, os dois botões do mouse indicam o
+        // ponto no Mapa M. Isso também evita que o clique caia no mundo 3D.
+        if (modoLancamentoMissilMapaAtivo)
+        {
+            EnviarOrdemLancamentoMissilMapa(posicaoMundo);
+            return true;
+        }
+
+        if (modoMoverMapaAtivo)
+        {
+            EnviarOrdemMoverMapa(posicaoMundo);
+            return true;
+        }
+
+        if (modoSeguir || modoAtaque)
+        {
+            desenhadorOrdens.CancelarModo();
+            FecharPainelSeguimento();
+            SetText(ordemFeedback, "Ordem cancelada.");
+            AdicionarLog("OPS", "Ação tática cancelada no Mapa M.", "normal");
+            return true;
+        }
+
+        if (EnviarDisparoManualNavalDoMapa(posicaoMundo))
+        {
+            return true;
+        }
+
+        // Com o menu aberto, a seleção mantida por ele é a autoridade para a
+        // ordem; GerenteSelecao pode conter outra seleção ou estar vazia.
+        if (unidadesSelecionadasMenu.Count > 0)
+        {
+            EnviarOrdemMoverMapa(posicaoMundo);
+            return true;
+        }
+
+        return false;
     }
 
     private void OnMapRightClicked(Vector2 localPos)
@@ -5169,6 +5729,16 @@ public class MenuComandoController : MonoBehaviour
         if (desenhadorOrdens == null)
             desenhadorOrdens = FindFirstObjectByType<DesenharLinhasOrdem>();
 
+        bool cancelandoOrdemTatica = desenhadorOrdens != null
+            && (desenhadorOrdens.modoPatrulhaAtivo
+                || desenhadorOrdens.modoSeguirAtivo
+                || desenhadorOrdens.modoAtaqueAtivo);
+        if (!cancelandoOrdemTatica
+            && EnviarDisparoManualNavalDoMapa(ConverterLocalParaMundo(localPos)))
+        {
+            return;
+        }
+
         if (desenhadorOrdens != null)
         {
             desenhadorOrdens.CancelarModo();
@@ -5178,27 +5748,152 @@ public class MenuComandoController : MonoBehaviour
         }
     }
 
+    private bool EnviarDisparoManualNavalDoMapa(Vector3 destino)
+    {
+        Vector3 destinoNaval = destino;
+        destinoNaval.y = NavalPlacementResolver.ResolveSeaLevel();
+        int tentadas = 0;
+        int aceitas = 0;
+        string primeiroMotivo = string.Empty;
+
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (unidade == null) continue;
+
+            LancadorNaval[] lancadores = unidade.GetComponentsInChildren<LancadorNaval>(true);
+            for (int j = 0; j < lancadores.Length; j++)
+            {
+                LancadorNaval lancador = lancadores[j];
+                if (lancador == null || !lancador.isActiveAndEnabled
+                    || lancador.modoAtual != LancadorNaval.ModoOperacao.Manual)
+                {
+                    continue;
+                }
+
+                tentadas++;
+                if (lancador.TentarLancarCoordenado(destinoNaval, null, false, out string motivo))
+                {
+                    aceitas++;
+                }
+                else if (string.IsNullOrEmpty(primeiroMotivo))
+                {
+                    primeiroMotivo = motivo;
+                }
+            }
+
+            ControleSubmarino[] submarinos = unidade.GetComponentsInChildren<ControleSubmarino>(true);
+            for (int j = 0; j < submarinos.Length; j++)
+            {
+                ControleSubmarino submarino = submarinos[j];
+                if (submarino == null || !submarino.isActiveAndEnabled
+                    || submarino.modoAtual != ControleSubmarino.ModoOperacao.Manual)
+                {
+                    continue;
+                }
+
+                tentadas++;
+                if (submarino.TentarLancarCoordenado(destinoNaval, null, false, out string motivo))
+                {
+                    aceitas++;
+                }
+                else if (string.IsNullOrEmpty(primeiroMotivo))
+                {
+                    primeiroMotivo = motivo;
+                }
+            }
+        }
+
+        if (tentadas == 0)
+        {
+            return false;
+        }
+
+        string resumo = aceitas > 0
+            ? $"✔ Disparo manual aceito por {aceitas} lançador(es) para {destino.x:F0}, {destino.z:F0}."
+            : $"⚠ Disparo manual recusado para {destino.x:F0}, {destino.z:F0}.";
+        if (tentadas > aceitas) resumo += $" {tentadas - aceitas} rejeitado(s).";
+        if (aceitas == 0 && !string.IsNullOrEmpty(primeiroMotivo)) resumo += $" Motivo: {primeiroMotivo}.";
+        SetText(ordemFeedback, resumo);
+        AdicionarLog("OPS", $"Disparo manual pelo mapa: {aceitas} aceito(s), {tentadas - aceitas} rejeitado(s) em {destino.x:F0}, {destino.z:F0}.", aceitas > 0 ? "alerta" : "normal");
+        return true;
+    }
+
     private void EnviarOrdemLancamentoMissilMapa(Vector3 destino)
     {
         int ordenadas = 0;
+        int rejeitadas = 0;
+        string primeiroMotivo = string.Empty;
         foreach (var unidade in unidadesSelecionadasMenu)
         {
             if (unidade == null) continue;
-            SiloLancadorEstrategico silo = unidade.GetComponent<SiloLancadorEstrategico>();
-            if (silo != null && silo.TentarLancarNaArea(destino)) ordenadas++;
+
+            SiloLancadorEstrategico[] silos = unidade.GetComponentsInChildren<SiloLancadorEstrategico>(true);
+            for (int i = 0; i < silos.Length; i++)
+            {
+                SiloLancadorEstrategico silo = silos[i];
+                if (silo == null || !silo.isActiveAndEnabled) continue;
+                if (silo.TentarLancarNaArea(destino)) ordenadas++;
+                else rejeitadas++;
+            }
+
+            Vector3 destinoNaval = destino;
+            destinoNaval.y = NavalPlacementResolver.ResolveSeaLevel();
+            LancadorNaval[] lancadoresNavais = unidade.GetComponentsInChildren<LancadorNaval>(true);
+            for (int i = 0; i < lancadoresNavais.Length; i++)
+            {
+                LancadorNaval lancador = lancadoresNavais[i];
+                if (lancador == null || !lancador.isActiveAndEnabled) continue;
+                if (lancador.TentarLancarCoordenado(destinoNaval, null, false, out string motivo))
+                {
+                    ordenadas++;
+                }
+                else
+                {
+                    rejeitadas++;
+                    if (string.IsNullOrEmpty(primeiroMotivo)) primeiroMotivo = motivo;
+                }
+            }
+
+            ControleSubmarino[] submarinos = unidade.GetComponentsInChildren<ControleSubmarino>(true);
+            for (int i = 0; i < submarinos.Length; i++)
+            {
+                ControleSubmarino submarino = submarinos[i];
+                if (submarino == null || !submarino.isActiveAndEnabled) continue;
+                if (submarino.TentarLancarCoordenado(destinoNaval, null, false, out string motivo))
+                {
+                    ordenadas++;
+                }
+                else
+                {
+                    rejeitadas++;
+                    if (string.IsNullOrEmpty(primeiroMotivo)) primeiroMotivo = motivo;
+                }
+            }
         }
 
         modoLancamentoMissilMapaAtivo = false;
-        SetText(ordemFeedback, ordenadas > 0
-            ? $"Lançamento estratégico preparado para {ordenadas} base(s)."
-            : "Nenhuma base estratégica aceitou o alvo.");
-        AdicionarLog("OPS", $"Ordem de lançamento estratégico: {ordenadas} base(s).", ordenadas > 0 ? "alerta" : "normal");
+        string alvoTexto = $"{destino.x:F0}, {destino.z:F0}";
+        string resumo = ordenadas > 0
+            ? $"✔ {ordenadas} lançador(es) aceitaram o destino {alvoTexto}."
+            : $"⚠ Nenhum lançador aceitou o destino {alvoTexto}.";
+        if (rejeitadas > 0) resumo += $" {rejeitadas} rejeitado(s).";
+        if (ordenadas == 0 && !string.IsNullOrEmpty(primeiroMotivo)) resumo += $" Motivo: {primeiroMotivo}.";
+        SetText(ordemFeedback, resumo);
+        AdicionarLog("OPS", $"Lançamento para {alvoTexto}: {ordenadas} aceito(s), {rejeitadas} rejeitado(s).", ordenadas > 0 ? "alerta" : "normal");
     }
 
     private void EnviarOrdemMoverMapa(Vector3 destino)
     {
+        if (!DestinoDentroDoMapaGlobal(destino))
+        {
+            SetText(ordemFeedback, "⚠ Destino fora dos limites do mapa global. Escolha um ponto dentro da área jogável.");
+            return;
+        }
+
         int ordenadas = 0;
         int rejeitadas = 0;
+        List<string> motivosRecusa = new List<string>(4);
         float nivelMar = NavalPlacementResolver.ResolveSeaLevel();
 
         for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
@@ -5217,6 +5912,9 @@ public class MenuComandoController : MonoBehaviour
                     && !NavalPlacementResolver.TryResolveNearestWaterPoint(destinoUnidade, 900f, out destinoUnidade))
                 {
                     rejeitadas++;
+                    string motivoAgua = $"{unidade.name}: sem água navegável em um raio de 900 m";
+                    if (motivosRecusa.Count < 4) motivosRecusa.Add(motivoAgua);
+                    AdicionarLog("OPS", $"{motivoAgua}; MOVER recusado.", "alerta");
                     continue;
                 }
             }
@@ -5224,20 +5922,46 @@ public class MenuComandoController : MonoBehaviour
             if (unidade.EmitirOrdemMover(destinoUnidade, true))
             {
                 ordenadas++;
+                string ajuste = unidade.EhUnidadeNaval()
+                    && Vector2.Distance(new Vector2(destino.x, destino.z), new Vector2(destinoUnidade.x, destinoUnidade.z)) > 0.1f
+                    ? "; destino ajustado para água navegável"
+                    : string.Empty;
+                AdicionarLog("OPS", $"{unidade.name}: MOVER aceito para {destinoUnidade.x:F0}, {destinoUnidade.z:F0}{ajuste}.", "normal");
             }
             else
             {
                 rejeitadas++;
+                string motivo = string.IsNullOrWhiteSpace(unidade.UltimoMotivoRecusaOrdem)
+                    ? "controlador recusou o destino sem informar o motivo"
+                    : unidade.UltimoMotivoRecusaOrdem;
+                string detalhe = $"{unidade.name}: {motivo}";
+                if (motivosRecusa.Count < 4) motivosRecusa.Add(detalhe);
+                AdicionarLog("OPS", $"{detalhe}; MOVER recusado.", "alerta");
             }
         }
 
         modoMoverMapaAtivo = false;
         string resumo = ordenadas > 0
-            ? $"✔ {ordenadas} unidade(s) em movimento para {destino.x:F0}, {destino.z:F0}."
-            : "⚠ Nenhuma unidade aceitou o destino selecionado.";
+            ? $"✔ {ordenadas} unidade(s) aceitaram o destino {destino.x:F0}, {destino.z:F0}."
+            : "⚠ Nenhuma unidade aceitou o destino.";
         if (rejeitadas > 0) resumo += $" {rejeitadas} rejeitada(s).";
+        if (motivosRecusa.Count > 0)
+        {
+            resumo += " Motivos: " + string.Join("; ", motivosRecusa);
+            int outros = rejeitadas - motivosRecusa.Count;
+            if (outros > 0) resumo += $"; mais {outros} no registro OPS";
+            resumo += ".";
+        }
         SetText(ordemFeedback, resumo);
         AdicionarLog("OPS", $"Ordem MOVER enviada: {ordenadas} aceita(s), {rejeitadas} rejeitada(s).", ordenadas > 0 ? "normal" : "alerta");
+    }
+
+    private static bool DestinoDentroDoMapaGlobal(Vector3 destino)
+    {
+        GlobalTerrainStreamer streamer = FindFirstObjectByType<GlobalTerrainStreamer>();
+        GlobalWorldDefinition mundo = streamer != null ? streamer.world : null;
+        return mundo == null || (destino.x >= mundo.MapMinX && destino.x <= mundo.MapMaxX
+            && destino.z >= mundo.MapMinZ && destino.z <= mundo.MapMaxZ);
     }
 
     private void AtualizarCameraSeguimento(GameObject alvo)
@@ -5447,8 +6171,8 @@ public class MenuComandoController : MonoBehaviour
 
     private Vector2 ConvertMundoParaPixel(Vector3 pos3D, float W, float H)
     {
-        float rangeX = (mundoMetade * 2f) / mapaZoom;
-        float rangeZ = (mundoMetade * 2f) / mapaZoom;
+        float rangeX = (metadesMapaDetectadas.x * 2f) / mapaZoom;
+        float rangeZ = (metadesMapaDetectadas.y * 2f) / mapaZoom;
 
         float pctX = (pos3D.x - (mapaCentro.x - rangeX / 2f)) / rangeX;
         float pctZ = 1f - (pos3D.z - (mapaCentro.y - rangeZ / 2f)) / rangeZ;

@@ -20,6 +20,15 @@ public sealed class ReformaAircraftPlayModeTests
     private Component originalMenuManager;
     private GameObject originalMenuPanel;
     private Component originalMenuCanvasGroup;
+    private Component fuelIndustrial;
+    private string fuelStockResourceId;
+    private int fuelStockTeamId;
+    private double fuelStockBeforeFixture;
+    private bool fuelStockSnapshotCaptured;
+    private object manpowerCountryFixture;
+    private IList manpowerCountriesFixture;
+    private bool manpowerCountryCreatedForFixture;
+    private readonly Dictionary<string, object> manpowerSnapshot = new Dictionary<string, object>();
     private static Type TypeOf(string name) => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(name)).First(t => t != null);
     private static void Set(object target, string name, object value) => target.GetType().GetField(name, Members).SetValue(target, value);
     private static object Read(object target, string name) => target.GetType().GetField(name, Members).GetValue(target);
@@ -44,9 +53,39 @@ public sealed class ReformaAircraftPlayModeTests
         return go.AddComponent(TypeOf(name));
     }
 
+    [UnityTest]
+    public IEnumerator AircraftRegistrationTreatsCarrierPatioFallbackAsSuccessful()
+    {
+        Component carrier = Create("GerenciadorPortaAvioes");
+        carrier.gameObject.SetActive(true);
+
+        Component aircraft = Create("ControleAviao");
+        Set(aircraft, "rodas", new List<Transform>());
+        Set(aircraft, "rotacoesOriginaisRodas", new List<Quaternion>());
+        aircraft.gameObject.SetActive(true);
+
+        // ControleAviao inicializa suas listas visuais em Start.
+        yield return null;
+
+        MethodInfo register = carrier.GetType().GetMethod("RegistrarAeronaveRecebida", Members);
+        Assert.IsNotNull(register);
+        bool registered = (bool)register.Invoke(carrier, new object[] { aircraft });
+        IList patio = (IList)Read(carrier, "avioesNoPatio");
+        IList hangar = (IList)Read(carrier, "avioesNoHangar");
+
+        Assert.IsTrue(registered, "O retorno deve refletir o registro no pátio ou no hangar.");
+        Assert.IsTrue(patio.Contains(aircraft) || hangar.Contains(aircraft),
+            "A aeronave deve pertencer a uma das listas locais do porta-aviões.");
+        Assert.AreSame(carrier, Read(aircraft, "baseEstacionamentoAtual"));
+        Assert.AreSame(carrier, Read(aircraft, "aeroportoOrigem"));
+
+        yield return null;
+    }
+
     [UnityTearDown]
     public IEnumerator Cleanup()
     {
+        RestaurarEstoqueNacionalDeCombustivel();
         if (originalResourcesManager != null)
         {
             Set(originalResourcesManager, "dinheiro", originalResourceBalance);
@@ -64,6 +103,121 @@ public sealed class ReformaAircraftPlayModeTests
         foreach (var asset in assets) if (asset != null) UnityEngine.Object.Destroy(asset);
         assets.Clear();
         yield return null;
+        RestaurarEfetivoDoJogador();
+    }
+
+    private void PrepararEfetivoDoJogador()
+    {
+        Type governmentType = TypeOf("SistemaGovernoMundial");
+        PropertyInfo instanceProperty = governmentType.GetProperty(
+            "Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        object government = instanceProperty.GetValue(null, null);
+        if (government == null)
+        {
+            governmentType.GetMethod("GarantirInstancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .Invoke(null, null);
+            government = instanceProperty.GetValue(null, null);
+        }
+        Assert.IsNotNull(government, "A fixture C-700 precisa do governo para validar o efetivo normal de uma aeronave.");
+
+        manpowerCountriesFixture = (IList)Read(government, "paises");
+        manpowerCountryFixture = governmentType.GetMethod("ObterPais", Members)
+            .Invoke(government, new object[] { 1 });
+        if (manpowerCountryFixture == null)
+        {
+            manpowerCountryFixture = Activator.CreateInstance(TypeOf("DadosPaisGoverno"));
+            Set(manpowerCountryFixture, "teamId", 1);
+            manpowerCountriesFixture.Add(manpowerCountryFixture);
+            manpowerCountryCreatedForFixture = true;
+        }
+
+        string[] snapshotFields =
+        {
+            "alistaveis", "populacaoCivil", "populacaoMilitarAtiva",
+            "reservistas", "populacao", "populacaoMaxima"
+        };
+        manpowerSnapshot.Clear();
+        foreach (string field in snapshotFields) manpowerSnapshot[field] = Read(manpowerCountryFixture, field);
+
+        Set(manpowerCountryFixture, "alistaveis", 100);
+        Set(manpowerCountryFixture, "populacaoCivil", 100);
+        Set(manpowerCountryFixture, "populacaoMilitarAtiva", 0);
+        Set(manpowerCountryFixture, "reservistas", 0);
+        Set(manpowerCountryFixture, "populacao", 200);
+        Set(manpowerCountryFixture, "populacaoMaxima", 200);
+    }
+
+    private void RestaurarEfetivoDoJogador()
+    {
+        if (manpowerCountryFixture != null)
+        {
+            foreach (KeyValuePair<string, object> field in manpowerSnapshot)
+            {
+                Set(manpowerCountryFixture, field.Key, field.Value);
+            }
+        }
+        if (manpowerCountryCreatedForFixture && manpowerCountriesFixture != null && manpowerCountryFixture != null)
+        {
+            manpowerCountriesFixture.Remove(manpowerCountryFixture);
+        }
+        manpowerCountryFixture = null;
+        manpowerCountriesFixture = null;
+        manpowerCountryCreatedForFixture = false;
+        manpowerSnapshot.Clear();
+    }
+
+    private void PrepararEstoqueNacionalDeCombustivel(int teamId, double quantidadeAdicional)
+    {
+        Type governmentType = TypeOf("SistemaGovernoMundial");
+        governmentType.GetMethod("GarantirInstancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .Invoke(null, null);
+
+        Type industrialType = TypeOf("SistemaIndustrialNacional");
+        fuelIndustrial = industrialType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .GetValue(null, null) as Component;
+        Assert.IsNotNull(fuelIndustrial, "A regressão de abastecimento precisa do estoque industrial nacional.");
+        fuelStockResourceId = (string)TypeOf("IndustriaIds")
+            .GetField("CombustivelAviacao", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .GetValue(null);
+        fuelStockTeamId = teamId;
+
+        MethodInfo obterQuantidade = industrialType.GetMethod(
+            "ObterQuantidadePais", Members, null, new[] { typeof(int), typeof(string) }, null);
+        MethodInfo adicionar = industrialType.GetMethod(
+            "TentarAdicionar", Members, null, new[] { typeof(string), typeof(string), typeof(double) }, null);
+        fuelStockBeforeFixture = (double)obterQuantidade.Invoke(fuelIndustrial, new object[] { teamId, fuelStockResourceId });
+        fuelStockSnapshotCaptured = true;
+        bool adicionado = (bool)adicionar.Invoke(
+            fuelIndustrial,
+            new object[] { teamId.ToString(), fuelStockResourceId, quantidadeAdicional });
+        Assert.IsTrue(adicionado, "Não foi possível preparar combustível de aviação para a fixture.");
+    }
+
+    private void RestaurarEstoqueNacionalDeCombustivel()
+    {
+        if (!fuelStockSnapshotCaptured || fuelIndustrial == null || string.IsNullOrEmpty(fuelStockResourceId)) return;
+
+        Type industrialType = fuelIndustrial.GetType();
+        MethodInfo obterQuantidade = industrialType.GetMethod(
+            "ObterQuantidadePais", Members, null, new[] { typeof(int), typeof(string) }, null);
+        MethodInfo adicionar = industrialType.GetMethod(
+            "TentarAdicionar", Members, null, new[] { typeof(string), typeof(string), typeof(double) }, null);
+        MethodInfo consumir = industrialType.GetMethod(
+            "TentarConsumir", Members, null, new[] { typeof(string), typeof(string), typeof(double) }, null);
+        double atual = (double)obterQuantidade.Invoke(fuelIndustrial, new object[] { fuelStockTeamId, fuelStockResourceId });
+        if (atual > fuelStockBeforeFixture)
+        {
+            consumir.Invoke(fuelIndustrial, new object[] { fuelStockTeamId.ToString(), fuelStockResourceId, atual - fuelStockBeforeFixture });
+        }
+        else if (atual < fuelStockBeforeFixture)
+        {
+            adicionar.Invoke(fuelIndustrial, new object[] { fuelStockTeamId.ToString(), fuelStockResourceId, fuelStockBeforeFixture - atual });
+        }
+
+        fuelStockSnapshotCaptured = false;
+        fuelIndustrial = null;
+        fuelStockResourceId = null;
+        fuelStockTeamId = 0;
     }
 
     private Terrain CreateRaisedLandFixture()
@@ -227,6 +381,7 @@ public sealed class ReformaAircraftPlayModeTests
     [UnityTest]
     public IEnumerator AirportPurchaseReturnsSuccessOnlyAfterSpawningAircraft()
     {
+        PrepararEfetivoDoJogador();
         var terrainData = new TerrainData
         {
             heightmapResolution = 33,
@@ -267,6 +422,7 @@ public sealed class ReformaAircraftPlayModeTests
     [UnityTest]
     public IEnumerator AirportPurchaseRejectedOnWaterDoesNotReportSuccessOrSpawn()
     {
+        PrepararEfetivoDoJogador();
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
         water.name = "Regression_Water_Surface";
         water.transform.position = new Vector3(5000f, 0f, 5000f);
@@ -304,10 +460,15 @@ public sealed class ReformaAircraftPlayModeTests
         Component airport = CreatePlayerAirport(new Vector3(50f, 30f, 50f));
         Component resources = PrepareResources(1000L);
         Component gameManager = Create("GerenteDeJogo");
+        PrepararEfetivoDoJogador();
         GameObject aircraftPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
         aircraftPrefab.name = "Regression_MenuAircraftPrefab";
         aircraftPrefab.transform.position = new Vector3(80f, 30f, 80f);
         objects.Add(aircraftPrefab);
+        Component aircraftIdentity = aircraftPrefab.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(aircraftIdentity, "teamID", 1);
+        Set(aircraftIdentity, "tipoUnidade", Enum.Parse(TypeOf("TipoUnidade"), "Aereo"));
+        Set(aircraftIdentity, "militaresConsumidos", 2);
         ScriptableObject item = CreateAircraftCard(aircraftPrefab, 200L);
         Component menu = PrepareConstructionMenu(gameManager);
 
@@ -322,9 +483,156 @@ public sealed class ReformaAircraftPlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator MenuC700PurchaseWithoutParkingRefundsAndDoesNotSpawn()
+    {
+        CreateRaisedLandFixture();
+        Component airport = CreatePlayerAirport(new Vector3(50f, 30f, 50f));
+        Component resources = PrepareResources(1000L);
+        Component gameManager = Create("GerenteDeJogo");
+        PrepararEfetivoDoJogador();
+        var aircraftPrefab = new GameObject("Regression_C700PurchasePrefab");
+        aircraftPrefab.SetActive(false);
+        objects.Add(aircraftPrefab);
+        Component prefabIdentity = aircraftPrefab.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(prefabIdentity, "teamID", 1);
+        Set(prefabIdentity, "tipoUnidade", Enum.Parse(TypeOf("TipoUnidade"), "Aereo"));
+        Set(prefabIdentity, "militaresConsumidos", 2);
+        aircraftPrefab.AddComponent(TypeOf("C700TransporteAereo"));
+        ScriptableObject item = CreateAircraftCard(aircraftPrefab, 200L);
+        Component menu = PrepareConstructionMenu(gameManager);
+
+        Assert.IsNull(airport.GetType().GetMethod("ObterParadaRecebimentoTransporteAereo", Members)
+            .Invoke(airport, null), "A fixture precisa representar um aeroporto realmente sem vaga C-700.");
+
+        menu.GetType().GetMethod("ProduzirUnidadeAerea", Members)
+            .Invoke(menu, new object[] { item, 1, null });
+        yield return null;
+
+        Component spawnedC700 = Resources.FindObjectsOfTypeAll(TypeOf("C700TransporteAereo"))
+            .Cast<Component>()
+            .FirstOrDefault(c => c != null && c.gameObject.name == "Regression_C700PurchasePrefab(Clone)");
+        if (spawnedC700 != null && !objects.Contains(spawnedC700.gameObject))
+        {
+            objects.Add(spawnedC700.gameObject);
+        }
+
+        Assert.AreEqual(1000L, Read(resources, "dinheiro"),
+            "Sem vaga de recebimento C-700, a compra deve ser recusada e integralmente reembolsada.");
+        Assert.IsNull(spawnedC700,
+            "Sem vaga de recebimento, o aeroporto não deve criar uma aeronave C-700 que ficará oculta.");
+        Assert.AreEqual(0, ((IList)Read(airport, "transportesC700NoPatio")).Count,
+            "Uma compra recusada não deve registrar um C-700 no pátio.");
+    }
+
+    [UnityTest]
+    public IEnumerator AiQueuedC700PurchaseWithoutParkingDoesNotChargeOrEnqueue()
+    {
+        Component airport = Create("GerenciadorAeroporto");
+        airport.name = "Regression_AiAirportWithoutC700Parking";
+        Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(identity, "teamID", 2);
+        airport.gameObject.SetActive(true);
+        Component resources = PrepareResources(1000L);
+
+        var aircraftPrefab = new GameObject("Regression_AiC700WithoutParkingPrefab");
+        aircraftPrefab.SetActive(false);
+        objects.Add(aircraftPrefab);
+        aircraftPrefab.AddComponent(TypeOf("C700TransporteAereo"));
+
+        MethodInfo purchase = airport.GetType().GetMethod("TentarComprarAviaoComPagamento", Members);
+        Assert.IsNotNull(purchase);
+        bool accepted = (bool)purchase.Invoke(airport, new object[] { aircraftPrefab, 200L });
+        Queue<GameObject> queue = (Queue<GameObject>)Read(airport, "_filaSpawnAeronavesIA");
+
+        Assert.IsFalse(accepted,
+            "Uma compra paga não pode ser aceita antes de validar a vaga de recebimento exigida pelo C-700.");
+        Assert.AreEqual(1000L, Read(resources, "dinheiro"),
+            "A compra de IA recusada antes do spawn não pode debitar o caixa do jogador.");
+        Assert.IsEmpty(queue, "A compra recusada não deve deixar pedido órfão na fila de spawn.");
+        Assert.IsNull(GameObject.Find(aircraftPrefab.name + " (Clone)"),
+            "Uma compra recusada não deve instanciar o C-700.");
+        yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator AiAircraftQueueKeepsOrderWhenAirportRejectsSpawn()
+    {
+        Component airport = Create("GerenciadorAeroporto");
+        airport.name = "Regression_AiAirportQueueRetry";
+        Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(identity, "teamID", 2);
+        airport.gameObject.SetActive(true);
+
+        var aircraftPrefab = new GameObject("Regression_AiC700QueueRetryPrefab");
+        aircraftPrefab.SetActive(false);
+        objects.Add(aircraftPrefab);
+        aircraftPrefab.AddComponent(TypeOf("C700TransporteAereo"));
+
+        Queue<GameObject> queue = (Queue<GameObject>)Read(airport, "_filaSpawnAeronavesIA");
+        queue.Enqueue(aircraftPrefab);
+        Set(airport, "_primeiroEnfileiramentoAeronaveIA", Time.unscaledTime - 5f);
+        Set(airport, "_proximoSpawnAeronaveIA", 0f);
+        airport.GetType().GetMethod("ProcessarFilaCompraAeronavesIA", Members).Invoke(airport, null);
+
+        Assert.AreEqual(1, queue.Count,
+            "A fila deve preservar uma compra aceita quando o spawn é recusado por uma condição que pode ser corrigida.");
+        Assert.IsNull(GameObject.Find(aircraftPrefab.name + " (Clone)"),
+            "A recusa temporária não pode criar aeronave parcial.");
+        yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator MenuC700PurchaseWithParkingDebitsAndRegistersAtAirport()
+    {
+        CreateRaisedLandFixture();
+        Component airport = CreatePlayerAirport(new Vector3(50f, 30f, 50f));
+        Component resources = PrepareResources(1000L);
+        Component gameManager = Create("GerenteDeJogo");
+        PrepararEfetivoDoJogador();
+
+        var parking = new GameObject("Parada_grande_Regression_C700");
+        parking.transform.SetParent(airport.transform, false);
+        objects.Add(parking);
+        ((IList)Read(airport, "waypointsPatio")).Add(parking.transform);
+
+        var aircraftPrefab = new GameObject("Regression_C700WithParkingPrefab");
+        objects.Add(aircraftPrefab);
+        Component prefabIdentity = aircraftPrefab.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(prefabIdentity, "teamID", 1);
+        Set(prefabIdentity, "tipoUnidade", Enum.Parse(TypeOf("TipoUnidade"), "Aereo"));
+        Set(prefabIdentity, "militaresConsumidos", 2);
+        aircraftPrefab.AddComponent(TypeOf("C700TransporteAereo"));
+        ScriptableObject item = CreateAircraftCard(aircraftPrefab, 200L);
+        Component menu = PrepareConstructionMenu(gameManager);
+
+        Assert.IsNotNull(airport.GetType().GetMethod("ObterParadaRecebimentoTransporteAereo", Members)
+            .Invoke(airport, null), "A fixture precisa fornecer uma vaga física para o C-700.");
+
+        menu.GetType().GetMethod("ProduzirUnidadeAerea", Members)
+            .Invoke(menu, new object[] { item, 1, null });
+        yield return null;
+
+        Component spawnedC700 = Resources.FindObjectsOfTypeAll(TypeOf("C700TransporteAereo"))
+            .Cast<Component>()
+            .FirstOrDefault(c => c != null && c.gameObject.name == "Regression_C700WithParkingPrefab(Clone)");
+        if (spawnedC700 != null && !objects.Contains(spawnedC700.gameObject))
+        {
+            objects.Add(spawnedC700.gameObject);
+        }
+
+        Assert.AreEqual(800L, Read(resources, "dinheiro"),
+            "Com vaga disponível, a compra direta deve debitar o valor uma única vez.");
+        Assert.IsNotNull(spawnedC700, "Com vaga válida, o aeroporto deve manter o C-700 comprado.");
+        Assert.IsTrue(((IList)Read(airport, "transportesC700NoPatio")).Contains(spawnedC700),
+            "O C-700 aceito deve ser registrado na lista local do aeroporto.");
+        Assert.AreSame(airport, Read(spawnedC700, "aeroportoOrigem"));
+    }
+
+    [UnityTest]
     public IEnumerator MenuAircraftPurchaseRefundsWhenAirportRejectsWaterSpawn()
     {
         CreateRaisedLandFixture();
+        PrepararEfetivoDoJogador();
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
         water.name = "Regression_Water_Surface";
         water.transform.position = new Vector3(5000f, 0f, 5000f);
@@ -431,12 +739,16 @@ public sealed class ReformaAircraftPlayModeTests
     [UnityTest]
     public IEnumerator AircraftLandingServiceRefuelsRearmsAndResumesPatrol()
     {
+        PrepararEstoqueNacionalDeCombustivel(1, 80d);
         Component airport = Create("GerenciadorAeroporto");
         ConfigureMinimalLandingRoute(airport);
         Component unit = Create("ControleUnidade");
         Component aircraft = Create("ControleAviao");
         Component fuel = aircraft.gameObject.AddComponent(TypeOf("CombustivelUnidade"));
         Component launcher = aircraft.gameObject.AddComponent(TypeOf("LancadorMisselCaca"));
+        Component identity = aircraft.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
+        Set(identity, "teamID", 1);
+        Set(identity, "tipoUnidade", Enum.Parse(TypeOf("TipoUnidade"), "Aereo"));
 
         // OnValidate auto-binds a missile prefab in the Editor. Keep this test
         // on the missing-prefab service path it is meant to exercise.
@@ -465,6 +777,13 @@ public sealed class ReformaAircraftPlayModeTests
         Assert.IsNotNull(resume);
         service.Invoke(aircraft, null);
         Assert.AreEqual(100f, (float)Read(fuel, "combustivelAtual"));
+        MethodInfo obterQuantidade = fuelIndustrial.GetType().GetMethod(
+            "ObterQuantidadePais", Members, null, new[] { typeof(int), typeof(string) }, null);
+        Assert.AreEqual(
+            fuelStockBeforeFixture,
+            (double)obterQuantidade.Invoke(fuelIndustrial, new object[] { fuelStockTeamId, fuelStockResourceId }),
+            0.01d,
+            "O hangar deve debitar exatamente as 80 unidades de combustível de aviação usadas para completar o tanque.");
         Assert.AreEqual(4, (int)Read(launcher, "municaoAtual"));
         resume.Invoke(aircraft, null);
 

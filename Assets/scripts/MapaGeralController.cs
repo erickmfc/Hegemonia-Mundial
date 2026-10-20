@@ -36,6 +36,7 @@ public class MapaGeralController : MonoBehaviour
     private Quaternion cameraPrincipalRotacaoAntesDoMapa;
     private float cameraPrincipalFovAntesDoMapa;
     private bool snapshotCameraPrincipalValido;
+    private const string ChaveEstadoCameraMapa = "hegemonia.mapa.estrategico.";
     private bool fogOriginal;
     private Color fogColorOriginal;
     private float fogStartOriginal;
@@ -96,6 +97,7 @@ public class MapaGeralController : MonoBehaviour
     // Estilos IMGUI sao reutilizados enquanto o mapa esta aberto para nao alocar por repaint.
     private GUIStyle _tituloMapaStyle;
     private GUIStyle _zoomMapaStyle;
+    private GUIStyle _numeroMarcacaoCameraStyle;
     private GUIStyle _legendaMapaStyle;
     private GUIStyle _trianguloSombraStyle;
     private GUIStyle _trianguloCorStyle;
@@ -125,6 +127,19 @@ public class MapaGeralController : MonoBehaviour
     // --- Modo de seguir unidade selecionada ---
     private bool _seguindoAlvo = false;
     private Transform _alvoSeguir = null;
+    private const int MaximoMarcacoesCamera = 3;
+    private const float DistanciaMinimaArrastoMarcacao = 7f;
+    private static readonly string[] RotulosMarcacaoCamera = { "1", "2", "3" };
+    private readonly List<Vector3> _marcacoesCamera = new List<Vector3>(MaximoMarcacoesCamera);
+    private bool _modoMarcarCamera;
+    private int _proximoIndiceMarcacaoCamera;
+    private int _indiceMarcacaoSelecionada = -1;
+    private int _indiceMarcacaoArrastada = -1;
+    private int _indiceUltimaMarcacaoVisitada = -1;
+    private Vector2 _inicioArrastoMarcacao;
+    private Vector2 _ultimaPosicaoArrastoMarcacao;
+    private bool _marcacaoEmArrasto;
+    private CameraController _controladorCameraPrincipal;
     private int _missilSelecionadoId = -1;
     private CartaTerrenoRenderer _cameraRastreamentoMissil;
     private bool _cameraMissilEmRastreamento;
@@ -192,6 +207,9 @@ public class MapaGeralController : MonoBehaviour
     {
         OcultarTerrenoInimigoAuxiliar();
         cameraPrincipal = Camera.main;
+        _controladorCameraPrincipal = cameraPrincipal != null
+            ? cameraPrincipal.GetComponent<CameraController>()
+            : null;
         AtualizarLimitesMapa();
         InicializarBaseCartograficaMilitar();
         AtualizarLimitesTerritorioInimigo();
@@ -469,11 +487,26 @@ public class MapaGeralController : MonoBehaviour
 
     void Update()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
+        GameObject campoSelecionado = UnityEngine.EventSystems.EventSystem.current != null
+            ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject
+            : null;
+        if (campoSelecionado != null
+            && (campoSelecionado.GetComponent<UnityEngine.UI.InputField>() != null
+                || campoSelecionado.GetComponent("TMP_InputField") != null))
+        {
+            return;
+        }
+
         if (RTSInputBindings.GetKeyDown(RTSInputAction.StrategicMap) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             AlternarMapa(!mapaAtivo);
+        }
+
+        if (RTSInputBindings.GetKeyDown(RTSInputAction.CycleCameraPin)
+            && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
+        {
+            AvancarParaProximaMarcacaoCamera();
         }
 
         if (mapaAtivo && cameraMapa != null)
@@ -525,6 +558,9 @@ public class MapaGeralController : MonoBehaviour
     {
         if (cameraMapa == null) return;
 
+        if (mapaAtivo && !abrir)
+            SalvarEstadoCameraMapa();
+
         mapaAtivo = abrir;
         if (mapaAtivo && cameraPrincipal != null)
         {
@@ -537,18 +573,23 @@ public class MapaGeralController : MonoBehaviour
         AtualizarRenderizacaoCameraMapa();
         AplicarModoMapa(mapaAtivo);
 
-        if (mapaAtivo && cameraPrincipal != null)
+        if (mapaAtivo)
         {
-            Vector3 p = cameraPrincipal.transform.position;
-            cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
-            if (enquadrarCoberturaCompletaAoAbrir)
+            bool restaurouCameraMapa = RestaurarEstadoCameraMapa();
+            if (!restaurouCameraMapa && cameraPrincipal != null)
             {
-                EnquadrarCoberturaCompleta();
+                Vector3 p = cameraPrincipal.transform.position;
+                cameraMapa.transform.position = new Vector3(p.x, 1350f, p.z);
             }
-            if (definicaoMapaGlobal != null)
+
+            if (!restaurouCameraMapa)
             {
-                FocarNaAreaAtual();
+                if (enquadrarCoberturaCompletaAoAbrir)
+                    EnquadrarCoberturaCompleta();
+                if (definicaoMapaGlobal != null)
+                    FocarNaAreaAtual();
             }
+
             LimitarCameraMapa();
             volumeAudioOriginal = AudioListener.volume;
             AudioListener.volume = 0f;
@@ -557,6 +598,9 @@ public class MapaGeralController : MonoBehaviour
         else
         {
             AudioListener.volume = volumeAudioOriginal;
+            _modoMarcarCamera = false;
+            _indiceMarcacaoArrastada = -1;
+            _marcacaoEmArrasto = false;
             _seguindoAlvo = false;
             _alvoSeguir = null;
             PararCameraDeRastreamentoMissil();
@@ -568,6 +612,49 @@ public class MapaGeralController : MonoBehaviour
                 cameraPrincipal.fieldOfView = cameraPrincipalFovAntesDoMapa;
             }
         }
+    }
+
+    private string ObterChaveEstadoCameraMapa(string propriedade)
+    {
+        return ChaveEstadoCameraMapa + gameObject.scene.name + "." + propriedade;
+    }
+
+    private bool RestaurarEstadoCameraMapa()
+    {
+        string chaveX = ObterChaveEstadoCameraMapa("x");
+        string chaveZ = ObterChaveEstadoCameraMapa("z");
+        string chaveZoom = ObterChaveEstadoCameraMapa("zoom");
+        if (!PlayerPrefs.HasKey(chaveX) || !PlayerPrefs.HasKey(chaveZ) || !PlayerPrefs.HasKey(chaveZoom))
+            return false;
+
+        Vector3 posicao = cameraMapa.transform.position;
+        posicao.x = PlayerPrefs.GetFloat(chaveX);
+        posicao.y = 1350f;
+        posicao.z = PlayerPrefs.GetFloat(chaveZ);
+        cameraMapa.transform.position = posicao;
+        cameraMapa.orthographicSize = Mathf.Clamp(PlayerPrefs.GetFloat(chaveZoom), zoomMinimo, zoomMaximo);
+        return true;
+    }
+
+    private void SalvarEstadoCameraMapa()
+    {
+        if (cameraMapa == null) return;
+
+        Vector3 posicao = cameraMapa.transform.position;
+        PlayerPrefs.SetFloat(ObterChaveEstadoCameraMapa("x"), posicao.x);
+        PlayerPrefs.SetFloat(ObterChaveEstadoCameraMapa("z"), posicao.z);
+        PlayerPrefs.SetFloat(ObterChaveEstadoCameraMapa("zoom"), cameraMapa.orthographicSize);
+        PlayerPrefs.Save();
+    }
+
+    private void OnApplicationPause(bool pausado)
+    {
+        if (pausado && mapaAtivo) SalvarEstadoCameraMapa();
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (mapaAtivo) SalvarEstadoCameraMapa();
     }
 
     private Transform ObterTransformSelecionado()
@@ -587,7 +674,36 @@ public class MapaGeralController : MonoBehaviour
 
     private void ProcessarInteracaoNoMapa()
     {
-        if (cameraMapa == null || AreaDeInterfaceMapa(Input.mousePosition))
+        if (cameraMapa == null)
+        {
+            return;
+        }
+
+        if (_indiceMarcacaoArrastada >= 0)
+        {
+            ProcessarArrastoMarcacaoCameraAtivo();
+            return;
+        }
+
+        // O menu satélite mantém a própria seleção e os próprios modos de
+        // ordem. Enquanto ele está aberto, entrega o ponto obtido pela câmera
+        // do Mapa M a esse menu antes dos bloqueios dos controladores legados.
+        // Sem isso, DesenharLinhasOrdem e o mapa se bloqueiam mutuamente e o
+        // clique nunca chega ao executor da ordem.
+        MenuComandoController menuComando = MenuComandoController.Instancia;
+        bool cliqueEsquerdo = Input.GetMouseButtonDown(0);
+        bool cliqueDireito = Input.GetMouseButtonDown(1);
+        if (menuComando != null && menuComando.MenuAberto
+            && (cliqueEsquerdo || cliqueDireito)
+            && TentarEncaminharCliqueMenuSatelite(
+                menuComando,
+                Input.mousePosition,
+                cliqueDireito ? 1 : 0))
+        {
+            return;
+        }
+
+        if (AreaDeInterfaceMapa(Input.mousePosition))
         {
             return;
         }
@@ -597,6 +713,11 @@ public class MapaGeralController : MonoBehaviour
         {
             // Os modos de ordem têm prioridade: eles usam a mesma câmera
             // satélite e consomem o clique para desenhar/confirmar a ordem.
+            return;
+        }
+
+        if (ProcessarNovaInteracaoMarcacaoCamera())
+        {
             return;
         }
 
@@ -673,7 +794,29 @@ public class MapaGeralController : MonoBehaviour
 
     private bool TryObterDestinoNoMapa(out Vector3 destino)
     {
-        Ray raio = cameraMapa.ScreenPointToRay(Input.mousePosition);
+        return TryObterDestinoNoMapaDaTela(Input.mousePosition, out destino);
+    }
+
+    private bool TentarEncaminharCliqueMenuSatelite(
+        MenuComandoController menuComando,
+        Vector3 posicaoTela,
+        int botao)
+    {
+        if (cameraMapa == null
+            || menuComando == null
+            || !menuComando.MenuAberto
+            || AreaDeInterfaceMapa(posicaoTela)
+            || !TryObterDestinoNoMapaDaTela(posicaoTela, out Vector3 destino))
+        {
+            return false;
+        }
+
+        return menuComando.TentarProcessarCliqueMapaM(destino, botao);
+    }
+
+    private bool TryObterDestinoNoMapaDaTela(Vector3 posicaoTela, out Vector3 destino)
+    {
+        Ray raio = cameraMapa.ScreenPointToRay(posicaoTela);
         int mascara = ~(1 << 2);
         RaycastHit[] hits = Physics.RaycastAll(raio, Mathf.Infinity, mascara, QueryTriggerInteraction.Ignore);
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
@@ -1036,9 +1179,20 @@ public class MapaGeralController : MonoBehaviour
             : "F  ACOMPANHAR UNIDADE";
         string nivelZoom = ObterDescricaoZoomMapa();
         string titulo = mapaCartograficoAtivo ? "HEGEMONIA  /  CARTA TÁTICA" : "HEGEMONIA  /  CÂMERA 3D";
-        GUI.Label(new Rect(14f, 2f, Mathf.Max(280f, Screen.width - 470f), 19f), titulo, _tituloMapaStyle);
-        GUI.Label(new Rect(15f, 20f, Mathf.Max(280f, Screen.width - 470f), 16f),
-            nivelZoom + "   ·   " + modoSeguir + "   ·   WASD mover   ·   Scroll zoom no cursor   ·   M fechar", _legendaMapaStyle);
+        float larguraTitulo = Mathf.Max(220f, Screen.width - 560f);
+        GUI.Label(new Rect(14f, 2f, larguraTitulo, 19f), titulo, _tituloMapaStyle);
+        string ajudaMarcacao = _modoMarcarCamera
+            ? "CLIQUE NO MAPA PARA FIXAR O PIN"
+            : "5  VISITAR MARCAÇÕES";
+        GUI.Label(new Rect(15f, 20f, larguraTitulo, 16f),
+            nivelZoom + "   ·   " + modoSeguir + "   ·   " + ajudaMarcacao
+                + "   ·   WASD mover   ·   Scroll zoom   ·   M fechar", _legendaMapaStyle);
+
+        if (GUI.Button(new Rect(Screen.width - 532f, 7f, 84f, 25f),
+                _modoMarcarCamera ? "CANCELAR" : "MARCAR PIN", _zoomMapaStyle))
+        {
+            _modoMarcarCamera = !_modoMarcarCamera;
+        }
 
         if (GUI.Button(new Rect(Screen.width - 442f, 7f, 78f, 25f), "MINHA ÁREA", _zoomMapaStyle))
             FocarNaAreaAtual();
@@ -1089,6 +1243,41 @@ public class MapaGeralController : MonoBehaviour
         GUI.Label(new Rect(legendaContatos.x + 8f, legendaContatos.y, legendaContatos.width - 16f, legendaContatos.height),
             "ALIADO  ·  HOSTIL DETECTADO  ·  ÚLTIMA POSIÇÃO", _legendaMapaStyle);
         DesenharPainelRastreamentoMissil();
+        DesenharMarcacoesCamera();
+    }
+
+    private void DesenharMarcacoesCamera()
+    {
+        if (cameraMapa == null || Event.current.type != EventType.Repaint) return;
+
+        for (int i = 0; i < _marcacoesCamera.Count; i++)
+        {
+            Vector3 tela = cameraMapa.WorldToScreenPoint(_marcacoesCamera[i]);
+            if (tela.z <= 0f || tela.x < -32f || tela.x > Screen.width + 32f
+                || tela.y < -40f || tela.y > Screen.height + 40f)
+            {
+                continue;
+            }
+
+            if (AreaDeInterfaceMapa(new Vector3(tela.x, tela.y, 0f))) continue;
+
+            float x = tela.x;
+            float y = Screen.height - tela.y;
+            Rect haste = new Rect(x - 2f, y - 8f, 4f, 9f);
+            Rect cabeca = new Rect(x - 11f, y - 28f, 22f, 22f);
+            Color cor = i == _indiceMarcacaoSelecionada
+                ? new Color32(82, 204, 216, 255)
+                : new Color32(238, 177, 66, 255);
+
+            GUI.color = new Color(0f, 0f, 0f, 0.82f);
+            GUI.DrawTexture(new Rect(haste.x + 1f, haste.y + 1f, haste.width, haste.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(cabeca.x + 1f, cabeca.y + 1f, cabeca.width, cabeca.height), Texture2D.whiteTexture);
+            GUI.color = cor;
+            GUI.DrawTexture(haste, Texture2D.whiteTexture);
+            GUI.DrawTexture(cabeca, Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(cabeca, RotulosMarcacaoCamera[i], _numeroMarcacaoCameraStyle);
+        }
     }
 
     private string ObterDescricaoZoomMapa()
@@ -1432,6 +1621,7 @@ public class MapaGeralController : MonoBehaviour
     {
         if (_tituloMapaStyle != null
             && _zoomMapaStyle != null
+            && _numeroMarcacaoCameraStyle != null
             && _legendaMapaStyle != null
             && _trianguloSombraStyle != null
             && _trianguloCorStyle != null
@@ -1455,6 +1645,13 @@ public class MapaGeralController : MonoBehaviour
             normal = { textColor = corTextoMapa },
             hover = { textColor = Color.white },
             active = { textColor = Color.white }
+        };
+        _numeroMarcacaoCameraStyle = new GUIStyle(GUI.skin.label)
+        {
+            alignment = TextAnchor.MiddleCenter,
+            fontSize = 11,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color32(17, 29, 37, 255) }
         };
         _legendaMapaStyle = new GUIStyle(GUI.skin.label)
         {
@@ -1567,6 +1764,9 @@ public class MapaGeralController : MonoBehaviour
 
             Vector3 posicaoMapa = id.transform.position;
             RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+            bool contatoAnonimoRecon = ehInimigo && visibilidade != null
+                && visibilidade.TryGetContactForTeam(meuTeamID, id, out RTSVisibilityContact contatoRecon)
+                && contatoRecon != null && contatoRecon.source == RTSDetectionSource.AirRecon;
             bool contatoAtual = !ehInimigo || (visibilidade != null
                 && visibilidade.IsVisibleToTeam(meuTeamID, id));
             if (!ehAliado && !ehNeutro && !contatoAtual)
@@ -1600,9 +1800,10 @@ public class MapaGeralController : MonoBehaviour
                 : (ehNeutro ? corUnidadeNeutro : (contatoAtual ? corInimigoAtual : corInimigoMemoria));
             int classe = ehAliado ? 0 : (ehNeutro ? 1 : (contatoAtual ? 2 : 3));
             int categoria = _categoriasMapa.TryGetValue(instanceId, out int categoriaCache) ? categoriaCache : 0;
-            int tipo = ehPredio ? (0x80 | (categoria & 0x7f)) : (int)id.tipoUnidade;
+            int tipo = contatoAnonimoRecon ? 0x7f
+                : (ehPredio ? (0x80 | (categoria & 0x7f)) : (int)id.tipoUnidade);
             float angulo = 0f;
-            if (!agrupar && _unidadesMoveisMapa.Contains(instanceId) && (ehAliado || ehNeutro || contatoAtual))
+            if (!contatoAnonimoRecon && !agrupar && _unidadesMoveisMapa.Contains(instanceId) && (ehAliado || ehNeutro || contatoAtual))
             {
                 Vector3 frente = cameraMapa.WorldToScreenPoint(posicaoMapa + id.transform.forward * 10f);
                 Vector2 direcaoTela = new Vector2(frente.x - screenPos.x, screenPos.y - frente.y);
@@ -1621,7 +1822,7 @@ public class MapaGeralController : MonoBehaviour
                 {
                     cluster.x += sx;
                     cluster.y += sy;
-                    if (classe != 3 && tipo < 0x80)
+                    if (classe != 3 && tipo < 0x7f)
                     {
                         Vector3 frente = cameraMapa.WorldToScreenPoint(posicaoMapa + id.transform.forward * 10f);
                         cluster.direcaoX += frente.x - screenPos.x;
@@ -1637,8 +1838,8 @@ public class MapaGeralController : MonoBehaviour
                     {
                         x = sx,
                         y = sy,
-                        direcaoX = classe == 3 || ehPredio ? 0f : frente.x - screenPos.x,
-                        direcaoY = classe == 3 || ehPredio ? 0f : screenPos.y - frente.y,
+                        direcaoX = classe == 3 || ehPredio || contatoAnonimoRecon ? 0f : frente.x - screenPos.x,
+                        direcaoY = classe == 3 || ehPredio || contatoAnonimoRecon ? 0f : screenPos.y - frente.y,
                         quantidade = 1
                     };
                 }
@@ -1646,7 +1847,8 @@ public class MapaGeralController : MonoBehaviour
             else
             {
                 DesenharIconeUnidade(sx, sy, zoom < 9000f ? 10f : 8f, tipo,
-                    ehPredio ? TipoUnidade.Estrutura : id.tipoUnidade, cor, angulo, classe == 3);
+                    contatoAnonimoRecon ? (TipoUnidade)255 : (ehPredio ? TipoUnidade.Estrutura : id.tipoUnidade),
+                    cor, angulo, classe == 3);
             }
         }
 
@@ -1830,6 +2032,192 @@ public class MapaGeralController : MonoBehaviour
             if (id == missileId) return tracker;
         }
         return null;
+    }
+
+    private bool ProcessarNovaInteracaoMarcacaoCamera()
+    {
+        if (!Input.GetMouseButtonDown(0)) return false;
+
+        if (_modoMarcarCamera)
+        {
+            if (TryObterDestinoNoMapa(out Vector3 destino))
+            {
+                RegistrarMarcacaoCamera(destino);
+                _modoMarcarCamera = false;
+            }
+            return true;
+        }
+
+        int indice = EncontrarMarcacaoCameraSobCursor(Input.mousePosition);
+        if (indice < 0) return false;
+
+        _indiceMarcacaoSelecionada = indice;
+        _indiceUltimaMarcacaoVisitada = indice;
+        _indiceMarcacaoArrastada = indice;
+        _inicioArrastoMarcacao = Input.mousePosition;
+        _ultimaPosicaoArrastoMarcacao = _inicioArrastoMarcacao;
+        _marcacaoEmArrasto = false;
+        return true;
+    }
+
+    private bool ProcessarArrastoMarcacaoCameraAtivo()
+    {
+        if (_indiceMarcacaoArrastada < 0 || _indiceMarcacaoArrastada >= _marcacoesCamera.Count)
+        {
+            LimparArrastoMarcacaoCamera();
+            return true;
+        }
+
+        if (Input.GetMouseButton(0))
+        {
+            Vector2 mouse = Input.mousePosition;
+            if (!_marcacaoEmArrasto
+                && (mouse - _inicioArrastoMarcacao).sqrMagnitude
+                    >= DistanciaMinimaArrastoMarcacao * DistanciaMinimaArrastoMarcacao)
+            {
+                _marcacaoEmArrasto = true;
+            }
+
+            if (_marcacaoEmArrasto
+                && (mouse - _ultimaPosicaoArrastoMarcacao).sqrMagnitude >= 4f
+                && TryObterPosicaoPlanoMapa(mouse, out Vector3 novaPosicao))
+            {
+                _marcacoesCamera[_indiceMarcacaoArrastada] = novaPosicao;
+                _ultimaPosicaoArrastoMarcacao = mouse;
+            }
+
+            return true;
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (_marcacaoEmArrasto)
+            {
+                if (TryObterPosicaoPlanoMapa(Input.mousePosition, out Vector3 posicaoFinal))
+                    _marcacoesCamera[_indiceMarcacaoArrastada] = posicaoFinal;
+            }
+            else
+            {
+                FocarEmMarcacaoCamera(_indiceMarcacaoArrastada);
+            }
+        }
+
+        LimparArrastoMarcacaoCamera();
+        return true;
+    }
+
+    private void LimparArrastoMarcacaoCamera()
+    {
+        _indiceMarcacaoArrastada = -1;
+        _marcacaoEmArrasto = false;
+    }
+
+    private int EncontrarMarcacaoCameraSobCursor(Vector3 posicaoTela)
+    {
+        if (cameraMapa == null) return -1;
+
+        Vector2 posicaoGui = new Vector2(posicaoTela.x, Screen.height - posicaoTela.y);
+        for (int i = _marcacoesCamera.Count - 1; i >= 0; i--)
+        {
+            Vector3 tela = cameraMapa.WorldToScreenPoint(_marcacoesCamera[i]);
+            if (tela.z <= 0f) continue;
+
+            float y = Screen.height - tela.y;
+            Rect areaPin = new Rect(tela.x - 13f, y - 30f, 26f, 34f);
+            if (areaPin.Contains(posicaoGui)) return i;
+        }
+
+        return -1;
+    }
+
+    private bool TryObterPosicaoPlanoMapa(Vector3 posicaoTela, out Vector3 destino)
+    {
+        destino = Vector3.zero;
+        if (cameraMapa == null) return false;
+
+        Ray raio = cameraMapa.ScreenPointToRay(posicaoTela);
+        Plane planoMapa = new Plane(Vector3.up, new Vector3(0f, nivelDoMar, 0f));
+        if (!planoMapa.Raycast(raio, out float distancia)) return false;
+
+        destino = raio.GetPoint(distancia);
+        destino.y = nivelDoMar;
+        return true;
+    }
+
+    private void RegistrarMarcacaoCamera(Vector3 posicao)
+    {
+        int indice;
+        if (_marcacoesCamera.Count < MaximoMarcacoesCamera)
+        {
+            indice = _marcacoesCamera.Count;
+            _marcacoesCamera.Add(posicao);
+            _proximoIndiceMarcacaoCamera = _marcacoesCamera.Count % MaximoMarcacoesCamera;
+        }
+        else
+        {
+            indice = _proximoIndiceMarcacaoCamera;
+            _marcacoesCamera[indice] = posicao;
+            _proximoIndiceMarcacaoCamera = (_proximoIndiceMarcacaoCamera + 1) % MaximoMarcacoesCamera;
+        }
+
+        _indiceMarcacaoSelecionada = indice;
+        _indiceUltimaMarcacaoVisitada = -1;
+    }
+
+    private void AvancarParaProximaMarcacaoCamera()
+    {
+        if (_marcacoesCamera.Count == 0) return;
+
+        int proximo = (_indiceUltimaMarcacaoVisitada + 1) % _marcacoesCamera.Count;
+        FocarEmMarcacaoCamera(proximo);
+    }
+
+    private void FocarEmMarcacaoCamera(int indice)
+    {
+        if (indice < 0 || indice >= _marcacoesCamera.Count) return;
+
+        Vector3 destino = _marcacoesCamera[indice];
+        _indiceMarcacaoSelecionada = indice;
+        _indiceUltimaMarcacaoVisitada = indice;
+        _seguindoAlvo = false;
+        _alvoSeguir = null;
+
+        if (cameraMapa != null)
+        {
+            Vector3 posicaoMapa = cameraMapa.transform.position;
+            posicaoMapa.x = destino.x;
+            posicaoMapa.z = destino.z;
+            cameraMapa.transform.position = posicaoMapa;
+            LimitarCameraMapa();
+        }
+
+        if (cameraPrincipal == null) cameraPrincipal = Camera.main;
+        if (cameraPrincipal == null) return;
+
+        if (_controladorCameraPrincipal == null)
+        {
+            _controladorCameraPrincipal = cameraPrincipal.GetComponent<CameraController>();
+        }
+
+        if (_controladorCameraPrincipal != null)
+        {
+            _controladorCameraPrincipal.FocarEmLocal(destino);
+        }
+        else
+        {
+            Vector3 posicaoPrincipal = cameraPrincipal.transform.position;
+            posicaoPrincipal.x = destino.x;
+            posicaoPrincipal.z = destino.z;
+            cameraPrincipal.transform.position = posicaoPrincipal;
+        }
+
+        if (mapaAtivo)
+        {
+            cameraPrincipalPosicaoAntesDoMapa = cameraPrincipal.transform.position;
+            cameraPrincipalRotacaoAntesDoMapa = cameraPrincipal.transform.rotation;
+            cameraPrincipalFovAntesDoMapa = cameraPrincipal.fieldOfView;
+            snapshotCameraPrincipalValido = true;
+        }
     }
 
     private void DesenharHistoricoMissil(RTSMissileVisibilityContact contato, Vector3 posicaoAtual, bool contatoAtual)

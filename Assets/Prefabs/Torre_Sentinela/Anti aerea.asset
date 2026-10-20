@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Anti aerea militar
   descricao: Alojamento para soldados. Permite recrutar infantaria.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: bfdbab159bd0f4a4f9ef39cfe2935912, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

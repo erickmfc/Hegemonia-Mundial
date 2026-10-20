@@ -145,6 +145,7 @@ GameObject:
   - component: {fileID: 3003515292386049680}
   - component: {fileID: 8913026166836606737}
   - component: {fileID: 3422957564983826697}
+  - component: {fileID: 6701593300001004}
   m_Layer: 0
   m_Name: Estaleiros navais
   m_TagString: Imovel
@@ -10914,3 +10915,31 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8838709054675510909, guid: 3d6f3ea27c23801429308f8592d1248a, type: 3}
   m_PrefabInstance: {fileID: 9174578560956471893}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &6701593300001004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3091952298521144747}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 367aaae37e633674387111b3ed658737, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::EstruturaEconomica
+  tipo: 31
+  teamId: 0
+  capacidadePopulacional: 0
+  populacaoAtual: 0
+  empregosGerados: 0
+  energiaConsumida: 340
+  energiaProduzida: 0
+  combustivelConsumido: 0
+  militaresNecessarios: 0
+  comidaProduzida: 0
+  petroleoProduzido: 0
+  industriaProduzida: 0
+  dinheiroGerado: 0
+  manutencaoAlimentosPorDia: 0
+  status: 3
+  eficiencia: 0

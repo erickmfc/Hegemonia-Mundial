@@ -19,6 +19,7 @@ namespace Hegemonia.RTS
             // campaign menu having created its persistent services first.
             SistemaGovernoMundial.GarantirInstancia();
             SistemaSaveGame.GarantirInstancia();
+            SistemaGuardaCosteira.GarantirInstancia();
 
             if (root.GetComponent<RTSGameSession>() == null) root.AddComponent<RTSGameSession>();
             if (root.GetComponent<RTSSimulationClock>() == null) root.AddComponent<RTSSimulationClock>();

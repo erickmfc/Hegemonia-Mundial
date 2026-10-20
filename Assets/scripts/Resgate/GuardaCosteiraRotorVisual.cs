@@ -50,12 +50,26 @@ public sealed class GuardaCosteiraRotorVisual : MonoBehaviour
             return;
         }
 
-        Girar(rotorPrincipal, velocidadePrincipal, eixoPrincipal);
+        // O Helicoptero ja gira o conjunto principal no ponto de pivô
+        // configurado em helicePrincipal. Girar também as malhas descobertas
+        // individualmente usa o eixo local do modelo importado (lateral neste
+        // GLB) e faz as pás varrerem o lado da aeronave.
+        bool rotorPrincipalControladoPeloHelicoptero = helicoptero != null
+            && helicoptero.helicePrincipal != null;
+
+        if (!rotorPrincipalControladoPeloHelicoptero)
+        {
+            Girar(rotorPrincipal, velocidadePrincipal, eixoPrincipal);
+        }
+
         Girar(rotorTraseiro, velocidadeTraseira, eixoTraseiro);
 
-        foreach (Transform rotor in rotoresPrincipais)
+        if (!rotorPrincipalControladoPeloHelicoptero)
         {
-            if (rotor != rotorPrincipal) Girar(rotor, velocidadePrincipal, eixoPrincipal);
+            foreach (Transform rotor in rotoresPrincipais)
+            {
+                if (rotor != rotorPrincipal) Girar(rotor, velocidadePrincipal, eixoPrincipal);
+            }
         }
 
         foreach (Transform rotor in rotoresTraseiros)

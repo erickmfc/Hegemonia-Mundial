@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 // Este assembly de testes nao referencia Assembly-CSharp diretamente. Os testes
 // existentes usam reflexao pelo mesmo motivo; manter o contrato assim permite
@@ -32,6 +33,110 @@ public sealed class RTSCoreContractsEditModeTests
         Assert.That(GetField<int>(cost, "aco"), Is.EqualTo(0));
         Assert.That(GetField<int>(cost, "energia"), Is.EqualTo(0));
         Assert.That(GetField<int>(cost, "comida"), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void PlayerPaymentUsesTreasuryWhenAvailableAndFailsClosedWithoutIt()
+    {
+        Type resourcesType = RequireType("GerenciadorRecursos");
+        PropertyInfo instance = resourcesType.GetProperty(
+            "Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.That(instance, Is.Not.Null);
+        MethodInfo setInstance = instance.GetSetMethod(true);
+        Assert.That(setInstance, Is.Not.Null);
+        object originalInstance = instance.GetValue(null);
+        GameObject resourcesHost = new GameObject("RTS_TestResources");
+        GameObject gameHost = new GameObject("RTS_TestGameManager");
+        resourcesHost.SetActive(false);
+        gameHost.SetActive(false);
+
+        try
+        {
+            Component resources = resourcesHost.AddComponent(resourcesType);
+            Component gameManager = gameHost.AddComponent(RequireType("GerenteDeJogo"));
+            FieldInfo money = resourcesType.GetField("dinheiro", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            Assert.That(money, Is.Not.Null);
+            money.SetValue(resources, 100L);
+            setInstance.Invoke(null, new[] { resources });
+
+            Assert.That((bool)Invoke(gameManager, "TentarGastarDinheiro", 25L), Is.True);
+            Assert.That((long)money.GetValue(resources), Is.EqualTo(75L));
+
+            setInstance.Invoke(null, new object[] { null });
+            LogAssert.Expect(LogType.Warning, "⚠️ GerenciadorRecursos não encontrado. Transação financeira recusada.");
+            Assert.That((bool)Invoke(gameManager, "TentarGastarDinheiro", 1L), Is.False);
+            Assert.That((long)money.GetValue(resources), Is.EqualTo(75L));
+        }
+        finally
+        {
+            setInstance.Invoke(null, new[] { originalInstance });
+            UnityEngine.Object.DestroyImmediate(gameHost);
+            UnityEngine.Object.DestroyImmediate(resourcesHost);
+        }
+    }
+
+    [Test]
+    public void GroundProductionRequiresPoweredRegisteredFactoryBeforeCharging()
+    {
+        Type resourcesType = RequireType("GerenciadorRecursos");
+        PropertyInfo instance = resourcesType.GetProperty(
+            "Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.That(instance, Is.Not.Null);
+        MethodInfo setInstance = instance.GetSetMethod(true);
+        Assert.That(setInstance, Is.Not.Null);
+        object originalInstance = instance.GetValue(null);
+        GameObject resourcesHost = new GameObject("RTS_GroundProductionResources");
+        GameObject managerHost = new GameObject("RTS_GroundProductionManager");
+        GameObject prefab = new GameObject("UnitTest");
+        GameObject factoryHost = null;
+        resourcesHost.SetActive(false);
+        managerHost.SetActive(false);
+        prefab.SetActive(false);
+
+        try
+        {
+            Component resources = resourcesHost.AddComponent(resourcesType);
+            Component manager = managerHost.AddComponent(RequireType("GerenteDeJogo"));
+            FieldInfo money = resourcesType.GetField("dinheiro", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            money.SetValue(resources, 100L);
+            setInstance.Invoke(null, new object[] { resources });
+
+            FieldInfo queueField = manager.GetType().GetField("filaProducao", BindingFlags.Instance | BindingFlags.Public);
+            System.Collections.ICollection queue = (System.Collections.ICollection)queueField.GetValue(manager);
+            LogAssert.Expect(LogType.Warning, "[Produção] Pedido de UnitTest recusado: nenhum ponto terrestre operacional (fábrica/quartel com energia).");
+            Assert.That((bool)Invoke(manager, "TentarComprarUnidade", prefab, 25L, 1), Is.False);
+            Assert.That((long)money.GetValue(resources), Is.EqualTo(100L));
+            Assert.That(queue.Count, Is.EqualTo(0));
+
+            factoryHost = new GameObject("RTS_GroundProductionFactory");
+            factoryHost.SetActive(false);
+            Component economy = factoryHost.AddComponent(RequireType("EstruturaEconomica"));
+            factoryHost.AddComponent(RequireType("Fabrica"));
+            FieldInfo efficiency = economy.GetType().GetField("eficiencia", BindingFlags.Instance | BindingFlags.Public);
+            efficiency.SetValue(economy, 0.5f);
+            GameObject spawn = new GameObject("RTS_GroundProductionSpawn");
+            spawn.transform.SetParent(factoryHost.transform, false);
+            factoryHost.SetActive(true);
+            Invoke(manager, "AtualizarPontoHangar", spawn.transform, spawn.transform);
+
+            LogAssert.Expect(LogType.Warning, "[Produção] Pedido de UnitTest recusado: nenhum ponto terrestre operacional (fábrica/quartel com energia).");
+            Assert.That((bool)Invoke(manager, "TentarComprarUnidade", prefab, 25L, 1), Is.False);
+            Assert.That((long)money.GetValue(resources), Is.EqualTo(100L));
+            Assert.That(queue.Count, Is.EqualTo(0));
+
+            efficiency.SetValue(economy, 1f);
+            Assert.That((bool)Invoke(manager, "TentarComprarUnidade", prefab, 25L, 1), Is.True);
+            Assert.That((long)money.GetValue(resources), Is.EqualTo(75L));
+            Assert.That(queue.Count, Is.EqualTo(1));
+        }
+        finally
+        {
+            setInstance.Invoke(null, new object[] { originalInstance });
+            if (factoryHost != null) UnityEngine.Object.DestroyImmediate(factoryHost);
+            UnityEngine.Object.DestroyImmediate(prefab);
+            UnityEngine.Object.DestroyImmediate(managerHost);
+            UnityEngine.Object.DestroyImmediate(resourcesHost);
+        }
     }
 
     [Test]

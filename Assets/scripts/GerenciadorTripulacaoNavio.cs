@@ -62,6 +62,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
 
     // Estado interno
     private List<MembroTripulacao> _tripulacao = new List<MembroTripulacao>();
+    private readonly List<Transform> _pontosRuntime = new List<Transform>();
     private HashSet<Transform> _pontosOcupados = new HashSet<Transform>();
     private Transform _shipTransform;
     
@@ -108,8 +109,7 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         {
             for (int i = 0; i < quantidadeTrabalhadores; i++)
             {
-                Transform pontoInicial = ObterPontoLivre(pontosTrabalhador);
-                if (pontoInicial == null) pontoInicial = pontosTrabalhador[Random.Range(0, pontosTrabalhador.Count)];
+                Transform pontoInicial = ObterPontoInicial(pontosTrabalhador, i);
 
                 GameObject prefab = prefabsTrabalhador[Random.Range(0, prefabsTrabalhador.Length)];
                 CriarTripulante(prefab, pontoInicial, false);
@@ -121,13 +121,43 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         {
             for (int i = 0; i < quantidadeMilitares; i++)
             {
-                Transform pontoInicial = ObterPontoLivre(pontosMilitar);
-                if (pontoInicial == null) pontoInicial = pontosMilitar[Random.Range(0, pontosMilitar.Count)];
+                Transform pontoInicial = ObterPontoInicial(pontosMilitar, i);
 
                 GameObject prefab = prefabsMilitar[Random.Range(0, prefabsMilitar.Length)];
                 CriarTripulante(prefab, pontoInicial, true);
             }
         }
+    }
+
+    private Transform ObterPontoInicial(List<Transform> pontos, int indice)
+    {
+        Transform ponto = null;
+        if (pontos != null && pontos.Count > 0)
+        {
+            int inicio = Mathf.Abs(indice) % pontos.Count;
+            for (int i = 0; i < pontos.Count; i++)
+            {
+                Transform candidato = pontos[(inicio + i) % pontos.Count];
+                if (candidato != null && !_pontosOcupados.Contains(candidato))
+                {
+                    ponto = candidato;
+                    break;
+                }
+            }
+        }
+        if (ponto != null) return ponto;
+        if (pontos == null || pontos.Count == 0) return null;
+
+        Transform basePonto = pontos[indice % pontos.Count];
+        if (basePonto == null) return null;
+        GameObject auxiliar = new GameObject($"PontoTripulacaoRuntime_{indice}");
+        auxiliar.transform.SetParent(basePonto.parent != null ? basePonto.parent : _shipTransform, false);
+        int excedente = indice - pontos.Count + 1;
+        Vector3 offset = new Vector3(((excedente - 1) % 3 - 1) * 1.1f, 0f, ((excedente - 1) / 3 + 1) * 1.1f);
+        auxiliar.transform.position = basePonto.position + basePonto.right * offset.x + basePonto.forward * offset.z;
+        auxiliar.transform.rotation = basePonto.rotation;
+        _pontosRuntime.Add(auxiliar.transform);
+        return auxiliar.transform;
     }
 
     private void CriarTripulante(GameObject prefab, Transform pontoInicial, bool ehMilitar)
@@ -218,6 +248,11 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         {
             // Fallback: procura Animator nos filhos (caso o Animator não esteja no root do prefab)
             membro.animator = go.GetComponentInChildren<Animator>();
+        }
+        if (membro.animator != null)
+        {
+            membro.animator.updateMode = AnimatorUpdateMode.Normal;
+            membro.animator.applyRootMotion = false;
         }
         membro.militar = ehMilitar;
         membro.escalaOriginalPrefab = prefabScale;
@@ -522,6 +557,11 @@ public class GerenciadorTripulacaoNavio : MonoBehaviour
         }
         _tripulacao.Clear();
         _pontosOcupados.Clear();
+        for (int i = 0; i < _pontosRuntime.Count; i++)
+        {
+            if (_pontosRuntime[i] != null) Destroy(_pontosRuntime[i].gameObject);
+        }
+        _pontosRuntime.Clear();
     }
 
     private void OnDestroy()

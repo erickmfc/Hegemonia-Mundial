@@ -103,10 +103,10 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
     [Min(1f)] public float tempoOciosoParaRetornoSegundos = 8f;
 
     [Header("Tripulacao minima quando a unidade nao declarou consumo")]
-    [Min(1)] public int tripulacaoMinimaInfantaria = 1;
-    [Min(1)] public int tripulacaoMinimaVeiculo = 1;
-    [Min(1)] public int tripulacaoMinimaNaval = 4;
-    [Min(1)] public int tripulacaoMinimaAerea = 2;
+    [Min(1)] public int tripulacaoMinimaInfantaria = SistemaGovernoMundial.EfetivoMinimoInfantaria;
+    [Min(1)] public int tripulacaoMinimaVeiculo = SistemaGovernoMundial.EfetivoMinimoVeiculo;
+    [Min(1)] public int tripulacaoMinimaNaval = SistemaGovernoMundial.EfetivoMinimoNaval;
+    [Min(1)] public int tripulacaoMinimaAerea = SistemaGovernoMundial.EfetivoMinimoAereo;
 
     [Header("Historico administrativo")]
     [SerializeField] private List<QuartelRecrutaV2> recrutas = new List<QuartelRecrutaV2>();

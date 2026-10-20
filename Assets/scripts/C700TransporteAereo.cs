@@ -1009,6 +1009,20 @@ public class C700TransporteAereo : MonoBehaviour
 
     private void DefinirEstado(EstadoC700 novoEstado)
     {
+        EstadoC700 estadoAnterior = estadoAtual;
+        bool estavaEstacionado = estadoAnterior == EstadoC700.Solo
+            || estadoAnterior == EstadoC700.Estacionado
+            || estadoAnterior == EstadoC700.Carregando;
+        bool iniciouSaida = novoEstado == EstadoC700.Taxiando || novoEstado == EstadoC700.Decolando;
+        if (estavaEstacionado && iniciouSaida)
+            AudioRuntime.DefinirAudioPartidaAerea(gameObject, true);
+        else if (novoEstado == EstadoC700.EmVoo
+            || novoEstado == EstadoC700.Estacionado
+            || novoEstado == EstadoC700.Solo
+            || novoEstado == EstadoC700.Carregando
+            || novoEstado == EstadoC700.FalhaMissao)
+            AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
+
         estadoAtual = novoEstado;
         AudioRuntime.DefinirMotorAereo(gameObject, novoEstado != EstadoC700.Solo && novoEstado != EstadoC700.Estacionado && novoEstado != EstadoC700.FalhaMissao);
     }

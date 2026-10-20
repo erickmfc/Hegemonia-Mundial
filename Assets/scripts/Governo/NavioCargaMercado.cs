@@ -29,6 +29,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
     private float nivelAgua;
     private bool inicializado;
     private float proximaSincronizacaoIdentidade;
+    private TransporteMaritimoDistante transporteDistante;
 
     public int OwnerTeamId => ownerTeamId;
     public bool Fretado => fretado;
@@ -38,6 +39,8 @@ public sealed class NavioCargaMercado : MonoBehaviour
 
     private void Awake()
     {
+        transporteDistante = new TransporteMaritimoDistante(transform);
+
         // O cargueiro usa locomocao aquatica direta. Deixar o NavMeshAgent do
         // prefab ativo faz o Unity tentar criar um agente sobre a agua e pode
         // impedir a viagem ou produzir avisos repetidos na build.
@@ -76,7 +79,15 @@ public sealed class NavioCargaMercado : MonoBehaviour
             SincronizarEquipeDaIdentidade();
         }
 
-        if (!emViagem) return;
+        if (!emViagem)
+        {
+            transporteDistante?.Atualizar(false, true, false, false, transform.position);
+            return;
+        }
+
+        float multiplicadorDistante = transporteDistante != null
+            ? transporteDistante.Atualizar(true, true, true, true, destino)
+            : 1f;
 
         Vector3 atual = transform.position;
         Vector3 alvo = destino;
@@ -88,6 +99,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
         {
             transform.position = new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z);
             emViagem = false;
+            transporteDistante?.EncerrarCiclo();
             Action callback = aoChegar;
             aoChegar = null;
             callback?.Invoke();
@@ -96,7 +108,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
 
         Vector3 direcao = delta.normalized;
         float velocidadeOperacional = VelocidadeNavalGlobal.Aplicar(velocidadeCruzeiro);
-        transform.position = Vector3.MoveTowards(atual, new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z), velocidadeOperacional * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(atual, new Vector3(alvo.x, nivelAgua + offsetAlturaAgua, alvo.z), velocidadeOperacional * multiplicadorDistante * Time.deltaTime);
         if (direcao.sqrMagnitude > 0.001f)
         {
             Quaternion rotacao = Quaternion.LookRotation(direcao, Vector3.up);
@@ -141,6 +153,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
         destino = novoDestino;
         nivelAgua = NavalPlacementResolver.ResolveSeaLevel();
         emViagem = true;
+        transporteDistante?.IniciarCiclo();
         aoChegar = chegada;
         return true;
     }
@@ -149,6 +162,7 @@ public sealed class NavioCargaMercado : MonoBehaviour
     {
         emViagem = false;
         aoChegar = null;
+        transporteDistante?.EncerrarCiclo();
         nivelAgua = NavalPlacementResolver.ResolveSeaLevel();
         transform.position = new Vector3(ponto.x, nivelAgua + offsetAlturaAgua, ponto.z);
     }

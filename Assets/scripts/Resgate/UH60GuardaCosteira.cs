@@ -33,7 +33,19 @@ public sealed class UH60GuardaCosteira : GuardaCosteiraUnidade
 
     protected override bool NavegarAte(Vector3 destino)
     {
-        if (!PodeOperarBase() || !helicoptero.EstaDisponivel()) return false;
+        if (!PodeOperarBase()) return false;
+
+        // EstaDisponivel() representa aeronave parada. Durante uma patrulha
+        // cíclica, o helicóptero está voando e pareceria indisponível ao
+        // despacho SAR, embora possa abandonar a rota e atender o chamado.
+        bool interromperPatrulha = helicoptero.estaVoando
+            && helicoptero.missaoAtualAeroporto == 3;
+        if (!helicoptero.EstaDisponivel() && !interromperPatrulha) return false;
+
+        if (interromperPatrulha)
+        {
+            helicoptero.CancelarMissaoAeroporto();
+        }
 
         ControleUnidade controle = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>();

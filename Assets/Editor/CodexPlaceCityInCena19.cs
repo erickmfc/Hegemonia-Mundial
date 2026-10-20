@@ -5,7 +5,6 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
 internal static class CodexPlaceCityInCena19
 {
     private const string ScenePath = "Assets/_Recovery/cena19).unity";
@@ -15,7 +14,9 @@ internal static class CodexPlaceCityInCena19
 
     static CodexPlaceCityInCena19()
     {
-        EditorApplication.delayCall += AutoRunOnce;
+        // A ferramenta permanece disponível pelo menu, mas não deve abrir uma
+        // cena, criar colliders ou entrar em Play Mode durante o reload do
+        // editor. Isso bloqueava a inicialização em projetos grandes.
     }
 
     private static void AutoRunOnce()

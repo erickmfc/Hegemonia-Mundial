@@ -246,12 +246,14 @@ public class ControleAviaoCaca : MonoBehaviour
             SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
             FalhaAereaFisica.Ativar(gameObject, rb, Mathf.Max(velocidadeCruzeiro, velocidadeAtaque) * 0.8f, 4.5f, false, danos);
             temDestino = false;
+            AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
             ControlarEfeitosMotor(false);
             return;
         }
 
         temDestino = false;
         velocidadeAtual = 0f;
+        AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
         ControlarEfeitosMotor(false);
     }
 
@@ -266,6 +268,7 @@ public class ControleAviaoCaca : MonoBehaviour
                 if (alturaDoChao > alturaDecolagem + 5f)
                 {
                     estadoAtual = EstadoVoo.Voando;
+                    AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
                     break;
                 }
                 velocidadeAtual = Mathf.Lerp(velocidadeAtual, 0f, dt);
@@ -278,6 +281,7 @@ public class ControleAviaoCaca : MonoBehaviour
                 if (alturaDoChao > alturaDecolagem)
                 {
                     estadoAtual = EstadoVoo.Voando;
+                    AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
                     Debug.Log("✈️ [F_C19] Decolagem concluída! Entrando em voo de cruzeiro.");
                 }
                 break;
@@ -388,6 +392,7 @@ public class ControleAviaoCaca : MonoBehaviour
         
         Debug.Log("🛫 [F_C19] Iniciando sequência de decolagem...");
         estadoAtual = EstadoVoo.Decolando;
+        AudioRuntime.DefinirAudioPartidaAerea(gameObject, true);
         
         if (!temDestino)
         {

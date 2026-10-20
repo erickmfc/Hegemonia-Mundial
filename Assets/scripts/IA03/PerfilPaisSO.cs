@@ -30,6 +30,9 @@ namespace Hegemonia.AI.IA03
 
         [Header("Limites de mobilização")]
         [SerializeField, Range(0f, 1f)] private float reservaDefesaNacional = 0.1f;
+        [SerializeField, Range(0f, 0.5f)]
+        [Tooltip("Parâmetro de gameplay, não dado demográfico real: fração da população total que permanece protegida como reserva de manpower disponível.")]
+        private float reservaManpowerMinimaPercentualDaPopulacao = 0.1f;
         [SerializeField, Range(0f, 1f)] private float contingenteMaximoDeGuerra = 0.9f;
         [SerializeField, Range(0f, 0.9f)] private float contingenteMaximoPorMissaoN1 = 0.5f;
         [SerializeField, Min(1)] private int minimoNaviosEscolta = 2;
@@ -38,7 +41,7 @@ namespace Hegemonia.AI.IA03
         [Header("Conflito e negociação")]
         [SerializeField, Min(1f)] private float intervaloDecisaoSegundos = 45f;
         [SerializeField, Min(1)] private int minimoDeBatalhasParaAvaliar = 3;
-        [SerializeField, Range(0f, 1f)] private float dominioMinimo = 0.67f;
+        [SerializeField, Range(0f, 1f)] private float dominioMinimo = 2f / 3f;
         [SerializeField, Range(0f, 1f)] private float prejuizoEconomicoMinimoParaPaz = 0.3f;
         [SerializeField, Min(1f)] private float avaliacaoConflitoLimitadoSegundos = 1500f;
         [SerializeField, Min(1f)] private float avaliacaoGuerraTotalSegundos = 3600f;
@@ -61,6 +64,7 @@ namespace Hegemonia.AI.IA03
         public float DisposicaoParaNegociar => disposicaoParaNegociar;
         public float TendenciaDeExportacao => tendenciaDeExportacao;
         public float ReservaDefesaNacional => reservaDefesaNacional;
+        public float ReservaManpowerMinimaPercentualDaPopulacao => Mathf.Clamp(reservaManpowerMinimaPercentualDaPopulacao, 0f, 0.5f);
         public float ContingenteMaximoDeGuerra => contingenteMaximoDeGuerra;
         public float ContingenteMaximoPorMissaoN1 => contingenteMaximoPorMissaoN1;
         public int MinimoNaviosEscolta => minimoNaviosEscolta;

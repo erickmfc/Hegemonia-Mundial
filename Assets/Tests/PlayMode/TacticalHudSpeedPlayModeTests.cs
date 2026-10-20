@@ -99,6 +99,7 @@ public sealed class TacticalHudSpeedPlayModeTests
             System.Type unitType = System.Type.GetType("ControleUnidade, Assembly-CSharp");
             System.Type selectionType = System.Type.GetType("GerenteSelecao, Assembly-CSharp");
             System.Type controllerType = System.Type.GetType("MenuComandoController, Assembly-CSharp");
+            System.Type identityType = System.Type.GetType("IdentidadeUnidade, Assembly-CSharp");
             System.Type combatMenuType = System.Type.GetType("MenuCombateNaval, Assembly-CSharp");
             System.Type commercialType = System.Type.GetType("ControleAviaoComercial, Assembly-CSharp");
             System.Type ac130Type = System.Type.GetType("ControleAviaoAC130, Assembly-CSharp");
@@ -107,6 +108,7 @@ public sealed class TacticalHudSpeedPlayModeTests
             Assert.That(unitType, Is.Not.Null);
             Assert.That(selectionType, Is.Not.Null);
             Assert.That(controllerType, Is.Not.Null);
+            Assert.That(identityType, Is.Not.Null);
             Assert.That(combatMenuType, Is.Not.Null);
             Assert.That(commercialType, Is.Not.Null);
             Assert.That(ac130Type, Is.Not.Null);
@@ -133,7 +135,9 @@ public sealed class TacticalHudSpeedPlayModeTests
             Component selection = selectionObject.AddComponent(selectionType);
             unitObject = new GameObject("HUD interaction test unit");
             NavMeshAgent unitAgent = unitObject.AddComponent<NavMeshAgent>();
-            unitObject.AddComponent(System.Type.GetType("IdentidadeUnidade, Assembly-CSharp"));
+            Component identity = unitObject.AddComponent(identityType);
+            identityType.GetField("teamID", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .SetValue(identity, 1);
             Component unit = unitObject.AddComponent(unitType);
             System.Collections.IList selectedUnits = (System.Collections.IList)selectionType
                 .GetField("unidadesSelecionadas", BindingFlags.Instance | BindingFlags.Public)

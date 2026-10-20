@@ -9,6 +9,8 @@ namespace Hegemonia.AI.Sovereign
     [DefaultExecutionOrder(-910)]
     public sealed class AISovereignController : MonoBehaviour
     {
+        private const float RuntimeSummaryRefreshInterval = 1f;
+
         [Header("Identidade")]
         [SerializeField] private int teamId = 2;
         [SerializeField] private bool autoClaimAuthority = true;
@@ -48,6 +50,7 @@ namespace Hegemonia.AI.Sovereign
         private float _nextFlushTime;
         private float _nextHeavyTime;
         private float _nextAlliesSyncTime;
+        private float _nextRuntimeSummaryRefreshTime;
         private string _ownerKey;
         private bool _authorityActive;
         private int _runtimeTeamId = int.MinValue;
@@ -63,6 +66,7 @@ namespace Hegemonia.AI.Sovereign
 
         private void OnEnable()
         {
+            _nextRuntimeSummaryRefreshTime = 0f;
             EnsureRuntimeWiring();
             EnsureNationalData();
             if (!EnsureModeEligible())
@@ -168,7 +172,10 @@ namespace Hegemonia.AI.Sovereign
                 _nextFlushTime = now + ResolveInterval(flushInterval);
             }
 
-            runtimeSummary = BuildSummary();
+            if (ShouldRefreshRuntimeSummary(Time.unscaledTime))
+            {
+                runtimeSummary = BuildSummary();
+            }
         }
 
         public void ConfigureRuntimeTeam(int newTeamId)
@@ -985,6 +992,17 @@ namespace Hegemonia.AI.Sovereign
                 CooldownSeconds = package.CooldownSeconds,
                 DedupKey = package.BuildDedupKey()
             }, now);
+        }
+
+        private bool ShouldRefreshRuntimeSummary(float unscaledNow)
+        {
+            if (unscaledNow < _nextRuntimeSummaryRefreshTime)
+            {
+                return false;
+            }
+
+            _nextRuntimeSummaryRefreshTime = unscaledNow + RuntimeSummaryRefreshInterval;
+            return true;
         }
 
         private string BuildSummary()

@@ -439,7 +439,9 @@ namespace Hegemonia.AI.IA01
 
     /// <summary>
     /// Indica quando a IA01 é a autoridade de infraestrutura de um time.
-    /// O BrainMaster continua podendo produzir unidades e emitir ordens táticas.
+    /// O modo Full/Hybrid sozinho não basta: a instância também precisa ter
+    /// vencido a faixa de produção compartilhada. O BrainMaster continua
+    /// podendo produzir unidades e emitir ordens táticas.
     /// </summary>
     public static class IA01ConstructionAuthority
     {
@@ -459,8 +461,9 @@ namespace Hegemonia.AI.IA01
                     continue;
                 }
 
-                if (controller.ExecutionMode == IA01ExecutionMode.Full
-                    || controller.ExecutionMode == IA01ExecutionMode.Hybrid)
+                if ((controller.ExecutionMode == IA01ExecutionMode.Full
+                     || controller.ExecutionMode == IA01ExecutionMode.Hybrid)
+                    && controller.HasProductionAuthority)
                 {
                     return true;
                 }

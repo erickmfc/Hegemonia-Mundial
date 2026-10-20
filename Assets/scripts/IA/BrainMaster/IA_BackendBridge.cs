@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Hegemonia.AI.IA01;
+using Hegemonia.AI.IA02;
 using UnityEngine;
 using UnityEngine.AI;
 using Hegemonia.AI.Shared;
@@ -16,6 +17,20 @@ namespace Hegemonia.AI.BrainMaster
         private readonly int _teamId;
         private readonly Dictionary<string, DadosConstrucao> _catalogByKey = new Dictionary<string, DadosConstrucao>();
         private readonly List<DadosConstrucao> _catalog = new List<DadosConstrucao>();
+
+#if UNITY_EDITOR
+        // A descoberta por AssetDatabase e feita uma vez por sessao de Play.
+        // Cada bridge ainda monta seu indice local, mas nao repete a varredura
+        // global de assets para cada pais.
+        private static List<DadosConstrucao> _editorCatalogSource;
+#endif
+        private static DadosConstrucao[] _resourceCatalogSource;
+
+        /// <summary>
+        /// Ativado somente por um teste controlado para medir a montagem do
+        /// catálogo. O caminho normal permanece sem cronômetro nem alocação.
+        /// </summary>
+        public static bool DetailedCatalogTimingEnabled { get; set; }
 
         public BuildService BuildService { get; private set; }
         public ProductionService ProductionService { get; private set; }
@@ -36,6 +51,10 @@ namespace Hegemonia.AI.BrainMaster
 
         public void RefreshCatalog()
         {
+            long refreshStart = DetailedCatalogTimingEnabled
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0L;
+            RecordDetailedCatalogMetric("ia_backend_catalog_refresh_count", 1f);
             _catalog.Clear();
             _catalogByKey.Clear();
 
@@ -47,29 +66,40 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            // O catálogo serializado da interface pode ser parcial em cenas
+            // sem MenuConstrucao (ou em builds). Inclui fichas de Resources
+            // para que instalações como o estaleiro existam em runtime.
+            if (_resourceCatalogSource == null)
+            {
+                _resourceCatalogSource = Resources.LoadAll<DadosConstrucao>("Construcoes");
+            }
+            for (int i = 0; i < _resourceCatalogSource.Length; i++)
+            {
+                AddCatalogItem(_resourceCatalogSource[i]);
+            }
+
 #if UNITY_EDITOR
             if (_catalog.Count == 0)
             {
-                string[] preferredFolders = { "Assets/Prefabs", "Assets/Resources" };
-                var existingFolders = new List<string>();
-                for (int i = 0; i < preferredFolders.Length; i++)
+                long assetDatabaseStart = DetailedCatalogTimingEnabled
+                    ? System.Diagnostics.Stopwatch.GetTimestamp()
+                    : 0L;
+                List<DadosConstrucao> editorCatalog = GetEditorCatalogSource();
+                RecordDetailedCatalogMetric(
+                    "ia_backend_catalog_assetdatabase_ms",
+                    ElapsedMilliseconds(assetDatabaseStart));
+
+                long localIndexStart = DetailedCatalogTimingEnabled
+                    ? System.Diagnostics.Stopwatch.GetTimestamp()
+                    : 0L;
+                for (int i = 0; i < editorCatalog.Count; i++)
                 {
-                    if (AssetDatabase.IsValidFolder(preferredFolders[i]))
-                    {
-                        existingFolders.Add(preferredFolders[i]);
-                    }
+                    AddCatalogItem(editorCatalog[i]);
                 }
 
-                string[] guids = existingFolders.Count > 0
-                    ? AssetDatabase.FindAssets("t:DadosConstrucao", existingFolders.ToArray())
-                    : AssetDatabase.FindAssets("t:DadosConstrucao");
-
-                for (int i = 0; i < guids.Length; i++)
-                {
-                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                    DadosConstrucao asset = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
-                    AddCatalogItem(asset);
-                }
+                RecordDetailedCatalogMetric(
+                    "ia_backend_catalog_local_index_ms",
+                    ElapsedMilliseconds(localIndexStart));
             }
 #endif
 
@@ -83,8 +113,18 @@ namespace Hegemonia.AI.BrainMaster
             else
             {
                 Debug.Log("[IA_BackendBridge] Catalogo carregado: " + _catalog.Count + " itens disponíveis para a IA.");
+                long sharedStart = DetailedCatalogTimingEnabled
+                    ? System.Diagnostics.Stopwatch.GetTimestamp()
+                    : 0L;
                 CatalogoProdutoCompartilhado.RegistrarConstrucoes(_catalog);
+                RecordDetailedCatalogMetric(
+                    "ia_backend_catalog_shared_ms",
+                    ElapsedMilliseconds(sharedStart));
             }
+
+            RecordDetailedCatalogMetric(
+                "ia_backend_catalog_refresh_ms",
+                ElapsedMilliseconds(refreshStart));
         }
 
         public IReadOnlyList<DadosConstrucao> Catalog
@@ -155,6 +195,20 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return false;
+        }
+
+        public bool TryResolveItemExact(string key, out DadosConstrucao item)
+        {
+            item = null;
+            if (_catalogByKey.Count == 0)
+            {
+                RefreshCatalog();
+            }
+
+            string normalized = IA_Text.Normalize(key);
+            return !string.IsNullOrEmpty(normalized)
+                && _catalogByKey.TryGetValue(normalized, out item)
+                && item != null;
         }
 
         public string ResolveBuildKey(params string[] hints)
@@ -268,6 +322,68 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _catalogByKey.Add(key, item);
             }
+        }
+
+#if UNITY_EDITOR
+        private static List<DadosConstrucao> GetEditorCatalogSource()
+        {
+            if (_editorCatalogSource != null)
+            {
+                RecordDetailedCatalogMetric("ia_backend_catalog_editor_cache_hit", 1f);
+                return _editorCatalogSource;
+            }
+
+            RecordDetailedCatalogMetric("ia_backend_catalog_editor_cache_miss", 1f);
+
+            string[] preferredFolders = { "Assets/Prefabs", "Assets/Resources" };
+            var existingFolders = new List<string>();
+            for (int i = 0; i < preferredFolders.Length; i++)
+            {
+                if (AssetDatabase.IsValidFolder(preferredFolders[i]))
+                {
+                    existingFolders.Add(preferredFolders[i]);
+                }
+            }
+
+            string[] guids = existingFolders.Count > 0
+                ? AssetDatabase.FindAssets("t:DadosConstrucao", existingFolders.ToArray())
+                : AssetDatabase.FindAssets("t:DadosConstrucao");
+
+            _editorCatalogSource = new List<DadosConstrucao>(guids.Length);
+            var seen = new HashSet<DadosConstrucao>();
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                DadosConstrucao asset = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
+                if (asset != null && seen.Add(asset))
+                {
+                    _editorCatalogSource.Add(asset);
+                }
+            }
+
+            return _editorCatalogSource;
+        }
+#endif
+
+        private static float ElapsedMilliseconds(long start)
+        {
+            if (start == 0L)
+            {
+                return 0f;
+            }
+
+            return (float)((System.Diagnostics.Stopwatch.GetTimestamp() - start)
+                * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+        }
+
+        private static void RecordDetailedCatalogMetric(string name, float value)
+        {
+            if (!DetailedCatalogTimingEnabled || value <= 0f)
+            {
+                return;
+            }
+
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(name, value);
         }
 
         private static string CanonicalizeKey(string key)
@@ -851,6 +967,16 @@ namespace Hegemonia.AI.BrainMaster
 
         private static bool HasDryLandWithinRadius(Vector3 center, float radius, IA_MapAnalyzer map)
         {
+            // O terreno global inclui o relevo submarino. Quando a máscara
+            // geográfica oficial confirma água a pelo menos o raio mínimo da
+            // costa, o relevo/collider submarino não pode ser contado como terra.
+            if (radius > 0.01f
+                && NavalPlacementResolver.TryGetGlobalSignedCoastDistanceAtPosition(center, out float coastDistance)
+                && coastDistance <= -radius)
+            {
+                return false;
+            }
+
             if (radius <= 0.01f)
             {
                 return IsDryLandProbe(center, map);
@@ -916,9 +1042,10 @@ namespace Hegemonia.AI.BrainMaster
         {
             created = null;
             reason = string.Empty;
-            if (IA01ConstructionAuthority.IsOwner(_teamId))
+            if (IA01ConstructionAuthority.IsOwner(_teamId)
+                || IA02ConstructionAuthority.IsOwner(_teamId))
             {
-                reason = "construcao delegada a IA01";
+                reason = "construcao delegada a IA01/IA02";
                 return false;
             }
 
@@ -927,6 +1054,27 @@ namespace Hegemonia.AI.BrainMaster
             {
                 reason = "item nao encontrado";
                 return false;
+            }
+
+            if (IA_CityExpansionPolicy.IsCityConstruction(data))
+            {
+                SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+                DadosPaisGoverno pais = governo != null ? governo.ObterPais(_teamId) : null;
+                DadosEconomiaPais economia = SistemaEconomiaImoveis.Instancia != null
+                    ? SistemaEconomiaImoveis.Instancia.ObterEconomia(_teamId)
+                    : null;
+                IA_CityExpansionPolicy.Assessment avaliacaoCidade;
+                if (!IA_CityExpansionPolicy.TryPrepareForCity(
+                    _teamId,
+                    pais,
+                    economia,
+                    data.PrefabDaUnidade,
+                    false,
+                    out avaliacaoCidade))
+                {
+                    reason = "preparacao urbana incompleta: " + avaliacaoCidade.Decision;
+                    return false;
+                }
             }
 
             if (!forceManualPlacement && RequiresCoastalPlacement(data))
@@ -1529,6 +1677,13 @@ namespace Hegemonia.AI.BrainMaster
                     float offsetZ = Mathf.Lerp(-extentZ, extentZ, tz);
                     Vector3 samplePosition = position + new Vector3(offsetX, 0f, offsetZ);
 
+                    // A classificacao marcada e reutilizada pela validacao
+                    // fisica abaixo. Antes o mesmo ponto era consultado duas
+                    // vezes por amostra, o que multiplicava o custo da busca.
+                    ClassificacaoSuperficieMapa classificacao;
+                    float altura;
+                    bool superficieClassificada = RegistroSuperficieMapa.TryClassify(samplePosition, out classificacao, out altura);
+
                     if (map != null)
                     {
                         IA_MapCell sample = map.SampleCell(samplePosition);
@@ -1543,9 +1698,7 @@ namespace Hegemonia.AI.BrainMaster
                         }
 
                         // Protecao Extra: Verifica a classificacao real da superficie
-                        ClassificacaoSuperficieMapa classificacao;
-                        float altura;
-                        if (RegistroSuperficieMapa.TryClassify(samplePosition, out classificacao, out altura))
+                        if (superficieClassificada)
                         {
                             if (classificacao == ClassificacaoSuperficieMapa.Agua)
                             {
@@ -1559,7 +1712,7 @@ namespace Hegemonia.AI.BrainMaster
                         }
                     }
 
-                    if (!IsPhysicallyDryLandPoint(samplePosition, rejectCoast))
+                    if (!IsPhysicallyDryLandPoint(samplePosition, rejectCoast, superficieClassificada, classificacao))
                     {
                         return false;
                     }
@@ -1569,11 +1722,13 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
-        private static bool IsPhysicallyDryLandPoint(Vector3 position, bool rejectCoast)
+        private static bool IsPhysicallyDryLandPoint(
+            Vector3 position,
+            bool rejectCoast,
+            bool superficieClassificada,
+            ClassificacaoSuperficieMapa classificacaoMarcada)
         {
-            ClassificacaoSuperficieMapa classificacaoMarcada;
-            float alturaMarcada;
-            if (RegistroSuperficieMapa.TryClassify(position, out classificacaoMarcada, out alturaMarcada))
+            if (superficieClassificada)
             {
                 if (classificacaoMarcada == ClassificacaoSuperficieMapa.Agua)
                 {
@@ -1792,10 +1947,26 @@ namespace Hegemonia.AI.BrainMaster
             _teamId = teamId;
         }
 
-        public bool TryProduce(string itemKey, int quantity, IA_WorldState world, out int produced, out string reason, string productionOrderId = "")
+        public bool TryProduce(
+            string itemKey,
+            int quantity,
+            IA_WorldState world,
+            out int produced,
+            out string reason,
+            string productionOrderId = "",
+            System.Action onPhysicalAcceptance = null)
         {
             produced = 0;
             reason = string.Empty;
+
+            // A produção pode reservar um slot ou spawnar imediatamente antes
+            // de atualizar o snapshot. Sem WorldState, MarkDirty lançaria após
+            // esse efeito e impediria o CommandService de fechar/refundar a ordem.
+            if (world == null)
+            {
+                reason = "estado do mundo indisponivel";
+                return false;
+            }
 
             DadosConstrucao data;
             if (!_bridge.TryResolveItem(itemKey, out data))
@@ -1806,7 +1977,7 @@ namespace Hegemonia.AI.BrainMaster
 
             for (int i = 0; i < Mathf.Max(1, quantity); i++)
             {
-                GameObject unit = TryProduceSingle(data, world, out reason, productionOrderId);
+                GameObject unit = TryProduceSingle(data, world, out reason, productionOrderId, onPhysicalAcceptance);
                 if (unit != null)
                 {
                     produced++;
@@ -1821,7 +1992,12 @@ namespace Hegemonia.AI.BrainMaster
             return produced > 0;
         }
 
-        private GameObject TryProduceSingle(DadosConstrucao data, IA_WorldState world, out string reason, string productionOrderId)
+        private GameObject TryProduceSingle(
+            DadosConstrucao data,
+            IA_WorldState world,
+            out string reason,
+            string productionOrderId,
+            System.Action onPhysicalAcceptance)
         {
             reason = string.Empty;
             if (data == null || data.PrefabDaUnidade == null)
@@ -1838,23 +2014,27 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsNaval(data))
             {
-                return ProduceNaval(data, out reason, productionOrderId);
+                return ProduceNaval(data, out reason, productionOrderId, onPhysicalAcceptance);
             }
 
             if (IsFighter(data))
             {
-                return ProduceAircraft(data, out reason, productionOrderId);
+                return ProduceAircraftTracked(data, out reason, productionOrderId, onPhysicalAcceptance);
             }
 
             if (IsHelicopter(data))
             {
-                return ProduceHelicopter(data, out reason, productionOrderId);
+                return ProduceHelicopter(data, out reason, productionOrderId, onPhysicalAcceptance);
             }
 
-            return ProduceLandUnit(data, out reason, productionOrderId);
+            return ProduceLandUnit(data, out reason, productionOrderId, onPhysicalAcceptance);
         }
 
-        private GameObject ProduceLandUnit(DadosConstrucao data, out string reason, string productionOrderId)
+        private GameObject ProduceLandUnit(
+            DadosConstrucao data,
+            out string reason,
+            string productionOrderId,
+            System.Action onPhysicalAcceptance)
         {
             reason = string.Empty;
             bool needsBarracks = IsInfantry(data);
@@ -1873,7 +2053,10 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                GameObject unit = factory.ProduzirUnidade(data.PrefabDaUnidade);
+                GameObject unit = factory.ProduzirUnidadeRastreada(
+                    data.PrefabDaUnidade,
+                    onPhysicalAcceptance,
+                    productionOrderId);
                 if (unit != null)
                 {
                     IA_BackendBridge.AttachConstructionMetadata(unit, data);
@@ -1888,7 +2071,11 @@ namespace Hegemonia.AI.BrainMaster
             return null;
         }
 
-        private GameObject ProduceNaval(DadosConstrucao data, out string reason, string productionOrderId)
+        private GameObject ProduceNaval(
+            DadosConstrucao data,
+            out string reason,
+            string productionOrderId,
+            System.Action onPhysicalAcceptance)
         {
             reason = string.Empty;
             string lastReason = "estaleiro indisponivel";
@@ -1906,9 +2093,8 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (e.ConstruirUnidade(data.PrefabDaUnidade, productionOrderId))
+                if (e.ConstruirUnidadeRastreada(data.PrefabDaUnidade, productionOrderId, onPhysicalAcceptance))
                 {
-                    IAAutoProductionRegistry.ConfirmQueued(productionOrderId, e.GetInstanceID(), Time.time);
                     RegistrarTempoDiagnostico("spawn_naval_ms", spawnStart);
                     return data.PrefabDaUnidade;
                 }
@@ -1921,6 +2107,15 @@ namespace Hegemonia.AI.BrainMaster
         }
 
         private GameObject ProduceAircraft(DadosConstrucao data, out string reason, string productionOrderId)
+        {
+            return ProduceAircraftTracked(data, out reason, productionOrderId, null);
+        }
+
+        private GameObject ProduceAircraftTracked(
+            DadosConstrucao data,
+            out string reason,
+            string productionOrderId,
+            System.Action onPhysicalAcceptance)
         {
             reason = string.Empty;
             long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1936,6 +2131,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             RegistroEntidadesJogo.FillAeroportos(_airportBuffer);
+            bool encontrouAeroportoElegivel = false;
             for (int i = 0; i < _airportBuffer.Count; i++)
             {
                 GerenciadorAeroporto airport = _airportBuffer[i];
@@ -1944,22 +2140,36 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (!airport.TryComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId))
+                if (airport.semEnergia)
+                {
+                    continue;
+                }
+
+                encontrouAeroportoElegivel = true;
+                if (!airport.TryComprarAviaoIAImediatoRastreado(
+                        data.PrefabDaUnidade,
+                        productionOrderId,
+                        onPhysicalAcceptance,
+                        false))
                 {
                     reason = "aeroporto recusou o spawn";
-                    RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
-                    return null;
+                    continue;
                 }
 
                 RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
                 return data.PrefabDaUnidade;
             }
 
-            reason = "aeroporto indisponivel";
+            if (!encontrouAeroportoElegivel) reason = "aeroporto indisponivel";
+            RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
             return null;
         }
 
-        private GameObject ProduceHelicopter(DadosConstrucao data, out string reason, string productionOrderId)
+        private GameObject ProduceHelicopter(
+            DadosConstrucao data,
+            out string reason,
+            string productionOrderId,
+            System.Action onPhysicalAcceptance)
         {
             reason = string.Empty;
             long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -1990,11 +2200,43 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
+                int efetivoNecessario = SistemaGovernoMundial.ObterEfetivoNecessario(data.PrefabDaUnidade, TipoUnidade.Aereo);
+                SistemaGovernoMundial governoEfetivo = efetivoNecessario > 0 ? SistemaGovernoMundial.Instancia : null;
+                if (efetivoNecessario > 0
+                    && (governoEfetivo == null
+                        || !governoEfetivo.PodeProduzirUnidadeComEfetivo(_teamId, data.PrefabDaUnidade, 1, TipoUnidade.Aereo)))
+                {
+                    reason = "efetivo nacional insuficiente";
+                    return null;
+                }
+
                 GameObject unit = UnityEngine.Object.Instantiate(data.PrefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                IAAutoProductionRegistry.ConfirmConstructionStarted(
+                    productionOrderId,
+                    heliport.GetInstanceID(),
+                    Time.time);
                 long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
                 IA_BackendBridge.AttachConstructionMetadata(unit, data);
                 _bridge.EnsureIdentity(unit);
+                IdentidadeUnidade aircraftIdentity = unit.GetComponent<IdentidadeUnidade>();
+                if (aircraftIdentity != null) aircraftIdentity.tipoUnidade = TipoUnidade.Aereo;
+                governoEfetivo = governoEfetivo != null ? governoEfetivo : SistemaGovernoMundial.Instancia;
+                if (efetivoNecessario > 0
+                    && (governoEfetivo == null || !governoEfetivo.TentarMobilizarEfetivoDaUnidade(_teamId, unit)))
+                {
+                    IdentidadeUnidade[] identities = unit.GetComponentsInChildren<IdentidadeUnidade>(true);
+                    for (int identityIndex = 0; identityIndex < identities.Length; identityIndex++)
+                    {
+                        if (identities[identityIndex] != null) identities[identityIndex].militaresConsumidos = 0;
+                    }
+                    UnityEngine.Object.Destroy(unit);
+                    IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+                    reason = "efetivo nacional indisponivel no spawn";
+                    return null;
+                }
+                ServicoAbastecimento.AbastecerUnidadeProduzida(unit);
                 IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
+                onPhysicalAcceptance?.Invoke();
                 IA_WorldState.NotifyEntityChanged(unit.GetComponent<IdentidadeUnidade>());
                 RegistrarTempoDiagnostico("prefab_init_ms", initStart);
                 RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
@@ -2020,7 +2262,7 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("prefeitura");
         }
 
-        private static bool IsNaval(DadosConstrucao data)
+        internal static bool IsNaval(DadosConstrucao data)
         {
             string n = IA_Text.Normalize(data.NomeItem + " " + data.PrefabDaUnidade.name);
             return data.categoria == DadosConstrucao.CategoriaItem.Marinha
@@ -2193,6 +2435,8 @@ namespace Hegemonia.AI.BrainMaster
             public SistemaDeTiro[] DirectWeapons = new SistemaDeTiro[0];
             public LancadorNaval[] NavalLaunchers = new LancadorNaval[0];
             public ControleTorreta[] Turrets = new ControleTorreta[0];
+            public ControleTorretaModular[] ModularTurrets = new ControleTorretaModular[0];
+            public TorretaAntiaerea[] AntiAirTurrets = new TorretaAntiaerea[0];
         }
 
         private readonly IA_BackendBridge _bridge;
@@ -2201,6 +2445,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<int, AttackSystemsCacheEntry> _attackSystemsByUnit = new Dictionary<int, AttackSystemsCacheEntry>();
         private readonly Dictionary<int, Vector3> _lastAttackAimByUnit = new Dictionary<int, Vector3>();
         private readonly Dictionary<int, float> _lastAttackArmTimeByUnit = new Dictionary<int, float>();
+        private readonly List<ControleUnidade> _persistentFormationUnitsBuffer = new List<ControleUnidade>(64);
         private float _nextRuntimeProduceAllowedTime;
 
         public CommandService(IA_BackendBridge bridge)
@@ -2260,7 +2505,8 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (!context.Brain.TrySpend(item.preco))
+            long buildCost = item.ObterPrecoEfetivo();
+            if (!context.Brain.TrySpend(buildCost))
             {
                 message = "credito insuficiente";
                 return false;
@@ -2290,7 +2536,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (!ok)
                 {
-                    context.Brain.Refund(item.preco);
+                    context.Brain.Refund(buildCost);
                 }
                 else
                 {
@@ -2319,6 +2565,20 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        private static long CalcularCustoTotal(long custoUnitario, int quantidade)
+        {
+            long custo = System.Math.Max(0L, custoUnitario);
+            int unidades = System.Math.Max(0, quantidade);
+            if (custo == 0L || unidades == 0)
+            {
+                return 0L;
+            }
+
+            return custo > long.MaxValue / unidades
+                ? long.MaxValue
+                : custo * unidades;
+        }
+
         private bool ExecuteProduce(IA_CommandRequest request, IA_Context context, out string message)
         {
             IA_ProduceOrderData payload = request.Payload as IA_ProduceOrderData;
@@ -2335,12 +2595,33 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            IA01MilitaryAssetKind kind = IA01MilitaryProductionGuard.Classify(item);
+            string unitType = kind == IA01MilitaryAssetKind.Other ? item.GetStableId() : kind.ToString();
+            if (!string.IsNullOrWhiteSpace(payload.ProductionOrderId)
+                && !IAAutoProductionRegistry.CanDispatchCommand(
+                    payload.ProductionOrderId,
+                    _bridge.TeamId,
+                    unitType))
+            {
+                message = "ordem de producao inexistente, encerrada ou incompatível";
+                return false;
+            }
+
+            if (context == null || context.Brain == null)
+            {
+                if (!string.IsNullOrWhiteSpace(payload.ProductionOrderId))
+                {
+                    IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
+                }
+
+                message = "contexto ou BrainMaster indisponivel";
+                return false;
+            }
+
             // Compatibilidade para comandos automáticos publicados por diretores
             // legados que ainda não carregam o id da reserva no payload.
-            if (string.IsNullOrEmpty(payload.ProductionOrderId))
+            if (string.IsNullOrWhiteSpace(payload.ProductionOrderId))
             {
-                IA01MilitaryAssetKind kind = IA01MilitaryProductionGuard.Classify(item);
-                string unitType = kind == IA01MilitaryAssetKind.Other ? item.GetStableId() : kind.ToString();
                 int alive = CountProductionUnits(kind, context != null ? context.ForceSnapshot : null);
                 string purpose = "command:" + (string.IsNullOrEmpty(request.Origin) ? "legacy" : request.Origin);
                 if (!IAAutoProductionRegistry.TryReserveProduction(_bridge.TeamId, unitType, purpose, alive + 1, alive, out payload.ProductionOrderId, Time.time, 180f))
@@ -2359,7 +2640,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             int amount = Mathf.Max(1, payload.Quantity);
-            int totalCost = item.preco * amount;
+            long unitCost = System.Math.Max(0L, item.ObterPrecoEfetivo());
+            long totalCost = CalcularCustoTotal(unitCost, amount);
             if (!context.Brain.TrySpend(totalCost))
             {
                 IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
@@ -2367,16 +2649,20 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (item.PrefabDaUnidade != null)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", item.PrefabDaUnidade.name);
-            }
-
             long metricStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            int produced = 0;
+            int physicalAcceptanceCount = 0;
             try
             {
-                int produced;
-                bool ok = _bridge.ProductionService.TryProduce(payload.ItemKey, payload.Quantity, context.WorldState, out produced, out message, payload.ProductionOrderId);
+                System.Action markPhysicalAcceptance = () => physicalAcceptanceCount++;
+                bool ok = _bridge.ProductionService.TryProduce(
+                    payload.ItemKey,
+                    payload.Quantity,
+                    context.WorldState,
+                    out produced,
+                    out message,
+                    payload.ProductionOrderId,
+                    markPhysicalAcceptance);
                 if (!ok || produced <= 0)
                 {
                     IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
@@ -2386,13 +2672,66 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (produced < amount)
                 {
-                    int refund = (amount - produced) * item.preco;
+                    long refund = CalcularCustoTotal(unitCost, amount - produced);
                     context.Brain.Refund(refund);
                 }
 
                 ArmRuntimeProduceCooldown(context);
                 message = "produzido=" + produced;
                 return true;
+            }
+            catch (System.Exception exception)
+            {
+                IAProductionOrderState orderState;
+                bool hasOrderState = IAAutoProductionRegistry.TryGetOrderState(
+                    payload.ProductionOrderId,
+                    out orderState);
+                bool producerAccepted = hasOrderState
+                    && orderState != IAProductionOrderState.Reserved
+                    && orderState != IAProductionOrderState.Released;
+                int acceptedCount = Mathf.Clamp(
+                    Mathf.Max(produced, physicalAcceptanceCount),
+                    0,
+                    amount);
+                if (producerAccepted && acceptedCount == 0)
+                {
+                    acceptedCount = 1;
+                }
+
+                if (acceptedCount > 0)
+                {
+                    // Naval queue/slot states must remain active until the
+                    // shipyard finishes. A direct spawn with an interrupted
+                    // post-processing step is terminal for this order.
+                    if (orderState == IAProductionOrderState.Constructing
+                        && !ProductionService.IsNaval(item))
+                    {
+                        IAAutoProductionRegistry.Complete(payload.ProductionOrderId, Time.time);
+                    }
+
+                    if (acceptedCount < amount)
+                    {
+                        context.Brain.Refund(CalcularCustoTotal(unitCost, amount - acceptedCount));
+                    }
+
+                    ArmRuntimeProduceCooldown(context);
+                    message = "producao aceita antes de erro; unidades=" + acceptedCount;
+                    Debug.LogWarning(
+                        "[BrainMaster][Team " + _bridge.TeamId
+                        + "] excecao apos aceitar producao; custo preservado. " + exception.GetType().Name
+                        + ": " + exception.Message);
+                    return true;
+                }
+
+                IAAutoProductionRegistry.Release(payload.ProductionOrderId, Time.time);
+                context.Brain.Refund(totalCost);
+                message = "producao cancelada antes da aceitacao; tesouro estornado. "
+                    + exception.GetType().Name;
+                Debug.LogWarning(
+                    "[BrainMaster][Team " + _bridge.TeamId
+                    + "] excecao antes da aceitacao do produtor; reserva liberada e tesouro estornado. "
+                    + exception.GetType().Name + ": " + exception.Message);
+                return false;
             }
             finally
             {
@@ -2608,6 +2947,9 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            bool isIA03Order = string.Equals(request.Origin, "IA03EstrategaNacional", System.StringComparison.Ordinal)
+                               && !string.IsNullOrWhiteSpace(request.Id);
+            _persistentFormationUnitsBuffer.Clear();
             int moved = 0;
             int total = payload.Units.Count;
             for (int i = 0; i < payload.Units.Count; i++)
@@ -2619,12 +2961,27 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 Vector3 slotDestination = ComputeFormationDestination(unit, payload.Destination, i, total);
-                if (!TryIssueMove(unit, slotDestination, request.Origin, request.Id))
+                if (!TryIssueMove(unit, slotDestination, request.Origin, request.Id)
+                    && !UnidadeJaNoDestino(unit, slotDestination))
                 {
                     continue;
                 }
 
                 moved++;
+                if (isIA03Order)
+                {
+                    ControleUnidade controle = unit.GetComponent<ControleUnidade>();
+                    if (controle != null)
+                    {
+                        _persistentFormationUnitsBuffer.Add(controle);
+                    }
+                }
+            }
+
+            if (isIA03Order && _persistentFormationUnitsBuffer.Count > 1)
+            {
+                Hegemonia.RTS.RTSPersistentFormationService.GarantirInstancia()
+                    .RegistrarOrdemDeGrupo(_persistentFormationUnitsBuffer);
             }
 
             message = "movidas=" + moved;
@@ -2635,7 +2992,40 @@ namespace Hegemonia.AI.BrainMaster
         {
             long metricStart = System.Diagnostics.Stopwatch.GetTimestamp();
             IA_AttackOrderData payload = request.Payload as IA_AttackOrderData;
-            if (payload == null || payload.Units.Count == 0)
+            if (payload == null)
+            {
+                message = "payload invalido";
+                return false;
+            }
+
+            // A Transform alone can be a strategic point. Only a target with
+            // an actual unit identity (or an explicit observed team) should
+            // enter the diplomatic gate. Coordinate-only legacy orders stay
+            // intact while identified enemy targets still require the normal
+            // war/cease-fire checks.
+            IdentidadeUnidade targetIdentity = payload.Target != null
+                ? payload.Target.GetComponentInParent<IdentidadeUnidade>()
+                : null;
+            if (!IsAttackTargetIdentityValid(payload, targetIdentity, out message))
+            {
+                return false;
+            }
+
+            // A caller can issue a deliberate explicit Attack while the
+            // diplomatic state is still neutral; this sets the priority and
+            // the resulting hostile impact declares war. Autonomous directors
+            // opt into the formal-war gate through RequiresDeclaredWar.
+            // An identified team is an explicit hostile target even when an
+            // older producer omitted RequiresDeclaredWar. Validate its live
+            // identity and diplomatic state before checking unit availability
+            // so the order cannot bypass the war gate through another origin.
+            if ((payload.RequiresDeclaredWar || payload.TargetTeamId > 0)
+                && !IsAttackTargetAuthorized(payload, out message))
+            {
+                return false;
+            }
+
+            if (payload.Units == null || payload.Units.Count == 0)
             {
                 message = "sem unidades";
                 return false;
@@ -2656,7 +3046,9 @@ namespace Hegemonia.AI.BrainMaster
                 Vector3 slotDestination = ComputeAttackFormationDestination(unit, payload.Units, formationAnchor, target, i, total);
                 Vector3 movementDestination = unit.GetComponent<AviaoBombardeiro>() != null ? target : slotDestination;
                 bool issuedMove = TryIssueMove(unit, movementDestination, request.Origin, request.Id);
+                bool alreadyAtAttackPosition = !issuedMove && UnidadeJaNoDestino(unit, movementDestination);
                 bool movimentoAereoRecusado = !issuedMove
+                    && !alreadyAtAttackPosition
                     && (unit.GetComponent<ControleAviao>() != null || unit.GetComponent<Helicoptero>() != null);
                 bool armed = !movimentoAereoRecusado
                     && ArmUnitForAttack(unit, payload.Target, target);
@@ -2681,17 +3073,102 @@ namespace Hegemonia.AI.BrainMaster
             return moved > 0;
         }
 
+        private bool IsAttackTargetIdentityValid(
+            IA_AttackOrderData payload,
+            IdentidadeUnidade resolvedTargetIdentity,
+            out string message)
+        {
+            message = "";
+            if (payload == null)
+            {
+                message = "payload invalido";
+                return false;
+            }
+
+            if (payload.TargetTeamId > 0 && payload.TargetTeamId == _bridge.TeamId)
+            {
+                message = "ataque cancelado: identidade do alvo inválida";
+                return false;
+            }
+
+            if (payload.Target == null) return true;
+
+            if (resolvedTargetIdentity == null)
+            {
+                if (payload.TargetTeamId > 0)
+                {
+                    message = "ataque cancelado: identidade atual do alvo diverge da observada";
+                    return false;
+                }
+
+                return true;
+            }
+
+            if (resolvedTargetIdentity.teamID == _bridge.TeamId
+                || (payload.TargetTeamId > 0 && resolvedTargetIdentity.teamID != payload.TargetTeamId))
+            {
+                message = "ataque cancelado: identidade atual do alvo diverge da observada";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsAttackTargetAuthorized(IA_AttackOrderData payload, out string message)
+        {
+            message = "";
+            if (payload == null
+                || payload.TargetTeamId <= 0
+                || payload.TargetTeamId == _bridge.TeamId)
+            {
+                message = "ataque cancelado: identidade do alvo inválida";
+                return false;
+            }
+
+            if (payload.Target != null)
+            {
+                IdentidadeUnidade targetIdentity = payload.Target.GetComponentInParent<IdentidadeUnidade>();
+                if (targetIdentity == null || targetIdentity.teamID != payload.TargetTeamId)
+                {
+                    message = "ataque cancelado: identidade atual do alvo diverge da observada";
+                    return false;
+                }
+            }
+            // A missing Transform can represent a deliberate strategic-point
+            // attack only when its producer opted in. Lost live targets must
+            // not silently degrade into coordinate-only fire.
+            else if (!payload.AllowCoordinateAttackAgainstKnownEnemy)
+            {
+                message = "ataque cancelado: identidade do alvo inválida";
+                return false;
+            }
+
+            SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
+            RelacaoPaisGoverno relation = government != null
+                ? government.ObterRelacao(_bridge.TeamId, payload.TargetTeamId)
+                : null;
+            if (relation == null || !relation.guerraDeclarada || relation.cessarFogoAtivo)
+            {
+                message = "ataque cancelado: guerra formal ausente ou cessar-fogo ativo";
+                return false;
+            }
+
+            return true;
+        }
+
         private bool ExecutePatrol(IA_CommandRequest request, out string message)
         {
             IA_PatrolOrderData payload = request.Payload as IA_PatrolOrderData;
-            if (payload == null || payload.Units.Count == 0)
+            if (payload == null || payload.Units == null || payload.Units.Count == 0)
             {
                 message = "sem unidades";
                 return false;
             }
 
             int ordered = 0;
+            int legacyMoveFallbacks = 0;
             int total = payload.Units.Count;
+            string firstRejection = string.Empty;
             for (int i = 0; i < payload.Units.Count; i++)
             {
                 GameObject unit = payload.Units[i];
@@ -2700,8 +3177,47 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                Vector3 slotDestination = ComputeFormationDestination(unit, payload.PointA, i, total);
-                if (!TryIssueMove(unit, slotDestination, request.Origin, request.Id))
+                ControleUnidade controller = unit.GetComponent<ControleUnidade>();
+                List<Vector3> route = BuildPatrolRouteForUnit(unit, controller, payload, i, total);
+                string unitOrderId = request.Id + ":" + unit.GetInstanceID().ToString(CultureInfo.InvariantCulture);
+                bool accepted;
+                if (controller != null)
+                {
+                    accepted = controller.EmitirOrdemPatrulha(route, request.Origin, unitOrderId);
+                    if (!accepted && string.IsNullOrWhiteSpace(firstRejection))
+                    {
+                        firstRejection = controller.UltimoMotivoRecusaOrdem;
+                    }
+                }
+                else
+                {
+                    // Compatibilidade para prefabs antigos sem a fachada
+                    // ControleUnidade: aeronaves modernas ainda recebem a
+                    // rota pelo executor que conhece autonomia e retorno.
+                    ControleAviao aircraft = unit.GetComponent<ControleAviao>();
+                    if (aircraft != null)
+                    {
+                        accepted = aircraft.ReceberOrdemPatrulha(route);
+                        if (!accepted && string.IsNullOrWhiteSpace(firstRejection))
+                        {
+                            firstRejection = aircraft.UltimoMotivoRecusaOrdem;
+                        }
+                    }
+                    else
+                    {
+                        // Unidades legadas sem API de rota mantêm o antigo
+                        // deslocamento ao primeiro ponto, identificado no
+                        // retorno para não ser confundido com patrulha cíclica.
+                        accepted = TryIssueMove(unit, route[0], request.Origin, unitOrderId)
+                                   || UnidadeJaNoDestino(unit, route[0]);
+                        if (accepted)
+                        {
+                            legacyMoveFallbacks++;
+                        }
+                    }
+                }
+
+                if (!accepted)
                 {
                     continue;
                 }
@@ -2709,8 +3225,62 @@ namespace Hegemonia.AI.BrainMaster
                 ordered++;
             }
 
-            message = "patrulha=" + ordered;
+            message = "patrulha=" + ordered + "/" + total;
+            if (legacyMoveFallbacks > 0)
+            {
+                message += " | movimento simples legado=" + legacyMoveFallbacks;
+            }
+            if (ordered == 0 && !string.IsNullOrWhiteSpace(firstRejection))
+            {
+                message += " | motivo=" + firstRejection;
+            }
             return ordered > 0;
+        }
+
+        private static List<Vector3> BuildPatrolRouteForUnit(
+            GameObject unit,
+            ControleUnidade controller,
+            IA_PatrolOrderData payload,
+            int index,
+            int total)
+        {
+            Vector3 pointA = ComputeFormationDestination(unit, payload.PointA, index, total);
+            Vector3 rawPointB = payload.PointB;
+            if (rawPointB == Vector3.zero && payload.PointA != Vector3.zero)
+            {
+                rawPointB = payload.PointA;
+            }
+
+            Vector3 pointB = ComputeFormationDestination(unit, rawPointB, index, total);
+            Vector3 flatA = Flatten(pointA);
+            Vector3 flatB = Flatten(pointB);
+            List<Vector3> route = new List<Vector3>(4) { pointA };
+
+            if (Vector3.Distance(flatA, flatB) > 50f)
+            {
+                route.Add(pointB);
+                return route;
+            }
+
+            // Creatys sem próximo ponto definem uma área, não uma perna de
+            // movimento. Gere um circuito compacto para a unidade não ficar
+            // parada no mesmo waypoint. O controlador naval ajusta os pontos
+            // à água e o aéreo aplica altitude e valida o retorno à base.
+            bool naval = controller != null && controller.EhUnidadeNaval();
+            float radius = naval ? 450f : 300f;
+            Vector3 forward = unit != null ? unit.transform.forward : Vector3.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.01f)
+            {
+                forward = Vector3.forward;
+            }
+            forward.Normalize();
+            Vector3 lateral = Vector3.Cross(Vector3.up, forward).normalized;
+            route.Add(pointA + forward * radius);
+            route.Add(pointA + lateral * radius);
+            route.Add(pointA - forward * radius);
+            route.Add(pointA - lateral * radius);
+            return route;
         }
 
         private bool ExecuteAbility(IA_CommandRequest request, out string message)
@@ -2915,6 +3485,50 @@ namespace Hegemonia.AI.BrainMaster
                 armed = true;
             }
 
+            // Sem a fachada ControleUnidade, o BrainMaster precisa ativar as
+            // torretas modulares pelo mesmo caminho explícito de ataque.
+            // Módulos antiaéreos continuam escolhendo seus próprios alvos para
+            // não transformar uma ordem contra alvo terrestre em tiro AA.
+            if (controller == null)
+            {
+                ControleTorretaModular[] modularTurrets = cache.ModularTurrets;
+                for (int i = 0; i < modularTurrets.Length; i++)
+                {
+                    ControleTorretaModular turret = modularTurrets[i];
+                    if (turret == null)
+                    {
+                        continue;
+                    }
+
+                    turret.DefinirModoAtivo(true);
+                    if (target != null && !turret.EhAntiAereo)
+                    {
+                        turret.alvoPrioritario = target;
+                    }
+
+                    armed = true;
+                }
+
+                // O fallback sem ControleUnidade não passa pela fachada que
+                // também ativa a defesa AA. Só arme a AA para alvo aéreo; uma
+                // ordem terrestre não deve tirar a torreta de postura passiva.
+                if (IsLikelyAirTarget(target))
+                {
+                    TorretaAntiaerea[] antiAirTurrets = cache.AntiAirTurrets;
+                    for (int i = 0; i < antiAirTurrets.Length; i++)
+                    {
+                        TorretaAntiaerea turret = antiAirTurrets[i];
+                        if (turret == null)
+                        {
+                            continue;
+                        }
+
+                        turret.DefinirModoAtivo(true);
+                        armed = true;
+                    }
+                }
+            }
+
             SistemaDeTiro[] directWeapons = cache.DirectWeapons;
             for (int i = 0; i < directWeapons.Length; i++)
             {
@@ -2943,6 +3557,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 launcher.DefinirModoIA(LancadorNaval.ModoOperacao.Automatico, false);
+                launcher.DefinirAlvoPrioritario(target);
                 armed = true;
             }
 
@@ -2952,7 +3567,12 @@ namespace Hegemonia.AI.BrainMaster
                 submarine.DefinirModoOperacao(ControleSubmarino.ModoOperacao.Automatico, false);
                 if (submarine.PodeAtacarIA())
                 {
-                    submarine.DispararMisselIA(targetPosition);
+                    submarine.DispararMisselIA(targetPosition, target);
+                    armed = true;
+                }
+                else if (submarine.PodeAtacarComTorpedoIA(target))
+                {
+                    submarine.TentarDispararTorpedoIA(target);
                     armed = true;
                 }
             }
@@ -2981,7 +3601,9 @@ namespace Hegemonia.AI.BrainMaster
                 Submarine = unit.GetComponent<ControleSubmarino>(),
                 DirectWeapons = unit.GetComponentsInChildren<SistemaDeTiro>(true),
                 NavalLaunchers = unit.GetComponentsInChildren<LancadorNaval>(true),
-                Turrets = unit.GetComponentsInChildren<ControleTorreta>(true)
+                Turrets = unit.GetComponentsInChildren<ControleTorreta>(true),
+                ModularTurrets = unit.GetComponentsInChildren<ControleTorretaModular>(true),
+                AntiAirTurrets = unit.GetComponentsInChildren<TorretaAntiaerea>(true)
             };
 
             _attackSystemsByUnit[id] = cache;
@@ -2995,7 +3617,9 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            if (cache.DirectWeapons == null || cache.NavalLaunchers == null || cache.Turrets == null)
+            if (cache.DirectWeapons == null || cache.NavalLaunchers == null
+                || cache.Turrets == null || cache.ModularTurrets == null
+                || cache.AntiAirTurrets == null)
             {
                 return true;
             }
@@ -3024,7 +3648,36 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
+            for (int i = 0; i < cache.ModularTurrets.Length; i++)
+            {
+                if (cache.ModularTurrets[i] == null)
+                {
+                    return true;
+                }
+            }
+
+            for (int i = 0; i < cache.AntiAirTurrets.Length; i++)
+            {
+                if (cache.AntiAirTurrets[i] == null)
+                {
+                    return true;
+                }
+            }
+
             return false;
+        }
+
+        private static bool UnidadeJaNoDestino(GameObject unit, Vector3 destination)
+        {
+            if (unit == null)
+            {
+                return false;
+            }
+
+            return Vector3.Distance(
+                       Flatten(unit.transform.position),
+                       Flatten(destination))
+                   <= GetNearThreshold(unit);
         }
 
         private static bool TryIssueSpecializedMove(

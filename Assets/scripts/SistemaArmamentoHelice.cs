@@ -29,6 +29,8 @@ public class SistemaArmamentoHelice : MonoBehaviour
     private bool recarregando = false;
     private float cronometroTiro = 0f;
 
+    public bool PossuiMunicaoParaMissao => balasAtuais > 0 || recarregando;
+
     // --- VARIÁVEIS DE CONTROLE INTERNO ---
     private ControleAviao controleAviao;
     private ControleUnidade controleUnidade;

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: Ministral
   descricao: Navio de transporte de tropas com 500 vagas e convés para helicópteros.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 57b9884c9dcbef44485e158db88da90a, type: 3}
   itemId: Ministral
   aliases: Mistral; navio transporte de tropas; porta helicópteros
   capacidades: 0

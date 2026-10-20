@@ -14,6 +14,7 @@ namespace Hegemonia.RTS
         [SerializeField, Min(50f)] private float alcanceRadar = 900f;
         [SerializeField] private bool alcanceConfiguradoNoPrefab;
         [SerializeField] private bool radarLigado;
+        [SerializeField] private bool ativacaoAutomaticaHelicopteroEmVoo;
 
         private float proximaDecisaoIA;
         private float manterLigadoAte;
@@ -27,6 +28,19 @@ namespace Hegemonia.RTS
         public bool RadarLigado => radarLigado;
         public bool BloqueadoPorEnergia => bloqueadoPorEnergia;
         public float AlcanceRadar => Mathf.Max(50f, alcanceRadar);
+        public bool AtivacaoAutomaticaHelicopteroEmVoo => ativacaoAutomaticaHelicopteroEmVoo;
+
+        public bool AtualizarReconhecimentoAutomatico(IdentidadeUnidade identidade)
+        {
+            if (!ativacaoAutomaticaHelicopteroEmVoo) return false;
+            Helicoptero helicoptero = GetComponent<Helicoptero>();
+            bool deveReconhecer = helicoptero != null && helicoptero.estaVoando;
+            if (deveReconhecer)
+                TentarLigarRadar(identidade != null ? identidade.teamID : ObterTimeJogador());
+            else
+                radarLigado = false;
+            return deveReconhecer;
+        }
 
         public void DefinirRadar(bool ligado)
         {

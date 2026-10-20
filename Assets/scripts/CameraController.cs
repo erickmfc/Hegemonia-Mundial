@@ -538,6 +538,16 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Move a câmera para um ponto livre do mapa e encerra o acompanhamento
+    /// anterior para que ele não sobrescreva a navegação solicitada.
+    /// </summary>
+    public void FocarEmLocal(Vector3 alvo)
+    {
+        unidadeSeguindo = null;
+        FocarEm(alvo, false);
+    }
+
     private void OrientarParaAlvo(Vector3 direcao)
     {
         Vector3 referenciaVertical = Vector3.ProjectOnPlane(transform.up, direcao);

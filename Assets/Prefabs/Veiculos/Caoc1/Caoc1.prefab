@@ -664,6 +664,7 @@ GameObject:
   - component: {fileID: 5698581760425807609}
   - component: {fileID: -134070534789951294}
   - component: {fileID: 780330869220879923}
+  - component: {fileID: 7000000000000000044}
   m_Layer: 0
   m_Name: Caoc1
   m_TagString: Player
@@ -1380,3 +1381,32 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.2549171, y: 0.7630225, z: 0.06758711}
   m_Center: {x: 0, y: 0.38153437, z: -0.033811912}
+--- !u!114 &7000000000000000044
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4672269003801672537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 200
+  intervaloVarreduraSegundos: 0.5
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1

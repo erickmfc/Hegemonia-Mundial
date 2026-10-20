@@ -102,6 +102,7 @@ public class GerenteDeJogo : MonoBehaviour
 
     [Header("Controle de Tempo")]
     private float _tempoApertandoTab = 0f;
+    private bool _tabAceleracaoAtiva = false;
     private readonly Dictionary<string, int> _slotsSaidaPorPonto = new Dictionary<string, int>();
     private const int SlotsPorPontoSaida = 9; // 3x3
     private const float IntervaloProcessamentoFilaProducao = 0.2f;
@@ -113,16 +114,24 @@ public class GerenteDeJogo : MonoBehaviour
         if (MenuPausaController.EstaPausado)
         {
             _tempoApertandoTab = 0f;
+            _tabAceleracaoAtiva = false;
             return;
         }
 
         string motivoBloqueioTempo;
         if (GovernadorGameplayRTS.BloquearAceleracaoTempo(out motivoBloqueioTempo))
         {
-            if (Time.timeScale > 1f)
+            Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+            if (relogio != null && relogio.SimulationSpeed > 1f)
+            {
+                relogio.ResetSimulationSpeed();
+            }
+            else if (Time.timeScale > 1f)
             {
                 Time.timeScale = 1f;
             }
+
+            _tabAceleracaoAtiva = false;
 
             if (Input.GetKey(KeyCode.Tab))
             {
@@ -133,21 +142,32 @@ public class GerenteDeJogo : MonoBehaviour
             return;
         }
 
-        // FAST-FORWARD: Acelera o tempo do jogo x2 se o usuário segurar o TAB por 2 segundos.
+        // FAST-FORWARD: ativa o preset visual 2x (6,75x real) se TAB for mantido por 2 segundos.
         if (Input.GetKey(KeyCode.Tab))
         {
             _tempoApertandoTab += Time.unscaledDeltaTime;
-            if (_tempoApertandoTab >= 2.0f && Time.timeScale < 2.0f)
+            Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+            float velocidadeAtual = relogio != null ? relogio.SimulationSpeed : Time.timeScale;
+            if (_tempoApertandoTab >= 2.0f && velocidadeAtual < 2.0f)
             {
-                Time.timeScale = 2.0f;
+                if (relogio != null) relogio.SetSimulationSpeed(6.75f);
+                else Time.timeScale = 6.75f;
+                _tabAceleracaoAtiva = true;
             }
         }
         else
         {
-            if (_tempoApertandoTab > 0)
+            if (_tabAceleracaoAtiva)
             {
                 _tempoApertandoTab = 0f;
-                Time.timeScale = 1.0f; // Volta ao normal ao soltar!
+                _tabAceleracaoAtiva = false;
+                Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+                if (relogio != null) relogio.ResetSimulationSpeed();
+                else Time.timeScale = 1.0f; // Volta ao normal ao soltar!
+            }
+            else
+            {
+                _tempoApertandoTab = 0f;
             }
         }
     }
@@ -203,6 +223,16 @@ public class GerenteDeJogo : MonoBehaviour
     // O Menu chama essa função
     public void ComprarUnidade(GameObject unidadeParaConstruir, long preco, int quantidade)
     {
+        TentarComprarUnidade(unidadeParaConstruir, preco, quantidade);
+    }
+
+    public bool TentarComprarUnidade(GameObject unidadeParaConstruir, long preco, int quantidade)
+    {
+        if (unidadeParaConstruir == null || quantidade <= 0)
+        {
+            return false;
+        }
+
         // 1. Identificar Tipo
         string nome = unidadeParaConstruir.name.ToLower();
 
@@ -224,13 +254,35 @@ public class GerenteDeJogo : MonoBehaviour
 
         LogInfo($"INFO COMPRA: '{nome}' -> Soldado? {ehSoldado}, Heli? {ehHelicoptero}, Navio? {ehNavio}, Avião? {ehAviao}");
 
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null)
+        {
+            if (SistemaGovernoMundial.ObterEfetivoNecessario(unidadeParaConstruir) > 0)
+            {
+                Debug.LogWarning($"[Produção] Pedido de {unidadeParaConstruir.name} recusado: governo nacional indisponível para mobilizar efetivo.");
+                return false;
+            }
+        }
+        else if (!governo.PodeProduzirUnidadeComEfetivo(1, unidadeParaConstruir, quantidade))
+        {
+            Debug.LogWarning($"[Produção] Pedido de {unidadeParaConstruir.name} recusado: efetivo insuficiente para {quantidade} unidade(s).");
+            return false;
+        }
+
+        bool requerInstalacaoTerrestre = !ehPredio && !ehNavio && !ehAviao && !ehHelicoptero;
+        if (requerInstalacaoTerrestre && !PossuiInstalacaoTerrestreOperacional(ehSoldado))
+        {
+            Debug.LogWarning($"[Produção] Pedido de {unidadeParaConstruir.name} recusado: nenhum ponto terrestre operacional (fábrica/quartel com energia).");
+            return false;
+        }
+
         long custoTotal = preco * Math.Max(0, quantidade);
 
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null)
         {
             Debug.LogError("❌ GerenciadorRecursos não encontrado! Crie um GameObject com este componente na cena.");
-            return;
+            return false;
         }
 
         if (recursos.TentarGastar(custoDinheiro: custoTotal))
@@ -254,11 +306,39 @@ public class GerenteDeJogo : MonoBehaviour
             }
 
             LogInfo($"Adicionado à fila: {quantidade}x {unidadeParaConstruir.name}");
+            return true;
         }
         else
         {
             Debug.LogError($"❌ Dinheiro Insuficiente! Precisa: ${custoTotal}, Tem: ${recursos.dinheiro}");
+            return false;
         }
+    }
+
+    bool PossuiInstalacaoTerrestreOperacional(bool ehSoldado)
+    {
+        List<PontoLogistico> pontos = ehSoldado ? listaQuarteis : listaHangares;
+        if (pontos == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < pontos.Count; i++)
+        {
+            PontoLogistico ponto = pontos[i];
+            if (ponto == null || ponto.spawn == null)
+            {
+                continue;
+            }
+
+            Fabrica fabrica = ponto.spawn.GetComponentInParent<Fabrica>();
+            if (fabrica != null && fabrica.PossuiEnergiaParaProduzir())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool EhSoldadoOuInfantaria(GameObject unidadeParaConstruir, string nomeNormalizado = null)
@@ -313,8 +393,34 @@ public class GerenteDeJogo : MonoBehaviour
         return identidade != null && identidade.tipoUnidade == TipoUnidade.Infantaria;
     }
 
+    private static bool AeroportoPertenceAoJogador(GerenciadorAeroporto aeroporto)
+    {
+        if (aeroporto == null) return false;
+
+        IdentidadeUnidade identidade = aeroporto.GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = aeroporto.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade.teamID == 1;
+
+        Hegemonia.AI.BrainMaster.IA_ManualPlacementTag tagManual = aeroporto.GetComponent<Hegemonia.AI.BrainMaster.IA_ManualPlacementTag>();
+        if (tagManual == null) tagManual = aeroporto.GetComponentInParent<Hegemonia.AI.BrainMaster.IA_ManualPlacementTag>();
+        if (tagManual != null) return true;
+
+        return aeroporto.GetComponentInParent<IdentidadeIA>() == null
+            && aeroporto.GetComponentInParent<Hegemonia.AI.BrainMaster.IA_IdentityRegistryHook>() == null
+            && aeroporto.GetComponentInParent<Hegemonia.AI.BrainMaster.IA_BrainMaster>() == null;
+    }
+
     bool FinalizarProducao(PedidoDeProducao pedido)
     {
+        if (pedido == null) return true;
+        if (pedido.prefab == null)
+        {
+            Debug.LogError($"ERRO CRÍTICO: O prefab do pedido '{pedido.nomeUnidade}' está NULO! Verifique o ScriptableObject.");
+            return true;
+        }
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+
         if (pedido.ehAviao || pedido.ehHelicoptero)
         {
             // Busca o MELHOR aeroporto (um que não esteja lotado e seja do jogador)
@@ -325,7 +431,7 @@ public class GerenteDeJogo : MonoBehaviour
             for (int i = 0; i < _bufferAeroportosEntrega.Count; i++)
             {
                 GerenciadorAeroporto a = _bufferAeroportosEntrega[i];
-                if (a == null) continue;
+                if (a == null || a.semEnergia || !AeroportoPertenceAoJogador(a)) continue;
                 
                 // EXCLUSÃO TOTAL: Aviões novos NUNCA vão para Navios (Porta-Aviões, Transportes, Hovercrafts)
                 bool ehCarrier = (a is GerenciadorPortaAvioes) || (a.GetComponent<GerenciadorPortaAvioes>() != null);
@@ -357,13 +463,18 @@ public class GerenteDeJogo : MonoBehaviour
             {
                 string tipoEntrega = pedido.ehHelicoptero ? "Helicóptero" : "Avião";
                 LogInfo($"[Logística] {tipoEntrega} '{pedido.nomeUnidade}' entregue em: {aeroEscolhido.name}");
-                aeroEscolhido.ComprarAviao(pedido.prefab);
+                return aeroEscolhido.ComprarAviao(pedido.prefab);
             }
-            else if (pedido.ehHelicoptero)
+
+            if (pedido.ehHelicoptero)
             {
                 Debug.LogWarning($"[Logística] Helicóptero '{pedido.nomeUnidade}' sem vaga militar livre em aeroporto. Produção aguardando vaga.");
             }
-            return true;
+            else
+            {
+                Debug.LogWarning($"[Logística] Avião '{pedido.nomeUnidade}' sem aeroporto militar operacional. Produção aguardando vaga.");
+            }
+            return false;
         }
 
         Transform spawnAtual = null;
@@ -404,12 +515,7 @@ public class GerenteDeJogo : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("⚠️ Nenhum ESTALEIRO encontrado! Navio nascerá na água perto da câmera (fallback).");
-                // Tenta achar água... ou usa fallback padrão
-                if (Camera.main != null)
-                {
-                    spawnAtual = Camera.main.transform; // Só para não ser null
-                }
+                Debug.LogWarning($"[Produção] Pedido naval de {pedido.nomeUnidade} aguardando um estaleiro operacional.");
             }
         }
         else
@@ -430,52 +536,40 @@ public class GerenteDeJogo : MonoBehaviour
             }
         }
 
-        if(spawnAtual != null) LogInfo($"SPAWNANDO EM: {spawnAtual.name} (Parente: {spawnAtual.parent?.name ?? "World"})");
-        else Debug.LogWarning("SPAWNANDO SEM FÁBRICA (NULL)");
-
-        if (pedido.prefab == null)
+        bool possuiInstalacaoProdutiva = pedido.ehNavio
+            ? spawnAtual != null && spawnAtual.GetComponentInParent<Estaleiro>() != null
+            : spawnAtual != null && spawnAtual.GetComponentInParent<Fabrica>() != null;
+        if (!possuiInstalacaoProdutiva)
         {
-            Debug.LogError($"ERRO CRÍTICO: O prefab do pedido '{pedido.nomeUnidade}' está NULO! Verifique o ScriptableObject.");
-            return true;
+            string instalacao = pedido.ehNavio ? "estaleiro" : (pedido.ehSoldado ? "quartel" : "fábrica terrestre");
+            Debug.LogWarning($"[Produção] Pedido de {pedido.nomeUnidade} aguardando {instalacao} com ponto de produção válido.");
+            return false;
         }
 
-        // FALLBACK: Se não tiver fábrica, nasce no GerenteDeJogo + Offset
-        // Ajuste: Y + 2.0f para garantir que não nasce enterrado
-        Vector3 posNascimento;
-        Quaternion rotNascimento;
-        Vector3 posDestino;
-
-        if(spawnAtual != null)
+        if (!pedido.ehNavio)
         {
-            posNascimento = spawnAtual.position;
-            rotNascimento = spawnAtual.rotation;
+            Fabrica fabrica = spawnAtual != null ? spawnAtual.GetComponentInParent<Fabrica>() : null;
+            if (fabrica == null || !fabrica.PossuiEnergiaParaProduzir())
+            {
+                return false;
+            }
         }
         else
         {
-            // FALLBACK MELHORADO: Tenta nascer em um ponto seguro do mapa se não houver prédios
-            GameObject baseAres = GameObject.Find("Base_Ares");
-            if (baseAres != null)
+            Estaleiro estaleiro = spawnAtual != null ? spawnAtual.GetComponentInParent<Estaleiro>() : null;
+            if (estaleiro == null || !estaleiro.ConstruirUnidade(pedido.prefab))
             {
-                posNascimento = baseAres.transform.position + Vector3.up * 2f;
-                rotNascimento = baseAres.transform.rotation;
+                return false;
             }
-            else if (Camera.main != null)
-            {
-                // Nasce na frente da câmera, mas tenta fixar no chão
-                posNascimento = Camera.main.transform.position + (Camera.main.transform.forward * 15f);
-                posNascimento.y = 50f; 
-                RaycastHit hitChao;
-                if (Physics.Raycast(posNascimento, Vector3.down, out hitChao, 100f)) posNascimento = hitChao.point;
-                rotNascimento = Quaternion.identity;
-            }
-            else
-            {
-                posNascimento = transform.position + new Vector3(3, 2, 0);
-                rotNascimento = Quaternion.identity;
-            }
-            
-            Debug.LogWarning($"[Logistica] Sem fábrica disponível para {pedido.nomeUnidade}. Usando fallback em {posNascimento}");
+
+            return true;
         }
+
+        LogInfo($"SPAWNANDO EM: {spawnAtual.name} (Parente: {spawnAtual.parent?.name ?? "World"})");
+
+        Vector3 posNascimento = spawnAtual.position;
+        Quaternion rotNascimento = spawnAtual.rotation;
+        Vector3 posDestino;
 
         if(destinoAtual != null) posDestino = destinoAtual.position;
         else posDestino = posNascimento + new Vector3(2, 0, 2);
@@ -560,6 +654,15 @@ public class GerenteDeJogo : MonoBehaviour
             return false;
         }
 
+        if (governo == null)
+        {
+            if (SistemaGovernoMundial.ObterEfetivoNecessario(pedido.prefab) > 0) return false;
+        }
+        else if (!governo.PodeProduzirUnidadeComEfetivo(1, pedido.prefab))
+        {
+            return false;
+        }
+
         // NASCER
         GameObject novaUnidade = Instantiate(pedido.prefab, posNascimento, rotNascimento);
         
@@ -580,6 +683,14 @@ public class GerenteDeJogo : MonoBehaviour
         // Garante que a unidade pertence ao jogador
         identidade.teamID = 1; 
         identidade.nomeDoPais = "Hegemonia";
+
+        if (governo != null && !governo.TentarMobilizarEfetivoDaUnidade(1, novaUnidade))
+        {
+            Destroy(novaUnidade);
+            return false;
+        }
+
+        ServicoAbastecimento.AbastecerUnidadeProduzida(novaUnidade);
 
         // Se tiver controle de unidade, garante que está configurado
         ControleUnidade controle = novaUnidade.GetComponent<ControleUnidade>();
@@ -843,9 +954,10 @@ public class GerenteDeJogo : MonoBehaviour
             return recursos.TentarGastar(custoDinheiro: custo);
         }
         
-        // Fallback se o GerenciadorRecursos não existir
-        Debug.LogWarning("⚠️ GerenciadorRecursos não encontrado! Aprovando transação em modo legado para evitar travamento da UI.");
-        return true;
+        // Sem o caixa nacional não há como validar a transação. Recusar evita
+        // aprovar compras e ordens de produção sem custo financeiro.
+        Debug.LogWarning("⚠️ GerenciadorRecursos não encontrado. Transação financeira recusada.");
+        return false;
     }
 
     // --- MÉTODOS DE REGISTRO (Chamados pelo script Fabrica.cs dos prédios) ---

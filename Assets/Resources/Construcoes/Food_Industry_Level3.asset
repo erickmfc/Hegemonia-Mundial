@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: Food_Industry_Level3
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Food Industry - Nível 3
-  descricao: Produção alta para sustentar grandes centros urbanos.
-  icone: {fileID: 0}
+  nomeItem: "Food Industry - N\xEDvel 3"
+  descricao: "Produ\xE7\xE3o alta para sustentar grandes centros urbanos."
+  icone: {fileID: 21300000, guid: bfc66a3c9bb6bdb45a7856b771b7b1a1, type: 3}
   itemId: economia.food_industry_nivel_3
   aliases: food industry, industria de alimentos, alimentos, comida, nivel 3, farm
   capacidades: 65
@@ -30,5 +30,10 @@ MonoBehaviour:
   empregosGeradosPerfil: 240
   usinaNuclear: 0
   energiaNuclear: 0
+  receitaProducao:
+    configurada: 0
+    materiaisNecessarios: []
+    energiaNecessaria: 0
+    diasNecessarios: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

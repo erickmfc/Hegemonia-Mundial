@@ -185,6 +185,7 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class IA_EnemyObservation
     {
         public int InstanceId;
+        public int TeamId;
         public Transform Transform;
         public Vector3 Position;
         public string UnitName;
@@ -226,6 +227,7 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class IA_ProduceOrderData
     {
         public string ItemKey;
+        public string PrefabName;
         public int Quantity;
         public string ProductionOrderId;
     }
@@ -243,6 +245,11 @@ namespace Hegemonia.AI.BrainMaster
         public List<GameObject> Units = new List<GameObject>();
         public Transform Target;
         public Vector3 TargetPosition;
+        public bool RequiresDeclaredWar;
+        public int TargetTeamId;
+        // Allows an explicit coordinate attack without a live Transform when
+        // the producer identifies the enemy team; dispatch still requires war.
+        public bool AllowCoordinateAttackAgainstKnownEnemy;
     }
 
     [Serializable]
@@ -489,6 +496,7 @@ namespace Hegemonia.AI.BrainMaster
         public int AircraftCarriers;
         public int Submarines;
         public int OilTankers;
+        public int CargoShips;
         public int CoastalDefenseShips;
         public int AttackFleetShips;
         public int GroundTransports;

@@ -342,7 +342,7 @@ public class NavioAbastecimento : MonoBehaviour
     private void AtualizarListaNaviosProximos()
     {
         listaNaviosRadar.Clear();
-        LayerMask mascara = layerNavios.value == 0 ? ~0 : layerNavios;
+        int mascara = layerNavios.value == 0 ? ~0 : layerNavios.value;
         Collider[] hits = Physics.OverlapSphere(transform.position, Mathf.Max(1f, raioRadar), mascara);
         HashSet<Transform> adicionados = new HashSet<Transform>();
 

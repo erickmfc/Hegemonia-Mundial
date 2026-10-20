@@ -15,6 +15,13 @@ public class ControleSubmarino : MonoBehaviour
         Automatico
     }
 
+    public enum ArmamentoHud
+    {
+        Automatico,
+        Missil,
+        Torpedo
+    }
+
     [Header("Configuracao de Spawn")]
     [Tooltip("Quando ativo, o submarino nasce na superficie ao sair do estaleiro.")]
     public bool iniciarNaSuperficie = true;
@@ -98,6 +105,9 @@ public class ControleSubmarino : MonoBehaviour
     public bool mostrarLogsNoConsole = false;
 
     private bool emMovimento = false;
+    private bool audioNavalLigado;
+    private string ultimoMotivoRecusaDestino = string.Empty;
+    public string UltimoMotivoRecusaDestino => ultimoMotivoRecusaDestino;
     private float ultimoMovimento = -4f;
     private bool[] misseisUsados;
     private int totalLocaisValidos = 0;
@@ -105,6 +115,18 @@ public class ControleSubmarino : MonoBehaviour
     private bool[] tubosTorpedoUsados;
     private int totalTubosValidos = 0;
     private float proximoLancamentoTorpedo = 0f;
+    private ArmamentoHud armamentoSelecionadoHud = ArmamentoHud.Automatico;
+
+    public ArmamentoHud ArmamentoSelecionadoHud => armamentoSelecionadoHud;
+
+    public bool DefinirArmamentoHud(ArmamentoHud armamento)
+    {
+        if (armamento == ArmamentoHud.Missil && prefabMisselSubmarino == null) return false;
+        if (armamento == ArmamentoHud.Torpedo
+            && (prefabTorpedo == null || prefabTorpedo.GetComponent<Torpedo>() == null || !TemTuboTorpedoConfigurado)) return false;
+        armamentoSelecionadoHud = armamento;
+        return true;
+    }
 
     private ControleUnidade meuControle;
     private IdentidadeUnidade minhaIdentidade;
@@ -138,6 +160,48 @@ public class ControleSubmarino : MonoBehaviour
     /// </summary>
     public bool TemDestinoAtivo => temDestinoFallback
         || (agente != null && agente.enabled && (agente.pathPending || agente.hasPath));
+
+    public bool PossuiTorpedoOperacional
+    {
+        get
+        {
+            if (torpedosDisponiveis <= 0
+                || prefabTorpedo == null
+                || prefabTorpedo.GetComponent<Torpedo>() == null
+                || tubosTorpedo == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < tubosTorpedo.Length; i++)
+            {
+                if (tubosTorpedo[i] == null)
+                {
+                    continue;
+                }
+
+                if (tubosTorpedoUsados != null
+                    && i < tubosTorpedoUsados.Length
+                    && !tubosTorpedoUsados[i])
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    public bool TemTuboTorpedoConfigurado
+    {
+        get
+        {
+            if (tubosTorpedo == null) return false;
+            for (int i = 0; i < tubosTorpedo.Length; i++)
+                if (tubosTorpedo[i] != null) return true;
+            return false;
+        }
+    }
 
     private GameObject cristalIdentificacao;
     private Renderer cristalRenderer;
@@ -211,6 +275,7 @@ public class ControleSubmarino : MonoBehaviour
 
         CriarCristalIdentificacao();
         AplicarEstadoInicial();
+        AtualizarAudioNaval();
         if (usarNavMeshParaNavegacao)
         {
             StartCoroutine(PrepararAgenteNaval());
@@ -227,6 +292,7 @@ public class ControleSubmarino : MonoBehaviour
 #if UNITY_EDITOR
     private void OnValidate()
     {
+        if (Application.isPlaying) return;
         MissilePrefabAutoBinder.BindControleSubmarino(this);
     }
 
@@ -252,6 +318,7 @@ public class ControleSubmarino : MonoBehaviour
         selecaoAnterior = estaSelecionado;
 
         AtualizarMovimento();
+        AtualizarAudioNaval();
         AtualizarInclinacaoNavio();
         AtualizarRastroAgua();
         AtualizarCristalIdentificacao(false);
@@ -619,12 +686,25 @@ public class ControleSubmarino : MonoBehaviour
     {
         modoAtual = novoModo;
         proximaBuscaAutomatica = 0f;
+        AtualizarAudioNaval();
 
         if (logar)
         {
             Debug.Log($"[USS Leviathan] Modo alterado para: {modoAtual}", this);
             MostrarStatusSubmarino();
         }
+    }
+
+    private void AtualizarAudioNaval()
+    {
+        bool ligado = modoAtual != ModoOperacao.Passivo
+            || emMovimento
+            || velocidadeAtualSimulada > 0.1f
+            || (agente != null && agente.enabled && agente.velocity.sqrMagnitude > 0.01f);
+        if (audioNavalLigado == ligado) return;
+
+        audioNavalLigado = ligado;
+        AudioRuntime.DefinirAudioNaval(gameObject, ligado);
     }
 
     public void DefinirAlvosAutorizados(IList<Transform> alvos, bool limitarAutomatico)
@@ -653,6 +733,13 @@ public class ControleSubmarino : MonoBehaviour
 
     private void ProcessarMiraManual()
     {
+        // Com o centro tático aberto, os cliques são resolvidos pelo mapa e
+        // chegam ao lançador pelo comando coordenado do menu.
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
+        {
+            return;
+        }
+
         bool teclaModificadora = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool disparoSolicitado =
             Input.GetKeyDown(KeyCode.Space) ||
@@ -750,19 +837,56 @@ public class ControleSubmarino : MonoBehaviour
             return false;
         }
 
-        if (misseisDisponiveis <= 0)
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo)
+        {
+            if (alvoT == null || !EhAlvoNavalOuSubmarino(alvoT))
+            {
+                motivo = "torpedo exige um alvo naval ou submarino";
+                return false;
+            }
+            if (!PodeLancarTorpedo())
+            {
+                motivo = "torpedo sem tubo, munição ou em recarga";
+                return false;
+            }
+            if (Vector3.Distance(transform.position, pontoAlvo) > Mathf.Max(1f, alcanceTorpedos))
+            {
+                motivo = "alvo fora do alcance do torpedo";
+                return false;
+            }
+        }
+        else if (misseisDisponiveis <= 0)
         {
             motivo = "sem misseis";
             return false;
         }
 
-        if (prefabMisselSubmarino == null)
+        if (armamentoSelecionadoHud != ArmamentoHud.Torpedo && prefabMisselSubmarino == null)
         {
             motivo = "prefab de missil submarino nao configurado";
             return false;
         }
 
-        if (modoAutomatico && Vector3.Distance(transform.position, pontoAlvo) > Mathf.Max(1f, alcanceMisseis))
+        if (modoAutomatico)
+        {
+            IdentidadeUnidade identidadeAlvo = alvoT != null
+                ? alvoT.GetComponentInParent<IdentidadeUnidade>() ?? alvoT.GetComponentInChildren<IdentidadeUnidade>()
+                : null;
+            if (identidadeAlvo == null
+                || SistemaGovernoMundial.Instancia == null
+                || !ContextoTerritorialDiplomatico.PodeDispararEmGuerra(
+                    minhaIdentidade != null ? minhaIdentidade.teamID : 0,
+                    identidadeAlvo))
+            {
+                motivo = "alvo sem guerra declarada com a unidade";
+                return false;
+            }
+        }
+
+        float alcanceCoordenado = armamentoSelecionadoHud == ArmamentoHud.Torpedo
+            ? alcanceTorpedos
+            : alcanceMisseis;
+        if (modoAutomatico && Vector3.Distance(transform.position, pontoAlvo) > Mathf.Max(1f, alcanceCoordenado))
         {
             motivo = "fora da distancia automatica";
             return false;
@@ -786,6 +910,19 @@ public class ControleSubmarino : MonoBehaviour
     {
         if (!PodeLancarCoordenado(pontoAlvo, alvoT, modoAutomatico, out motivo)) return false;
 
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo)
+        {
+            int torpedosAntes = torpedosDisponiveis;
+            LancarTorpedo(pontoAlvo, alvoT);
+            if (torpedosDisponiveis == torpedosAntes)
+            {
+                motivo = "lançamento do torpedo não foi concluído";
+                return false;
+            }
+            motivo = string.Empty;
+            return true;
+        }
+
         int misseisAntes = misseisDisponiveis;
         pontoAlvoAtual = pontoAlvo;
         DispararMissel(pontoAlvoAtual, alvoT);
@@ -803,26 +940,54 @@ public class ControleSubmarino : MonoBehaviour
     private void TentarAtaqueAutomatico()
     {
         if ((meuControle != null && !meuControle.ModoCombateAtivo)
-            || Time.time < proximaBuscaAutomatica || !PodeAtacarIA())
+            || Time.time < proximaBuscaAutomatica)
+        {
+            return;
+        }
+
+        bool podeAtacarComMissil = armamentoSelecionadoHud != ArmamentoHud.Torpedo && PodeAtacarIA();
+        bool podeAtacarComTorpedo = armamentoSelecionadoHud != ArmamentoHud.Missil
+            && modoAtual == ModoOperacao.Automatico && PossuiTorpedoOperacional;
+        if (!podeAtacarComMissil && !podeAtacarComTorpedo)
         {
             return;
         }
 
         proximaBuscaAutomatica = Time.time + Mathf.Max(0.2f, intervaloBuscaAutomatica);
-        Transform alvo = EncontrarMelhorAlvoAutomatico();
-        if (alvo != null)
+        bool procurarSomenteAlvosNavais = !podeAtacarComMissil && podeAtacarComTorpedo;
+        float alcanceBusca = procurarSomenteAlvosNavais
+            ? (alcanceTorpedos > 0f ? alcanceTorpedos : 0f)
+            : (alcanceMisseis > 0f ? alcanceMisseis : 0f);
+        Transform alvo = EncontrarMelhorAlvoAutomatico(procurarSomenteAlvosNavais, alcanceBusca);
+        if (alvo == null)
         {
+            return;
+        }
+
+        if (podeAtacarComMissil)
+        {
+            int misseisAntes = misseisDisponiveis;
             DispararMisselIA(alvo.position, alvo);
+            if (misseisDisponiveis < misseisAntes)
+            {
+                return;
+            }
+        }
+
+        if (podeAtacarComTorpedo)
+        {
+            TentarDispararTorpedoIA(alvo);
         }
     }
 
-    private Transform EncontrarMelhorAlvoAutomatico()
+    private Transform EncontrarMelhorAlvoAutomatico(bool somenteAlvosNavais, float alcanceMaximo)
     {
         if (limitarAutomaticoAAlvosAutorizados && alvosAutorizadosJogador.Count == 0) return null;
         int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 1;
         alvosAutomaticos.Clear();
 
-        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcanceMisseis, bufferAlvos, Physics.AllLayers, QueryTriggerInteraction.Collide);
+        float alcance = Mathf.Max(0f, alcanceMaximo);
+        int quantidade = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferAlvos, Physics.AllLayers, QueryTriggerInteraction.Collide);
         for (int i = 0; i < quantidade; i++)
         {
             Collider col = bufferAlvos[i];
@@ -831,11 +996,11 @@ public class ControleSubmarino : MonoBehaviour
                 continue;
             }
 
-            TentarRegistrarAlvoAutomatico(col.transform, meuTime);
+            TentarRegistrarAlvoAutomatico(col.transform, meuTime, somenteAlvosNavais, alcance);
             bufferAlvos[i] = null;
         }
 
-        RegistrarAlvosDoRegistroGlobal(meuTime);
+        RegistrarAlvosDoRegistroGlobal(meuTime, somenteAlvosNavais, alcance);
 
         Transform melhorAlvo = null;
         int melhorPrioridade = int.MaxValue;
@@ -848,7 +1013,7 @@ public class ControleSubmarino : MonoBehaviour
             {
                 continue;
             }
-            if (limitarAutomaticoAAlvosAutorizados && !AlvoEstaAutorizado(alvo)) continue;
+            if (limitarAutomaticoAAlvosAutorizados && !AlvoEstaAutorizado(alvo, alcance)) continue;
 
             int prioridade = ObterPrioridadeAlvo(alvo);
             float distanciaSqr = (alvo.position - transform.position).sqrMagnitude;
@@ -863,12 +1028,13 @@ public class ControleSubmarino : MonoBehaviour
         return melhorAlvo;
     }
 
-    private bool AlvoEstaAutorizado(Transform alvo)
+    private bool AlvoEstaAutorizado(Transform alvo, float alcanceMaximo)
     {
         if (alvo == null || !alvo.gameObject.activeInHierarchy) return false;
         SistemaDeDanos vida = ObterSistemaDeDanos(alvo);
         if (vida != null && vida.vidaAtual <= 0f) return false;
-        if (Vector3.Distance(transform.position, alvo.position) > alcanceMisseis) return false;
+        float alcance = Mathf.Max(0f, alcanceMaximo);
+        if ((transform.position - alvo.position).sqrMagnitude > alcance * alcance) return false;
         for (int i = 0; i < alvosAutorizadosJogador.Count; i++)
         {
             Transform autorizado = alvosAutorizadosJogador[i];
@@ -877,7 +1043,11 @@ public class ControleSubmarino : MonoBehaviour
         return false;
     }
 
-    private bool TentarRegistrarAlvoAutomatico(Transform candidato, int meuTime)
+    private bool TentarRegistrarAlvoAutomatico(
+        Transform candidato,
+        int meuTime,
+        bool somenteAlvosNavais,
+        float alcanceMaximo)
     {
         if (candidato == null)
         {
@@ -893,6 +1063,15 @@ public class ControleSubmarino : MonoBehaviour
         IdentidadeUnidade idAlvo = candidato.GetComponentInParent<IdentidadeUnidade>();
         if (idAlvo == null) idAlvo = candidato.GetComponentInChildren<IdentidadeUnidade>();
         if (idAlvo == null || idAlvo.teamID == 0 || idAlvo.teamID == meuTime)
+        {
+            return false;
+        }
+
+        // O modo automático do submarino segue a mesma regra do lançador
+        // naval: detectar e rastrear não equivale a possuir autorização para
+        // abrir fogo. Ordens explícitas continuam passando por DispararMisselIA
+        // e podem iniciar a agressão conforme a política do comando.
+        if (!ContextoTerritorialDiplomatico.PodeDispararEmGuerra(meuTime, idAlvo.teamID))
         {
             return false;
         }
@@ -920,7 +1099,9 @@ public class ControleSubmarino : MonoBehaviour
             alvoResolvido = ResolverTransformAlvo(danos.transform);
         }
 
-        if (alvoResolvido == null || alvosAutomaticos.Contains(alvoResolvido))
+        if (alvoResolvido == null
+            || (somenteAlvosNavais && !EhAlvoNavalOuSubmarino(alvoResolvido))
+            || alvosAutomaticos.Contains(alvoResolvido))
         {
             return false;
         }
@@ -1035,10 +1216,11 @@ public class ControleSubmarino : MonoBehaviour
                || TagSafe.Matches(alvo, "Aereo");
     }
 
-    private void RegistrarAlvosDoRegistroGlobal(int meuTime)
+    private void RegistrarAlvosDoRegistroGlobal(int meuTime, bool somenteAlvosNavais, float alcanceMaximo)
     {
         RegistroEntidadesJogo.FillUnidades(unidadesRegistradasRadar);
-        float alcanceSqr = alcanceMisseis * alcanceMisseis;
+        float alcance = Mathf.Max(0f, alcanceMaximo);
+        float alcanceSqr = alcance * alcance;
 
         for (int i = 0; i < unidadesRegistradasRadar.Count; i++)
         {
@@ -1053,7 +1235,7 @@ public class ControleSubmarino : MonoBehaviour
                 continue;
             }
 
-            TentarRegistrarAlvoAutomatico(unidade.transform, meuTime);
+            TentarRegistrarAlvoAutomatico(unidade.transform, meuTime, somenteAlvosNavais, alcance);
         }
 
         unidadesRegistradasRadar.Clear();
@@ -1140,7 +1322,85 @@ public class ControleSubmarino : MonoBehaviour
 
     public bool PodeLancarTorpedo()
     {
-        return torpedosDisponiveis > 0 && Time.time >= proximoLancamentoTorpedo && totalTubosValidos > 0;
+        return PossuiTorpedoOperacional && Time.time >= proximoLancamentoTorpedo;
+    }
+
+    public bool PodeAtacarComTorpedoIA(Transform alvo)
+    {
+        if ((meuControle != null && !meuControle.ModoCombateAtivo)
+            || modoAtual != ModoOperacao.Automatico
+            || armamentoSelecionadoHud == ArmamentoHud.Missil
+            || !PossuiTorpedoOperacional
+            || alvo == null)
+        {
+            return false;
+        }
+
+        Transform minhaRaiz = transform.root != null ? transform.root : transform;
+        if (alvo == minhaRaiz || alvo.IsChildOf(minhaRaiz))
+        {
+            return false;
+        }
+
+        return EhAlvoNavalOuSubmarino(alvo);
+    }
+
+    public bool TentarDispararTorpedoIA(Transform alvo)
+    {
+        if (!PodeAtacarComTorpedoIA(alvo) || !PodeLancarTorpedo())
+        {
+            return false;
+        }
+
+        if (!(alcanceTorpedos > 0f) || float.IsInfinity(alcanceTorpedos))
+        {
+            return false;
+        }
+
+        float alcanceSqr = alcanceTorpedos * alcanceTorpedos;
+        if ((alvo.position - transform.position).sqrMagnitude > alcanceSqr)
+        {
+            return false;
+        }
+
+        int torpedosAntes = torpedosDisponiveis;
+        LancarTorpedo(alvo.position, alvo);
+        return torpedosDisponiveis < torpedosAntes;
+    }
+
+    private static bool EhAlvoNavalOuSubmarino(Transform alvo)
+    {
+        if (alvo == null)
+        {
+            return false;
+        }
+
+        ControleNavioRealista navio = alvo.GetComponentInParent<ControleNavioRealista>();
+        if (navio == null) navio = alvo.GetComponentInChildren<ControleNavioRealista>(true);
+        if (navio != null)
+        {
+            return true;
+        }
+
+        ControleSubmarino submarino = alvo.GetComponentInParent<ControleSubmarino>();
+        if (submarino == null) submarino = alvo.GetComponentInChildren<ControleSubmarino>(true);
+        if (submarino != null)
+        {
+            return true;
+        }
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = alvo.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (identidade != null && identidade.tipoUnidade == TipoUnidade.Naval)
+        {
+            return true;
+        }
+
+        Transform raiz = alvo.root;
+        return TagSafe.Matches(alvo, "Navio")
+            || TagSafe.Matches(alvo, "Submarino")
+            || TagSafe.Matches(raiz, "Navio")
+            || TagSafe.Matches(raiz, "Submarino");
     }
 
     public void LancarTorpedo(Vector3 alvo, Transform alvoT = null)
@@ -1488,7 +1748,7 @@ public class ControleSubmarino : MonoBehaviour
 
     public void DispararMisselIA(Vector3 alvo, Transform alvoT = null)
     {
-        if (!PodeAtacarIA())
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo || !PodeAtacarIA())
         {
             return;
         }
@@ -1518,14 +1778,22 @@ public class ControleSubmarino : MonoBehaviour
     /// <summary>Recebe destino via clique do jogador ou IA.</summary>
     public bool DefinirDestino(Vector3 destino)
     {
+        return DefinirDestino(destino, null);
+    }
+
+    public bool DefinirDestino(Vector3 destino, string ordemExternaId)
+    {
+        ultimoMotivoRecusaDestino = string.Empty;
         if (!CombustivelUnidade.PodeOperarObjeto(gameObject))
         {
+            ultimoMotivoRecusaDestino = "sem combustível operacional";
             PararPorFaltaDeCombustivel();
             return false;
         }
 
         if (!NavalPlacementResolver.IsWaterAtPosition(destino))
         {
+            ultimoMotivoRecusaDestino = "destino fora da água navegável";
             Debug.LogWarning($"[USS Leviathan] Ordem recusada: destino fora da água ({destino.x:F0}, {destino.z:F0}).", this);
             return false;
         }
@@ -1544,7 +1812,19 @@ public class ControleSubmarino : MonoBehaviour
                 18f,
                 out List<Vector3> rotaAgua))
         {
+            ultimoMotivoRecusaDestino = "rota aquática bloqueada: não há corredor contínuo de água até o destino";
             Debug.LogWarning($"[USS Leviathan] Rota recusada: não existe corredor contínuo sobre água até ({destino.x:F0}, {destino.z:F0}).", this);
+            return false;
+        }
+
+        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel != null
+            && !combustivel.PossuiAutonomiaParaRota(transform.position, rotaAgua, VelocidadeMaxima))
+        {
+            ultimoMotivoRecusaDestino = "autonomia de combustível insuficiente para a rota aquática";
+            Debug.LogWarning(
+                $"[{name}] Ordem recusada: autonomia de combustível insuficiente para a rota aquática.",
+                this);
             return false;
         }
 
@@ -1554,11 +1834,27 @@ public class ControleSubmarino : MonoBehaviour
 
         ControleUnidade controleUnidade = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>();
-        bool ordemCentralAtiva = controleUnidade != null
+        bool ordemExternaAtiva = controleUnidade != null
+            && !string.IsNullOrWhiteSpace(ordemExternaId)
+            && controleUnidade.PossuiOrdemMovimentoAtiva
+            && controleUnidade.OrdemMovimentoAtual != null
+            && controleUnidade.OrdemMovimentoAtual.Id == ordemExternaId
+            && controleUnidade.OrdemMovimentoAtual.Tipo == TipoOrdemMovimento.Naval;
+        if (ordemExternaAtiva
+            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) > 0.01f)
+        {
+            controleUnidade.AtualizarOrdemMovimentoExterna(
+                ordemExternaId,
+                controleUnidade.OrdemMovimentoAtual.Dono,
+                destino,
+                TipoOrdemMovimento.Naval);
+        }
+
+        bool ordemCentralAtiva = ordemExternaAtiva || (controleUnidade != null
             && controleUnidade.PossuiOrdemMovimentoAtiva
             && controleUnidade.OrdemMovimentoAtual != null
             && controleUnidade.OrdemMovimentoAtual.Dono == nameof(ControleUnidade)
-            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) <= 0.01f;
+            && Vector3.Distance(controleUnidade.OrdemMovimentoAtual.Destino, destino) <= 0.01f);
         if (!ordemCentralAtiva && controleUnidade != null)
         {
             string idOrdem = controleUnidade.ObterOuCriarIdOrdemMovimento(
@@ -1571,6 +1867,7 @@ public class ControleSubmarino : MonoBehaviour
                     destino,
                     TipoOrdemMovimento.Naval))
             {
+                ultimoMotivoRecusaDestino = "o controlador central recusou registrar a rota naval";
                 return false;
             }
         }
@@ -1600,7 +1897,12 @@ public class ControleSubmarino : MonoBehaviour
 
         // Se a área de água não estiver bakeada, conserva o fallback físico
         // para que a mesma ordem continue válida sem NavMesh.
-        return temDestinoFallback || (agente != null && agente.enabled && agente.isOnNavMesh && agente.hasPath);
+        bool ordemAquaticaAceita = temDestinoFallback || (agente != null && agente.enabled && agente.isOnNavMesh && agente.hasPath);
+        if (!ordemAquaticaAceita)
+        {
+            ultimoMotivoRecusaDestino = "não foi possível iniciar a navegação do submarino";
+        }
+        return ordemAquaticaAceita;
     }
 
     public void PararPorFaltaDeCombustivel()

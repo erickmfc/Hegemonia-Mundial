@@ -25,6 +25,7 @@ MonoBehaviour:
   creatysPermitidos: 0100000004000000
   alvo: 0
   tipoOrdem: 2
+  permitePatrulhaEmPaz: 1
   exigePortaAvioes: 0
   exigeSubmarino: 0
   exigeTransporteNaval: 0

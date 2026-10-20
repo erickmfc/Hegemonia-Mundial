@@ -96,6 +96,8 @@ public class Helicoptero : MonoBehaviour
 
     [Header("--- TRANSPORTE TATICO ---")]
     public bool helicopteroTransporte = false;
+    [Tooltip("Desmarque em aeronaves de reconhecimento sem capacidade de ataque.")]
+    public bool podeAtacar = true;
     public bool pousarNoDestinoTatico = false;
     public bool desembarcarAutomaticamenteAoPousar = true;
     public float raioTransferenciaNavio = 35f;
@@ -293,6 +295,7 @@ public class Helicoptero : MonoBehaviour
 
     public void OrdenarAtaque(Transform alvo, Vector3 pontoFallback)
     {
+        if (!podeAtacar) return;
         ControleUnidade controle = ObterControleUnidade();
         if (controle != null)
         {
@@ -386,6 +389,7 @@ public class Helicoptero : MonoBehaviour
     void GestaoDeInput()
     {
         if (identidade != null && identidade.teamID != 1 && !controleSempreAtivo) return;
+        if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
         if (Construtor.EmModoConstrucaoAtivo) return;
         bool capturaManualAtiva = CapturaCliqueOrdensManuais.EstaAtiva();
 
@@ -1174,14 +1178,24 @@ public class Helicoptero : MonoBehaviour
             if (pousouEmVagaRegistrada && vagaAeroporto != null)
             {
                 // Agora não exigimos ser um porta-aviões, qualquer vaga registrada (como de aeroporto/heliporto) serve.
-                CombustivelUnidade comb = GetComponent<CombustivelUnidade>();
                 GerenciadorPortaAvioes portaHelicopteros = aeroportoOrigem as GerenciadorPortaAvioes;
-                bool abastecimentoControladoPeloNavio = portaHelicopteros != null
-                    && portaHelicopteros.TentarReabastecerHelicoptero(this);
-                if (comb != null && !abastecimentoControladoPeloNavio) comb.PreencherSemCusto();
+                bool servicoAutorizado = portaHelicopteros == null
+                    || portaHelicopteros.PodeServirHelicoptero(this, vagaAeroporto);
+                if (servicoAutorizado)
+                {
+                    CombustivelUnidade comb = GetComponent<CombustivelUnidade>();
+                    bool abastecimentoControladoPeloNavio = portaHelicopteros != null
+                        && portaHelicopteros.TentarReabastecerHelicoptero(this);
+                    if (comb != null && !abastecimentoControladoPeloNavio)
+                    {
+                        ServicoAbastecimento.TentarAbastecer(
+                            comb,
+                            comb.Capacidade - comb.CombustivelAtual,
+                            out _);
+                    }
 
-                SistemaDeDanos dano = GetComponent<SistemaDeDanos>();
-                if (dano != null) dano.vidaAtual = dano.vidaMaxima;
+                    SistemaDeDanos dano = GetComponent<SistemaDeDanos>();
+                    if (dano != null) dano.vidaAtual = dano.vidaMaxima;
 
                 // Recarrega todos os sistemas de armas que possam estar acoplados no helicóptero
                 foreach (var lancador in GetComponentsInChildren<LancadorMisseis>())
@@ -1213,13 +1227,20 @@ public class Helicoptero : MonoBehaviour
                     SistemaDeDanos sd = s.GetComponent<SistemaDeDanos>();
                     if (sd != null) sd.vidaAtual = sd.vidaMaxima;
                     CombustivelUnidade sc = s.GetComponent<CombustivelUnidade>();
-                    if (sc != null) sc.PreencherSemCusto();
+                    if (sc != null)
+                    {
+                        ServicoAbastecimento.TentarAbastecer(
+                            sc,
+                            sc.Capacidade - sc.CombustivelAtual,
+                            out _);
+                    }
                 }
 
-                // A aterrissagem só está concluída quando a vaga também fica
-                // registrada como ocupada/estacionada. Antes disso o heli
-                // parecia pousado, mas continuava solto no mundo e a base
-                // podia tentar recebê-lo novamente.
+                }
+
+                // Mesmo sem autorização de serviço naval, a conclusão física do
+                // pouso permanece consistente; o navio sem Creaty não abastece,
+                // repara nem rearma o helicóptero.
                 FinalizarPosicionamentoNaVagaAeroporto(vagaAeroporto);
                 if (aeroportoOrigem != null)
                 {
@@ -1441,7 +1462,7 @@ public class Helicoptero : MonoBehaviour
 
     public int TransferirSoldadosParaNavio(NavioTransporteTropas navio, int quantidadeMax = int.MaxValue)
     {
-        if (navio == null || quantidadeMax <= 0 || !PodeOperarTropasNoMenu())
+        if (navio == null || quantidadeMax <= 0 || !navio.PodeTransferirTropasCom(this))
         {
             return 0;
         }
@@ -1768,6 +1789,7 @@ public class Helicoptero : MonoBehaviour
 
     public bool ReceberOrdemAtaqueLocalAeroporto(Vector3 wp)
     {
+        if (!podeAtacar) return false;
         ControleUnidade controle = ObterControleUnidade();
         if (controle != null)
         {
@@ -1788,6 +1810,12 @@ public class Helicoptero : MonoBehaviour
     public void IniciarTransporteAeroporto(Vector3 wp) { CancelarMissaoAeroporto(); missaoAtualAeroporto = 4; VoarEPousar(AjustarDestinoParaPouso(wp)); }
     public void VincularAoAeroporto(GerenciadorAeroporto aeroporto, Transform vagaPreferencial)
     {
+        GerenciadorPortaAvioes navio = aeroporto as GerenciadorPortaAvioes;
+        if (navio != null && !navio.PodeReservarVagaCreaty(vagaPreferencial))
+        {
+            return;
+        }
+
         aeroportoOrigem = aeroporto;
         vagaOrigemAeroporto = vagaPreferencial;
         vagaAeroporto = vagaPreferencial;

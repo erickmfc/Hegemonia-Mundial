@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Usina_Media
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Usina Media
+  descricao: Gera 60 MW de energia.
+  icone: {fileID: 21300000, guid: 2c7afeaf9c569d24ea8d48e84f537d02, type: 3}
+  itemId: 
+  aliases: 
+  capacidades: 0
+  prefabDaUnidade: {fileID: 6967255524407311522, guid: 7092b805f89965f4fb11d2d76f4169a7, type: 3}
+  preco: 1200
+  precoDefinitivo: 0
+  categoria: 5
+  escalaPoder: 0
+  strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
+  receitaProducao:
+    configurada: 0
+    materiaisNecessarios: []
+    energiaNecessaria: 0
+    diasNecessarios: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

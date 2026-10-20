@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 using Hegemonia.RTS;
 
 /// <summary>
@@ -33,6 +34,8 @@ public class GerenciadorRecursos : MonoBehaviour
     
     // Eventos para notificar quando recursos mudarem
     public event Action OnRecursosAtualizados;
+
+    private readonly HashSet<string> listenersRecursosComAviso = new HashSet<string>();
 
     private float tempoAcumulado = 0f;
 
@@ -282,7 +285,30 @@ public class GerenciadorRecursos : MonoBehaviour
 
     public void NotificarAtualizacao()
     {
-        OnRecursosAtualizados?.Invoke();
+        Action listeners = OnRecursosAtualizados;
+        if (listeners == null) return;
+
+        Delegate[] invocationList = listeners.GetInvocationList();
+        for (int i = 0; i < invocationList.Length; i++)
+        {
+            Action listener = (Action)invocationList[i];
+            try
+            {
+                listener.Invoke();
+            }
+            catch (Exception exception)
+            {
+                string listenerId = listener.Method.DeclaringType != null
+                    ? listener.Method.DeclaringType.FullName + "." + listener.Method.Name
+                    : listener.Method.Name;
+                if (listenersRecursosComAviso.Add(listenerId))
+                {
+                    Debug.LogWarning(
+                        $"[GerenciadorRecursos] Listener de OnRecursosAtualizados falhou: {listenerId}: {exception.GetType().Name}: {exception.Message}",
+                        this);
+                }
+            }
+        }
     }
 
     // Compatibilidade Legada

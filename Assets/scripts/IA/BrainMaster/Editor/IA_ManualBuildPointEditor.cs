@@ -12,6 +12,8 @@ namespace Hegemonia.AI.BrainMaster
         private SerializedProperty _manualRole;
         private SerializedProperty _allowInactiveObject;
         private SerializedProperty _forceExactPlacement;
+        private SerializedProperty _usePlacementArea;
+        private SerializedProperty _placementAreaRadius;
         private SerializedProperty _reusePoint;
         private SerializedProperty _occupiedRadius;
         private SerializedProperty _restrictToBootstrapStage;
@@ -25,6 +27,8 @@ namespace Hegemonia.AI.BrainMaster
             _manualRole = serializedObject.FindProperty("ManualRole");
             _allowInactiveObject = serializedObject.FindProperty("AllowInactiveObject");
             _forceExactPlacement = serializedObject.FindProperty("ForceExactPlacement");
+            _usePlacementArea = serializedObject.FindProperty("UsePlacementArea");
+            _placementAreaRadius = serializedObject.FindProperty("PlacementAreaRadius");
             _reusePoint = serializedObject.FindProperty("ReusePoint");
             _occupiedRadius = serializedObject.FindProperty("OccupiedRadius");
             _restrictToBootstrapStage = serializedObject.FindProperty("RestrictToBootstrapStage");
@@ -42,6 +46,16 @@ namespace Hegemonia.AI.BrainMaster
             EditorGUILayout.PropertyField(_itemFilters);
             EditorGUILayout.PropertyField(_allowInactiveObject);
             EditorGUILayout.PropertyField(_forceExactPlacement);
+            EditorGUILayout.PropertyField(_usePlacementArea, new GUIContent("Usar área de colocação"));
+            IA_ManualBuildPoint point = (IA_ManualBuildPoint)target;
+            bool roleCreatesArea = point.IsConstructionAreaRole;
+            if (_usePlacementArea.boolValue || roleCreatesArea)
+            {
+                EditorGUILayout.PropertyField(_placementAreaRadius, new GUIContent("Raio da área (m)"));
+                EditorGUILayout.HelpBox(roleCreatesArea
+                    ? "Este papel cria uma área automaticamente: a IA procura uma posição válida dentro do círculo amarelo."
+                    : "A IA procura uma posição válida dentro do círculo amarelo.", MessageType.Info);
+            }
             EditorGUILayout.PropertyField(_reusePoint);
             EditorGUILayout.PropertyField(_occupiedRadius);
             EditorGUILayout.PropertyField(_restrictToBootstrapStage);

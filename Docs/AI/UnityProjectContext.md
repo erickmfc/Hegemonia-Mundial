@@ -5,8 +5,8 @@
 ## Project Summary
 
 - Project root: `C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main`
-- Last analyzed: 2026-09-26
-- Last analyzed commit: `96b6e3135d4dce35a938c6c7d9ea515951811f0a`
+- Last analyzed: 2026-10-11
+- Last analyzed commit: `5d52695fa7b7db071617ead405e88eb28e4a3476`
 
 ## Confirmed Environment
 
@@ -24,7 +24,15 @@
 | Navigation | AI Navigation 2.0.12 | Confirmed | `Packages/manifest.json` |
 | Camera | Cinemachine 3.1.5 is installed | Confirmed | `Packages/manifest.json` |
 | Tests | Unity Test Framework 1.6.0 | Confirmed | `Packages/manifest.json`, `Assets/Tests/*/*.asmdef` |
-| Unity MCP | `com.coplaydev.unity-mcp` is in the manifest; no callable Unity MCP tools are exposed to this task | Confirmed | `Packages/manifest.json`, current tool inventory |
+| Unity MCP | `com.coplaydev.unity-mcp` is installed and callable; Editor connection reported ready | Confirmed | `Packages/manifest.json`, Unity MCP `editor_status` |
+
+## Carrier-Deck Assets
+
+- The yellow-jersey deck worker shown in the supplied reference is `Assets/Prefabs/Navios_Guerra/Porta avioes/Trabalhador_Conves 1.prefab`; its visual mesh is `Assets/tripo_convert_2dd7b898-ac47-4257-9870-7fa18e999adf.fbx` (498,577 vertices, no skin weights in Blender import).
+- That prefab uses an Avatar from `Assets/Prefabs/Soldado_Rifle/Ani conves.fbx` and its existing `Anim_Trabalhador.controller` references the walk asset `Assets/Prefabs/Navios_Guerra/Porta avioes/andar.fbx`. The shared `Conves.mat` material uses `militarypilot3dmodel_basecolor.JPEG` for the yellow flight-deck uniform.
+- The separate `Assets/Prefabs/Soldado_Rifle/Trabalhador_Conves.prefab` is a different asset and is not the worker shown in that reference.
+- The Enterprise asset is `Assets/Prefabs/Navios_Guerra/Porta avioes/Uss Enterprise.prefab`; its visual ship model is `Assets/Prefabs/Navios_Guerra/Porta avioes/uss_enterprise_cvn-65_aircraft_carrier.glb`.
+- Carrier-operation PlayMode coverage exists in `Assets/Tests/PlayMode/OperacoesPortaAvioesV2PlayModeTests.cs`.
 
 ## Directory Structure
 
@@ -80,8 +88,8 @@
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| Unity Editor / console / scene inspection MCP | unavailable to this task | No callable Unity MCP tools are exposed. |
-| Unity MCP package | available in project configuration, connection unverified | Package listed in manifest and lock file. |
+| Unity Editor / console / scene inspection MCP | available and connected | `editor_status` returned `ready` on 2026-10-11 |
+| Unity MCP package | available | Coplay Unity MCP is listed in manifest and lock file |
 | Unity CLI | unverified | Editor executable location not confirmed yet. |
 | Unity Test Framework | available | Package and test assemblies present. |
 
@@ -89,7 +97,8 @@
 
 - Follow `AGENTS.md` and `REGRAS_FIXAS_ARQUITETURA.md` before edits.
 - Preserve existing serialized references and scene behavior; do not edit scenes, prefabs, terrain, radar detection, movement, or economy unless the requested integration proves it necessary.
-- The current working tree contains user changes in recovery scenes and untracked recovery/test artifacts. Treat them as user-owned and preserve them.
+- Preserve the distinct deck-worker and rifle-soldier prefabs; use the deck-worker path above when matching the supplied yellow-jersey reference.
+- Avoid saving unrelated open scenes when inspecting the Enterprise; use an isolated preview/test surface for visual experiments.
 - `GerenteDeTerritorio` currently uses marker-centered square influence and expansion zones; `GerenciadorDivisaoTerritorial` separately uses marker radii for city/economic calculations.
 - `MapaGeralController` owns the existing M shortcut, orthographic map camera, unit-order interaction, zoom/pan, and fog-aware icon display.
 - `RTSVisibilityService.TeamsAtWar` participates in both detection and targeting; detection must remain independent from territorial attack authorization.
@@ -98,7 +107,7 @@
 
 - Physical world extents and final scene bounds are being handled in a separate map-building task; derive political map bounds from explicit authored configuration or the active world's terrain coverage.
 - The exact association of land polygons to five country IDs must follow the drawn boundaries, not fill colors. Repeated colors may represent different countries or biomes.
-- Native Unity Editor availability and the Unity MCP connection are unverified.
+- Blender 5.2.1 imports the worker mesh, the existing walk-rig FBX, and the Enterprise GLB. The worker visual mesh is unskinned and needs an explicit rig/weight step for Blender-authored character animation.
 
 ## Source Files Inspected
 
@@ -109,5 +118,8 @@
 - `Assets/scripts/Governo/SistemaGovernoMundial.cs`, `Governo/DadosPaisGoverno.cs`, `RTS/RTSVisibilityService.cs`, `RTS/RTSInputBindings.cs`, `MapaGeralController.cs`, `SistemaSaveGame.cs`
 - `Assets/scripts/Construtor.cs`, `IdentidadeUnidade.cs`, `ComplexoGovernamental.cs`, `RegistroEntidadesJogo.cs`, `RTS/RTSRuntimeBootstrap.cs`, `ConfiguracaoCenasJogo.cs`, `Menus/FluxoInicialJogo.cs`
 - `Assets/Tests/EditMode/AISovereignTerritoryTests.cs` and test assembly definitions
+- `Assets/Prefabs/Navios_Guerra/Porta avioes/Trabalhador_Conves 1.prefab`, `Assets/tripo_convert_2dd7b898-ac47-4257-9870-7fa18e999adf.fbx`, `Assets/Prefabs/Navios_Guerra/Porta avioes/Uss Enterprise.prefab`, and its GLB source
+- `Assets/Tests/PlayMode/OperacoesPortaAvioesV2PlayModeTests.cs`
+- `Assets/Prefabs/Soldado_Rifle/Ani conves.fbx`, `Assets/Prefabs/Soldado_Rifle/Conves.mat`, `Assets/Prefabs/Soldado_Rifle/militarypilot3dmodel_basecolor.JPEG`, and `Assets/Prefabs/Navios_Guerra/Porta avioes/andar.fbx`
 
 <!-- unity-onboarding:generated:end -->

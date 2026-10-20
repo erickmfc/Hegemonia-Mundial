@@ -360,6 +360,7 @@ GameObject:
   - component: {fileID: 7448119204042953529}
   - component: {fileID: 1489107452339292928}
   - component: {fileID: 2170557373300531716}
+  - component: {fileID: 7000000000000000047}
   m_Layer: 0
   m_Name: Leon_c1
   m_TagString: Player
@@ -1640,3 +1641,32 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 636775480248494354, guid: 93625539ebd07fe4db4473bdcf4b4e17, type: 3}
   m_PrefabInstance: {fileID: 7432640647077351812}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &7000000000000000047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1939874857473241444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 200
+  intervaloVarreduraSegundos: 0.5
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1

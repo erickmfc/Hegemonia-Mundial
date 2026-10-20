@@ -5,14 +5,56 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 /// <summary>
-/// Run after opening Assets/Game/Environment/NavalShipyard/Scenes/NavalShipyard_Preview.unity
-/// with Tools > Hegemonia Global > Naval Shipyard Builder > Play Preview.
+/// The fixture loads the isolated preview scene itself so it is independent of
+/// whichever gameplay scene the rest of the Play Mode suite currently uses.
 /// </summary>
 public sealed class NavalShipyardPlayModeTests
 {
+    private const string PreviewScenePath = "Assets/Game/Environment/NavalShipyard/Scenes/NavalShipyard_Preview.unity";
+    private string scenePathToRestore;
+
+    [UnitySetUp]
+    public IEnumerator CaptureSceneToRestore()
+    {
+        Scene active = SceneManager.GetActiveScene();
+        scenePathToRestore = active.IsValid() ? active.path : string.Empty;
+        yield return null;
+    }
+
+    [UnityTearDown]
+    public IEnumerator RestoreSceneAfterPreview()
+    {
+        Scene active = SceneManager.GetActiveScene();
+        if (string.IsNullOrWhiteSpace(scenePathToRestore)
+            || string.Equals(active.path, scenePathToRestore, System.StringComparison.OrdinalIgnoreCase))
+            yield break;
+
+#if UNITY_EDITOR
+        AsyncOperation restore = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
+            scenePathToRestore,
+            new LoadSceneParameters(LoadSceneMode.Single));
+        Assert.That(restore, Is.Not.Null, "Não foi possível restaurar a cena ativa antes do preview naval.");
+        while (!restore.isDone) yield return null;
+#else
+        Assert.Fail("A suíte naval precisa restaurar a cena anterior no Editor.");
+        yield break;
+#endif
+    }
+
     [UnityTest]
     public IEnumerator IsolatedPreviewKeepsTheShipyardModularAndMetricInPlayMode()
     {
+#if UNITY_EDITOR
+        AsyncOperation load = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
+            PreviewScenePath,
+            new LoadSceneParameters(LoadSceneMode.Single));
+        Assert.That(load, Is.Not.Null, "Não foi possível carregar a cena de preview naval.");
+        while (!load.isDone) yield return null;
+#else
+        Assert.Fail("A cena de preview naval precisa ser carregada no Play Mode do Editor.");
+        yield break;
+#endif
+
         Scene active = SceneManager.GetActiveScene();
         Assert.That(active.name, Does.StartWith("NavalShipyard_Preview"),
             "Abra a cena de preview pelo Naval Shipyard Builder antes de rodar este teste.");

@@ -386,12 +386,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlataformaOffshore
   ownerTeamId: 0
-  producaoMinima: 5000
-  producaoMaxima: 50000
+  producaoMinima: 275000
+  producaoMaxima: 2750000
   sementeDoMapa: 100.5
   escalaDasManchas: 0.1
   petroleoArmazenado: 0
-  capacidadeArmazenamento: 100000
+  capacidadeArmazenamento: 5500000
   producaoAtualDestaPlataforma: 0
   qualidadeDoPoco: 
   textoProducao3D: {fileID: 0}

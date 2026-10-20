@@ -438,29 +438,32 @@ namespace Hegemonia.AI.Master
                 spawnPoint = relaxedPoint;
             }
 
-            GameObject created = null;
-            Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : FindFirstObjectByType<Construtor>();
-            if (construtor != null && data.PrefabDaUnidade != null)
+            return IA_NationalTreasury.TentarConstruirComTesouroNacional(_teamId, data, () =>
             {
-                created = construtor.ConstruirEstruturaIA(data.PrefabDaUnidade, spawnPoint, rotation);
-            }
+                GameObject created = null;
+                Construtor construtor = Construtor.Instancia != null ? Construtor.Instancia : FindFirstObjectByType<Construtor>();
+                if (construtor != null && data.PrefabDaUnidade != null)
+                {
+                    created = construtor.ConstruirEstruturaIA(data.PrefabDaUnidade, spawnPoint, rotation);
+                }
 
-            if (created == null && data.PrefabDaUnidade != null)
-            {
-                created = Instantiate(data.PrefabDaUnidade, spawnPoint, rotation);
-            }
+                if (created == null && data.PrefabDaUnidade != null)
+                {
+                    created = Instantiate(data.PrefabDaUnidade, spawnPoint, rotation);
+                }
 
-            if (created == null)
-            {
-                return false;
-            }
+                if (created == null)
+                {
+                    return false;
+                }
 
-            EnsureTeamIdentity(created);
-            Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
-            if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
-            PierMarinha createdPier = created.GetComponent<PierMarinha>();
-            if (createdPier != null) createdPier.OwnerTeamId = _teamId;
-            return true;
+                EnsureTeamIdentity(created);
+                Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
+                if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
+                PierMarinha createdPier = created.GetComponent<PierMarinha>();
+                if (createdPier != null) createdPier.OwnerTeamId = _teamId;
+                return true;
+            });
         }
 
         public bool QueueBuild(string itemKey, Vector3 worldPoint, int priority)
@@ -491,6 +494,14 @@ namespace Hegemonia.AI.Master
                 return false;
             }
 
+            return IA_NationalTreasury.TentarProduzirComTesouroNacional(
+                _teamId,
+                data,
+                () => TryQueueResolvedProduction(data));
+        }
+
+        private bool TryQueueResolvedProduction(DadosConstrucao data)
+        {
             IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
             string unitType = assetKind == IA01MilitaryAssetKind.Other ? data.GetStableId() : assetKind.ToString();
             int alive = CountOwnedForProduction(assetKind);
@@ -500,36 +511,18 @@ namespace Hegemonia.AI.Master
             }
 
             GameObject produced;
-            bool producedByInfrastructure = TryProduceViaInfrastructure(data, orderId, out produced);
-            if (!producedByInfrastructure)
+            bool producedByInfrastructure;
+            try
             {
-                Vector3 spawnPoint;
-                if (IsNavalItem(data))
-                {
-                    if (!TryResolveNavalUnitSpawnPoint(ResolveUnitSpawnPoint(), out spawnPoint))
-                    {
-                        IAAutoProductionRegistry.Release(orderId, Time.time);
-                        return false;
-                    }
-                }
-                else
-                {
-                    spawnPoint = ResolveUnitSpawnPoint();
-                }
-
-                if (IsUnitCrowded(spawnPoint, _minUnitSpacing))
-                {
-                    Vector3 relaxedPoint;
-                    if (TryFindNearbyClearPoint(spawnPoint, Mathf.Max(4f, _minUnitSpacing), out relaxedPoint))
-                    {
-                        spawnPoint = relaxedPoint;
-                    }
-                }
-
-                produced = Instantiate(data.PrefabDaUnidade, spawnPoint, Quaternion.identity);
+                producedByInfrastructure = TryProduceViaInfrastructure(data, orderId, out produced);
+            }
+            catch
+            {
+                IAAutoProductionRegistry.Release(orderId, Time.time);
+                throw;
             }
 
-            if (!producedByInfrastructure && produced == null)
+            if (!producedByInfrastructure)
             {
                 IAAutoProductionRegistry.Release(orderId, Time.time);
                 return false;
@@ -640,23 +633,50 @@ namespace Hegemonia.AI.Master
 
             bool isCommercialAircraft = data.PrefabDaUnidade.GetComponent<ControleAviaoComercial>() != null
                                          || normalized.Contains("comercial");
-            if (!isCommercialAircraft
-                && (data.categoria == DadosConstrucao.CategoriaItem.Aeronautica || normalized.Contains("aviao") || normalized.Contains("caca")))
+            bool isAircraft = !isCommercialAircraft
+                && (data.categoria == DadosConstrucao.CategoriaItem.Aeronautica
+                    || normalized.Contains("aviao")
+                    || normalized.Contains("caca")
+                    || normalized.Contains("helicoptero")
+                    || normalized.Contains("heli"));
+            if (isAircraft)
             {
                 RegistroEntidadesJogo.FillAeroportos(_airportBuffer);
                 for (int i = 0; i < _airportBuffer.Count; i++)
                 {
                     GerenciadorAeroporto airport = _airportBuffer[i];
-                    if (airport == null || !BelongsToTeam(airport.gameObject))
+                    if (airport == null || !BelongsToTeam(airport.gameObject) || airport.semEnergia)
                     {
                         continue;
                     }
 
-                    airport.ComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId);
-                    return true;
+                    if (airport.TryComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId, false))
+                    {
+                        return true;
+                    }
+                }
+
+                bool isHelicopter = data.PrefabDaUnidade.GetComponent<Helicoptero>() != null
+                    || data.PrefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null
+                    || normalized.Contains("helicoptero")
+                    || normalized.Contains("heli");
+                if (!isHelicopter)
+                {
+                    return false;
                 }
 
                 RegistroEntidadesJogo.FillHeliportos(_heliportBuffer);
+                SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+                int efetivoNecessario = SistemaGovernoMundial.ObterEfetivoNecessario(
+                    data.PrefabDaUnidade,
+                    TipoUnidade.Aereo);
+                if (efetivoNecessario > 0
+                    && (governo == null
+                        || !governo.PodeProduzirUnidadeComEfetivo(_teamId, data.PrefabDaUnidade, 1, TipoUnidade.Aereo)))
+                {
+                    return false;
+                }
+
                 for (int i = 0; i < _heliportBuffer.Count; i++)
                 {
                     Heliporto heliport = _heliportBuffer[i];
@@ -665,10 +685,44 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    produced = Instantiate(data.PrefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
-                    IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
-                    return produced != null;
+                    Imovel heliportBuilding = heliport.GetComponent<Imovel>()
+                        ?? heliport.GetComponentInParent<Imovel>();
+                    if (heliportBuilding != null && heliportBuilding.semEnergia)
+                    {
+                        continue;
+                    }
+
+                    GameObject aircraft = Instantiate(
+                        data.PrefabDaUnidade,
+                        heliport.ObterPontoDePousoMundial(),
+                        heliport.transform.rotation);
+                    if (aircraft == null)
+                    {
+                        return false;
+                    }
+
+                    EnsureTeamIdentity(aircraft);
+                    IdentidadeUnidade aircraftIdentity = aircraft.GetComponent<IdentidadeUnidade>();
+                    if (aircraftIdentity != null)
+                    {
+                        aircraftIdentity.tipoUnidade = TipoUnidade.Aereo;
+                    }
+
+                    governo = governo != null ? governo : SistemaGovernoMundial.Instancia;
+                    if (efetivoNecessario > 0
+                        && (governo == null || !governo.TentarMobilizarEfetivoDaUnidade(_teamId, aircraft)))
+                    {
+                        if (aircraftIdentity != null) aircraftIdentity.militaresConsumidos = 0;
+                        Destroy(aircraft);
+                        return false;
+                    }
+
+                    ServicoAbastecimento.AbastecerUnidadeProduzida(aircraft);
+                    produced = aircraft;
+                    return true;
                 }
+
+                return false;
             }
 
             RegistroEntidadesJogo.FillFabricas(_factoryBuffer);

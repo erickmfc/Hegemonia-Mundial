@@ -338,7 +338,7 @@ public sealed class PoliticoTerritoryEditModeTests
             Assert.That(File.Exists(caminhoTemporario), Is.True);
             string json = File.ReadAllText(caminhoTemporario);
             Assert.That(json, Does.Contain("\"territoriosCapturados\""));
-            Assert.That(json, Does.Contain("\"saveVersion\": 17"));
+            Assert.That(json, Does.Contain("\"saveVersion\": 22"));
             Assert.That(json, Does.Contain("\"neutral\": false"));
             Assert.That(json, Does.Not.Contain("\"capturable\""));
             Assert.That(json, Does.Contain("\"uniqueId\": \"" + uniqueId + "\""));

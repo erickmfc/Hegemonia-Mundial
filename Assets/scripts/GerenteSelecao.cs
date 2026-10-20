@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
+using Hegemonia.RTS;
 
 public class GerenteSelecao : MonoBehaviour
 {
@@ -41,6 +42,7 @@ public class GerenteSelecao : MonoBehaviour
     private readonly List<ControleUnidade> bufferInfantaria = new List<ControleUnidade>(64);
     private readonly List<ControleUnidade> bufferVeiculos = new List<ControleUnidade>(32);
     private readonly List<ControleUnidade> bufferOrdemFormacao = new List<ControleUnidade>(96);
+    private readonly List<ControleUnidade> bufferOrdensPersistentes = new List<ControleUnidade>(96);
     private readonly List<SlotFormacao> bufferSlotsFormacao = new List<SlotFormacao>(96);
     private static readonly RaycastHitDistanceComparer ComparadorHits = new RaycastHitDistanceComparer();
     private PointerEventData pointerEventDataUI;
@@ -857,6 +859,7 @@ public class GerenteSelecao : MonoBehaviour
         bufferInfantaria.Clear();
         bufferVeiculos.Clear();
         bufferOrdemFormacao.Clear();
+        bufferOrdensPersistentes.Clear();
         bufferSlotsFormacao.Clear();
 
         foreach (var unidade in unidadesSelecionadas)
@@ -865,7 +868,7 @@ public class GerenteSelecao : MonoBehaviour
 
             if (unidade.TemC700TransporteAereo)
             {
-                unidade.EmitirOrdemMover(destinoCentral);
+                if (unidade.EmitirOrdemMover(destinoCentral)) bufferOrdensPersistentes.Add(unidade);
                 continue;
             }
 
@@ -874,7 +877,7 @@ public class GerenteSelecao : MonoBehaviour
                 ControleAviao aviao = unidade.GetComponent<ControleAviao>();
                 if (aviao == null)
                 {
-                    unidade.EmitirOrdemMover(destinoCentral);
+                    if (unidade.EmitirOrdemMover(destinoCentral)) bufferOrdensPersistentes.Add(unidade);
                     continue;
                 }
 
@@ -890,7 +893,7 @@ public class GerenteSelecao : MonoBehaviour
                 }
                 else
                 {
-                    unidade.EmitirOrdemMover(destinoCentral);
+                    if (unidade.EmitirOrdemMover(destinoCentral)) bufferOrdensPersistentes.Add(unidade);
                 }
                 continue;
             }
@@ -905,7 +908,7 @@ public class GerenteSelecao : MonoBehaviour
                     {
                         continue;
                     }
-                    unidade.EmitirOrdemMover(destinoCentral + deslocHeli);
+                    if (unidade.EmitirOrdemMover(destinoCentral + deslocHeli)) bufferOrdensPersistentes.Add(unidade);
                 }
                 continue;
             }
@@ -934,7 +937,14 @@ public class GerenteSelecao : MonoBehaviour
         bufferOrdemFormacao.AddRange(bufferInfantaria); // Frente
 
         int total = bufferOrdemFormacao.Count;
-        if (total == 0) return;
+        if (total == 0)
+        {
+            if (torreDestino == null && aeroportoDestino == null)
+            {
+                RTSPersistentFormationService.GarantirInstancia().RegistrarOrdemDeGrupo(bufferOrdensPersistentes);
+            }
+            return;
+        }
 
         Vector3 centroGrupo = Vector3.zero;
         foreach (var u in bufferOrdemFormacao) centroGrupo += u.transform.position;
@@ -1087,7 +1097,12 @@ public class GerenteSelecao : MonoBehaviour
                 }
             }
 
-            alvoCtrl.EmitirOrdemMover(posAlvo);
+            if (alvoCtrl.EmitirOrdemMover(posAlvo)) bufferOrdensPersistentes.Add(alvoCtrl);
+        }
+
+        if (torreDestino == null && aeroportoDestino == null)
+        {
+            RTSPersistentFormationService.GarantirInstancia().RegistrarOrdemDeGrupo(bufferOrdensPersistentes);
         }
     }
 

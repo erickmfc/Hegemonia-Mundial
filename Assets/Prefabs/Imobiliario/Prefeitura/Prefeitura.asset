@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: 'Prefeitura '
   descricao: Prefeitura
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 8b96abd25826b6f41bd62f8d2228aec5, type: 3}
   itemId: capital.prefeitura
   aliases: prefeitura,capital,governo
   capacidades: 37

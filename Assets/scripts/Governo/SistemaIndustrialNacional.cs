@@ -6,6 +6,10 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class SistemaIndustrialNacional : MonoBehaviour
 {
+    public const double EstoqueInicialDieselPartidaNova = 20000d;
+    public const double EstoqueInicialCombustivelAviacaoPartidaNova = 20000d;
+    public const double EstoqueInicialCombustivelNavalPartidaNova = 50000d;
+
     [Serializable]
     public class ConfiguracaoExtracaoIndustrial
     {
@@ -176,6 +180,8 @@ public class SistemaIndustrialNacional : MonoBehaviour
 
             GarantirPerfil(pais.teamId);
             GarantirLinhasPais(pais.teamId);
+            GarantirPetroleoLegado(pais);
+            SincronizarPaisEmGoverno(pais.teamId);
             AtualizarEstadoPais(pais.teamId);
         }
     }
@@ -226,6 +232,7 @@ public class SistemaIndustrialNacional : MonoBehaviour
         string paisId = estoque.teamId.ToString();
         List<QuantidadeRecursoIndustrial> totais = new List<QuantidadeRecursoIndustrial>
         {
+            new QuantidadeRecursoIndustrial(IndustriaIds.PetroleoBruto, Armazem.ObterQuantidade(paisId, IndustriaIds.PetroleoBruto)),
             new QuantidadeRecursoIndustrial(IndustriaIds.MinerioFerro, estoque.minerioFerro),
             new QuantidadeRecursoIndustrial(IndustriaIds.MinerioCobre, estoque.minerioCobre),
             new QuantidadeRecursoIndustrial(IndustriaIds.Bauxita, estoque.bauxita),
@@ -253,6 +260,7 @@ public class SistemaIndustrialNacional : MonoBehaviour
         string paisId = pais.teamId.ToString();
         List<QuantidadeRecursoIndustrial> totais = new List<QuantidadeRecursoIndustrial>
         {
+            new QuantidadeRecursoIndustrial(IndustriaIds.PetroleoBruto, pais.petroleo),
             new QuantidadeRecursoIndustrial(IndustriaIds.MinerioFerro, pais.minerioFerro),
             new QuantidadeRecursoIndustrial(IndustriaIds.MinerioCobre, pais.minerioCobre),
             new QuantidadeRecursoIndustrial(IndustriaIds.Bauxita, pais.bauxita),
@@ -337,7 +345,9 @@ public class SistemaIndustrialNacional : MonoBehaviour
     public IReadOnlyList<LinhaIndustrial> ObterLinhasPais(int teamId)
     {
         GarantirLinhasPais(teamId);
-        return linhasPorPais.TryGetValue(teamId, out List<LinhaIndustrial> linhas) ? linhas : Array.Empty<LinhaIndustrial>();
+        return linhasPorPais.TryGetValue(teamId, out List<LinhaIndustrial> linhas)
+            ? (IReadOnlyList<LinhaIndustrial>)linhas
+            : Array.Empty<LinhaIndustrial>();
     }
 
     public LinhaIndustrial ObterLinha(string linhaId)
@@ -482,7 +492,10 @@ public class SistemaIndustrialNacional : MonoBehaviour
 
         ordem.estado = EstadoOrdemRefinoIndustrial.Aguardando;
         VincularLinhaLivre(teamId, ordem);
-        GarantirPerfil(teamId).SetRefino(ConverterParaMaterialRefinado(ordem.produtoId), true);
+        if (MapaMaterialRefinado.TryGetValue(ordem.produtoId, out MaterialRefinado materialRefinado))
+        {
+            GarantirPerfil(teamId).SetRefino(materialRefinado, true);
+        }
         OnOrdemRefinoAtualizada?.Invoke(ordem);
         return ordem;
     }
@@ -579,6 +592,41 @@ public class SistemaIndustrialNacional : MonoBehaviour
             SincronizarPaisEmGoverno(ParseTeamId(teamId));
         }
         return ok;
+    }
+
+    public void InicializarEstoquesCombustivelPartidaNova(IEnumerable<int> teamIds)
+    {
+        if (teamIds == null)
+            return;
+
+        HashSet<int> visitados = new HashSet<int>();
+        foreach (int teamId in teamIds)
+        {
+            if (teamId <= 0 || !visitados.Add(teamId))
+                continue;
+
+            string teamKey = teamId.ToString();
+            List<QuantidadeRecursoIndustrial> estoque = Armazem.ObterEstoquePais(teamKey);
+            List<QuantidadeRecursoIndustrial> reservas = Armazem.ObterReservasPais(teamKey);
+            estoque.RemoveAll(item => item != null && EhCombustivelMilitar(item.recursoId));
+            reservas.RemoveAll(item => item != null && EhCombustivelMilitar(item.recursoId));
+            estoque.Add(new QuantidadeRecursoIndustrial(IndustriaIds.Diesel, EstoqueInicialDieselPartidaNova));
+            estoque.Add(new QuantidadeRecursoIndustrial(IndustriaIds.CombustivelAviacao, EstoqueInicialCombustivelAviacaoPartidaNova));
+            estoque.Add(new QuantidadeRecursoIndustrial(IndustriaIds.CombustivelNaval, EstoqueInicialCombustivelNavalPartidaNova));
+            Armazem.AplicarSnapshot(teamKey, estoque, reservas);
+            SincronizarPaisEmGoverno(teamId);
+            AtualizarEstadoPais(teamId);
+        }
+
+        IntegracaoMercadoIndustrial.SincronizarEstoquesNoMercado(this, SistemaMercadoGlobal.Instancia);
+        OnSistemaAtualizado?.Invoke();
+    }
+
+    private static bool EhCombustivelMilitar(string recursoId)
+    {
+        return string.Equals(recursoId, IndustriaIds.Diesel, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(recursoId, IndustriaIds.CombustivelAviacao, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(recursoId, IndustriaIds.CombustivelNaval, StringComparison.OrdinalIgnoreCase);
     }
 
     public bool TentarAdicionar(string teamId, string recursoId, double quantidade)
@@ -1207,8 +1255,10 @@ public class SistemaIndustrialNacional : MonoBehaviour
         linha.Limpar();
         RegistrarHistoricoInterno(ordem.teamId.ToString(), receita.produtoFinalId, $"{receita.nome} concluída: +{receita.quantidadeProduzida:N0} {receita.unidadeResultado}");
 
-        PerfilMineralPais perfil = GarantirPerfil(ordem.teamId);
-        perfil.SetRefino(ConverterParaMaterialRefinado(receita.produtoFinalId), false);
+        if (MapaMaterialRefinado.TryGetValue(receita.produtoFinalId, out MaterialRefinado materialRefinado))
+        {
+            GarantirPerfil(ordem.teamId).SetRefino(materialRefinado, false);
+        }
     }
 
     private void VincularLinhaLivre(int teamId, OrdemRefinoIndustrial ordem)
@@ -1348,14 +1398,38 @@ public class SistemaIndustrialNacional : MonoBehaviour
         pais.ligaTitanio = Mathf.RoundToInt((float)Armazem.ObterDisponivel(teamId.ToString(), IndustriaIds.LigaTitanio));
         pais.componentesEletronicos = Mathf.RoundToInt((float)Armazem.ObterDisponivel(teamId.ToString(), IndustriaIds.ComponentesEletronicos));
         pais.uranioEnriquecido = Mathf.RoundToInt((float)Armazem.ObterDisponivel(teamId.ToString(), IndustriaIds.UranioEnriquecido));
+        pais.petroleo = Mathf.Max(0, Mathf.RoundToInt((float)Armazem.ObterDisponivel(teamId.ToString(), IndustriaIds.PetroleoBruto)));
 
         pais.aco = Mathf.RoundToInt(pais.acoEstrutural);
         pais.uranio = Mathf.RoundToInt(pais.uranioBruto);
 
         if (teamId == SistemaGovernoMundial.Instancia.teamJogador && GerenciadorRecursos.Instancia != null)
         {
+            GerenciadorRecursos.Instancia.petroleo = pais.petroleo;
             GerenciadorRecursos.Instancia.aco = Mathf.RoundToInt(pais.acoEstrutural);
             GerenciadorRecursos.Instancia.NotificarAtualizacao();
+        }
+    }
+
+    private void GarantirPetroleoLegado(DadosPaisGoverno pais)
+    {
+        if (pais == null || pais.teamId <= 0)
+        {
+            return;
+        }
+
+        string paisId = pais.teamId.ToString();
+        if (Armazem.ObterQuantidade(paisId, IndustriaIds.PetroleoBruto) > 0d)
+        {
+            return;
+        }
+
+        int saldoLegado = Mathf.Max(0, pais.petroleo);
+        if (saldoLegado > 0)
+        {
+            // Saves e cenários anteriores mantinham o petróleo no estado do país.
+            // Só migra quando o snapshot industrial ainda não contém esse recurso.
+            Armazem.Adicionar(paisId, IndustriaIds.PetroleoBruto, saldoLegado);
         }
     }
 
@@ -1892,6 +1966,24 @@ public class SistemaIndustrialNacional : MonoBehaviour
             new MaterialNecessarioIndustrial { recursoId = IndustriaIds.ComponentesEletronicos, quantidade = 120d }
         }, 30000, 2800, 24, 2d, "pesquisa_icnu", 4, true, true, IndustriaIds.UranioEnriquecido));
 
+        // Os três combustíveis militares já pertencem ao armazém industrial e
+        // ao mercado. Estas receitas completam o elo de transformação do óleo
+        // bruto para o estoque refinado consumido por cada classe de unidade.
+        GarantirReceitaCatalogo(CriarReceitaPadrao("refino_diesel", "Refino de diesel", new[]
+        {
+            new MaterialNecessarioIndustrial { recursoId = IndustriaIds.PetroleoBruto, quantidade = 500d }
+        }, 350, 80, 2, 500d, string.Empty, 1, false, false, IndustriaIds.Diesel, "l"));
+
+        GarantirReceitaCatalogo(CriarReceitaPadrao("refino_combustivel_aviacao", "Refino de combustível de aviação", new[]
+        {
+            new MaterialNecessarioIndustrial { recursoId = IndustriaIds.PetroleoBruto, quantidade = 500d }
+        }, 500, 100, 2, 500d, string.Empty, 1, false, false, IndustriaIds.CombustivelAviacao, "l"));
+
+        GarantirReceitaCatalogo(CriarReceitaPadrao("refino_combustivel_naval", "Refino de combustível naval", new[]
+        {
+            new MaterialNecessarioIndustrial { recursoId = IndustriaIds.PetroleoBruto, quantidade = 500d }
+        }, 450, 90, 2, 500d, string.Empty, 1, false, false, IndustriaIds.CombustivelNaval, "l"));
+
         if (configuracoesExtracao.Count == 0)
         {
             configuracoesExtracao.Add(CriarConfiguracaoPadrao(IndustriaIds.MinerioFerro, "Minério de ferro", 400f, 50f, 500f, 10000f, false, string.Empty));
@@ -1933,13 +2025,14 @@ public class SistemaIndustrialNacional : MonoBehaviour
         }
     }
 
-    private static ReceitaIndustrialSO CriarReceitaPadrao(string id, string nome, MaterialNecessarioIndustrial[] materiais, int dinheiro, int energia, int dias, double quantidadeProduzida, string pesquisa, int nivelIndustrial, bool nuclear, bool estrategico, string produtoFinalId = null)
+    private static ReceitaIndustrialSO CriarReceitaPadrao(string id, string nome, MaterialNecessarioIndustrial[] materiais, int dinheiro, int energia, int dias, double quantidadeProduzida, string pesquisa, int nivelIndustrial, bool nuclear, bool estrategico, string produtoFinalId = null, string unidadeResultado = "t")
     {
         ReceitaIndustrialSO receita = ScriptableObject.CreateInstance<ReceitaIndustrialSO>();
         receita.hideFlags = HideFlags.HideAndDontSave;
         receita.id = id;
         receita.nome = nome;
         receita.produtoFinalId = string.IsNullOrWhiteSpace(produtoFinalId) ? id : produtoFinalId;
+        receita.unidadeResultado = unidadeResultado;
         receita.quantidadeProduzida = quantidadeProduzida;
         receita.dinheiroNecessario = dinheiro;
         receita.energiaNecessaria = energia;

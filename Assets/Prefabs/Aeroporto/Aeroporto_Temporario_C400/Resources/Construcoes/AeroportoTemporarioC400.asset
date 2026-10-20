@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Aeroporto Temporario C400
   descricao: Pista regional temporaria para operacoes e embarque do transporte C-400.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 90bb8c5abed4c2943915a19d31eeeb6a, type: 3}
   itemId: infraestrutura.aeroporto_temporario_c400
   aliases: aeroporto temporario, pista temporaria, pista logistica
   capacidades: 0

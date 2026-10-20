@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Track Combustivel
   descricao: Caminhão de reabastecimento de combustível para unidades no campo.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 503fdce176934574683bea073c80158c, type: 3}
   prefabDaUnidade: {fileID: 2122963518820336875, guid: 220ee2fb38e34184b902c047d721d9ff, type: 3}
   preco: 100
   categoria: 0

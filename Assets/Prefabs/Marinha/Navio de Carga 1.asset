@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Navio de Carga
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 30456a0ec7a02e54093e35e47d671524, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

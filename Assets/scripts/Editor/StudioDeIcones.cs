@@ -35,7 +35,203 @@ public class StudioDeIcones : EditorWindow
             GerarTodos();
         }
 
-        EditorGUILayout.HelpBox("Isso irá scanear todas as fichas de construção (scripts DadosConstrucao) e gerar novos ícones para elas baseados nos seus prefabs.", MessageType.Info);
+        if (GUILayout.Button("Preencher somente fotos ausentes"))
+        {
+            GerarIconesFaltantesCatalogo();
+        }
+
+        EditorGUILayout.HelpBox("O preenchimento seguro mantém os ícones existentes e renderiza apenas as fichas sem foto a partir do prefab.", MessageType.Info);
+    }
+
+    [MenuItem("Hegemonia/Studio de Icones/Preencher somente fotos ausentes")]
+    public static void GerarIconesFaltantesCatalogo()
+    {
+        // Primeiro associa PNGs que já foram renderizados em um passe anterior.
+        AssociarFotosJaGeradas();
+        StudioDeIcones studio = CreateInstance<StudioDeIcones>();
+        try
+        {
+            studio.GerarIconesFaltantes();
+        }
+        finally
+        {
+            DestroyImmediate(studio);
+        }
+    }
+
+    [MenuItem("Hegemonia/Studio de Icones/Associar fotos já geradas")]
+    public static void AssociarFotosJaGeradas()
+    {
+        string pasta = "Assets/Art/IconesGerados";
+        int associados = 0;
+        foreach (string guid in AssetDatabase.FindAssets("t:DadosConstrucao"))
+        {
+            string fichaPath = AssetDatabase.GUIDToAssetPath(guid);
+            DadosConstrucao dados = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(fichaPath);
+            if (dados == null || guid.Length < 8) continue;
+
+            string nome = SanitizarNomeArquivo(dados.name) + "_" + guid.Substring(0, 8) + "_Icon.png";
+            string spritePath = pasta + "/" + nome;
+            if (!File.Exists(Path.Combine(Application.dataPath, spritePath.Substring("Assets/".Length)))) continue;
+
+            ImportAssetOptions importacaoSincrona = ImportAssetOptions.ForceUpdate
+                | ImportAssetOptions.ForceSynchronousImport;
+            AssetDatabase.ImportAsset(spritePath, importacaoSincrona);
+            TextureImporter importer = AssetImporter.GetAtPath(spritePath) as TextureImporter;
+            if (importer != null && (importer.textureType != TextureImporterType.Sprite
+                || importer.spriteImportMode != SpriteImportMode.Single
+                || !importer.alphaIsTransparency))
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.alphaIsTransparency = true;
+                importer.SaveAndReimport();
+            }
+            Sprite sprite = CarregarSpriteImportado(spritePath);
+            if (sprite == null || dados.icone == sprite) continue;
+            dados.icone = sprite;
+            EditorUtility.SetDirty(dados);
+            associados++;
+        }
+
+        AssetDatabase.SaveAssets();
+        Debug.Log("[StudioDeIcones] Fotos associadas: " + associados + ".");
+    }
+
+    private void GerarIconesFaltantes()
+    {
+        if (!Directory.Exists(pastaSaida))
+        {
+            Directory.CreateDirectory(pastaSaida);
+        }
+
+        string[] guids = AssetDatabase.FindAssets("t:DadosConstrucao");
+        int gerados = 0;
+        int ignorados = 0;
+
+        try
+        {
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                DadosConstrucao dados = AssetDatabase.LoadAssetAtPath<DadosConstrucao>(path);
+                if (dados == null || (dados.icone != null
+                    && !dados.icone.name.ToLowerInvariant().Contains("bkwv7tbkwv7tbkwv")))
+                {
+                    ignorados++;
+                    continue;
+                }
+
+                GameObject prefab;
+                if (!dados.TryGetPrefabBasico(out prefab) || prefab == null)
+                {
+                    ignorados++;
+                    continue;
+                }
+
+                EditorUtility.DisplayProgressBar(
+                    "Preenchendo fotos do menu",
+                    "Renderizando " + dados.GetDisplayName(),
+                    (float)i / Mathf.Max(1, guids.Length));
+
+                string assetGuid = AssetDatabase.AssetPathToGUID(path);
+                string nomeArquivo = SanitizarNomeArquivo(dados.name);
+                if (assetGuid.Length >= 8)
+                {
+                    nomeArquivo += "_" + assetGuid.Substring(0, 8);
+                }
+
+                // Reaproveita uma imagem já renderizada nesta pasta. Isso
+                // permite concluir a associação mesmo quando o primeiro
+                // passe terminou enquanto o AssetDatabase ainda importava o PNG.
+                string caminhoIcone = pastaSaida + "/" + nomeArquivo + "_Icon.png";
+                if (File.Exists(Path.Combine(Application.dataPath, caminhoIcone.Replace("Assets/", ""))))
+                {
+                    AssetDatabase.ImportAsset(caminhoIcone, ImportAssetOptions.ForceSynchronousImport);
+                    TextureImporter importerExistente = AssetImporter.GetAtPath(caminhoIcone) as TextureImporter;
+                    if (importerExistente != null)
+                    {
+                        importerExistente.textureType = TextureImporterType.Sprite;
+                        importerExistente.spriteImportMode = SpriteImportMode.Single;
+                        importerExistente.alphaIsTransparency = true;
+                        importerExistente.SaveAndReimport();
+                    }
+                    Sprite existente = CarregarSpriteImportado(caminhoIcone);
+                    if (existente != null)
+                    {
+                        dados.icone = existente;
+                        EditorUtility.SetDirty(dados);
+                        gerados++;
+                        continue;
+                    }
+                }
+
+                try
+                {
+                    Sprite novoIcone = GerarIcone(prefab, nomeArquivo);
+                    if (novoIcone != null)
+                    {
+                        dados.icone = novoIcone;
+                        EditorUtility.SetDirty(dados);
+                        gerados++;
+                    }
+                    else
+                    {
+                        ignorados++;
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    ignorados++;
+                    Debug.LogWarning("[StudioDeIcones] Não foi possível gerar a foto de "
+                        + dados.GetDisplayName() + ": " + ex, dados);
+                }
+            }
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
+        }
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("[StudioDeIcones] Fotos novas: " + gerados + "; fichas preservadas ou ignoradas: " + ignorados + ".");
+    }
+
+    private static string SanitizarNomeArquivo(string nome)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            return "FichaConstrucao";
+        }
+
+        foreach (char invalido in Path.GetInvalidFileNameChars())
+        {
+            nome = nome.Replace(invalido, '_');
+        }
+
+        return nome.Replace('/', '_').Replace('\\', '_').Trim();
+    }
+
+    private static Sprite CarregarSpriteImportado(string caminho)
+    {
+        Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(caminho);
+        if (sprite != null)
+        {
+            return sprite;
+        }
+
+        UnityEngine.Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(caminho);
+        for (int i = 0; i < subAssets.Length; i++)
+        {
+            sprite = subAssets[i] as Sprite;
+            if (sprite != null)
+            {
+                return sprite;
+            }
+        }
+
+        return null;
     }
 
     void GerarTodos()
@@ -85,7 +281,22 @@ public class StudioDeIcones : EditorWindow
 
         // 1. Setup Studio Scene (Invisible)
         GameObject studio = new GameObject("Icon_Studio");
-        GameObject sujeito = Instantiate(prefab, Vector3.zero, Quaternion.identity, studio.transform);
+        GameObject sujeito = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
+        if (sujeito == null)
+        {
+            sujeito = UnityEngine.Object.Instantiate<GameObject>(prefab);
+        }
+
+        if (sujeito == null)
+        {
+            DestroyImmediate(studio);
+            Debug.LogWarning("[StudioDeIcones] Não foi possível instanciar o prefab: " + prefab.name, prefab);
+            return null;
+        }
+
+        sujeito.transform.SetParent(studio.transform, false);
+        sujeito.transform.localPosition = Vector3.zero;
+        sujeito.transform.localRotation = Quaternion.identity;
         
         // Normaliza Rotação do Sujeito
         sujeito.transform.rotation = Quaternion.Euler(0, -45, 0); // Ajuste fino para isométrico parecer frente
@@ -96,6 +307,12 @@ public class StudioDeIcones : EditorWindow
         // 3. Calcula Bounds
         Bounds bounds = CalcularBounds(sujeito);
         float maxDim = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+        if (maxDim < 0.001f)
+        {
+            DestroyImmediate(studio);
+            Debug.LogWarning("[StudioDeIcones] Prefab sem Renderer visível: " + prefab.name, prefab);
+            return null;
+        }
 
         // 4. Setup Camera
         Camera cam = new GameObject("Cam").AddComponent<Camera>();
@@ -147,19 +364,36 @@ public class StudioDeIcones : EditorWindow
         DestroyImmediate(studio);
 
         // 8. Import e Configuração
-        AssetDatabase.Refresh(); // Importa o novo arquivo
+        // Importa de forma síncrona para que o Sprite esteja disponível antes
+        // de atribuí-lo à ficha. Um ImportAsset isolado não descobre um PNG
+        // recém-criado; o Refresh precisa acontecer primeiro.
+        ImportAssetOptions importacaoSincrona = ImportAssetOptions.ForceUpdate
+            | ImportAssetOptions.ForceSynchronousImport;
+        AssetDatabase.Refresh(importacaoSincrona);
+        AssetDatabase.ImportAsset(pathRelativo, importacaoSincrona);
 
         TextureImporter importer = AssetImporter.GetAtPath(pathRelativo) as TextureImporter;
         if (importer != null)
         {
             importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
             importer.alphaIsTransparency = true;
             importer.mipmapEnabled = true;
             importer.compressionQuality = 100;
             importer.SaveAndReimport();
         }
 
-        return AssetDatabase.LoadAssetAtPath<Sprite>(pathRelativo);
+        Sprite sprite = CarregarSpriteImportado(pathRelativo);
+        if (sprite == null)
+        {
+            // Releitura defensiva para instalações em que o primeiro ciclo de
+            // importação ainda não publicou o sub-asset Sprite.
+            AssetDatabase.Refresh(importacaoSincrona);
+            AssetDatabase.ImportAsset(pathRelativo, importacaoSincrona);
+            sprite = CarregarSpriteImportado(pathRelativo);
+        }
+
+        return sprite;
     }
 
     void LimparObjeto(GameObject obj)

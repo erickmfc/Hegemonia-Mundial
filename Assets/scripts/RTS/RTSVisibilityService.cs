@@ -242,7 +242,7 @@ namespace Hegemonia.RTS
             contact.lastKnownPosition = target.transform.position;
             contact.lastSeenAt = Time.unscaledTime;
             float tempoMemoria = duration > 0f ? duration : memoryDuration;
-            float tempoVisivel = source == RTSDetectionSource.DirectVision || source == RTSDetectionSource.Radar || source == RTSDetectionSource.Sonar
+            float tempoVisivel = source == RTSDetectionSource.DirectVision || source == RTSDetectionSource.Radar || source == RTSDetectionSource.Sonar || source == RTSDetectionSource.AirRecon
                 ? Mathf.Max(0.5f, scanInterval * 1.5f)
                 : tempoMemoria;
             contact.expiresAt = Time.unscaledTime + tempoVisivel;
@@ -511,7 +511,9 @@ namespace Hegemonia.RTS
                 if (radar == null)
                     radar = identidade.gameObject.AddComponent<RadarUnidadeTatica>();
                 radar.AtualizarAlcance(identidade);
-                radar.AtualizarDecisaoIA(identidade, unitsBuffer, timeJogador);
+                bool reconhecimentoAereo = radar.AtualizarReconhecimentoAutomatico(identidade);
+                if (!reconhecimentoAereo)
+                    radar.AtualizarDecisaoIA(identidade, unitsBuffer, timeJogador);
                 if (radar.RadarLigado)
                     radar.AtualizarCustoEnergia();
                 if (radar.RadarLigado) radarUnitsBuffer.Add(radar);
@@ -540,7 +542,10 @@ namespace Hegemonia.RTS
                     delta.y = 0f;
                     if (delta.sqrMagnitude <= alcanceSqr && RadarTemLinhaDeVisao(origem, observador, alvo))
                     {
-                        ReportContactParaAliadosProximos(observador.teamID, alvo, memoriaRadar);
+                        ReportContactParaAliadosProximos(observador.teamID, alvo, memoriaRadar,
+                            emissor.AtivacaoAutomaticaHelicopteroEmVoo
+                                ? RTSDetectionSource.AirRecon
+                                : RTSDetectionSource.Radar);
                     }
                 }
             }
@@ -757,14 +762,15 @@ namespace Hegemonia.RTS
             }
         }
 
-        private void ReportContactParaAliadosProximos(int observerTeamId, IdentidadeUnidade target, float duration)
+        private void ReportContactParaAliadosProximos(int observerTeamId, IdentidadeUnidade target, float duration,
+            RTSDetectionSource source = RTSDetectionSource.Radar)
         {
-            ReportContact(observerTeamId, target, RTSDetectionSource.Radar, duration);
+            ReportContact(observerTeamId, target, source, duration);
             for (int i = 0; i < nearbyAlliedTeamsBuffer.Count; i++)
             {
                 int aliado = nearbyAlliedTeamsBuffer[i];
                 if (TeamsAtWar(aliado, target.teamID))
-                    ReportContact(aliado, target, RTSDetectionSource.Radar, duration);
+                    ReportContact(aliado, target, source, duration);
             }
         }
 
@@ -805,6 +811,37 @@ namespace Hegemonia.RTS
             DadosPaisGoverno paisB = governo.ObterPais(teamB);
             return (paisA != null && paisA.emGuerra && paisA.rivalTeamId == teamB)
                 || (paisB != null && paisB.emGuerra && paisB.rivalTeamId == teamA);
+        }
+
+        /// <summary>
+        /// Retorna se a equipe possui ao menos uma guerra autorizada no estado
+        /// diplomático atual. É usado como portão barato antes de sensores que
+        /// fariam uma busca física; a validação par-a-par continua sendo feita
+        /// por <see cref="TeamsAtWar"/> quando um alvo é encontrado.
+        /// </summary>
+        public static bool TeamHasWarAuthorization(int teamId)
+        {
+            if (teamId <= 0) return false;
+
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            // Sem o registro diplomático ainda não há informação suficiente
+            // para bloquear o comportamento legado usado em cenas isoladas.
+            if (governo == null) return true;
+
+            DadosPaisGoverno pais = governo.ObterPais(teamId);
+            if (pais != null && pais.emGuerra) return true;
+
+            IReadOnlyList<RelacaoPaisGoverno> relacoes = governo.Relacoes;
+            if (relacoes == null) return false;
+            for (int i = 0; i < relacoes.Count; i++)
+            {
+                RelacaoPaisGoverno relacao = relacoes[i];
+                if (relacao != null && (relacao.teamA == teamId || relacao.teamB == teamId)
+                    && relacao.guerraDeclarada)
+                    return true;
+            }
+
+            return false;
         }
 
         private static long ComposeCellKey(int x, int z)

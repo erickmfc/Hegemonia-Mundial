@@ -1836,6 +1836,14 @@ namespace Hegemonia.AI.IA02
 
         private bool TryProduceLand(DadosConstrucao item, string label, string orderId = "")
         {
+            return IA_NationalTreasury.TentarProduzirComTesouroNacional(
+                context.TeamId,
+                item,
+                () => TryProduceLandSemPagamento(item, label, orderId));
+        }
+
+        private bool TryProduceLandSemPagamento(DadosConstrucao item, string label, string orderId)
+        {
             if (item == null || item.PrefabDaUnidade == null
                 || item.categoria != DadosConstrucao.CategoriaItem.Exercito
                 || IsAircraftDefinition(item)) return false;
@@ -1854,6 +1862,12 @@ namespace Hegemonia.AI.IA02
                     return true;
                 }
 
+                if (!factory.PossuiEnergiaParaProduzir())
+                {
+                    status = "Fábrica sem energia; ordem terrestre aguarda a rede elétrica.";
+                    continue;
+                }
+
                 // Fichas/creates antigos podem ter uma Fabrica sem identidade ou
                 // com ponto de saída inválido. Ainda assim, a ordem deve gerar a
                 // unidade no próprio create da fábrica, nunca no território rival.
@@ -1863,6 +1877,14 @@ namespace Hegemonia.AI.IA02
         }
 
         private bool TryProduceFighter(DadosConstrucao item, float now, string orderId = "")
+        {
+            return IA_NationalTreasury.TentarProduzirComTesouroNacional(
+                context.TeamId,
+                item,
+                () => TryProduceFighterSemPagamento(item, now, orderId));
+        }
+
+        private bool TryProduceFighterSemPagamento(DadosConstrucao item, float now, string orderId)
         {
             GerenciadorAeroporto[] airports = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             // A abertura antiga já tinha o aeroporto militar antes da primeira
@@ -1893,13 +1915,15 @@ namespace Hegemonia.AI.IA02
             for (int i = 0; i < airports.Length; i++)
             {
                 GerenciadorAeroporto airport = airports[i];
-                // Nunca usar a fila de uma base de outra nação. Caso nenhum
-                // aeroporto pertencente à IA seja localizado, o fallback abaixo
-                // cria o caça no create militar oficial dela.
+                // Nunca usar a fila de uma base de outra nação.
                 if (!BelongsToOwnAirport(airport)) continue;
                 airport.gameObject.SetActive(true);
                 airport.enabled = true;
-                airport.SetarSemEnergia(false);
+                if (airport.semEnergia)
+                {
+                    status = "Aeroporto militar sem energia; ordem aérea aguarda a rede elétrica.";
+                    continue;
+                }
                 EnsureAirportIdentity(airport);
                 // Nem toda ficha de caca esta no catalogo global em runtime. O
                 // aeroporto militar ja possui a mesma referencia usada pelo
@@ -1918,7 +1942,7 @@ namespace Hegemonia.AI.IA02
                     status = "Aeroporto militar sem prefab de caca configurado.";
                     continue;
                 }
-                airport.ComprarAviaoIAImediato(aircraft, orderId);
+                if (!airport.TryComprarAviaoIAImediato(aircraft, orderId, false)) continue;
                 // A fila é a mesma usada pelo jogador: ela pode liberar a aeronave
                 // no próximo frame, já na vaga de estacionamento do aeroporto.
                 issuedFighters++;
@@ -1932,9 +1956,7 @@ namespace Hegemonia.AI.IA02
                 // cria o caca em um ponto terrestre generico.
             }
 
-            // Não use um aeroporto de outra nação como motivo para a IA ficar
-            // sem aviação. Se nenhum componente encontrado for o dela, o create
-            // militar é a fonte segura: a aeronave nasce no próprio pátio.
+            // Um aeroporto de outra nação nunca libera a ordem da IA.
             return PermiteInfraestruturaInicialAutomatica && SpawnFighterAtMilitaryAirport(item, orderId);
         }
 
@@ -2004,11 +2026,8 @@ namespace Hegemonia.AI.IA02
             {
                 airport.gameObject.SetActive(true);
                 airport.enabled = true;
-                // O create militar pode nascer antes da primeira usina. A base
-                // continua usando a fila oficial do aeroporto, mas não fica
-                // permanentemente travada pelo sinal inicial de apagão durante
-                // a mobilização mínima da IA.
-                airport.SetarSemEnergia(false);
+                // A rede elétrica continua sendo a autoridade do estado do
+                // aeroporto; criar a estrutura não concede energia à base.
                 EnsureAirportIdentity(airport);
                 Debug.Log("[IA02 Military] Aeroporto militar criado no create: " + built.name + " pos=" + built.transform.position.ToString("F2"));
             }
@@ -2029,11 +2048,8 @@ namespace Hegemonia.AI.IA02
                 return false;
             }
 
-            // Mesmo o caminho de recuperacao deve usar o servico oficial do
-            // aeroporto. O fallback antigo instanciava apenas a identidade no
-            // create: o aviao podia receber uma ordem e continuar sem
-            // aeroportoOrigem, ficando preso no hangar ou sendo destruido ao
-            // iniciar a sequencia de voo.
+            // A recuperação também precisa passar pelo serviço oficial do
+            // aeroporto para registrar origem, energia, efetivo e combustível.
             GerenciadorAeroporto aeroportoProprio = null;
             GerenciadorAeroporto[] aeroportosAtuais = UnityEngine.Object.FindObjectsByType<GerenciadorAeroporto>(
                 FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -2053,8 +2069,13 @@ namespace Hegemonia.AI.IA02
             {
                 aeroportoProprio.gameObject.SetActive(true);
                 aeroportoProprio.enabled = true;
-                aeroportoProprio.SetarSemEnergia(false);
                 EnsureAirportIdentity(aeroportoProprio);
+
+                if (aeroportoProprio.semEnergia)
+                {
+                    status = "Aeroporto militar sem energia; caça aguarda a rede elétrica.";
+                    return false;
+                }
 
                 GameObject aeronave = item != null ? item.PrefabDaUnidade : null;
                 if (!IsUsableAircraftPrefab(aeronave) && item != null)
@@ -2067,7 +2088,7 @@ namespace Hegemonia.AI.IA02
                 if (IsUsableAircraftPrefab(aeronave)
                     && IA02MilitaryCatalogPolicy.IsAllowedPrefab(aeronave, controller != null ? controller.FichasMilitaresPermitidas : null))
                 {
-                    aeroportoProprio.ComprarAviaoIAImediato(aeronave, orderId);
+                    if (!aeroportoProprio.TryComprarAviaoIAImediato(aeronave, orderId)) return false;
                     issuedFighters++;
                     lastFighterOrderAt = Time.time;
                     Debug.Log("[IA02 Military] Caca estacionado no aeroporto proprio (recuperacao): "
@@ -2075,68 +2096,8 @@ namespace Hegemonia.AI.IA02
                     return true;
                 }
             }
-            Vector3 anchor = Vector3.zero;
-            Quaternion rotation = Quaternion.identity;
-            bool hasAnchor = false;
-            if (controller != null)
-            {
-                hasAnchor = controller.TryResolveConstructionAnchor(IA02IntentType.BuildMilitaryAirport, out anchor, out rotation);
-            }
-            if (!hasAnchor && controller != null)
-            {
-                Transform[] markers = controller.GetComponentsInChildren<Transform>(true);
-                for (int i = 0; i < markers.Length; i++)
-                {
-                    Transform marker = markers[i];
-                    if (marker != null && marker.name.IndexOf("Aeroporto Militar", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        anchor = marker.position;
-                        rotation = marker.rotation;
-                        hasAnchor = true;
-                        break;
-                    }
-                }
-            }
-            if (!hasAnchor)
-            {
-                IA02BuildSlot[] slots = UnityEngine.Object.FindObjectsByType<IA02BuildSlot>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-                for (int i = 0; i < slots.Length; i++)
-                {
-                    IA02BuildSlot slot = slots[i];
-                    if (slot != null && slot.name.IndexOf("Aeroporto Militar", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        Transform point = slot.BuildingPoint != null ? slot.BuildingPoint : slot.transform;
-                        anchor = point.position;
-                        rotation = point.rotation;
-                        hasAnchor = true;
-                        break;
-                    }
-                }
-            }
-            if (fallback == null || controller == null || !hasAnchor)
-            {
-                status = "Reserva militar aguardando create do aeroporto militar.";
-                return false;
-            }
-            if (!controller.IsPositionInsidePreparedTerritory(anchor, 220f))
-            {
-                status = "Reserva militar aguardando anchor seguro do aeroporto militar.";
-                return false;
-            }
-
-            GameObject unit = UnityEngine.Object.Instantiate(fallback, anchor, rotation);
-            if (unit == null) return false;
-            IdentidadeUnidade identity = unit.GetComponent<IdentidadeUnidade>();
-            if (identity == null) identity = unit.AddComponent<IdentidadeUnidade>();
-            identity.teamID = context.TeamId;
-            identity.nomeDoPais = controller.NationName;
-            identity.tipoUnidade = TipoUnidade.Aereo;
-            CombustivelUnidade.Garantir(unit, true);
-            IA02MilitaryProductionGuard.Complete(orderId, Time.time);
-            issuedFighters++;
-            lastFighterOrderAt = Time.time;
-            Debug.Log("[IA02 Military] Caca liberado no create do aeroporto militar: " + fallback.name);
-            return true;
+            status = "Aeroporto militar operacional indisponível; ordem de caça aguardando infraestrutura.";
+            return false;
         }
 
         private bool BelongsToOwnAirport(GerenciadorAeroporto airport)
@@ -2146,6 +2107,14 @@ namespace Hegemonia.AI.IA02
         }
 
         private bool TryProduceNaval(DadosConstrucao item, string label, string orderId = "")
+        {
+            return IA_NationalTreasury.TentarProduzirComTesouroNacional(
+                context.TeamId,
+                item,
+                () => TryProduceNavalSemPagamento(item, label, orderId));
+        }
+
+        private bool TryProduceNavalSemPagamento(DadosConstrucao item, string label, string orderId)
         {
             if (item == null || item.PrefabDaUnidade == null) return false;
             RefreshRegisteredEntityCaches();
@@ -2278,6 +2247,10 @@ namespace Hegemonia.AI.IA02
         {
             if (item == null || item.PrefabDaUnidade == null) return false;
             if (anchor == null || controller == null || !controller.IsPositionInsidePreparedTerritory(anchor.position, 240f)) return false;
+            int manpower = SistemaGovernoMundial.ObterEfetivoNecessario(item.PrefabDaUnidade);
+            SistemaGovernoMundial government = manpower > 0 ? SistemaGovernoMundial.Instancia : null;
+            if (manpower > 0
+                && (government == null || !government.PodeProduzirUnidadeComEfetivo(context.TeamId, item.PrefabDaUnidade))) return false;
             Vector3 origin = anchor != null ? anchor.position : (controller != null ? controller.transform.position : Vector3.zero);
             Vector3 position = origin + new Vector3(UnityEngine.Random.Range(-18f, 18f), 0f, UnityEngine.Random.Range(-18f, 18f));
             if (UnityEngine.AI.NavMesh.SamplePosition(position, out UnityEngine.AI.NavMeshHit hit, 25f, UnityEngine.AI.NavMesh.AllAreas))
@@ -2293,9 +2266,22 @@ namespace Hegemonia.AI.IA02
                 : (item.categoria == DadosConstrucao.CategoriaItem.Marinha ? TipoUnidade.Naval : TipoUnidade.Veiculo);
             if (item.categoria == DadosConstrucao.CategoriaItem.Exercito && !Contains(item, "tanque", "tank", "blindado", "veiculo", "vehicle", "carro"))
                 identity.tipoUnidade = TipoUnidade.Infantaria;
+            government = government ?? SistemaGovernoMundial.Instancia;
+            int manpowerProduzido = SistemaGovernoMundial.ObterEfetivoNecessario(unit);
+            if (manpowerProduzido > 0
+                && (government == null || !government.TentarMobilizarEfetivoDaUnidade(context.TeamId, unit)))
+            {
+                IdentidadeUnidade[] identities = unit.GetComponentsInChildren<IdentidadeUnidade>(true);
+                for (int i = 0; i < identities.Length; i++)
+                {
+                    if (identities[i] != null) identities[i].militaresConsumidos = 0;
+                }
+                UnityEngine.Object.Destroy(unit);
+                return false;
+            }
             if (identity.tipoUnidade == TipoUnidade.Aereo) issuedFighters++;
             IA02MilitaryProductionGuard.Complete(orderId, Time.time);
-            CombustivelUnidade.Garantir(unit, true);
+            ServicoAbastecimento.AbastecerUnidadeProduzida(unit);
             DiagnosticoDesempenhoJogo.RegistrarProducao(item.GetDisplayName(), "IA02_ReservaMilitar");
             return true;
         }
@@ -2315,7 +2301,7 @@ namespace Hegemonia.AI.IA02
             {
                 identity.tipoUnidade = TipoUnidade.Infantaria;
             }
-            CombustivelUnidade.Garantir(unit, true);
+            ServicoAbastecimento.AbastecerUnidadeProduzida(unit);
         }
 
         private void EnsureAirportIdentity(GerenciadorAeroporto airport)

@@ -4871,7 +4871,6 @@ GameObject:
   - component: {fileID: 4950683511345508832}
   - component: {fileID: 1724928678573602907}
   - component: {fileID: 2013703473772253388}
-  - component: {fileID: 8910103352625345861}
   - component: {fileID: 1611221359328738173}
   - component: {fileID: 7671069174709614291}
   - component: {fileID: 7848223881262357966}
@@ -4967,25 +4966,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &8910103352625345861
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 350537872923637445}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6828ac20377f842baa5d0d5149f20354, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Speed: 30
-  Health: 1
-  PlaneLifeTime: 50
-  RandomTurnRate: []
-  LerpSpeed: 0.1
-  DamageFX: {fileID: 459352234960253744}
-  ExplosionFX: {fileID: 3370863453666694840}
 --- !u!54 &1611221359328738173
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10112,7 +10092,6 @@ GameObject:
   - component: {fileID: 608070110230637320}
   - component: {fileID: 5276913594335660995}
   - component: {fileID: 2760881143264394540}
-  - component: {fileID: 3500995996993592333}
   m_Layer: 0
   m_Name: SM_Veh_American_Plane_Transport_Propeller_R
   m_TagString: Untagged
@@ -10188,19 +10167,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &3500995996993592333
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3159445655058001486}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 445cffcd85e5448a5a206ff319a99f5e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _speed: 100
 --- !u!1 &3326714269429049967
 GameObject:
   m_ObjectHideFlags: 0
@@ -10212,7 +10178,6 @@ GameObject:
   - component: {fileID: 1754866414982720749}
   - component: {fileID: 1546122916656244618}
   - component: {fileID: 1601524838815137269}
-  - component: {fileID: 4483433327632294945}
   m_Layer: 0
   m_Name: SM_Veh_American_Plane_Transport_Propeller_L
   m_TagString: Untagged
@@ -10288,19 +10253,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &4483433327632294945
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3326714269429049967}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 445cffcd85e5448a5a206ff319a99f5e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _speed: 100
 --- !u!1 &3370863453666694840
 GameObject:
   m_ObjectHideFlags: 0

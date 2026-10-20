@@ -364,10 +364,12 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         }
 
         bool materialPersistente = ficha.categoria != DadosConstrucao.CategoriaItem.Tecnologia;
-        bool unidadeCombate = EhCategoriaMilitar(ficha.categoria) && !EhLogisticaOuEstrutura(nome, prefab.name);
+        bool unidadeCombate = EhCategoriaMilitar(ficha.categoria)
+            && !EhLogisticaOuEstrutura(nome, prefab.name, ficha.descricao, ficha.aliases);
         bool temCollider = prefab.GetComponentInChildren<Collider>(true) != null;
         bool temSistemaDeDanos = prefab.GetComponentInChildren<SistemaDeDanos>(true) != null;
-        bool temSaveableEntity = prefab.GetComponentInChildren<SaveableEntity>(true) != null;
+        bool temSaveableEntity = prefab.GetComponent<SaveableEntity>() != null;
+        bool capturadaPeloSaveEmRuntime = TemComponenteCapturadoPeloSave(prefab);
         bool temIdentidadeUnidade = prefab.GetComponentInChildren<IdentidadeUnidade>(true) != null;
 
         if (materialPersistente && !temCollider)
@@ -392,10 +394,10 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
             }
         }
 
-        if (materialPersistente && !temSaveableEntity)
+        if (materialPersistente && !temSaveableEntity && !capturadaPeloSaveEmRuntime)
         {
             avisos++;
-            Emitir("AVISO", nome + ": prefab sem SaveableEntity para save completo", ref eventosEmitidos, limiteEventos);
+            Emitir("AVISO", nome + ": prefab sem SaveableEntity nem componente coletado pelo save em runtime", ref eventosEmitidos, limiteEventos);
         }
 
         if (EhCategoriaMilitar(ficha.categoria) && !temIdentidadeUnidade)
@@ -500,9 +502,11 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
                || categoria == DadosConstrucao.CategoriaItem.Aeronautica;
     }
 
-    private bool EhLogisticaOuEstrutura(string nomeItem, string nomePrefab)
+    private bool EhLogisticaOuEstrutura(string nomeItem, string nomePrefab, string descricao, string aliases)
     {
-        string texto = Normalizar(nomeItem + " " + nomePrefab);
+        // Fichas de unidades logisticas nem sempre incluem sua funcao no nome
+        // do prefab (por exemplo, um navio chamado apenas "Ministral").
+        string texto = Normalizar(nomeItem + " " + nomePrefab + " " + descricao + " " + aliases);
         return texto.Contains("petroleiro")
                || texto.Contains("petrolifero")
                || texto.Contains("tanker")
@@ -545,6 +549,26 @@ public sealed class AuditoriaConteudoJogo : MonoBehaviour
         }
 
         return false;
+    }
+
+    private static bool TemComponenteCapturadoPeloSave(GameObject prefab)
+    {
+        if (prefab == null) return false;
+
+        // SistemaSaveGame coleta estas entidades diretamente e adiciona
+        // SaveableEntity ao objeto durante a captura. Exigir o componente
+        // previamente serializado no prefab gerava avisos falsos para unidades
+        // que já cumprem o contrato real de persistência.
+        return prefab.GetComponent<IdentidadeUnidade>() != null
+            || prefab.GetComponent<ControleUnidade>() != null
+            || prefab.GetComponent<IdentidadeNaval>() != null
+            || prefab.GetComponent<Imovel>() != null
+            || prefab.GetComponent<GerenciadorAeroporto>() != null
+            || prefab.GetComponent<Fabrica>() != null
+            || prefab.GetComponent<Estaleiro>() != null
+            || prefab.GetComponent<PierMarinha>() != null
+            || prefab.GetComponent<GerenciadorQuartel>() != null
+            || prefab.GetComponent<CidadeComplexoUrbano>() != null;
     }
 
     private string DetectarCategoriaSuspeita(DadosConstrucao ficha, GameObject prefab)

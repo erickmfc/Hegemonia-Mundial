@@ -71,8 +71,13 @@ public class SistemaDeDanos : MonoBehaviour
     {
         vidaAtual = vidaMaxima;
         
-        // Auto-detecta se é Muro pela tag
-        if (gameObject.CompareTag("Destrutivel") || gameObject.name.Contains("Muro") || gameObject.name.Contains("Wall"))
+        // O nome de alguns navios também contém "Wall" (por exemplo,
+        // Des_Wall). A detecção por nome só pode marcar estruturas depois de
+        // excluir plataformas que já possuem componentes/identidade naval.
+        if (!EhEmbarcacaoConfigurada()
+            && (gameObject.CompareTag("Destrutivel")
+                || gameObject.name.Contains("Muro")
+                || gameObject.name.Contains("Wall")))
         {
             ehEstrutura = true;
         }
@@ -126,8 +131,10 @@ public class SistemaDeDanos : MonoBehaviour
                             + " frame=" + UnityEngine.Time.frameCount
                             + " victim=" + name
                             + " victimTeam=" + vitimaID.teamID
+                            + " victimIdentity=" + vitimaID.name + "#" + vitimaID.GetInstanceID()
                             + " aggressor=" + agressor.name
-                            + " aggressorTeam=" + agressorID.teamID,
+                            + " aggressorTeam=" + agressorID.teamID
+                            + " aggressorIdentity=" + agressorID.name + "#" + agressorID.GetInstanceID(),
                             this);
                     }
 #endif
@@ -167,7 +174,7 @@ public class SistemaDeDanos : MonoBehaviour
             }
 
             if (unidadeBiologica) MorrerBiologico();
-            else if (ehEstrutura) MorrerEstrutura();
+            else if (ehEstrutura && !DeveAfundarComoEmbarcacao()) MorrerEstrutura();
             else StartCoroutine(SequenciaDeMorte());
         }
         else
@@ -319,29 +326,31 @@ public class SistemaDeDanos : MonoBehaviour
         DestruirFx(ref fxFogo);
     }
 
-    void ExplodirFinal()
+    void ExplodirFinal(Vector3? posicao = null)
     {
+        Vector3 posicaoEfeito = posicao ?? transform.position;
         if(GerenciadorFXGlobal.Instancia != null)
         {
             // ⚫ Fase 5: Explosão Final (+30% tamanho)
-            GerenciadorFXGlobal.Instancia.TocarEfeito("Explosao", transform.position, tamanhoDoEfeito * 1.3f);
+            GerenciadorFXGlobal.Instancia.TocarEfeito("Explosao", posicaoEfeito, tamanhoDoEfeito * 1.3f);
         }
-        TocarSomExplosao();
+        TocarSomExplosao(posicaoEfeito);
     }
 
-    void TocarSomExplosao()
+    void TocarSomExplosao(Vector3? posicao = null)
     {
+        Vector3 posicaoSom = posicao ?? transform.position;
         if (somExplosaoExclusivo != null)
         {
-            AudioRuntime.PlayClipAtPoint(somExplosaoExclusivo, transform.position);
+            AudioRuntime.PlayClipAtPoint(somExplosaoExclusivo, posicaoSom);
         }
         else if(GerenciadorFXGlobal.Instancia != null && GerenciadorFXGlobal.Instancia.somExplosao != null)
         {
-            AudioRuntime.PlayClipAtPoint(GerenciadorFXGlobal.Instancia.somExplosao, transform.position);
+            AudioRuntime.PlayClipAtPoint(GerenciadorFXGlobal.Instancia.somExplosao, posicaoSom);
         }
     }
 
-    void DesativarUnidade()
+    void DesativarUnidade(bool pararHierarquiaInteira = false)
     {
         var sistemaTiro = GetComponent<SistemaDeTiro>();
         if (sistemaTiro != null) sistemaTiro.enabled = false;
@@ -356,17 +365,56 @@ public class SistemaDeDanos : MonoBehaviour
             navMesh.enabled = false;
         }
 
-        // Tenta desativar scripts de controle
-        foreach(var script in GetComponents<MonoBehaviour>())
+        // Navios podem ter controles fora da raiz (por exemplo, o ciclo do
+        // petroleiro e os controladores das torretas). Durante o afundamento,
+        // qualquer comportamento restante poderia mover ou operar o casco.
+        MonoBehaviour[] scripts = pararHierarquiaInteira
+            ? GetComponentsInChildren<MonoBehaviour>(true)
+            : GetComponents<MonoBehaviour>();
+        foreach (var script in scripts)
         {
             if (script == null) continue; // PREVENÇÃO DE MISSING SCRIPT (Evita Crash Silencioso)
             if (script == this) continue; // Não desativa a si mesmo ainda
-            if (script.GetType().Name.Contains("Controle") || 
+            if (pararHierarquiaInteira
+                || script is ControleUnidade
+                || script.GetType().Name.Contains("Controle") ||
                 script.GetType().Name.Contains("Patrulha") ||
                 script.GetType().Name.Contains("Helicopter"))
             {
                 script.enabled = false;
             }
+        }
+
+        if (!pararHierarquiaInteira) return;
+
+        foreach (var agente in GetComponentsInChildren<UnityEngine.AI.NavMeshAgent>(true))
+        {
+            if (agente == null) continue;
+            if (agente.isActiveAndEnabled && agente.isOnNavMesh) agente.isStopped = true;
+            agente.enabled = false;
+        }
+
+        foreach (var colisor in GetComponentsInChildren<Collider>(true))
+        {
+            if (colisor != null) colisor.enabled = false;
+        }
+
+        foreach (var corpo in GetComponentsInChildren<Rigidbody>(true))
+        {
+            if (corpo == null) continue;
+            if (!corpo.isKinematic)
+            {
+                corpo.linearVelocity = Vector3.zero;
+                corpo.angularVelocity = Vector3.zero;
+            }
+            corpo.isKinematic = true;
+            corpo.detectCollisions = false;
+        }
+
+        foreach (var particulas in GetComponentsInChildren<ParticleSystem>(true))
+        {
+            if (particulas != null)
+                particulas.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
     }
 
@@ -438,12 +486,21 @@ public class SistemaDeDanos : MonoBehaviour
 
     IEnumerator SequenciaDeMorte()
     {
+        bool afundarNavio = DeveAfundarComoEmbarcacao();
+        Vector3 posicaoNaSuperficie = transform.position;
+        float alturaAgua = posicaoNaSuperficie.y;
+        if (afundarNavio && RegistroSuperficieMapa.TryGetAltura(
+                transform.position, TipoSuperficieMapa.Agua, out alturaAgua))
+        {
+            posicaoNaSuperficie.y = alturaAgua;
+        }
+
         morreu = true;
         NotificarMorte();
         
         // ⚫ Fase 5: Colapso Total
         // 1. Desativa controles imediatamente
-        DesativarUnidade(); 
+        DesativarUnidade(afundarNavio);
 
         // 2. Limpa efeitos de "avaria" para limpar a cena para a explosão
         LimparTodosEfeitos();
@@ -458,23 +515,29 @@ public class SistemaDeDanos : MonoBehaviour
              if (fogoFinal != null)
              {
                  fogoFinal.transform.localScale = Vector3.one * tamanhoDoEfeito * 1.5f; // +50% força
+                 if (afundarNavio)
+                     fogoFinal.transform.position = posicaoNaSuperficie;
              }
         }
 
         yield return new WaitForSeconds(0.5f); // Breve momento de colapso
 
-        if (DeveAfundarComoEmbarcacao())
+        if (afundarNavio)
         {
-            yield return StartCoroutine(RotinaAfundamentoNaval());
+            // A explosão acontece na superfície antes de o casco desaparecer.
+            ExplodirFinal(posicaoNaSuperficie);
+            yield return StartCoroutine(RotinaAfundamentoNaval(posicaoNaSuperficie));
+        }
+        else
+        {
+            ExplodirFinal();
         }
 
-        // 4. Explosão Final (+30%)
-        ExplodirFinal();
-
-        // 5. Destroços
+        // 5. Destroços permanecem na superfície mesmo com o casco já submerso.
         if (prefabDestrocos != null)
         {
-            GameObject destrocos = Instantiate(prefabDestrocos, transform.position, transform.rotation);
+            Vector3 posicaoDestrocos = afundarNavio ? posicaoNaSuperficie : transform.position;
+            GameObject destrocos = Instantiate(prefabDestrocos, posicaoDestrocos, transform.rotation);
             // Destroços podem ter escala ajustada se necessário
             destrocos.transform.localScale = transform.localScale; 
             LimparDestroco(destrocos);
@@ -498,57 +561,155 @@ public class SistemaDeDanos : MonoBehaviour
 
     bool DeveAfundarComoEmbarcacao()
     {
-        if (!habilitarAfundamentoNaval || unidadeBiologica || ehEstrutura)
+        if (!habilitarAfundamentoNaval || unidadeBiologica)
         {
             return false;
         }
 
-        if (GetComponent<HovercraftTransporte>() != null
-            || GetComponent<ControleNavioRealista>() != null
-            || GetComponent<ControleSubmarino>() != null
-            || GetComponent<NavioPetroleiro>() != null
-            || GetComponent<IdentidadeNaval>() != null)
+        // Componentes navais são a fonte mais forte de classificação. Alguns
+        // prefabs antigos receberam ehEstrutura pela heurística do nome, mas
+        // continuam sendo navios e devem completar a sequência de naufrágio.
+        if (EhEmbarcacaoConfigurada())
+        {
+            return true;
+        }
+
+        if (ehEstrutura)
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private bool EhEmbarcacaoConfigurada()
+    {
+        if (GetComponentInChildren<HovercraftTransporte>(true) != null
+            || GetComponentInChildren<ControleNavioRealista>(true) != null
+            || GetComponentInChildren<ControleSubmarino>(true) != null
+            || GetComponentInChildren<NavioPetroleiro>(true) != null
+            || GetComponentInChildren<IdentidadeNaval>(true) != null)
         {
             return true;
         }
 
         IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInParent<IdentidadeUnidade>();
+        if (identidade == null) identidade = GetComponentInChildren<IdentidadeUnidade>(true);
         return identidade != null && identidade.tipoUnidade == TipoUnidade.Naval;
     }
 
-    IEnumerator RotinaAfundamentoNaval()
+    IEnumerator RotinaAfundamentoNaval(Vector3 posicaoNaSuperficie)
     {
         float tempo = 0f;
         float duracao = Mathf.Max(0.1f, duracaoAfundamento);
-        Quaternion rotacaoInicial = transform.rotation;
-        Vector3 eulerAtual = transform.eulerAngles;
-        Quaternion rotacaoFinal = Quaternion.Euler(anguloAfundamentoX, eulerAtual.y, eulerAtual.z);
+        Bounds limitesVisuais = ObterLimitesVisuaisAfundamento();
+        Transform visual = CriarPivotVisualAfundamento(limitesVisuais);
+        float profundidade = Mathf.Max(3f, limitesVisuais.extents.y + 2f);
+        Vector3 posicaoVisualInicial = visual != null ? visual.position : transform.position;
+        Vector3 posicaoVisualFinal = posicaoVisualInicial;
+        posicaoVisualFinal.y = posicaoNaSuperficie.y - profundidade;
+        // Prefabs antigos guardam o ângulo como -46°, que levantava a proa
+        // (o forward naval do jogo é +Z). No naufrágio, a rotação deve baixar
+        // a proa; usar o módulo mantém os ajustes de intensidade existentes.
+        float anguloProaParaBaixo = Mathf.Abs(anguloAfundamentoX);
+        Quaternion inclinacaoLocalAfundamento = Quaternion.AngleAxis(anguloProaParaBaixo, Vector3.right);
+        Quaternion rotacaoVisualFinal = inclinacaoLocalAfundamento;
 
-        Rigidbody corpo = GetComponent<Rigidbody>();
-        if (corpo != null)
-        {
-            if (!corpo.isKinematic)
-            {
-                corpo.linearVelocity = Vector3.zero;
-                corpo.angularVelocity = Vector3.zero;
-            }
-            corpo.isKinematic = true;
-        }
+        Quaternion rotacaoRaizInicial = transform.rotation;
+        Vector3 posicaoRaizInicial = transform.position;
+        Quaternion rotacaoRaizFinal = rotacaoRaizInicial * inclinacaoLocalAfundamento;
 
         while (tempo < duracao)
         {
             float t = Mathf.Clamp01(tempo / duracao);
-            transform.rotation = Quaternion.Slerp(rotacaoInicial, rotacaoFinal, t);
+            float inclinacao = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.28f));
+            float submersao = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((t - 0.28f) / 0.72f));
+
+            if (visual != null)
+            {
+                visual.localRotation = Quaternion.Slerp(Quaternion.identity, rotacaoVisualFinal, inclinacao);
+                visual.position = Vector3.Lerp(posicaoVisualInicial, posicaoVisualFinal, submersao);
+            }
+            else
+            {
+                // Fallback para prefabs navais sem malhas em objetos filhos.
+                transform.rotation = Quaternion.Slerp(rotacaoRaizInicial, rotacaoRaizFinal, inclinacao);
+                transform.position = Vector3.Lerp(posicaoRaizInicial, posicaoVisualFinal, submersao);
+            }
+
             tempo += Time.deltaTime;
             yield return null;
         }
 
-        transform.rotation = rotacaoFinal;
+        if (visual != null)
+        {
+            visual.localRotation = rotacaoVisualFinal;
+            visual.position = posicaoVisualFinal;
+        }
+        else
+        {
+            transform.rotation = rotacaoRaizFinal;
+            transform.position = posicaoVisualFinal;
+        }
 
         if (atrasoPosAfundamento > 0f)
         {
             yield return new WaitForSeconds(atrasoPosAfundamento);
         }
+    }
+
+    private Bounds ObterLimitesVisuaisAfundamento()
+    {
+        Renderer[] renderizadores = GetComponentsInChildren<Renderer>(true);
+        Bounds limites = new Bounds(transform.position, Vector3.one * 2f);
+        bool encontrouMalha = false;
+
+        foreach (Renderer renderizador in renderizadores)
+        {
+            if (!(renderizador is MeshRenderer) && !(renderizador is SkinnedMeshRenderer)) continue;
+
+            if (!encontrouMalha)
+            {
+                limites = renderizador.bounds;
+                encontrouMalha = true;
+            }
+            else
+            {
+                limites.Encapsulate(renderizador.bounds);
+            }
+        }
+
+        return limites;
+    }
+
+    private Transform CriarPivotVisualAfundamento(Bounds limitesVisuais)
+    {
+        var raizesVisuais = new List<Transform>();
+        foreach (Transform filho in transform)
+        {
+            if (filho.GetComponentInChildren<MeshRenderer>(true) != null
+                || filho.GetComponentInChildren<SkinnedMeshRenderer>(true) != null)
+            {
+                raizesVisuais.Add(filho);
+            }
+        }
+
+        if (raizesVisuais.Count == 0) return null;
+
+        var objetoPivot = new GameObject("VisualAfundamento_Runtime");
+        Transform pivot = objetoPivot.transform;
+        pivot.SetParent(transform, false);
+        pivot.localPosition = transform.InverseTransformPoint(limitesVisuais.center);
+        pivot.localRotation = Quaternion.identity;
+        pivot.localScale = Vector3.one;
+
+        foreach (Transform raizVisual in raizesVisuais)
+        {
+            if (raizVisual != null) raizVisual.SetParent(pivot, true);
+        }
+
+        return pivot;
     }
 
     void LimparDestroco(GameObject obj)

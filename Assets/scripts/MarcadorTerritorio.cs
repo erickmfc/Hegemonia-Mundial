@@ -1,8 +1,13 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(IdentidadeUnidade))]
 public class MarcadorTerritorio : MonoBehaviour
 {
+    private static readonly Dictionary<int, CidadeComplexoUrbano> CidadeGuiaExpansaoPorTime = new Dictionary<int, CidadeComplexoUrbano>();
+    private static readonly HashSet<int> TimesConstruindoCidade = new HashSet<int>();
+
     [Header("Área de Domínio")]
     [Tooltip("Metade do tamanho do lado do quadrado. Ex: Raio 100 cria um domínio de 200x200 metros quadrados.")]
     public float raioDeDominio = 100f; 
@@ -13,11 +18,26 @@ public class MarcadorTerritorio : MonoBehaviour
     public bool mostrarBordasNoJogo = true;
     public float larguraLinha = 1.5f; // Grossura do risco pintado no chão
 
+    [Header("Marcos de cidade sequenciais")]
+    [Tooltip("Quando ativo, este ponto manual cria uma cidade: primeiro após o atraso inicial e as seguintes quando a cidade-guia atingir a capacidade. Não registra fronteira.")]
+    public bool construirCidadeAoIniciar = false;
+    [Min(0f)] public float atrasoConstrucaoCidadeSegundos = 15f;
+    public GameObject prefabCidadeInicial;
+
     private LineRenderer linhaFronteira;
     private GameObject areaTranslúcida;
 
     // Identidade cache
     public int teamID { get; private set; }
+    private bool prontoParaConstruirCidade;
+    private bool construindoCidade;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void LimparSequenciaDeCidadesRuntime()
+    {
+        CidadeGuiaExpansaoPorTime.Clear();
+        TimesConstruindoCidade.Clear();
+    }
 
     void OnEnable()
     {
@@ -32,6 +52,14 @@ public class MarcadorTerritorio : MonoBehaviour
     void Start()
     {
         var id = GetComponent<IdentidadeUnidade>();
+        if (construirCidadeAoIniciar)
+        {
+            ConfigureOwnership(id != null ? id.teamID : teamID, false, 0f);
+            mostrarBordasNoJogo = false;
+            StartCoroutine(PrepararConstrucaoCidadeInicial());
+            return;
+        }
+
         bool detectarPrefeitura = GetComponent<ComplexoGovernamental>() != null
             || gameObject.name.ToLower().Contains("prefeitura");
         ConfigureOwnership(id != null ? id.teamID : teamID, detectarPrefeitura, 0f);
@@ -41,6 +69,247 @@ public class MarcadorTerritorio : MonoBehaviour
         
         // Inicia identificação in-game
         Invoke("CriarIdentificacaoVisual", 0.6f);
+    }
+
+    private IEnumerator PrepararConstrucaoCidadeInicial()
+    {
+        yield return new WaitForSeconds(Mathf.Max(0f, atrasoConstrucaoCidadeSegundos));
+        if (this == null) yield break;
+
+        SistemaSaveGame save = SistemaSaveGame.Instancia;
+        if (save != null && save.carregouDeSave)
+        {
+            Destroy(gameObject);
+            yield break;
+        }
+
+        prontoParaConstruirCidade = true;
+        TentarConstruirProximaCidade(teamID);
+    }
+
+    private static void TentarConstruirProximaCidade(int timeId)
+    {
+        if (timeId <= 0 || TimesConstruindoCidade.Contains(timeId)) return;
+
+        CidadeGuiaExpansaoPorTime.TryGetValue(timeId, out CidadeComplexoUrbano cidadeGuia);
+        if (cidadeGuia != null && cidadeGuia.populacaoResidente < cidadeGuia.capacidadeHabitacional)
+            return;
+
+        MarcadorTerritorio proximo = null;
+        MarcadorTerritorio[] marcadores = FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
+        for (int i = 0; i < marcadores.Length; i++)
+        {
+            MarcadorTerritorio candidato = marcadores[i];
+            if (candidato == null || !candidato.isActiveAndEnabled || !candidato.construirCidadeAoIniciar
+                || !candidato.prontoParaConstruirCidade || candidato.construindoCidade || candidato.teamID != timeId)
+                continue;
+
+            if (proximo == null || CompararOrdemNaHierarquia(candidato.transform, proximo.transform) < 0)
+                proximo = candidato;
+        }
+
+        if (proximo == null) return;
+
+        TimesConstruindoCidade.Add(timeId);
+        proximo.construindoCidade = true;
+        proximo.StartCoroutine(proximo.ConstruirCidadeNoTerreno());
+    }
+
+    private static int CompararOrdemNaHierarquia(Transform a, Transform b)
+    {
+        string chaveA = ObterCaminhoHierarquia(a);
+        string chaveB = ObterCaminhoHierarquia(b);
+        return string.CompareOrdinal(chaveA, chaveB);
+    }
+
+    private static string ObterCaminhoHierarquia(Transform alvo)
+    {
+        if (alvo == null) return string.Empty;
+        List<string> segmentos = new List<string>(8);
+        for (Transform atual = alvo; atual != null; atual = atual.parent)
+            segmentos.Add(atual.GetSiblingIndex().ToString("D5") + ":" + atual.name);
+        segmentos.Reverse();
+        return alvo.gameObject.scene.path + "/" + string.Join("/", segmentos);
+    }
+
+    private IEnumerator ConstruirCidadeNoTerreno()
+    {
+
+        if (prefabCidadeInicial == null)
+        {
+            Debug.LogError($"[Cidade inicial] O marco '{name}' não tem prefab de cidade configurado; o marco foi mantido.", this);
+            FinalizarTentativaConstrucaoCidade();
+            yield break;
+        }
+
+        CidadeComplexoUrbano cidadeExistente = EncontrarCidadeDoTimeNestePonto();
+        if (cidadeExistente != null)
+        {
+            RegistrarCidadeGuiaExpansao(teamID, cidadeExistente);
+            FinalizarTentativaConstrucaoCidade();
+            Destroy(gameObject);
+            yield break;
+        }
+
+        for (int tentativa = 0; tentativa < 10; tentativa++)
+        {
+            if (TryObterPosicaoNoTerreno(out Vector3 posicao, out bool pontoNaAgua))
+            {
+                GameObject cidadeObjeto = Instantiate(prefabCidadeInicial, posicao, Quaternion.Euler(-90f, 0f, 0f));
+                CidadeComplexoUrbano cidade = cidadeObjeto != null
+                    ? cidadeObjeto.GetComponentInChildren<CidadeComplexoUrbano>(true)
+                    : null;
+                if (cidade == null)
+                {
+                    if (cidadeObjeto != null) Destroy(cidadeObjeto);
+                    Debug.LogError($"[Cidade inicial] O prefab '{prefabCidadeInicial.name}' não contém CidadeComplexoUrbano; o marco foi mantido.", this);
+                    FinalizarTentativaConstrucaoCidade();
+                    yield break;
+                }
+
+                cidadeObjeto.name = "Nova Aurora";
+                cidade.nomeCidade = "Nova Aurora";
+                cidade.teamId = teamID;
+                cidade.populacaoResidente = 10000;
+
+                IdentidadeUnidade identidade = cidade.GetComponent<IdentidadeUnidade>();
+                if (identidade == null) identidade = cidade.GetComponentInChildren<IdentidadeUnidade>(true);
+                if (identidade != null)
+                {
+                    identidade.teamID = teamID;
+                    IdentidadeUnidade identidadeMarco = GetComponent<IdentidadeUnidade>();
+                    if (identidadeMarco != null) identidade.nomeDoPais = identidadeMarco.nomeDoPais;
+                }
+
+                MarcadorTerritorio marcadorCidade = cidade.GetComponent<MarcadorTerritorio>();
+                if (marcadorCidade != null)
+                {
+                    marcadorCidade.construirCidadeAoIniciar = false;
+                    marcadorCidade.mostrarBordasNoJogo = false;
+                    marcadorCidade.ConfigureOwnership(teamID, false, 0f);
+                }
+
+                Renderer[] renderizadores = cidadeObjeto.GetComponentsInChildren<Renderer>(true);
+                float menorY = float.PositiveInfinity;
+                for (int i = 0; i < renderizadores.Length; i++)
+                {
+                    if (renderizadores[i] != null)
+                        menorY = Mathf.Min(menorY, renderizadores[i].bounds.min.y);
+                }
+                if (!float.IsInfinity(menorY))
+                    cidadeObjeto.transform.position += Vector3.up * (posicao.y - menorY);
+
+                cidade.SincronizarEstruturaEconomica();
+                SaveableEntity.Garantir(cidadeObjeto, prefabCidadeInicial.name);
+                RegistrarCidadeGuiaExpansao(teamID, cidade);
+                FinalizarTentativaConstrucaoCidade();
+                Destroy(gameObject);
+                Debug.Log($"[Cidade inicial] Nova Aurora criada para o Team {teamID} com 10.000 habitantes em {cidadeObjeto.transform.position}.", cidadeObjeto);
+                yield break;
+            }
+
+            if (pontoNaAgua)
+            {
+                Debug.LogError($"[Cidade inicial] O marco '{name}' está sobre água; mova-o para terreno antes de iniciar uma nova partida.", this);
+                FinalizarTentativaConstrucaoCidade();
+                yield break;
+            }
+
+            if (tentativa < 9) yield return new WaitForSeconds(1f);
+        }
+
+        Debug.LogWarning($"[Cidade inicial] Não foi possível identificar o terreno do marco '{name}' após 10 tentativas; o marco foi mantido.", this);
+        FinalizarTentativaConstrucaoCidade();
+    }
+
+    private static void RegistrarCidadeGuiaExpansao(int timeId, CidadeComplexoUrbano cidade)
+    {
+        if (timeId > 0 && cidade != null)
+            CidadeGuiaExpansaoPorTime[timeId] = cidade;
+    }
+
+    private void FinalizarTentativaConstrucaoCidade()
+    {
+        construindoCidade = false;
+        prontoParaConstruirCidade = false;
+        TimesConstruindoCidade.Remove(teamID);
+        TentarConstruirProximaCidade(teamID);
+    }
+
+    internal static void NotificarCidadeAtingiuCapacidade(CidadeComplexoUrbano cidade)
+    {
+        if (cidade == null || cidade.teamId <= 0
+            || cidade.populacaoResidente < cidade.capacidadeHabitacional)
+            return;
+
+        if (CidadeGuiaExpansaoPorTime.TryGetValue(cidade.teamId, out CidadeComplexoUrbano cidadeGuia)
+            && cidadeGuia == cidade)
+        {
+            TentarConstruirProximaCidade(cidade.teamId);
+        }
+    }
+
+    internal static void RemoverCidadeGuiaExpansao(CidadeComplexoUrbano cidade)
+    {
+        if (cidade == null || !CidadeGuiaExpansaoPorTime.TryGetValue(cidade.teamId, out CidadeComplexoUrbano atual)
+            || atual != cidade)
+            return;
+        CidadeGuiaExpansaoPorTime.Remove(cidade.teamId);
+    }
+
+    private CidadeComplexoUrbano EncontrarCidadeDoTimeNestePonto()
+    {
+        float distanciaMinima = Mathf.Max(10f, raioDeDominio * 0.1f);
+        float distanciaMinimaSqr = distanciaMinima * distanciaMinima;
+        CidadeComplexoUrbano[] cidades = FindObjectsByType<CidadeComplexoUrbano>(FindObjectsSortMode.None);
+        for (int i = 0; i < cidades.Length; i++)
+        {
+            CidadeComplexoUrbano cidade = cidades[i];
+            if (cidade == null || cidade.teamId != teamID) continue;
+            Vector2 delta = new Vector2(cidade.transform.position.x - transform.position.x,
+                cidade.transform.position.z - transform.position.z);
+            if (delta.sqrMagnitude <= distanciaMinimaSqr) return cidade;
+        }
+        return null;
+    }
+
+    private bool TryObterPosicaoNoTerreno(out Vector3 posicao, out bool pontoNaAgua)
+    {
+        posicao = transform.position;
+        pontoNaAgua = false;
+
+        if (RegistroSuperficieMapa.TryClassify(posicao, out ClassificacaoSuperficieMapa superficie, out float altura))
+        {
+            if (superficie == ClassificacaoSuperficieMapa.Agua)
+            {
+                pontoNaAgua = true;
+                return false;
+            }
+
+            if (superficie == ClassificacaoSuperficieMapa.Chao || superficie == ClassificacaoSuperficieMapa.Costa)
+            {
+                if (RegistroSuperficieMapa.TryGetAltura(posicao, TipoSuperficieMapa.Chao, out float alturaDoChao))
+                    altura = alturaDoChao;
+                posicao.y = altura;
+                return true;
+            }
+        }
+
+        Terrain[] terrenos = Terrain.activeTerrains;
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            Terrain terreno = terrenos[i];
+            if (terreno == null || terreno.terrainData == null) continue;
+            Vector3 origem = terreno.transform.position;
+            Vector3 tamanho = terreno.terrainData.size;
+            if (posicao.x < origem.x || posicao.x > origem.x + tamanho.x
+                || posicao.z < origem.z || posicao.z > origem.z + tamanho.z) continue;
+
+            posicao.y = terreno.SampleHeight(posicao) + origem.y;
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -177,6 +446,8 @@ public class MarcadorTerritorio : MonoBehaviour
     // Desenhar um QUADRADO no editor permanentemente para você conseguir ver o mapa organizando a fase
     void OnDrawGizmos()
     {
+        if (construirCidadeAoIniciar) return;
+
         Gizmos.color = ehPrefeitura ? new Color(1, 0.8f, 0, 0.2f) : new Color(0, 0.8f, 1, 0.2f);
 
         Vector3 size = new Vector3(raioDeDominio * 2, 0.1f, raioDeDominio * 2);

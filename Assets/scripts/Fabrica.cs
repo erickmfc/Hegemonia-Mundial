@@ -39,7 +39,7 @@ public class Fabrica : MonoBehaviour
 
     void Start()
     {
-        ProducaoAutomaticaEdificio.Garantir(gameObject, ProducaoAutomaticaEdificio.TipoInstalacao.Fabrica);
+        // Materiais nacionais vêm de extração/refino explícitos; não gerar estoque grátis por fábrica.
         // Busca automática de pontos de saída se não houver nenhum configurado
         if (pontosSaidaExtras == null || pontosSaidaExtras.Count == 0)
         {
@@ -87,7 +87,39 @@ public class Fabrica : MonoBehaviour
 
     public GameObject ProduzirUnidade(GameObject prefab)
     {
+        return ProduzirUnidadeRastreada(prefab, null, string.Empty);
+    }
+
+    public GameObject ProduzirUnidadeRastreada(
+        GameObject prefab,
+        System.Action onPhysicalAcceptance,
+        string productionOrderId)
+    {
         if (prefab == null) return null;
+        if (!PossuiEnergiaParaProduzir()) return null;
+
+        IdentidadeUnidade identidadeFabrica = GetComponentInParent<IdentidadeUnidade>();
+        bool prefabVeiculoTerrestreSemIdentidade = prefab.GetComponentInChildren<IdentidadeUnidade>(true) == null
+            && (prefab.GetComponent<MovimentoRealTerrestre>() != null
+                || prefab.GetComponent<CaminhaoTanqueAbastecimento>() != null);
+        int efetivoNecessario = prefabVeiculoTerrestreSemIdentidade
+            ? SistemaGovernoMundial.ObterEfetivoNecessario(prefab, TipoUnidade.Veiculo)
+            : SistemaGovernoMundial.ObterEfetivoNecessario(prefab);
+        SistemaGovernoMundial governoParaEfetivo = null;
+        if (efetivoNecessario > 0)
+        {
+            governoParaEfetivo = SistemaGovernoMundial.Instancia;
+            bool possuiEfetivoNacional = identidadeFabrica != null && governoParaEfetivo != null
+                && (prefabVeiculoTerrestreSemIdentidade
+                    ? governoParaEfetivo.PodeProduzirUnidadeComEfetivo(
+                        identidadeFabrica.teamID, prefab, 1, TipoUnidade.Veiculo)
+                    : governoParaEfetivo.PodeProduzirUnidadeComEfetivo(identidadeFabrica.teamID, prefab));
+            if (!possuiEfetivoNacional)
+            {
+                return null;
+            }
+        }
+
         long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
         DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefab.name);
 
@@ -150,38 +182,41 @@ public class Fabrica : MonoBehaviour
 
         // Instancia no spawn interno
         GameObject unidade = Instantiate(prefab, posSpawnFinal, spawn.rotation);
+        if (!string.IsNullOrEmpty(productionOrderId))
+        {
+            Hegemonia.AI.Shared.IAAutoProductionRegistry.ConfirmConstructionStarted(
+                productionOrderId,
+                GetInstanceID(),
+                Time.time);
+        }
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // Identidade e Logistica GDD
-        var idF = GetComponentInParent<IdentidadeUnidade>();
-        var idU = unidade.GetComponent<IdentidadeUnidade>();
-        if (idF != null && idU != null) 
+        var idU = unidade.GetComponent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (idU == null && prefabVeiculoTerrestreSemIdentidade)
+        {
+            idU = unidade.AddComponent<IdentidadeUnidade>();
+            idU.tipoUnidade = TipoUnidade.Veiculo;
+        }
+        if (identidadeFabrica != null && idU != null)
         { 
-            idU.teamID = idF.teamID; 
-            idU.nomeDoPais = idF.nomeDoPais; 
+            idU.teamID = identidadeFabrica.teamID;
+            idU.nomeDoPais = identidadeFabrica.nomeDoPais;
             
-            // Consumo de população
-            if (idU.militaresConsumidos > 0 && SistemaGovernoMundial.Instancia != null)
-            {
-                var pais = SistemaGovernoMundial.Instancia.ObterPais(idF.teamID);
-                if (pais != null)
-                {
-                    // Usa alistáveis primeiro, depois civis
-                    int falta = idU.militaresConsumidos;
-                    if (pais.alistaveis >= falta)
-                    {
-                        pais.alistaveis -= falta;
-                    }
-                    else
-                    {
-                        int doAlistamento = pais.alistaveis;
-                        falta -= doAlistamento;
-                        pais.alistaveis = 0;
-                        pais.populacaoCivil = Mathf.Max(0, pais.populacaoCivil - falta);
-                    }
-                    pais.populacaoMilitarAtiva += idU.militaresConsumidos;
-                }
-            }
+        }
+        if (idU != null && prefabVeiculoTerrestreSemIdentidade)
+        {
+            idU.tipoUnidade = TipoUnidade.Veiculo;
+        }
+        if (efetivoNecessario > 0
+            && (idU == null || governoParaEfetivo == null
+                || !governoParaEfetivo.TentarMobilizarEfetivoDaUnidade(identidadeFabrica.teamID, unidade)))
+        {
+            if (idU != null) idU.militaresConsumidos = 0;
+            Destroy(unidade);
+            Hegemonia.AI.Shared.IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            return null;
         }
         if (idU != null
             && idU.tipoUnidade == TipoUnidade.Infantaria
@@ -191,10 +226,11 @@ public class Fabrica : MonoBehaviour
             idU.tipoUnidade = TipoUnidade.Veiculo;
         }
 
-        CombustivelUnidade.Garantir(unidade, true);
+        ServicoAbastecimento.AbastecerUnidadeProduzida(unidade);
 
         // EXCLUSIVO: Corotina para delay de 1 segundo antes de sair
         StartCoroutine(MoverParaSaidaComDelay(unidade, posSlot, posSpawnFinal, spawnValidado, destinoValidado, 1.0f));
+        onPhysicalAcceptance?.Invoke();
 
         // Registro IA
         if (idU != null && idU.teamID != 1)
@@ -206,6 +242,14 @@ public class Fabrica : MonoBehaviour
         RegistrarTempoDiagnostico("spawn_land_ms", spawnStart);
 
         return unidade;
+    }
+
+    public bool PossuiEnergiaParaProduzir()
+    {
+        EstruturaEconomica estrutura = GetComponentInParent<EstruturaEconomica>();
+        // Preserva fábricas antigas e fixtures que ainda não participam da rede elétrica.
+        return estrutura == null
+            || (estrutura.Ativa && estrutura.eficiencia >= 0.999f);
     }
 
     IEnumerator MoverParaSaidaComDelay(GameObject unidade, Vector3 destino, Vector3 spawnValidadoPosicao, bool spawnJaValidado, bool destinoJaValidado, float delay)

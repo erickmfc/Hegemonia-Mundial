@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -8,16 +9,15 @@ namespace Hegemonia.AI.BrainMaster
         private readonly IA_Context _context;
         private readonly Dictionary<Vector2Int, IA_SemanticCell> _cells = new Dictionary<Vector2Int, IA_SemanticCell>();
 
-        // --- Reconstrucao incremental: processa uma fatia de linhas por tick ---
-        private int _rebuildSliceX = int.MinValue; // coluna atual que esta sendo processada
+        // --- Reconstrucao incremental limitada por tempo por tick ---
+        private int _rebuildCellCursor = int.MinValue;
         private int _rebuildRadius = 0;
         private Vector3 _rebuildCenter = Vector3.zero;
         private float _rebuildCellSize = 24f;
         private int _occupiedCount = 0;
 
-        // Cache de distância à costa por célula — invalidado quando a estrutura muda
+        // Distância à costa depende do terreno, não da quantidade de estruturas.
         private readonly Dictionary<Vector2Int, float> _coastDistanceCache = new Dictionary<Vector2Int, float>();
-        private int _lastStructureVersionForCoastCache = -1;
 
         public int ScanRadiusInCells = 12; // Reduzido de 14 para 12 → 25x25=625 células em vez de 29x29=841
         public string LastSummary { get; private set; }
@@ -38,7 +38,8 @@ namespace Hegemonia.AI.BrainMaster
             get { return 0.35f; }
         }
 
-        // Budget aumentado para refletir custo real da fatia por tick
+        // Limite aplicado dentro do laço; uma única célula pode excedê-lo, mas
+        // o planejador não processa mais uma coluna inteira no mesmo frame.
         public float BudgetMs
         {
             get { return 3.50f; }
@@ -56,66 +57,74 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            int structureCount = _context.WorldState.OwnStructures.Count;
-
-            // Invalida cache de costa se estruturas mudaram
-            if (structureCount != _lastStructureVersionForCoastCache)
-            {
-                _coastDistanceCache.Clear();
-                _lastStructureVersionForCoastCache = structureCount;
-            }
-
-            // Inicia nova varredura se terminou a anterior ou mapa mudou
+            // Inicia uma varredura após a anterior ou quando o mapa mudou de área.
             Vector3 center = ResolveReferenceCenter();
             float cellSize = Mathf.Max(8f, _context.MapAnalyzer.CellSize);
             int radius = Mathf.Clamp(ScanRadiusInCells, 6, 22);
+            int cellsPerAxis = radius * 2 + 1;
+            int totalCells = cellsPerAxis * cellsPerAxis;
+            bool mapRegionChanged = _rebuildCellCursor != int.MinValue
+                && (Mathf.Abs(center.x - _rebuildCenter.x) > cellSize * 3f
+                    || Mathf.Abs(center.z - _rebuildCenter.z) > cellSize * 3f
+                    || Mathf.Abs(cellSize - _rebuildCellSize) > 0.01f
+                    || radius != _rebuildRadius);
 
-            bool needsReset = _rebuildSliceX == int.MinValue
-                              || _rebuildSliceX > radius
-                              || Mathf.Abs(center.x - _rebuildCenter.x) > cellSize * 3f
-                              || Mathf.Abs(center.z - _rebuildCenter.z) > cellSize * 3f;
+            bool needsReset = _rebuildCellCursor == int.MinValue
+                              || _rebuildCellCursor >= totalCells
+                              || mapRegionChanged;
 
             if (needsReset)
             {
                 _rebuildCenter = center;
                 _rebuildCellSize = cellSize;
                 _rebuildRadius = radius;
-                _rebuildSliceX = -radius;
-                _cells.Clear();
+                _rebuildCellCursor = 0;
+                if (mapRegionChanged)
+                {
+                    _cells.Clear();
+                    _coastDistanceCache.Clear();
+                }
+
                 _occupiedCount = 0;
             }
 
-            // Processa uma fatia (uma coluna X) por tick — distribui o custo ao longo do tempo
-            int sliceX = _rebuildSliceX;
+            // Preserva as células da última varredura e publica atualizações
+            // incrementais sem bloquear o frame para processar uma coluna inteira.
             float cs = _rebuildCellSize;
             Vector3 rc = _rebuildCenter;
             int rr = _rebuildRadius;
-
-            for (int z = -rr; z <= rr; z++)
+            long sliceStart = Stopwatch.GetTimestamp();
+            while (_rebuildCellCursor < totalCells)
             {
-                Vector3 position = rc + new Vector3(sliceX * cs, 0f, z * cs);
+                int x = _rebuildCellCursor / cellsPerAxis - rr;
+                int z = _rebuildCellCursor % cellsPerAxis - rr;
+                Vector3 position = rc + new Vector3(x * cs, 0f, z * cs);
                 IA_MapCell mapCell = _context.MapAnalyzer.SampleCell(position);
-                if (mapCell == null)
+                if (mapCell != null)
                 {
-                    continue;
+                    IA_SemanticCell semanticCell = BuildCell(mapCell, rc, cs);
+                    if (semanticCell.Occupied)
+                    {
+                        _occupiedCount++;
+                    }
+
+                    _cells[semanticCell.Index] = semanticCell;
                 }
 
-                IA_SemanticCell semanticCell = BuildCell(mapCell, rc, cs);
-                if (semanticCell.Occupied)
+                _rebuildCellCursor++;
+                double elapsedMs = (Stopwatch.GetTimestamp() - sliceStart) * 1000.0 / Stopwatch.Frequency;
+                if (elapsedMs >= Mathf.Max(0.5f, BudgetMs))
                 {
-                    _occupiedCount++;
+                    break;
                 }
-
-                _cells[semanticCell.Index] = semanticCell;
             }
 
-            _rebuildSliceX++;
-
-            if (_rebuildSliceX > rr)
+            if (_rebuildCellCursor >= totalCells)
             {
-                // Varredura completa
+                // Varredura completa; o próximo tick começa outra atualização
+                // sem descartar o mapa semântico já publicado.
                 LastSummary = "cells=" + _cells.Count + " occupied=" + _occupiedCount + " center=" + rc;
-                _rebuildSliceX = int.MinValue; // Marca para reiniciar na próxima janela
+                _rebuildCellCursor = int.MinValue;
             }
         }
 

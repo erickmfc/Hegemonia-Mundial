@@ -59,6 +59,7 @@ public class ControleTorretaModular : MonoBehaviour
     [HideInInspector] public Transform alvoPrioritario;
     private Collider[] bufferColisores = new Collider[40];
     private int indiceArmaAlternada = 0;
+    private int indiceArmaSelecionadaHud = -1;
     private int meuTime = 1;
     private Transform minhaRaiz;
     private ControleUnidade controleRaiz;
@@ -67,8 +68,21 @@ public class ControleTorretaModular : MonoBehaviour
     private bool filtrarAlvosAutorizadosNavais;
     private readonly List<Transform> alvosAutorizadosNavais = new List<Transform>(8);
     public bool EhAntiAereo => souAntiAereo;
+    public int IndiceArmaSelecionadaHud => indiceArmaSelecionadaHud;
+
+    public bool DefinirArmaHud(int indice)
+    {
+        if (armas == null || indice < -1 || indice >= armas.Count) return false;
+        if (indice >= 0)
+        {
+            ModuloArma arma = armas[indice];
+            if (arma == null || arma.municaoPrefab == null
+                || arma.pontosDisparo == null || arma.pontosDisparo.Length == 0) return false;
+        }
+        indiceArmaSelecionadaHud = indice;
+        return true;
+    }
     private bool exigeGuerraDeclarada;
-    private bool exigeHostilidadeNaBuscaAutomatica;
     private Quaternion rotacaoInicialPecaQueGira = Quaternion.identity;
     private Vector3 eulerRepousoPecaQueGira;
     private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
@@ -98,11 +112,6 @@ public class ControleTorretaModular : MonoBehaviour
             || GetComponentInParent<ControleNavioRealista>() != null;
         if (meuID != null && meuID.tipoUnidade == TipoUnidade.Naval)
             exigeGuerraDeclarada = true;
-        bool unidadeAerea = (meuID != null && meuID.tipoUnidade == TipoUnidade.Aereo)
-            || GetComponentInParent<ControleAviao>() != null
-            || GetComponentInParent<ControleAviaoCaca>() != null
-            || GetComponentInParent<Helicoptero>() != null;
-        exigeHostilidadeNaBuscaAutomatica = !exigeGuerraDeclarada && !unidadeAerea;
         if (pecaQueGira == null) pecaQueGira = transform;
         if (pecaQueGira != null)
         {
@@ -309,12 +318,6 @@ public class ControleTorretaModular : MonoBehaviour
                     ehInimigo = true;
                 }
             }
-            // Fallback por tag
-            else if (!NavioExigeGuerraDeclarada() && !exigeHostilidadeNaBuscaAutomatica
-                && (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo")))
-            {
-                ehInimigo = true;
-            }
             
             if (ehInimigo)
             {
@@ -474,6 +477,13 @@ public class ControleTorretaModular : MonoBehaviour
     ModuloArma SelecionarArma()
     {
         if (armas.Count == 0) return null;
+        if (indiceArmaSelecionadaHud >= 0)
+        {
+            ModuloArma selecionada = indiceArmaSelecionadaHud < armas.Count
+                ? armas[indiceArmaSelecionadaHud]
+                : null;
+            return selecionada != null && selecionada.PodeAtirar() ? selecionada : null;
+        }
         
         switch (prioridade)
         {

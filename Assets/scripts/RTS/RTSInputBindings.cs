@@ -12,7 +12,8 @@ namespace Hegemonia.RTS
         Barracks,
         StrategicMap,
         Follow,
-        CommandMenu
+        CommandMenu,
+        CycleCameraPin
     }
 
     /// <summary>
@@ -30,7 +31,8 @@ namespace Hegemonia.RTS
             { RTSInputAction.Barracks, KeyCode.B },
             { RTSInputAction.StrategicMap, KeyCode.M },
             { RTSInputAction.Follow, KeyCode.F },
-            { RTSInputAction.CommandMenu, KeyCode.Alpha1 }
+            { RTSInputAction.CommandMenu, KeyCode.Alpha1 },
+            { RTSInputAction.CycleCameraPin, KeyCode.Alpha5 }
         };
 
         public static KeyCode GetKey(RTSInputAction action)

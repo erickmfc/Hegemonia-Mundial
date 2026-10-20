@@ -49,6 +49,7 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     void Awake()
     {
+        AplicarMapaPoliticoDaCena(SceneManager.GetActiveScene());
         GarantirMapaPolitico();
         AtualizarLimitesTerritoriais();
         SceneManager.sceneLoaded += AoCarregarCena;
@@ -199,9 +200,26 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     private void AoCarregarCena(Scene cena, LoadSceneMode modo)
     {
+        AplicarMapaPoliticoDaCena(cena);
         AtualizarLimitesTerritoriais();
         MarcadorTerritorio[] todosMarcadores = Object.FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
         for (int i = 0; i < todosMarcadores.Length; i++) RegistrarMarcador(todosMarcadores[i]);
+    }
+
+    private void AplicarMapaPoliticoDaCena(Scene cena)
+    {
+        if (!cena.IsValid()) return;
+
+        string resourceName = string.Equals(cena.name, "GlobalMapRTS", StringComparison.OrdinalIgnoreCase)
+            ? "MapaTerritorialGlobalRTS"
+            : DadosMapaTerritorial.NomeResource;
+        DadosMapaTerritorial mapaDaCena = Resources.Load<DadosMapaTerritorial>(resourceName);
+        if (mapaDaCena == null || mapaDaCena == mapaPolitico) return;
+
+        mapaPolitico = mapaDaCena;
+        mapaPolitico.InvalidarIndice();
+        proprietariosCapturados.Clear();
+        neutralidadeTerritorial.Clear();
     }
 
     private void GarantirMapaPolitico()
@@ -575,6 +593,7 @@ public class GerenteDeTerritorio : MonoBehaviour
 
     public void RegistrarMarcador(MarcadorTerritorio marcador)
     {
+        if (marcador == null || marcador.construirCidadeAoIniciar) return;
         if (!marcadores.Contains(marcador)) marcadores.Add(marcador);
     }
 

@@ -5759,12 +5759,17 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  pontoRetornoInicial: {x: 0, y: 0, z: 0}
+  possuiPontoRetornoInicial: 0
   dominioControleAtual: 1
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1
   executorControleAtual: NavMeshAgent
   bloqueioControleAtivo: 0
   motivoBloqueioControle: 
+  bloqueioAdministrativoQuartel: 0
+  motivoBloqueioAdministrativoQuartel: 
+  intervaloEntreTentativasOrdem: 2
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -5894,9 +5899,12 @@ MonoBehaviour:
   rastroEsteira: {fileID: 0}
   turbulenciaPopa: {fileID: 0}
   modelo3D: {fileID: 4640992202303122922}
+  aplicarBalancoAosCreates: 1
+  grupoCreatesOperacoes: {fileID: 0}
   antenaRadar: {fileID: 2170932626976899324}
   velocidadeAntena: 10
   modoOperacao: 0
+  modoNavegacao: 0
   somMotorParado: {fileID: 8300000, guid: f34f1cd4ea2656343b594d9466404130, type: 3}
   somMotorMovimento: {fileID: 8300000, guid: f34f1cd4ea2656343b594d9466404130, type: 3}
   possuiTorpedos: 0
@@ -5929,6 +5937,8 @@ MonoBehaviour:
   pontosDeSaidaTorpedo:
   - {fileID: 4654356799291672246}
   prefabMissel: {fileID: 8278335804098646734, guid: 6f713835b81df8141add618bbafc29c6, type: 3}
+  prefabMisselCruzeiro: {fileID: 8114338089166656182, guid: cd48a5aeaa2e9424890bb861ade6463b, type: 3}
+  tipoMissilNaval: 0
   prefabTorpedo: {fileID: 6391626991186985227, guid: 85f64d442092cec46825ce90d568f070, type: 3}
   torpedosSomenteNoModoAtivo: 1
   municaoTotal: 8
@@ -5940,6 +5950,10 @@ MonoBehaviour:
   tempoRecargaSalva: 5
   alcanceRadar: 30000
   intervaloVarreduraAutomatica: 0.45
+  mascaraVarredura:
+    serializedVersion: 2
+    m_Bits: 81
+  alinharBocaisSemPivo: 1
   maxMisseisSimultaneosPorAlvo: 6
   cooldownAutorizacaoAlvo: 1.4
   somDisparo: {fileID: 8300000, guid: 9f27c5171ca9198489a9e5457cd26463, type: 3}
@@ -5968,6 +5982,22 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!114 &851948582534947843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7010249315367195738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 35000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0
+  ativacaoAutomaticaHelicopteroEmVoo: 0
 --- !u!1 &8253250322633791163
 GameObject:
   m_ObjectHideFlags: 0
@@ -6416,8 +6446,14 @@ MonoBehaviour:
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
   tempoRecarga: 5
+  dispararMesmoDesalinhado: 0
+  direcionarProjetilParaPredicao: 0
   pecaQueGira: {fileID: 8275078250717028432}
+  criarPivoSeguroDaMalha: 0
+  inclinarPecaSemCanos: 0
   canosDaTorreta: {fileID: 0}
+  descobrirCanosAutomaticamente: 1
+  inverterSentidoPitch: 0
   locaisDoTiro:
   - {fileID: 5088960782073496258}
   - {fileID: 5088960782073496258}
@@ -6598,8 +6634,14 @@ MonoBehaviour:
   tempoEntreTiros: 0.08
   tamanhoCartucho: 50
   tempoRecarga: 5
+  dispararMesmoDesalinhado: 0
+  direcionarProjetilParaPredicao: 0
   pecaQueGira: {fileID: 47463680342236721}
+  criarPivoSeguroDaMalha: 0
+  inclinarPecaSemCanos: 0
   canosDaTorreta: {fileID: 0}
+  descobrirCanosAutomaticamente: 1
+  inverterSentidoPitch: 0
   locaisDoTiro:
   - {fileID: 1721746325573400441}
   - {fileID: 1721746325573400441}
@@ -6719,18 +6761,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 2907651921835993360, guid: 52807069f07852449aeeb2b0c31184a1, type: 3}
   m_PrefabInstance: {fileID: 6175928735686030991}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &851948582534947843
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7010249315367195738}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 35000
-  alcanceConfiguradoNoPrefab: 1
-  radarLigado: 0

@@ -17,7 +17,13 @@ namespace Hegemonia.AI.BrainMaster
             SortidaAerea,
             PatrulhaAerea,
             ReconAereo,
-            AtaqueAereo
+            AtaqueAereo,
+            ConstrucaoCidade,
+            ConstrucaoEnergia,
+            ConstrucaoPier,
+            ConstrucaoEstaleiro,
+            ConstrucaoPlataforma,
+            ConstrucaoAeroportoMilitar
         }
 
         [Header("Manual Build")]
@@ -29,11 +35,19 @@ namespace Hegemonia.AI.BrainMaster
         public bool AllowInactiveObject = false;
         [Tooltip("Quando ligado, a IA tenta construir exatamente nesta posicao/rotacao em vez de resolver outro ponto sozinha.")]
         public bool ForceExactPlacement = true;
+        [Tooltip("Quando ligado, o transform marca o centro de uma zona circular e a IA procura um local valido dentro dela.")]
+        public bool UsePlacementArea = false;
+        [Min(1f), Tooltip("Raio da zona de construcao em metros do mundo.")]
+        public float PlacementAreaRadius = 100f;
         [Tooltip("Se desligado, o ponto deixa de ser elegivel quando ja existe uma estrutura propria ocupando a area.")]
         public bool ReusePoint = false;
         [Min(4f)] public float OccupiedRadius = 18f;
         public bool RestrictToBootstrapStage = false;
         public IA_BrainMaster.IA_BootstrapStage BootstrapStage = IA_BrainMaster.IA_BootstrapStage.Disabled;
+
+        public bool IsConstructionAreaRole => IsConstructionAreaRoleValue(ManualRole);
+
+        public bool UsesPlacementArea => UsePlacementArea || IsConstructionAreaRole;
 
         [Header("Debug")]
         public Color GizmoColor = new Color(1f, 0.82f, 0.15f, 1f);
@@ -101,6 +115,12 @@ namespace Hegemonia.AI.BrainMaster
 
             if (ReusePoint || worldState == null)
             {
+                return true;
+            }
+
+            if (UsesPlacementArea)
+            {
+                // A validação de ocupação será feita em cada posição candidata da zona.
                 return true;
             }
 
@@ -214,8 +234,23 @@ namespace Hegemonia.AI.BrainMaster
                 case OperationalRole.PatrulhaAerea: return "Patrulha Aerea";
                 case OperationalRole.ReconAereo: return "Reconhecimento Aereo";
                 case OperationalRole.AtaqueAereo: return "Ataque Aereo";
+                case OperationalRole.ConstrucaoCidade: return "Construcao de Cidade";
+                case OperationalRole.ConstrucaoEnergia: return "Construcao de Energia";
+                case OperationalRole.ConstrucaoPier: return "Construcao de Pier";
+                case OperationalRole.ConstrucaoEstaleiro: return "Construcao de Estaleiro";
+                case OperationalRole.ConstrucaoPlataforma: return "Construcao de Plataforma";
                 default: return "Sem papel";
             }
+        }
+
+        public static bool IsConstructionAreaRoleValue(OperationalRole role)
+        {
+            return role == OperationalRole.ConstrucaoCidade
+                || role == OperationalRole.ConstrucaoEnergia
+                || role == OperationalRole.ConstrucaoPier
+                || role == OperationalRole.ConstrucaoEstaleiro
+                || role == OperationalRole.ConstrucaoPlataforma
+                || role == OperationalRole.ConstrucaoAeroportoMilitar;
         }
 
         public static string GetDefaultFiltersForRole(OperationalRole role)
@@ -238,6 +273,18 @@ namespace Hegemonia.AI.BrainMaster
                     return "aeroporto, airport, caca, aviao, recon, reconhecimento";
                 case OperationalRole.AtaqueAereo:
                     return "aeroporto, airport, bombardeiro, bomber, ataque";
+                case OperationalRole.ConstrucaoCidade:
+                    return "prefeitura, cidade, city hall, town hall, urban";
+                case OperationalRole.ConstrucaoEnergia:
+                    return "usina, energia, power plant, power station";
+                case OperationalRole.ConstrucaoPier:
+                    return "pier, cais, doca, porto";
+                case OperationalRole.ConstrucaoEstaleiro:
+                    return "estaleiro, estaleiros, shipyard, naval yard";
+                case OperationalRole.ConstrucaoPlataforma:
+                    return "plataforma, plataforma de petroleo, offshore platform";
+                case OperationalRole.ConstrucaoAeroportoMilitar:
+                    return "aeroporto militar, base aerea militar, military airport, airbase";
                 default:
                     return string.Empty;
             }
@@ -364,11 +411,14 @@ namespace Hegemonia.AI.BrainMaster
         {
             Gizmos.color = GizmoColor;
             Vector3 drawPosition = transform.position + Vector3.up * 1.4f;
-            Gizmos.DrawWireSphere(drawPosition, Mathf.Max(1f, GizmoRadius));
+            Gizmos.DrawWireSphere(drawPosition, UsesPlacementArea
+                ? Mathf.Max(1f, PlacementAreaRadius)
+                : Mathf.Max(1f, GizmoRadius));
             Gizmos.DrawLine(transform.position, drawPosition);
 
             Handles.color = GizmoColor;
-            Handles.Label(drawPosition + Vector3.up * 0.75f, "IA Manual: " + GetDisplayLabel());
+            Handles.Label(drawPosition + Vector3.up * 0.75f,
+                (UsesPlacementArea ? "IA Área de Construção: " : "IA Manual: ") + GetDisplayLabel());
         }
 #endif
     }

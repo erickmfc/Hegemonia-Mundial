@@ -115,7 +115,7 @@ namespace Hegemonia.RTS
         private void Update()
         {
             RTSGameSession session = RTSGameSession.Instancia;
-            if (session == null || !session.IsGameplay || session.IsFinished || Time.unscaledTime < nextEvaluationAt)
+            if (session == null || session.Phase != RTSSessionPhase.Playing || session.IsFinished || Time.unscaledTime < nextEvaluationAt)
             {
                 return;
             }

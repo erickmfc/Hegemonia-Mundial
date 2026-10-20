@@ -33,7 +33,9 @@ public enum TipoEstruturaEconomica
     IndustriaAlimentosNivel1,
     IndustriaAlimentosNivel2,
     IndustriaAlimentosNivel3,
-    Hospital
+    Hospital,
+    // Consumidor de energia puro: não adiciona produção/empregos artificiais.
+    InstalacaoProdutiva
 }
 
 public enum StatusEstruturaEconomica

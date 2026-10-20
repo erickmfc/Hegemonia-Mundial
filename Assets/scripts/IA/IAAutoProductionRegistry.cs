@@ -143,6 +143,47 @@ namespace Hegemonia.AI.Shared
             return true;
         }
 
+        /// <summary>
+        /// Reserva uma reposição específica mesmo quando outra finalidade já
+        /// possui uma reserva da mesma categoria. A ordem continua sujeita à
+        /// deduplicação por finalidade, mas a baixa conhecida não é apagada
+        /// por uma meta genérica de IA01/IA02.
+        /// </summary>
+        public static bool TryReserveReplacement(
+            int teamId,
+            string unitType,
+            string purpose,
+            int additionalUnits,
+            int alive,
+            out string orderId,
+            float now = -1f,
+            float ttlSeconds = DefaultReservationTtl)
+        {
+            orderId = string.Empty;
+            if (additionalUnits <= 0)
+            {
+                return false;
+            }
+
+            int aliveClamped = Mathf.Max(0, alive);
+            IAProductionDiagnostics diagnostics = GetDiagnostics(
+                teamId,
+                unitType,
+                aliveClamped + additionalUnits,
+                aliveClamped);
+            int activeReservations = diagnostics.Reserved + diagnostics.Queued + diagnostics.Constructing;
+            int desired = aliveClamped + activeReservations + additionalUnits;
+            return TryReserveProduction(
+                teamId,
+                unitType,
+                purpose,
+                desired,
+                aliveClamped,
+                out orderId,
+                now,
+                ttlSeconds);
+        }
+
         public static bool ConfirmQueued(string orderId, int producerInstanceId = 0, float now = -1f)
         {
             return Transition(orderId, IAProductionOrderState.Queued, producerInstanceId, now);
@@ -167,6 +208,85 @@ namespace Hegemonia.AI.Shared
             order.State = IAProductionOrderState.Released;
             order.UpdatedAt = ResolveNow(now);
             return true;
+        }
+
+        public static bool TryGetOrderState(string orderId, out IAProductionOrderState state)
+        {
+            if (!string.IsNullOrWhiteSpace(orderId) && Orders.TryGetValue(orderId, out Order order))
+            {
+                state = order.State;
+                return true;
+            }
+
+            state = IAProductionOrderState.Released;
+            return false;
+        }
+
+        public static bool IsOwnedByProducer(string orderId)
+        {
+            return !string.IsNullOrWhiteSpace(orderId)
+                && Orders.TryGetValue(orderId, out Order order)
+                && order.ProducerInstanceId != 0
+                && IsActive(order.State);
+        }
+
+        public static List<IAProductionOrderSaveData> GetActiveOrdersForTeamByPurposePrefix(
+            int teamId,
+            string purposePrefix)
+        {
+            List<IAProductionOrderSaveData> result = new List<IAProductionOrderSaveData>();
+            if (teamId <= 0 || string.IsNullOrWhiteSpace(purposePrefix))
+            {
+                return result;
+            }
+
+            Cleanup(ResolveNow(-1f));
+            string normalizedPrefix = Normalize(purposePrefix);
+            foreach (Order order in Orders.Values)
+            {
+                if (order.TeamId != teamId
+                    || !IsActive(order.State)
+                    || !order.Purpose.StartsWith(normalizedPrefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                result.Add(new IAProductionOrderSaveData
+                {
+                    orderId = order.Id,
+                    teamId = order.TeamId,
+                    unitType = order.UnitType,
+                    purpose = order.Purpose,
+                    state = order.State,
+                    createdAt = order.CreatedAt,
+                    updatedAt = order.UpdatedAt,
+                    expiresAt = order.ExpiresAt,
+                    producerInstanceId = order.ProducerInstanceId
+                });
+            }
+
+            result.Sort((left, right) => string.CompareOrdinal(left.orderId, right.orderId));
+            return result;
+        }
+
+        public static bool CanDispatchCommand(string orderId, int teamId, string unitType)
+        {
+            if (string.IsNullOrWhiteSpace(orderId) || teamId <= 0 || string.IsNullOrWhiteSpace(unitType)
+                || !Orders.TryGetValue(orderId, out Order order))
+            {
+                return false;
+            }
+
+            if (order.TeamId != teamId
+                || order.UnitType != Normalize(unitType)
+                || order.ProducerInstanceId != 0
+                || (order.ExpiresAt > 0f && order.ExpiresAt <= ResolveNow(-1f)))
+            {
+                return false;
+            }
+
+            return order.State == IAProductionOrderState.Reserved
+                || order.State == IAProductionOrderState.Queued;
         }
 
         public static string FindActiveOrder(int teamId, string unitType, string purpose = "default")
@@ -288,14 +408,28 @@ namespace Hegemonia.AI.Shared
         private static bool Transition(string orderId, IAProductionOrderState state, int producerInstanceId, float now)
         {
             if (!TryGetActive(orderId, out Order order)) return false;
-            if (state == IAProductionOrderState.Queued && order.State != IAProductionOrderState.Reserved) return false;
+            bool transferringSchedulerQueueToProducer = state == IAProductionOrderState.Queued
+                && order.State == IAProductionOrderState.Queued
+                && order.ProducerInstanceId == 0
+                && producerInstanceId != 0;
+            if (state == IAProductionOrderState.Queued
+                && order.State != IAProductionOrderState.Reserved
+                && !transferringSchedulerQueueToProducer)
+            {
+                return false;
+            }
             if (state == IAProductionOrderState.Constructing
                 && order.State != IAProductionOrderState.Reserved
                 && order.State != IAProductionOrderState.Queued) return false;
             order.State = state;
             order.ProducerInstanceId = producerInstanceId;
             order.UpdatedAt = ResolveNow(now);
-            order.ExpiresAt = order.UpdatedAt + DefaultReservationTtl;
+            // A physical producer owns this order and will explicitly complete
+            // or release it. A scheduler-only queued intent has no producer yet
+            // and must keep a TTL in case the intent is dropped.
+            order.ExpiresAt = producerInstanceId != 0
+                ? 0f
+                : order.UpdatedAt + DefaultReservationTtl;
             return true;
         }
 
@@ -312,7 +446,10 @@ namespace Hegemonia.AI.Shared
             foreach (KeyValuePair<string, Order> pair in Orders)
             {
                 Order order = pair.Value;
-                if (IsActive(order.State) && order.ExpiresAt > 0f && order.ExpiresAt <= now)
+                if (IsActive(order.State)
+                    && order.ProducerInstanceId == 0
+                    && order.ExpiresAt > 0f
+                    && order.ExpiresAt <= now)
                 {
                     if (expired == null) expired = new List<string>();
                     expired.Add(pair.Key);

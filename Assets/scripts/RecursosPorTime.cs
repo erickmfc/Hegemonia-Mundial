@@ -38,7 +38,7 @@ public static class RecursosPorTime
     {
         if (origem == null)
         {
-            return 1;
+            return 0;
         }
 
         IdentidadeUnidade identidade = origem.GetComponent<IdentidadeUnidade>();
@@ -63,62 +63,54 @@ public static class RecursosPorTime
             return identidadeIA.teamID;
         }
 
-        return 1;
+        return 0;
     }
 
     public static int ObterTeamId(GameObject origem)
     {
-        return origem != null ? ObterTeamId(origem.transform) : 1;
+        return origem != null ? ObterTeamId(origem.transform) : 0;
     }
 
     public static int ReceberPetroleoNoPier(PierMarinha pier, int quantidade)
     {
         int teamId = ObterTeamId(pier);
-        return AdicionarPetroleoBruto(teamId, quantidade, true);
+        return AdicionarPetroleoBruto(teamId, quantidade);
     }
 
-    public static int AdicionarPetroleoBruto(int teamId, int quantidade, bool converterEmCombustivel)
+    public static int AdicionarPetroleoBruto(int teamId, int quantidade)
     {
         int recebido = Mathf.Max(0, quantidade);
-        if (recebido <= 0)
+        if (teamId <= 0 || recebido <= 0)
         {
             return 0;
         }
 
-        int id = Mathf.Max(1, teamId);
+        int id = teamId;
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null
+            || !industrial.TentarAdicionar(id.ToString(), IndustriaIds.PetroleoBruto, recebido))
+        {
+            return 0;
+        }
+
         EstadoRecursosTime estado = Obter(id);
         estado.petroleoBruto += recebido;
         estado.petroleoEntregue += recebido;
         estado.ultimaAtualizacao = Time.time;
 
-        if (converterEmCombustivel)
-        {
-            estado.combustivel += recebido * ServicoAbastecimento.ConversaoPetroleoParaCombustivel;
-            estado.petroleoConvertido += recebido;
-        }
-
-        if (id == 1)
-        {
-            GerenciadorRecursos bancoJogador = GerenciadorRecursos.Instancia;
-            if (bancoJogador != null)
-            {
-                bancoJogador.AdicionarRecursos(addPetroleo: recebido);
-            }
-        }
-        else
-        {
-            DadosPaisGoverno pais = ConectorGoverno.ObterPais(id);
-            if (pais != null)
-            {
-                pais.petroleo = Mathf.Max(pais.petroleo, Mathf.RoundToInt(estado.combustivel));
-            }
-        }
-
         DiagnosticoDesempenhoJogo.RegistrarTextoMetrica(
             "petroleo_time_" + id,
-            "bruto=" + estado.petroleoBruto + " combustivel=" + estado.combustivel.ToString("0"));
+            "bruto_entregue=" + estado.petroleoEntregue);
 
         return recebido;
+    }
+
+    // Compatibilidade com cenas/testes antigos: a opção anterior marcava como
+    // convertido um barril que continuava armazenado como petróleo bruto.
+    // Conversão agora só ocorre por uma receita do refino industrial.
+    public static int AdicionarPetroleoBruto(int teamId, int quantidade, bool converterEmCombustivel)
+    {
+        return AdicionarPetroleoBruto(teamId, quantidade);
     }
 
     public static bool TentarAbastecer(CombustivelUnidade unidade, float quantidade, out float abastecido)
@@ -136,9 +128,15 @@ public static class RecursosPorTime
         }
 
         int teamId = ObterTeamId(unidade);
+        string recursoCombustivel = ObterRecursoCombustivel(unidade.classe);
+        if (string.IsNullOrEmpty(recursoCombustivel))
+        {
+            return false;
+        }
+
         float desejado = Mathf.Min(quantidade, espaco);
         float disponivel;
-        if (!TentarConsumirCombustivel(teamId, desejado, out disponivel))
+        if (!TentarConsumirCombustivel(teamId, recursoCombustivel, desejado, out disponivel))
         {
             return false;
         }
@@ -146,7 +144,7 @@ public static class RecursosPorTime
         abastecido = unidade.Abastecer(disponivel);
         if (abastecido + 0.01f < disponivel)
         {
-            DevolverCombustivel(teamId, disponivel - abastecido);
+            DevolverCombustivel(teamId, recursoCombustivel, disponivel - abastecido);
         }
 
         return abastecido > 0.01f;
@@ -167,9 +165,11 @@ public static class RecursosPorTime
         }
 
         int teamId = ObterTeamId(caminhao);
+        // O caminhão-tanque existente atende apenas unidades terrestres.
+        const string recursoCombustivel = IndustriaIds.Diesel;
         float desejado = Mathf.Min(quantidade, espaco);
         float disponivel;
-        if (!TentarConsumirCombustivel(teamId, desejado, out disponivel))
+        if (!TentarConsumirCombustivel(teamId, recursoCombustivel, desejado, out disponivel))
         {
             return false;
         }
@@ -177,100 +177,83 @@ public static class RecursosPorTime
         carregado = caminhao.CarregarSemCusto(disponivel);
         if (carregado + 0.01f < disponivel)
         {
-            DevolverCombustivel(teamId, disponivel - carregado);
+            DevolverCombustivel(teamId, recursoCombustivel, disponivel - carregado);
         }
 
         return carregado > 0.01f;
     }
 
-    private static bool TentarConsumirCombustivel(int teamId, float desejado, out float consumido)
+    private static bool TentarConsumirCombustivel(int teamId, string recursoCombustivel, float desejado, out float consumido)
     {
         consumido = 0f;
-        if (desejado <= 0f)
+        if (string.IsNullOrWhiteSpace(recursoCombustivel) || desejado <= 0f)
         {
             return false;
         }
 
-        int id = Mathf.Max(1, teamId);
-        if (id == 1)
+        if (teamId <= 0)
         {
-            GerenciadorRecursos bancoJogador = GerenciadorRecursos.Instancia;
-            if (bancoJogador == null || bancoJogador.petroleo <= 0)
-            {
-                return false;
-            }
-
-            float possivel = Mathf.Min(desejado, bancoJogador.petroleo * ServicoAbastecimento.ConversaoPetroleoParaCombustivel);
-            int custoPetroleo = Mathf.Clamp(
-                Mathf.CeilToInt(possivel / ServicoAbastecimento.ConversaoPetroleoParaCombustivel),
-                1,
-                bancoJogador.petroleo);
-
-            bancoJogador.RemoverRecurso("Petroleo", custoPetroleo);
-            consumido = custoPetroleo * ServicoAbastecimento.ConversaoPetroleoParaCombustivel;
-            return consumido > 0.01f;
-        }
-
-        EstadoRecursosTime estado = Obter(id);
-        if (estado.combustivel < desejado)
-        {
-            ConverterReservaGovernamental(id, estado, desejado - estado.combustivel);
-        }
-
-        float possivelIA = Mathf.Min(desejado, estado.combustivel);
-        if (possivelIA <= 0.01f)
-        {
-            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("combustivel_bloqueio_time_" + id, "estoque insuficiente");
             return false;
         }
 
-        estado.combustivel -= possivelIA;
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            return false;
+        }
+
+        string teamKey = teamId.ToString();
+        double combustivelDisponivel = industrial.ObterQuantidadePais(teamId, recursoCombustivel);
+        float possivel = Mathf.Min(desejado, (float)combustivelDisponivel);
+        if (possivel <= 0.01f)
+        {
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica(
+                "combustivel_bloqueio_time_" + teamId,
+                "estoque insuficiente: " + recursoCombustivel);
+            return false;
+        }
+
+        if (!industrial.TentarConsumir(teamKey, recursoCombustivel, possivel))
+        {
+            return false;
+        }
+
+        EstadoRecursosTime estado = Obter(teamId);
         estado.ultimaAtualizacao = Time.time;
-        consumido = possivelIA;
+        consumido = possivel;
         return true;
     }
 
-    private static void ConverterReservaGovernamental(int teamId, EstadoRecursosTime estado, float necessario)
+    private static void DevolverCombustivel(int teamId, string recursoCombustivel, float quantidade)
     {
-        DadosPaisGoverno pais = ConectorGoverno.ObterPais(teamId);
-        if (pais == null || pais.petroleo <= 0 || necessario <= 0f)
+        if (string.IsNullOrWhiteSpace(recursoCombustivel) || quantidade <= 0.01f)
         {
             return;
         }
 
-        int bruto = Mathf.Clamp(Mathf.CeilToInt(necessario / ServicoAbastecimento.ConversaoPetroleoParaCombustivel), 0, pais.petroleo);
-        if (bruto <= 0)
+        if (teamId <= 0)
         {
             return;
         }
 
-        pais.petroleo -= bruto;
-        estado.petroleoBruto += bruto;
-        estado.petroleoConvertido += bruto;
-        estado.combustivel += bruto * ServicoAbastecimento.ConversaoPetroleoParaCombustivel;
-        estado.ultimaAtualizacao = Time.time;
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+        {
+            return;
+        }
+
+        industrial.TentarAdicionar(teamId.ToString(), recursoCombustivel, quantidade);
+        Obter(teamId).ultimaAtualizacao = Time.time;
     }
 
-    private static void DevolverCombustivel(int teamId, float quantidade)
+    private static string ObterRecursoCombustivel(ClasseCombustivelUnidade classe)
     {
-        if (quantidade <= 0.01f)
+        switch (classe)
         {
-            return;
+            case ClasseCombustivelUnidade.Terrestre: return IndustriaIds.Diesel;
+            case ClasseCombustivelUnidade.Naval: return IndustriaIds.CombustivelNaval;
+            case ClasseCombustivelUnidade.Aerea: return IndustriaIds.CombustivelAviacao;
+            default: return string.Empty;
         }
-
-        int id = Mathf.Max(1, teamId);
-        if (id == 1)
-        {
-            GerenciadorRecursos bancoJogador = GerenciadorRecursos.Instancia;
-            if (bancoJogador != null)
-            {
-                bancoJogador.AdicionarRecursos(addPetroleo: Mathf.CeilToInt(quantidade / ServicoAbastecimento.ConversaoPetroleoParaCombustivel));
-            }
-            return;
-        }
-
-        EstadoRecursosTime estado = Obter(id);
-        estado.combustivel += quantidade;
-        estado.ultimaAtualizacao = Time.time;
     }
 }

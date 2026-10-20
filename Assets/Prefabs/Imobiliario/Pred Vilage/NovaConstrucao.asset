@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Vilage medio
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 6f12f4dccd6a0e54ab01c7b7f2b3584e, type: 3}
   itemId: residencial.vila
   aliases: vila residencial, casas, condominio, village
   capacidades: 16777281

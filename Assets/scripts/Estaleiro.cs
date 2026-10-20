@@ -79,6 +79,62 @@ public class Estaleiro : MonoBehaviour
     private float liberarProximoLoteEm = -1f;
 
     public int NaviosNaFila { get { return filaNaval.Count; } }
+
+    /// <summary>
+    /// Conta navios já comprometidos com este estaleiro: vagas em construção
+    /// e pedidos aguardando o próximo lote. Usado por gates de produção para
+    /// não aceitar pedidos acima do limite antes de os navios nascerem.
+    /// </summary>
+    public int ContarUnidadesPendentes(GameObject prefabFiltro = null)
+    {
+        int total = 0;
+
+        if (slots != null)
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                SlotConstrucao slot = slots[i];
+                if (slot == null || !slot.estaOcupado || slot.prefabAtual == null)
+                {
+                    continue;
+                }
+
+                if (CorrespondePrefabPendente(slot.prefabAtual, prefabFiltro))
+                {
+                    total++;
+                }
+            }
+        }
+
+        foreach (PedidoNavalAutomatico pedido in filaNaval)
+        {
+            if (pedido != null && pedido.Prefab != null
+                && CorrespondePrefabPendente(pedido.Prefab, prefabFiltro))
+            {
+                total++;
+            }
+        }
+
+        return total;
+    }
+
+    private static bool CorrespondePrefabPendente(GameObject candidato, GameObject filtro)
+    {
+        if (candidato == null)
+        {
+            return false;
+        }
+
+        if (filtro == null || candidato == filtro)
+        {
+            return true;
+        }
+
+        string nomeFiltro = filtro.name;
+        return !string.IsNullOrEmpty(nomeFiltro)
+            && string.Equals(candidato.name, nomeFiltro, System.StringComparison.Ordinal);
+    }
+
     public int LimiteFilaNaval { get { return Mathf.Max(0, limiteFilaNaval); } }
     public bool TemCapacidadeDeProducao
     {
@@ -267,10 +323,12 @@ public class Estaleiro : MonoBehaviour
             return;
         }
 
+        // OnValidate pode ser chamado durante a validação/carregamento da cena.
+        // Aqui só mantenha os dados serializados consistentes; criação de filhos,
+        // alterações de Transform e registro no gerente ficam para Start e para
+        // os pontos de entrada explícitos de runtime.
         SincronizarPerfilCosteiro();
-        NormalizarSlots();
-        CorrigirPoseCosteiraSeNecessario();
-        AtualizarReferenciasLitoraneas();
+        NormalizarSlots(false);
     }
 
     void RegistrarNoGerente()
@@ -421,6 +479,11 @@ public class Estaleiro : MonoBehaviour
         get { return TemCapacidadeDeProducao; }
     }
 
+    public bool PossuiEnergiaOperacional
+    {
+        get { return ObterEficienciaEnergetica() > 0f; }
+    }
+
     /// <summary>
     /// Integra um navio entregue pelo mercado no mesmo estado inicial usado
     /// por um navio liberado deste estaleiro. Sem isso a identidade mudava,
@@ -448,7 +511,7 @@ public class Estaleiro : MonoBehaviour
             ? pais.nomePais
             : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
         idNavio.tipoUnidade = TipoUnidade.Naval;
-        CombustivelUnidade.Garantir(navio, true);
+        ServicoAbastecimento.AbastecerUnidadeProduzida(navio);
 
         ControleUnidade controle = navio.GetComponent<ControleUnidade>();
         if (controle == null)
@@ -494,6 +557,19 @@ public class Estaleiro : MonoBehaviour
 
     public bool ConstruirUnidade(GameObject prefabDoNavio, string productionOrderId = "")
     {
+        return ConstruirUnidadeRastreada(prefabDoNavio, productionOrderId, null);
+    }
+
+    public bool ConstruirUnidadeRastreada(
+        GameObject prefabDoNavio,
+        string productionOrderId,
+        System.Action onPhysicalAcceptance)
+    {
+        if (prefabDoNavio == null || !PossuiEnergiaOperacional || !PodeProduzirComEfetivo(prefabDoNavio))
+        {
+            return false;
+        }
+
         if (prefabDoNavio != null)
         {
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabDoNavio.name);
@@ -521,6 +597,8 @@ public class Estaleiro : MonoBehaviour
             }
 
             filaNaval.Enqueue(new PedidoNavalAutomatico { Prefab = prefabDoNavio, OrderId = productionOrderId });
+            IAAutoProductionRegistry.ConfirmQueued(productionOrderId, GetInstanceID(), Time.time);
+            onPhysicalAcceptance?.Invoke();
             Debug.Log($"[Estaleiro] Navio enfileirado para o proximo lote: {prefabDoNavio.name} | fila={filaNaval.Count}/{limiteEspera}");
             return true;
         }
@@ -535,6 +613,8 @@ public class Estaleiro : MonoBehaviour
             }
 
             filaNaval.Enqueue(new PedidoNavalAutomatico { Prefab = prefabDoNavio, OrderId = productionOrderId });
+            IAAutoProductionRegistry.ConfirmQueued(productionOrderId, GetInstanceID(), Time.time);
+            onPhysicalAcceptance?.Invoke();
             Debug.Log($"[Estaleiro] Navio aguardando o fim do lote: {prefabDoNavio.name} | fila={filaNaval.Count}/{limiteLote}");
             return true;
         }
@@ -551,6 +631,8 @@ public class Estaleiro : MonoBehaviour
             }
 
             filaNaval.Enqueue(new PedidoNavalAutomatico { Prefab = prefabDoNavio, OrderId = productionOrderId });
+            IAAutoProductionRegistry.ConfirmQueued(productionOrderId, GetInstanceID(), Time.time);
+            onPhysicalAcceptance?.Invoke();
             Debug.Log($"[Estaleiro] Navio enfileirado: {prefabDoNavio.name} | fila={filaNaval.Count}/{limite}");
             return true;
         }
@@ -558,7 +640,7 @@ public class Estaleiro : MonoBehaviour
         if (slotLivre != null)
         {
             long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
-            IniciarConstrucao(slotLivre, prefabDoNavio, productionOrderId);
+            IniciarConstrucao(slotLivre, prefabDoNavio, productionOrderId, onPhysicalAcceptance);
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             return true;
         }
@@ -567,6 +649,14 @@ public class Estaleiro : MonoBehaviour
             Debug.LogWarning("[Estaleiro] Todos os slots estão ocupados!");
             return false;
         }
+    }
+
+    private bool PodeProduzirComEfetivo(GameObject prefab)
+    {
+        if (SistemaGovernoMundial.ObterEfetivoNecessario(prefab) <= 0) return true;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        return governo != null && governo.PodeProduzirUnidadeComEfetivo(OwnerTeamId, prefab);
     }
 
     private static void RegistrarTempoDiagnostico(string chave, long inicio)
@@ -630,7 +720,11 @@ public class Estaleiro : MonoBehaviour
         return null;
     }
 
-    void IniciarConstrucao(SlotConstrucao slot, GameObject prefab, string productionOrderId = "")
+    void IniciarConstrucao(
+        SlotConstrucao slot,
+        GameObject prefab,
+        string productionOrderId = "",
+        System.Action onPhysicalAcceptance = null)
     {
         slot.estaOcupado = true;
         slot.prefabAtual = prefab;
@@ -639,6 +733,7 @@ public class Estaleiro : MonoBehaviour
         naviosIniciadosNoLote++;
         if (!string.IsNullOrEmpty(slot.productionOrderId))
             IAAutoProductionRegistry.ConfirmConstructionStarted(slot.productionOrderId, GetInstanceID(), Time.time);
+        onPhysicalAcceptance?.Invoke();
 
         // --- CRIAR BARRA DE PROGRESSO ---
         CriarBarraProgresso(slot);
@@ -690,8 +785,11 @@ public class Estaleiro : MonoBehaviour
 
     void ProcessarConstrucao(SlotConstrucao slot)
     {
-        // Incrementa progresso
-        float incremento = (Time.deltaTime / tempoDeConstrucao) * 100f;
+        // A falta de energia pausa a obra; energia parcial reduz o ritmo naval.
+        float eficienciaEnergia = ObterEficienciaEnergetica();
+        if (eficienciaEnergia <= 0f) return;
+
+        float incremento = (Time.deltaTime / tempoDeConstrucao) * 100f * eficienciaEnergia;
         slot.progresso += incremento;
 
         // Atualiza Barra de Progresso
@@ -711,9 +809,23 @@ public class Estaleiro : MonoBehaviour
         }
     }
 
+    private float ObterEficienciaEnergetica()
+    {
+        EstruturaEconomica estrutura = GetComponentInParent<EstruturaEconomica>();
+        if (estrutura == null) return 1f;
+        return estrutura.Ativa ? Mathf.Clamp01(estrutura.eficiencia) : 0f;
+    }
+
     void FinalizarConstrucao(SlotConstrucao slot)
     {
         NormalizarSlots();
+        if (slot == null || slot.prefabAtual == null || !PodeProduzirComEfetivo(slot.prefabAtual))
+        {
+            // Mantém o navio pronto no slot até o país conseguir mobilizar
+            // seu efetivo. A ordem paga não é descartada nem vira spawn grátis.
+            return;
+        }
+
         Debug.Log($"[Estaleiro] Construção finalizada no {slot.nomeSlot}! Nascendo no ponto de atracagem.");
 
         bool ehNavioGrande = EhNavioGrande(slot.prefabAtual);
@@ -738,6 +850,14 @@ public class Estaleiro : MonoBehaviour
 
         // Ajusta a altura para o nível da água
         posFinal.y = nivelAguaAtual + offsetAltura;
+        // O ponto de pivô do USS Enterprise deixa o casco baixo demais em
+        // relação ao mar. Eleva somente esse modelo, sem mover outros navios.
+        if (slot.prefabAtual != null
+            && slot.prefabAtual.GetComponent<GerenciadorPortaAvioes>() != null
+            && slot.prefabAtual.name.IndexOf("Enterprise", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            posFinal.y += 2f;
+        }
 
         Quaternion rotacaoNaval = Quaternion.LookRotation(-waterForward, Vector3.up);
 
@@ -769,7 +889,7 @@ public class Estaleiro : MonoBehaviour
         }
         finally
         {
-            Destroy(raizStagingNaval);
+            DestruirObjetoDeConstrucao(raizStagingNaval);
         }
         RegistrarTempoDiagnostico("naval_instantiate_ms", instantiateStart);
         long initStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -785,13 +905,10 @@ public class Estaleiro : MonoBehaviour
         {
             navioPronto.transform.localScale = escalaPrefab;
         }
-        if (!string.IsNullOrEmpty(slot.productionOrderId))
-            IAAutoProductionRegistry.Complete(slot.productionOrderId, Time.time);
-
         // Destroi a barra
         if (slot.barCanvasObj != null)
         {
-            Destroy(slot.barCanvasObj);
+            DestruirObjetoDeConstrucao(slot.barCanvasObj);
             slot.barCanvasObj = null;
             slot.barFillImage = null;
         }
@@ -811,7 +928,24 @@ public class Estaleiro : MonoBehaviour
             : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
 
         idNavio.tipoUnidade = TipoUnidade.Naval;
-        CombustivelUnidade.Garantir(navioPronto, true);
+        SistemaGovernoMundial governoNaval = SistemaGovernoMundial.Instancia;
+        if (governoNaval != null && !governoNaval.TentarMobilizarEfetivoDaUnidade(ownerTeam, navioPronto))
+        {
+            governoNaval.LiberarEfetivoMobilizadoSemBaixa(ownerTeam, navioPronto);
+            DestruirObjetoDeConstrucao(navioPronto);
+            // A construção permanece concluída no slot e sua ordem permanece
+            // ativa. O próximo Update tentará novamente após haver efetivo.
+            return;
+        }
+
+        // A partir daqui a unidade já recebeu o efetivo nacional; a entrega é
+        // terminal mesmo se um passo visual/operacional posterior falhar.
+        if (!string.IsNullOrEmpty(slot.productionOrderId))
+        {
+            IAAutoProductionRegistry.Complete(slot.productionOrderId, Time.time);
+        }
+
+        ServicoAbastecimento.AbastecerUnidadeProduzida(navioPronto);
 
         var ctrl = navioPronto.GetComponent<ControleUnidade>();
         if (ctrl == null)
@@ -898,6 +1032,16 @@ public class Estaleiro : MonoBehaviour
         ProcessarFimDoLote();
     }
 
+    private static void DestruirObjetoDeConstrucao(GameObject objeto)
+    {
+        if (objeto == null) return;
+
+        if (Application.isPlaying)
+            UnityEngine.Object.Destroy(objeto);
+        else
+            UnityEngine.Object.DestroyImmediate(objeto);
+    }
+
     void ProcessarFimDoLote()
     {
         if (naviosIniciadosNoLote <= 0 || naviosConcluidosNoLote < naviosIniciadosNoLote)
@@ -942,7 +1086,7 @@ public class Estaleiro : MonoBehaviour
         }
     }
 
-    void NormalizarSlots()
+    void NormalizarSlots(bool normalizarNomesDosPontos = true)
     {
         if (slots == null)
         {
@@ -961,7 +1105,9 @@ public class Estaleiro : MonoBehaviour
                 slots[i].nomeSlot = i == 0 ? "Atracagem_Grande" : $"Slot_{i}";
             }
 
-            if (slots[i].pontoDeConstrucao != null && string.IsNullOrWhiteSpace(slots[i].pontoDeConstrucao.name))
+            if (normalizarNomesDosPontos
+                && slots[i].pontoDeConstrucao != null
+                && string.IsNullOrWhiteSpace(slots[i].pontoDeConstrucao.name))
             {
                 slots[i].pontoDeConstrucao.name = slots[i].nomeSlot;
             }

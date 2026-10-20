@@ -373,8 +373,8 @@ MonoBehaviour:
   velocidadeAcoplagem: 12
   tempoDeCarregamento: 5
   petroleoCarregado: 0
-  capacidadeMaxima: 5000
-  taxaTransferencia: 1000
+  capacidadeMaxima: 250000
+  taxaTransferencia: 50000
   estadoAtual: 0
   statusDebug: 
   plataformaAlvo: {fileID: 0}

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Energia
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 1371584515e09b14aa8e2479dcb2e808, type: 3}
   itemId: energia.inicial
   aliases: energia, usina, power, power plant
   capacidades: 524353

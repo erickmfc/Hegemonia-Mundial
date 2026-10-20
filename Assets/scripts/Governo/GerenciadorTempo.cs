@@ -11,6 +11,7 @@ public class GerenciadorTempo : MonoBehaviour
     public int totalDias = 1;
 
     public event Action OnDataAlterada;
+    public event Action OnDataRestaurada;
 
     private float tempoAcumulado = 0f;
 
@@ -65,5 +66,16 @@ public class GerenciadorTempo : MonoBehaviour
         totalDias = Mathf.Max(1, dias);
         tempoAcumulado = 0f;
         OnDataAlterada?.Invoke();
+    }
+
+    /// <summary>
+    /// Restaura a data persistida sem disparar o evento diário. Sistemas com
+    /// estado derivado podem sincronizar-se sem processar produção ou consumo.
+    /// </summary>
+    public void RestaurarDiasSemNotificar(int dias)
+    {
+        totalDias = Mathf.Max(1, dias);
+        tempoAcumulado = 0f;
+        OnDataRestaurada?.Invoke();
     }
 }

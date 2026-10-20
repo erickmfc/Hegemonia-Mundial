@@ -371,7 +371,13 @@ public class TransporteAnfibio : MonoBehaviour
                 SistemaDeDanos dano = unidade.GetComponent<SistemaDeDanos>();
                 if (dano != null) dano.vidaAtual = dano.vidaMaxima;
                 CombustivelUnidade comb = unidade.GetComponent<CombustivelUnidade>();
-                if (comb != null) comb.PreencherSemCusto();
+                if (comb != null)
+                {
+                    ServicoAbastecimento.TentarAbastecer(
+                        comb,
+                        comb.Capacidade - comb.CombustivelAtual,
+                        out _);
+                }
 
                 ManifestoCargaOperacional manifesto = ManifestoCargaOperacional.Capturar(unidade);
                 if (manifesto != null)

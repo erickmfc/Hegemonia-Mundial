@@ -577,8 +577,11 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             CidadeEstado cidadeMaisProxima = null;
             foreach (var cid in GerenciadorDivisaoTerritorial.Instancia.cidades)
             {
-                if (cid.marcador == null) continue;
-                float d = Vector3.Distance(transform.position, cid.marcador.transform.position);
+                if (cid == null) continue;
+                bool possuiPosicao = cid.marcador != null || cid.ehCidadeNaoMaterializada;
+                if (!possuiPosicao) continue;
+                Vector3 posicaoCidade = cid.marcador != null ? cid.marcador.transform.position : cid.localizacao;
+                float d = Vector3.Distance(transform.position, posicaoCidade);
                 if (d < menorDist) { menorDist = d; cidadeMaisProxima = cid; }
             }
 

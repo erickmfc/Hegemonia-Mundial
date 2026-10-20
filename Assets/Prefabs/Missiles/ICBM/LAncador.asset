@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Lancador ICBM
   descricao: Plataforma de lancamento balistico estrategico.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 4b3e32835e5c12445903d10c9f88cb04, type: 3}
   itemId: foguete_icbm
   aliases: 
   capacidades: 0

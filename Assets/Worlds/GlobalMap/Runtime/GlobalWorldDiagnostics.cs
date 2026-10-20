@@ -36,16 +36,44 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
     private ProfilerRecorder gcAllocatedRecorder;
     private readonly List<GameObject> sceneRoots = new List<GameObject>(16);
     private readonly List<FrameSample> benchmarkSamples = new List<FrameSample>(36000);
+    private readonly List<float> benchmarkWindowFrameMilliseconds = new List<float>(256);
+    private const int BenchmarkFrameHistogramMaxMs = 30000;
+    private const int BenchmarkFrameHistogramOverflowIndex = BenchmarkFrameHistogramMaxMs + 1;
+    private readonly long[] benchmarkFrameMillisecondsHistogram = new long[BenchmarkFrameHistogramOverflowIndex + 1];
     private bool benchmarkRecording;
     private float benchmarkStartedAt;
-    private int benchmarkMemorySampleFrame;
+    private float nextBenchmarkSampleAt;
+    private float benchmarkMemorySampleAt = float.NegativeInfinity;
     private int activeUnits;
+    private int activeNavalUnits;
+    private int activeProjectiles;
+    private int activeParticleSystems;
+    private int activeTrailRenderers;
+    private int benchmarkWindowFrameCount;
+    private double benchmarkWindowFrameMillisecondsTotal;
+    private float benchmarkWindowWorstFrameMilliseconds;
+    private double benchmarkWindowMainThreadNanosecondsTotal;
+    private double benchmarkWindowRenderThreadNanosecondsTotal;
+    private double benchmarkWindowGpuNanosecondsTotal;
+    private int benchmarkWindowMainThreadSamples;
+    private int benchmarkWindowRenderThreadSamples;
+    private int benchmarkWindowGpuSamples;
+    private long benchmarkWindowGcAllocatedBytes;
+    private int benchmarkWindowGcAllocatedSamples;
+    private long benchmarkWindowDrawCalls = -1;
+    private long benchmarkWindowTriangles = -1;
+    private long benchmarkWindowBatches = -1;
+    private long benchmarkFrameCount;
+    private double benchmarkTotalFrameMilliseconds;
     private Process currentProcess;
 
     private struct FrameSample
     {
         public float frameMilliseconds;
+        public float p95FrameMilliseconds;
+        public float worstFrameMilliseconds;
         public float elapsedSeconds;
+        public float timeScale;
         public long mainThreadNanoseconds;
         public long renderThreadNanoseconds;
         public long gpuNanoseconds;
@@ -61,6 +89,10 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         public int trees;
         public int activeObjects;
         public int units;
+        public int navalUnits;
+        public int projectiles;
+        public int particleSystems;
+        public int trailRenderers;
         public int tileGenerationMilliseconds;
     }
 
@@ -111,9 +143,15 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
             managedBytes = Profiler.GetMonoUsedSizeLong();
             allocatedBytes = Profiler.GetTotalAllocatedMemoryLong();
             graphicsBytes = Profiler.GetAllocatedMemoryForGraphicsDriver();
-            processWorkingSetBytes = currentProcess != null ? currentProcess.WorkingSet64 : -1;
-            activeGameObjects = CountActiveSceneObjects(out activeUnits);
-            benchmarkMemorySampleFrame = Time.frameCount;
+            long workingSetBytes = currentProcess != null ? currentProcess.WorkingSet64 : 0L;
+            processWorkingSetBytes = workingSetBytes > 0L ? workingSetBytes : -1L;
+            activeGameObjects = CountActiveSceneObjects(
+                out activeUnits,
+                out activeNavalUnits,
+                out activeProjectiles,
+                out activeParticleSystems,
+                out activeTrailRenderers);
+            benchmarkMemorySampleAt = Time.unscaledTime;
         }
 
         if (benchmarkRecording) CaptureBenchmarkFrame();
@@ -128,33 +166,47 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         string mainThread = mainThreadRecorder.Valid ? (mainThreadRecorder.LastValue / 1000000f).ToString("F2") + " ms" : "n/a";
         string renderThread = renderThreadRecorder.Valid ? (renderThreadRecorder.LastValue / 1000000f).ToString("F2") + " ms" : "n/a";
         string altitude = camera != null ? (camera.transform.position.y / 1000f).ToString("F1") + " km" : "n/a";
-        GUI.Box(new Rect(12f, 12f, 330f, 262f), "GLOBAL MAP · PERFORMANCE");
-        GUI.Label(new Rect(24f, 42f, 305f, 22f), "FPS: " + smoothedFps.ToString("F1") + "    altitude: " + altitude);
-        GUI.Label(new Rect(24f, 64f, 305f, 22f), "terrain tiles: " + streamer.ActiveTileCount + "    trees: " + streamer.ActiveTreeCount);
-        GUI.Label(new Rect(24f, 86f, 305f, 22f), "active GameObjects: " + activeGameObjects);
-        GUI.Label(new Rect(24f, 108f, 305f, 22f), "tile generation: " + streamer.LastGenerationMilliseconds + " ms (last)");
-        GUI.Label(new Rect(24f, 130f, 305f, 22f), "CPU main/render: " + mainThread + " / " + renderThread);
-        GUI.Label(new Rect(24f, 152f, 305f, 22f), "GPU frame: " + ToMilliseconds(gpuRecorder));
-        GUI.Label(new Rect(24f, 174f, 305f, 22f), "draw / triangles / batches: "
+        const float panelWidth = 330f;
+        const float panelHeight = 262f;
+        float panelX = Mathf.Max(12f, Screen.width - panelWidth - 12f);
+        float panelY = Mathf.Max(12f, Screen.height - panelHeight - 178f);
+        GUI.BeginGroup(new Rect(panelX, panelY, panelWidth, panelHeight));
+        GUI.Box(new Rect(0f, 0f, panelWidth, panelHeight), "GLOBAL MAP · PERFORMANCE");
+        GUI.Label(new Rect(12f, 30f, 305f, 22f), "FPS: " + smoothedFps.ToString("F1") + "    altitude: " + altitude);
+        GUI.Label(new Rect(12f, 52f, 305f, 22f), "terrain tiles: " + streamer.ActiveTileCount + "    trees: " + streamer.ActiveTreeCount);
+        GUI.Label(new Rect(12f, 74f, 305f, 22f), "active GameObjects: " + activeGameObjects);
+        GUI.Label(new Rect(12f, 96f, 305f, 22f), "tile generation: " + streamer.LastGenerationMilliseconds + " ms (last)");
+        GUI.Label(new Rect(12f, 118f, 305f, 22f), "CPU main/render: " + mainThread + " / " + renderThread);
+        GUI.Label(new Rect(12f, 140f, 305f, 22f), "GPU frame: " + ToMilliseconds(gpuRecorder));
+        GUI.Label(new Rect(12f, 162f, 305f, 22f), "draw / triangles / batches: "
             + ToCount(drawCallsRecorder) + " / " + ToCount(trianglesRecorder) + " / " + ToCount(batchesRecorder));
-        GUI.Label(new Rect(24f, 196f, 305f, 22f), "Unity / Mono memory: " + ToMegabytes(allocatedBytes) + " / " + ToMegabytes(managedBytes));
-        GUI.Label(new Rect(24f, 218f, 305f, 22f), "graphics driver memory: " + ToMegabytes(graphicsBytes));
-        GUI.Label(new Rect(24f, 240f, 305f, 22f), benchmarkRecording
+        GUI.Label(new Rect(12f, 184f, 305f, 22f), "Unity / Mono memory: " + ToMegabytes(allocatedBytes) + " / " + ToMegabytes(managedBytes));
+        GUI.Label(new Rect(12f, 206f, 305f, 22f), "graphics driver memory: " + ToMegabytes(graphicsBytes));
+        GUI.Label(new Rect(12f, 228f, 305f, 22f), benchmarkRecording
             ? "REC  " + benchmarkLabel + "  " + (Time.unscaledTime - benchmarkStartedAt).ToString("F0") + "s · F9 parar"
             : "F9 iniciar/parar CSV · " + benchmarkLabel);
+        GUI.EndGroup();
     }
 
     private void StartBenchmark()
     {
         benchmarkSamples.Clear();
+        Array.Clear(benchmarkFrameMillisecondsHistogram, 0, benchmarkFrameMillisecondsHistogram.Length);
+        benchmarkFrameCount = 0;
+        benchmarkTotalFrameMilliseconds = 0d;
+        ResetBenchmarkWindow();
         benchmarkRecording = true;
         benchmarkStartedAt = Time.unscaledTime;
-        nextSampleAt = 0f;
+        nextSampleAt = benchmarkStartedAt;
+        nextBenchmarkSampleAt = benchmarkStartedAt + Mathf.Max(0.1f, sampleInterval);
         Debug.Log("[GlobalWorldDiagnostics] Benchmark iniciado: " + benchmarkLabel);
     }
 
     private void StopBenchmark()
     {
+        if (benchmarkRecording && benchmarkWindowFrameCount > 0 && benchmarkSamples.Count < benchmarkSamples.Capacity)
+            FinalizeBenchmarkSample();
+
         benchmarkRecording = false;
         if (benchmarkSamples.Count == 0)
         {
@@ -173,51 +225,157 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
 
     private void CaptureBenchmarkFrame()
     {
-        if (benchmarkSamples.Count == benchmarkSamples.Capacity)
-        {
-            StopBenchmark();
-            Debug.LogWarning("[GlobalWorldDiagnostics] Capacidade de amostras atingida; captura encerrada.");
-            return;
-        }
+        float frameMilliseconds = Time.unscaledDeltaTime * 1000f;
+        benchmarkWindowFrameMilliseconds.Add(frameMilliseconds);
+        benchmarkWindowFrameCount++;
+        benchmarkWindowFrameMillisecondsTotal += frameMilliseconds;
+        benchmarkWindowWorstFrameMilliseconds = Mathf.Max(benchmarkWindowWorstFrameMilliseconds, frameMilliseconds);
+        benchmarkFrameCount++;
+        benchmarkTotalFrameMilliseconds += frameMilliseconds;
+        int histogramBucket = frameMilliseconds >= BenchmarkFrameHistogramMaxMs
+            ? BenchmarkFrameHistogramOverflowIndex
+            : Mathf.Clamp(Mathf.CeilToInt(frameMilliseconds), 0, BenchmarkFrameHistogramMaxMs);
+        benchmarkFrameMillisecondsHistogram[histogramBucket]++;
 
-        bool updatedMemorySample = Time.frameCount == benchmarkMemorySampleFrame;
-        benchmarkSamples.Add(new FrameSample
+        if (mainThreadRecorder.Valid)
         {
-            frameMilliseconds = Time.unscaledDeltaTime * 1000f,
-            elapsedSeconds = Time.unscaledTime - benchmarkStartedAt,
-            mainThreadNanoseconds = mainThreadRecorder.Valid ? mainThreadRecorder.LastValue : -1,
-            renderThreadNanoseconds = renderThreadRecorder.Valid ? renderThreadRecorder.LastValue : -1,
-            gpuNanoseconds = gpuRecorder.Valid ? gpuRecorder.LastValue : -1,
-            drawCalls = drawCallsRecorder.Valid ? drawCallsRecorder.LastValue : -1,
-            triangles = trianglesRecorder.Valid ? trianglesRecorder.LastValue : -1,
-            batches = batchesRecorder.Valid ? batchesRecorder.LastValue : -1,
-            gcAllocatedBytes = gcAllocatedRecorder.Valid ? gcAllocatedRecorder.LastValue : -1,
+            benchmarkWindowMainThreadNanosecondsTotal += mainThreadRecorder.LastValue;
+            benchmarkWindowMainThreadSamples++;
+        }
+        if (renderThreadRecorder.Valid)
+        {
+            benchmarkWindowRenderThreadNanosecondsTotal += renderThreadRecorder.LastValue;
+            benchmarkWindowRenderThreadSamples++;
+        }
+        if (gpuRecorder.Valid && gpuRecorder.LastValue > 0)
+        {
+            benchmarkWindowGpuNanosecondsTotal += gpuRecorder.LastValue;
+            benchmarkWindowGpuSamples++;
+        }
+        if (gcAllocatedRecorder.Valid)
+        {
+            benchmarkWindowGcAllocatedBytes += Math.Max(0L, gcAllocatedRecorder.LastValue);
+            benchmarkWindowGcAllocatedSamples++;
+        }
+        if (drawCallsRecorder.Valid) benchmarkWindowDrawCalls = drawCallsRecorder.LastValue;
+        if (trianglesRecorder.Valid) benchmarkWindowTriangles = trianglesRecorder.LastValue;
+        if (batchesRecorder.Valid) benchmarkWindowBatches = batchesRecorder.LastValue;
+
+        if (Time.unscaledTime >= nextBenchmarkSampleAt)
+        {
+            if (benchmarkSamples.Count >= benchmarkSamples.Capacity)
+            {
+                StopBenchmark();
+                Debug.LogWarning("[GlobalWorldDiagnostics] Limite de intervalos atingido; captura encerrada.");
+                return;
+            }
+
+            FinalizeBenchmarkSample();
+            AdvanceBenchmarkSampleDeadline(Time.unscaledTime);
+        }
+    }
+
+    private void AdvanceBenchmarkSampleDeadline(float currentTime)
+    {
+        float interval = Mathf.Max(0.1f, sampleInterval);
+        do
+        {
+            nextBenchmarkSampleAt += interval;
+        }
+        while (nextBenchmarkSampleAt <= currentTime);
+    }
+
+    private void FinalizeBenchmarkSample()
+    {
+        if (benchmarkWindowFrameCount <= 0)
+            return;
+
+        float elapsedSeconds = Time.unscaledTime - benchmarkStartedAt;
+        if (elapsedSeconds < 0f)
+            return;
+
+        float memorySampleAge = Time.unscaledTime - benchmarkMemorySampleAt;
+        bool hasRecentMemorySample = memorySampleAge >= 0f
+            && memorySampleAge <= Mathf.Max(0.25f, sampleInterval * 1.5f);
+
+        benchmarkWindowFrameMilliseconds.Sort();
+        int p95Index = Mathf.Clamp(
+            Mathf.CeilToInt(benchmarkWindowFrameMilliseconds.Count * 0.95f) - 1,
+            0,
+            benchmarkWindowFrameMilliseconds.Count - 1);
+        FrameSample sample = new FrameSample
+        {
+            frameMilliseconds = (float)(benchmarkWindowFrameMillisecondsTotal / benchmarkWindowFrameCount),
+            p95FrameMilliseconds = benchmarkWindowFrameMilliseconds[p95Index],
+            worstFrameMilliseconds = benchmarkWindowWorstFrameMilliseconds,
+            elapsedSeconds = elapsedSeconds,
+            timeScale = Time.timeScale,
+            mainThreadNanoseconds = benchmarkWindowMainThreadSamples > 0
+                ? (long)(benchmarkWindowMainThreadNanosecondsTotal / benchmarkWindowMainThreadSamples) : -1,
+            renderThreadNanoseconds = benchmarkWindowRenderThreadSamples > 0
+                ? (long)(benchmarkWindowRenderThreadNanosecondsTotal / benchmarkWindowRenderThreadSamples) : -1,
+            gpuNanoseconds = benchmarkWindowGpuSamples > 0
+                ? (long)(benchmarkWindowGpuNanosecondsTotal / benchmarkWindowGpuSamples) : -1,
+            drawCalls = benchmarkWindowDrawCalls,
+            triangles = benchmarkWindowTriangles,
+            batches = benchmarkWindowBatches,
+            gcAllocatedBytes = benchmarkWindowGcAllocatedSamples > 0 ? benchmarkWindowGcAllocatedBytes : -1,
             unityMemoryBytes = allocatedBytes,
             monoMemoryBytes = managedBytes,
             graphicsMemoryBytes = graphicsBytes,
-            processWorkingSetBytes = this.processWorkingSetBytes,
+            processWorkingSetBytes = processWorkingSetBytes,
             terrainTiles = streamer != null ? streamer.ActiveTileCount : -1,
             trees = streamer != null ? streamer.ActiveTreeCount : -1,
-            activeObjects = updatedMemorySample ? activeGameObjects : -1,
-            units = updatedMemorySample ? activeUnits : -1,
+            activeObjects = hasRecentMemorySample ? activeGameObjects : -1,
+            units = hasRecentMemorySample ? activeUnits : -1,
+            navalUnits = hasRecentMemorySample ? activeNavalUnits : -1,
+            projectiles = hasRecentMemorySample ? activeProjectiles : -1,
+            particleSystems = hasRecentMemorySample ? activeParticleSystems : -1,
+            trailRenderers = hasRecentMemorySample ? activeTrailRenderers : -1,
             tileGenerationMilliseconds = streamer != null ? streamer.LastGenerationMilliseconds : -1
-        });
+        };
+        benchmarkSamples.Add(sample);
+        ResetBenchmarkWindow();
+    }
+
+    private void ResetBenchmarkWindow()
+    {
+        benchmarkWindowFrameMilliseconds.Clear();
+        benchmarkWindowFrameCount = 0;
+        benchmarkWindowFrameMillisecondsTotal = 0d;
+        benchmarkWindowWorstFrameMilliseconds = 0f;
+        benchmarkWindowMainThreadNanosecondsTotal = 0d;
+        benchmarkWindowRenderThreadNanosecondsTotal = 0d;
+        benchmarkWindowGpuNanosecondsTotal = 0d;
+        benchmarkWindowMainThreadSamples = 0;
+        benchmarkWindowRenderThreadSamples = 0;
+        benchmarkWindowGpuSamples = 0;
+        benchmarkWindowGcAllocatedBytes = 0L;
+        benchmarkWindowGcAllocatedSamples = 0;
+        benchmarkWindowDrawCalls = -1;
+        benchmarkWindowTriangles = -1;
+        benchmarkWindowBatches = -1;
     }
 
     private void WriteBenchmarkCsv(string path)
     {
         StringBuilder csv = new StringBuilder(benchmarkSamples.Count * 150);
-        csv.AppendLine("label,elapsed_seconds,frame_ms,fps,main_thread_ms,render_thread_ms,gpu_ms,draw_calls,triangles,batches,gc_alloc_bytes,unity_memory_bytes,mono_memory_bytes,graphics_memory_bytes,process_working_set_bytes,terrain_tiles,trees,active_gameobjects,units,tile_generation_ms");
+        csv.AppendLine("label,elapsed_seconds,time_scale,frame_ms_avg,frame_p95_ms,frame_worst_ms,fps,main_thread_ms_avg,render_thread_ms_avg,gpu_ms_avg,draw_calls,triangles,batches,gc_alloc_bytes_interval,unity_memory_bytes,mono_memory_bytes,graphics_memory_bytes,process_working_set_bytes,terrain_tiles,trees,active_gameobjects,units,naval_units,projectiles,particle_systems,trail_renderers,tile_generation_ms");
         for (int i = 0; i < benchmarkSamples.Count; i++)
         {
             FrameSample s = benchmarkSamples[i];
             csv.Append(Csv(benchmarkLabel)).Append(',')
                 .Append(F(s.elapsedSeconds, 3)).Append(',')
-                .Append(F(s.frameMilliseconds, 4)).Append(',').Append(F(s.frameMilliseconds > 0f ? 1000f / s.frameMilliseconds : 0f, 3)).Append(',')
+                .Append(F(s.timeScale, 2)).Append(',')
+                .Append(F(s.frameMilliseconds, 4)).Append(',')
+                .Append(F(s.p95FrameMilliseconds, 4)).Append(',')
+                .Append(F(s.worstFrameMilliseconds, 4)).Append(',')
+                .Append(F(s.frameMilliseconds > 0f ? 1000f / s.frameMilliseconds : 0f, 3)).Append(',')
                 .Append(NsToMs(s.mainThreadNanoseconds)).Append(',').Append(NsToMs(s.renderThreadNanoseconds)).Append(',').Append(NsToMs(s.gpuNanoseconds)).Append(',')
                 .Append(s.drawCalls).Append(',').Append(s.triangles).Append(',').Append(s.batches).Append(',').Append(s.gcAllocatedBytes).Append(',')
                 .Append(s.unityMemoryBytes).Append(',').Append(s.monoMemoryBytes).Append(',').Append(s.graphicsMemoryBytes).Append(',').Append(s.processWorkingSetBytes).Append(',')
                 .Append(s.terrainTiles).Append(',').Append(s.trees).Append(',').Append(s.activeObjects).Append(',').Append(s.units).Append(',')
+                .Append(s.navalUnits).Append(',').Append(s.projectiles).Append(',').Append(s.particleSystems).Append(',').Append(s.trailRenderers).Append(',')
                 .Append(s.tileGenerationMilliseconds).AppendLine();
         }
 
@@ -226,19 +384,27 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
 
     private string BuildBenchmarkSummary()
     {
-        float[] frameTimes = new float[benchmarkSamples.Count];
-        double totalMilliseconds = 0d;
-        for (int i = 0; i < benchmarkSamples.Count; i++)
-        {
-            frameTimes[i] = benchmarkSamples[i].frameMilliseconds;
-            totalMilliseconds += frameTimes[i];
-        }
-        Array.Sort(frameTimes);
-        float averageFrameMs = (float)(totalMilliseconds / benchmarkSamples.Count);
-        float p95 = frameTimes[Mathf.Clamp(Mathf.CeilToInt(frameTimes.Length * 0.95f) - 1, 0, frameTimes.Length - 1)];
-        float p99 = frameTimes[Mathf.Clamp(Mathf.CeilToInt(frameTimes.Length * 0.99f) - 1, 0, frameTimes.Length - 1)];
-        return "frames=" + benchmarkSamples.Count + ", avgFPS=" + (averageFrameMs > 0f ? 1000f / averageFrameMs : 0f).ToString("F1", CultureInfo.InvariantCulture)
+        float averageFrameMs = benchmarkFrameCount > 0 ? (float)(benchmarkTotalFrameMilliseconds / benchmarkFrameCount) : 0f;
+        float p95 = GetHistogramPercentile(0.95f);
+        float p99 = GetHistogramPercentile(0.99f);
+        return "samples=" + benchmarkSamples.Count + ", frames=" + benchmarkFrameCount + ", avgFPS=" + (averageFrameMs > 0f ? 1000f / averageFrameMs : 0f).ToString("F1", CultureInfo.InvariantCulture)
             + ", P95=" + p95.ToString("F2", CultureInfo.InvariantCulture) + "ms, 1%low=" + (p99 > 0f ? 1000f / p99 : 0f).ToString("F1", CultureInfo.InvariantCulture);
+    }
+
+    private float GetHistogramPercentile(float percentile)
+    {
+        if (benchmarkFrameCount <= 0)
+            return 0f;
+
+        long target = Math.Max(1L, (long)Math.Ceiling(benchmarkFrameCount * percentile));
+        long cumulative = 0L;
+        for (int i = 0; i < benchmarkFrameMillisecondsHistogram.Length; i++)
+        {
+            cumulative += benchmarkFrameMillisecondsHistogram[i];
+            if (cumulative >= target)
+                return i == BenchmarkFrameHistogramOverflowIndex ? BenchmarkFrameHistogramMaxMs : i;
+        }
+        return BenchmarkFrameHistogramMaxMs;
     }
 
     private static string NsToMs(long nanoseconds) => nanoseconds < 0 ? "-1" : F(nanoseconds / 1000000f, 3);
@@ -275,33 +441,57 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         return default;
     }
 
-    private void CountChildren(Transform parent, ref int count, ref int units)
+    private void CountChildren(
+        Transform parent,
+        ref int count,
+        ref int units,
+        ref int navalUnits,
+        ref int projectiles,
+        ref int particleSystems,
+        ref int trailRenderers)
     {
         count++;
         if (parent.TryGetComponent(out IdentidadeUnidade identidadeUnidade) && identidadeUnidade.enabled)
             units++;
         else if (parent.TryGetComponent(out IdentidadeNaval identidadeNaval) && identidadeNaval.enabled)
             units++;
+        if (parent.TryGetComponent(out IdentidadeNaval navalIdentity) && navalIdentity.enabled)
+            navalUnits++;
+        if (parent.TryGetComponent(out Projetil projectile) && projectile.enabled)
+            projectiles++;
+        if (parent.TryGetComponent(out ParticleSystem particleSystem) && particleSystem.IsAlive(true))
+            particleSystems++;
+        if (parent.TryGetComponent(out TrailRenderer trailRenderer) && trailRenderer.enabled && trailRenderer.positionCount > 0)
+            trailRenderers++;
         for (int i = 0; i < parent.childCount; i++)
         {
             Transform child = parent.GetChild(i);
             if (child.gameObject.activeInHierarchy)
-                CountChildren(child, ref count, ref units);
+                CountChildren(child, ref count, ref units, ref navalUnits, ref projectiles, ref particleSystems, ref trailRenderers);
         }
     }
 
-    private int CountActiveSceneObjects(out int units)
+    private int CountActiveSceneObjects(
+        out int units,
+        out int navalUnits,
+        out int projectiles,
+        out int particleSystems,
+        out int trailRenderers)
     {
         Scene activeScene = SceneManager.GetActiveScene();
         sceneRoots.Clear();
         activeScene.GetRootGameObjects(sceneRoots);
         int count = 0;
         units = 0;
+        navalUnits = 0;
+        projectiles = 0;
+        particleSystems = 0;
+        trailRenderers = 0;
         for (int i = 0; i < sceneRoots.Count; i++)
         {
             GameObject root = sceneRoots[i];
             if (root != null && root.activeInHierarchy)
-                CountChildren(root.transform, ref count, ref units);
+                CountChildren(root.transform, ref count, ref units, ref navalUnits, ref projectiles, ref particleSystems, ref trailRenderers);
         }
         return count;
     }

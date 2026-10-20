@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Torre Turistica
   descricao: Torre panoramica para turismo, eventos e recepcao de visitantes.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 7ffeffd3ffe324a4992dbdc2c8919213, type: 3}
   itemId: torre_turistica
   aliases: torre, turismo, mirante, cultura, entretenimento
   capacidades: 0

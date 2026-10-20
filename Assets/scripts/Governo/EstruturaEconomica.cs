@@ -284,6 +284,9 @@ public class EstruturaEconomica : MonoBehaviour
                 if (energiaProduzida <= 0f) energiaProduzida = 8f;
                 if (dinheiroGerado <= 0f) dinheiroGerado = 2f;
                 break;
+            case TipoEstruturaEconomica.InstalacaoProdutiva:
+                // A carga é definida no prefab. Esta categoria só participa da rede elétrica.
+                break;
         }
     }
 }

@@ -9,6 +9,7 @@ public static class CatalogoProdutoCompartilhado
     private static readonly Dictionary<string, CatalogoProdutoUnificadoItem> itensPorId = new Dictionary<string, CatalogoProdutoUnificadoItem>(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, CatalogoProdutoUnificadoItem> itensPorChave = new Dictionary<string, CatalogoProdutoUnificadoItem>(StringComparer.OrdinalIgnoreCase);
     private static readonly List<CatalogoProdutoUnificadoItem> itensOrdenados = new List<CatalogoProdutoUnificadoItem>(256);
+    private static readonly Dictionary<DadosConstrucao, int> assinaturasConstrucoes = new Dictionary<DadosConstrucao, int>();
     private static bool inicializado;
     private static CatalogoProdutoUnificadoSO fonteScriptable;
 
@@ -36,6 +37,7 @@ public static class CatalogoProdutoCompartilhado
         itensPorId.Clear();
         itensPorChave.Clear();
         itensOrdenados.Clear();
+        assinaturasConstrucoes.Clear();
 
         fonteScriptable = Resources.Load<CatalogoProdutoUnificadoSO>("CatalogoProdutoUnificado");
         if (fonteScriptable != null)
@@ -156,11 +158,26 @@ public static class CatalogoProdutoCompartilhado
 
         foreach (DadosConstrucao ficha in fichas)
         {
+            if (ficha == null)
+            {
+                continue;
+            }
+
+            int assinatura = CalcularAssinaturaConstrucao(ficha);
+            int assinaturaAnterior;
+            if (assinaturasConstrucoes.TryGetValue(ficha, out assinaturaAnterior)
+                && assinaturaAnterior == assinatura)
+            {
+                continue;
+            }
+
             CatalogoProdutoUnificadoItem item = ConverterConstrucao(ficha);
             if (item != null)
             {
                 RegistrarOuMesclar(item, "construcao");
             }
+
+            assinaturasConstrucoes[ficha] = assinatura;
         }
     }
 
@@ -261,6 +278,18 @@ public static class CatalogoProdutoCompartilhado
             return;
         }
 
+        bool origemControlaReceitaMilitar = origem.receitaMilitarPorFichaAutoritativa;
+        bool destinoControlaReceitaMilitar = destino.receitaMilitarPorFichaAutoritativa;
+        if (origemControlaReceitaMilitar)
+        {
+            destino.receitaMilitarPorFichaAutoritativa = true;
+            destino.motivoProducaoIndisponivel = origem.motivoProducaoIndisponivel;
+        }
+        else if (!destinoControlaReceitaMilitar && string.IsNullOrWhiteSpace(destino.motivoProducaoIndisponivel))
+        {
+            destino.motivoProducaoIndisponivel = origem.motivoProducaoIndisponivel;
+        }
+
         if (string.IsNullOrEmpty(destino.nome))
         {
             destino.nome = origem.nome;
@@ -281,24 +310,38 @@ public static class CatalogoProdutoCompartilhado
             destino.unidade = origem.unidade;
         }
 
-        destino.materiais = MesclarMateriais(destino.materiais, origem.materiais);
+        if (origemControlaReceitaMilitar)
+        {
+            destino.materiais = origem.materiais != null
+                ? origem.materiais.Select(m => m != null ? new IngredienteProduto { recursoId = m.recursoId, quantidade = m.quantidade } : null).ToList()
+                : new List<IngredienteProduto>();
+            destino.dinheiroNecessario = origem.dinheiroNecessario;
+            destino.energiaNecessaria = origem.energiaNecessaria;
+            destino.diasProducao = origem.diasProducao;
+            destino.permiteProducaoAutomatica = origem.permiteProducaoAutomatica;
+        }
+        else if (!destinoControlaReceitaMilitar)
+        {
+            destino.materiais = MesclarMateriais(destino.materiais, origem.materiais);
+        }
+
         destino.estruturasNecessarias = MesclarListas(destino.estruturasNecessarias, origem.estruturasNecessarias);
         destino.pesquisasNecessarias = MesclarListas(destino.pesquisasNecessarias, origem.pesquisasNecessarias);
         destino.combustiveisAceitos = MesclarListas(destino.combustiveisAceitos, origem.combustiveisAceitos);
         destino.municoesAceitas = MesclarListas(destino.municoesAceitas, origem.municoesAceitas);
         destino.aliases = MesclarListas(destino.aliases, origem.aliases);
 
-        if (destino.dinheiroNecessario <= 0d)
+        if (!origemControlaReceitaMilitar && !destinoControlaReceitaMilitar && destino.dinheiroNecessario <= 0d)
         {
             destino.dinheiroNecessario = origem.dinheiroNecessario;
         }
 
-        if (destino.energiaNecessaria <= 0d)
+        if (!origemControlaReceitaMilitar && !destinoControlaReceitaMilitar && destino.energiaNecessaria <= 0d)
         {
             destino.energiaNecessaria = origem.energiaNecessaria;
         }
 
-        if (destino.diasProducao <= 0)
+        if (!origemControlaReceitaMilitar && !destinoControlaReceitaMilitar && destino.diasProducao <= 0)
         {
             destino.diasProducao = origem.diasProducao;
         }
@@ -313,7 +356,10 @@ public static class CatalogoProdutoCompartilhado
             destino.prefabId = origem.prefabId;
         }
 
-        destino.permiteProducaoAutomatica |= origem.permiteProducaoAutomatica;
+        if (!origemControlaReceitaMilitar && !destinoControlaReceitaMilitar)
+        {
+            destino.permiteProducaoAutomatica |= origem.permiteProducaoAutomatica;
+        }
         destino.permiteCompraAutomatica |= origem.permiteCompraAutomatica;
         destino.permiteVendaAutomatica |= origem.permiteVendaAutomatica;
 
@@ -432,6 +478,7 @@ public static class CatalogoProdutoCompartilhado
         CatalogoProdutoUnificadoItem copia = new CatalogoProdutoUnificadoItem
         {
             id = item.id,
+            receitaMilitarPorFichaAutoritativa = item.receitaMilitarPorFichaAutoritativa,
             nome = item.nome,
             descricao = item.descricao,
             categoria = item.categoria,
@@ -456,11 +503,66 @@ public static class CatalogoProdutoCompartilhado
             dicaMaterialFaltante = item.dicaMaterialFaltante,
             dicaEstruturaFaltante = item.dicaEstruturaFaltante,
             dicaPesquisaFaltante = item.dicaPesquisaFaltante,
+            motivoProducaoIndisponivel = item.motivoProducaoIndisponivel,
             aliases = item.aliases != null ? new List<string>(item.aliases) : new List<string>()
         };
 
         copia.Normalizar();
         return copia;
+    }
+
+    private static int CalcularAssinaturaConstrucao(DadosConstrucao ficha)
+    {
+        unchecked
+        {
+            int hash = 17;
+            hash = hash * 31 + HashString(ficha.GetStableId());
+            hash = hash * 31 + HashString(ficha.GetDisplayName());
+            hash = hash * 31 + HashString(ficha.name);
+            hash = hash * 31 + HashString(ficha.descricao);
+            hash = hash * 31 + HashString(ficha.aliases);
+            hash = hash * 31 + (int)ficha.categoria;
+            hash = hash * 31 + (int)ficha.Capacidades;
+            hash = hash * 31 + ficha.ObterPrecoEfetivo().GetHashCode();
+
+            GameObject prefab;
+            if (ficha.TryGetPrefabBasico(out prefab) && prefab != null)
+            {
+                hash = hash * 31 + prefab.GetInstanceID();
+                hash = hash * 31 + HashString(prefab.name);
+            }
+
+            ReceitaProducaoFicha receita = ficha.ReceitaProducao;
+            if (receita != null)
+            {
+                hash = hash * 31 + (receita.configurada ? 1 : 0);
+                hash = hash * 31 + receita.energiaNecessaria;
+                hash = hash * 31 + receita.diasNecessarios;
+                if (receita.materiaisNecessarios != null)
+                {
+                    hash = hash * 31 + receita.materiaisNecessarios.Count;
+                    for (int i = 0; i < receita.materiaisNecessarios.Count; i++)
+                    {
+                        MaterialNecessarioIndustrial material = receita.materiaisNecessarios[i];
+                        if (material == null)
+                        {
+                            hash = hash * 31;
+                            continue;
+                        }
+
+                        hash = hash * 31 + HashString(material.recursoId);
+                        hash = hash * 31 + material.quantidade.GetHashCode();
+                    }
+                }
+            }
+
+            return hash;
+        }
+    }
+
+    private static int HashString(string value)
+    {
+        return value == null ? 0 : StringComparer.Ordinal.GetHashCode(value);
     }
 
     private static int Comparar(CatalogoProdutoUnificadoItem a, CatalogoProdutoUnificadoItem b)
@@ -503,22 +605,42 @@ public static class CatalogoProdutoCompartilhado
         string descricaoBase = construcao.descricao ?? string.Empty;
         bool ehAresAntiaereo = EhAresAntiaereo(idBase, nomeBase, descricaoBase, prefab);
         IA_ConstructionCapability capabilities = construcao.GetResolvedCapabilities();
+        bool requerReceitaMilitar = construcao.RequerReceitaMilitarParaProducao();
+        string motivoReceita = string.Empty;
+        bool receitaMilitarValida = requerReceitaMilitar
+            && construcao.TryValidarReceitaProducao(out motivoReceita);
+        string motivoProducaoIndisponivel = requerReceitaMilitar && !receitaMilitarValida
+            ? "PENDENTE_DE_BALANCEAMENTO: " + (string.IsNullOrWhiteSpace(motivoReceita)
+                ? "receita unitária da ficha não configurada"
+                : motivoReceita)
+            : string.Empty;
+        ReceitaProducaoFicha receitaProducao = receitaMilitarValida
+            ? construcao.ReceitaProducao
+            : null;
         CatalogoProdutoUnificadoItem item = new CatalogoProdutoUnificadoItem
         {
             id = idBase,
+            receitaMilitarPorFichaAutoritativa = requerReceitaMilitar,
             nome = nomeBase,
             descricao = descricaoBase,
             categoria = ehAresAntiaereo ? CategoriaProduto.Missil : ConverterCategoriaConstrucao(construcao, capabilities),
             unidade = "un",
+            materiais = receitaProducao != null
+                ? ConverterMateriaisReceita(receitaProducao.materiaisNecessarios)
+                : new List<IngredienteProduto>(),
+            dinheiroNecessario = requerReceitaMilitar ? construcao.ObterPrecoEfetivo() : 0d,
+            energiaNecessaria = receitaProducao != null ? receitaProducao.energiaNecessaria : 0d,
+            diasProducao = receitaProducao != null ? receitaProducao.diasNecessarios : 0,
             prefabId = temPrefab && prefab != null ? IA_Text.Normalize(prefab.name) : IA_Text.Normalize(construcao.name),
-            permiteProducaoAutomatica = false,
+            permiteProducaoAutomatica = receitaMilitarValida,
             permiteCompraAutomatica = false,
             permiteVendaAutomatica = false,
             prioridade = ehAresAntiaereo ? 100 : 1,
             dicaDesbloqueio = construcao.descricao,
             dicaMaterialFaltante = string.Empty,
             dicaEstruturaFaltante = string.Empty,
-            dicaPesquisaFaltante = string.Empty
+            dicaPesquisaFaltante = string.Empty,
+            motivoProducaoIndisponivel = motivoProducaoIndisponivel
         };
 
         item.aliases.Add(construcao.NomeItem);

@@ -39,6 +39,7 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
     private ContagemCampo contagem;
 
     private static readonly List<IdentidadeUnidade> _bufferUnidades = new List<IdentidadeUnidade>(2048);
+    private static readonly List<Estaleiro> _bufferEstaleiros = new List<Estaleiro>(16);
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -97,7 +98,18 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
             return true;
         }
 
-        return Instancia.AvaliarProducao(item, quantidade, out motivo);
+        return Instancia.AvaliarProducao(item.PrefabDaUnidade, Instancia.InferirTipo(item), item, quantidade, out motivo);
+    }
+
+    public static bool PermitirProducaoDePrefab(GameObject prefab, TipoUnidade tipo, int quantidade, out string motivo)
+    {
+        motivo = string.Empty;
+        if (Instancia == null || quantidade <= 0)
+        {
+            return true;
+        }
+
+        return Instancia.AvaliarProducao(prefab, tipo, null, quantidade, out motivo);
     }
 
     public static bool BloquearAceleracaoTempo(out string motivo)
@@ -125,10 +137,12 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
         return $"Campo {Instancia.contagem.total}/{limiteTotalAtual}  Terra {Instancia.contagem.infantaria + Instancia.contagem.veiculos}/{limiteTerraAtual}  Ar {Instancia.contagem.aereos}/{Instancia.ObterLimiteAjustado(Instancia.limiteAereos)}  Mar {Instancia.contagem.navais}/{Instancia.ObterLimiteAjustado(Instancia.limiteNavais)}  Estruturas {Instancia.contagem.estruturas}/{Instancia.ObterLimiteAjustado(Instancia.limiteEstruturas)}";
     }
 
-    private bool AvaliarProducao(DadosConstrucao item, int quantidade, out string motivo)
+    private bool AvaliarProducao(GameObject prefab, TipoUnidade tipo, DadosConstrucao item, int quantidade, out string motivo)
     {
         motivo = string.Empty;
-        AtualizarContagem(false);
+        // A contagem periódica atende HUD e aceleração; o gate de compra precisa
+        // enxergar unidades que entraram em campo desde o último snapshot.
+        AtualizarContagem(true);
 
         if (bloquearProducaoQuandoSaturado && DiagnosticoDesempenhoJogo.RuntimeSaturado())
         {
@@ -136,11 +150,12 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
             return false;
         }
 
-        TipoUnidade tipo = InferirTipo(item);
+        ContagemCampo contagemProjetada = contagem;
+        int pendentesMesmoItem = SomarProducoesPendentes(ref contagemProjetada, prefab, tipo);
         int limiteCategoria = ObterLimiteCategoria(tipo);
-        int contagemCategoria = ObterContagemCategoria(tipo);
+        int contagemCategoria = ObterContagemCategoria(contagemProjetada, tipo);
 
-        if (contagem.total + quantidade > ObterLimiteAjustado(limiteTotal))
+        if (contagemProjetada.total + quantidade > ObterLimiteAjustado(limiteTotal))
         {
             motivo = "Orcamento de batalha cheio: reduza o exercito em campo antes de produzir mais.";
             return false;
@@ -152,13 +167,14 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
             return false;
         }
 
-        DadosBalanceamentoUnidade balanceamento = item.balanceamento;
+        DadosBalanceamentoUnidade balanceamento = item != null ? item.balanceamento : null;
         if (balanceamento != null && balanceamento.limiteEmCampo > 0)
         {
-            int emCampo = ContarInstanciasDoMesmoItem(item);
+            int emCampo = ContarInstanciasDoMesmoItem(prefab) + pendentesMesmoItem;
             if (emCampo + quantidade > balanceamento.limiteEmCampo)
             {
-                motivo = $"Limite tatico atingido para {item.NomeItem}: {emCampo}/{balanceamento.limiteEmCampo} em campo.";
+                string nomeItem = item != null ? item.NomeItem : prefab != null ? prefab.name : "unidade";
+                motivo = $"Limite tatico atingido para {nomeItem}: {emCampo}/{balanceamento.limiteEmCampo} em campo.";
                 return false;
             }
         }
@@ -267,37 +283,148 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
         }
     }
 
-    private int ObterContagemCategoria(TipoUnidade tipo)
+    private int ObterContagemCategoria(ContagemCampo origem, TipoUnidade tipo)
     {
         switch (tipo)
         {
             case TipoUnidade.Infantaria:
-                return contagem.infantaria;
+                return origem.infantaria;
             case TipoUnidade.Veiculo:
-                return contagem.veiculos;
+                return origem.veiculos;
             case TipoUnidade.Aereo:
-                return contagem.aereos;
+                return origem.aereos;
             case TipoUnidade.Naval:
-                return contagem.navais;
+                return origem.navais;
             case TipoUnidade.Estrutura:
-                return contagem.estruturas;
+                return origem.estruturas;
             default:
-                return contagem.total;
+                return origem.total;
         }
     }
 
-    private int ContarInstanciasDoMesmoItem(DadosConstrucao item)
+    private int SomarProducoesPendentes(ref ContagemCampo destino, GameObject prefabFiltro, TipoUnidade tipoAtual)
     {
-        if (item == null || item.PrefabDaUnidade == null)
+        int mesmoItem = 0;
+        GerenteDeJogo gerente = GerenteDeJogo.Instancia;
+        List<GerenteDeJogo.PedidoDeProducao> pedidos = gerente != null ? gerente.filaProducao : null;
+
+        if (pedidos != null)
+        {
+            for (int i = 0; i < pedidos.Count; i++)
+            {
+                GerenteDeJogo.PedidoDeProducao pedido = pedidos[i];
+                if (pedido == null || pedido.prefab == null)
+                {
+                    continue;
+                }
+
+                TipoUnidade tipoPedido = InferirTipoPedido(pedido, prefabFiltro, tipoAtual);
+                AdicionarPendente(ref destino, tipoPedido);
+                if (CorrespondePrefab(pedido.prefab, prefabFiltro))
+                {
+                    mesmoItem++;
+                }
+            }
+        }
+
+        _bufferEstaleiros.Clear();
+        RegistroEntidadesJogo.FillEstaleiros(_bufferEstaleiros);
+        for (int i = 0; i < _bufferEstaleiros.Count; i++)
+        {
+            Estaleiro estaleiro = _bufferEstaleiros[i];
+            if (estaleiro == null || estaleiro.OwnerTeamId != 1)
+            {
+                continue;
+            }
+
+            int naviosPendentes = estaleiro.ContarUnidadesPendentes();
+            destino.total += naviosPendentes;
+            destino.navais += naviosPendentes;
+            if (prefabFiltro != null)
+            {
+                mesmoItem += estaleiro.ContarUnidadesPendentes(prefabFiltro);
+            }
+        }
+
+        return mesmoItem;
+    }
+
+    private static TipoUnidade InferirTipoPedido(GerenteDeJogo.PedidoDeProducao pedido, GameObject prefabFiltro, TipoUnidade tipoAtual)
+    {
+        if (pedido.ehSoldado)
+        {
+            return TipoUnidade.Infantaria;
+        }
+
+        if (pedido.ehNavio || pedido.ehCarrier)
+        {
+            return TipoUnidade.Naval;
+        }
+
+        if (pedido.ehAviao || pedido.ehHelicoptero)
+        {
+            return TipoUnidade.Aereo;
+        }
+
+        if (CorrespondePrefab(pedido.prefab, prefabFiltro))
+        {
+            return tipoAtual;
+        }
+
+        IdentidadeUnidade identidade = pedido.prefab.GetComponent<IdentidadeUnidade>();
+        if (identidade == null)
+        {
+            identidade = pedido.prefab.GetComponentInChildren<IdentidadeUnidade>(true);
+        }
+
+        return identidade != null ? identidade.tipoUnidade : TipoUnidade.Veiculo;
+    }
+
+    private static void AdicionarPendente(ref ContagemCampo destino, TipoUnidade tipo)
+    {
+        destino.total++;
+        switch (tipo)
+        {
+            case TipoUnidade.Infantaria:
+                destino.infantaria++;
+                break;
+            case TipoUnidade.Veiculo:
+                destino.veiculos++;
+                break;
+            case TipoUnidade.Aereo:
+                destino.aereos++;
+                break;
+            case TipoUnidade.Naval:
+                destino.navais++;
+                break;
+            case TipoUnidade.Estrutura:
+                destino.estruturas++;
+                break;
+        }
+    }
+
+    private static bool CorrespondePrefab(GameObject candidato, GameObject filtro)
+    {
+        if (candidato == null || filtro == null)
+        {
+            return false;
+        }
+
+        return candidato == filtro
+            || string.Equals(candidato.name, filtro.name, StringComparison.Ordinal);
+    }
+
+    private int ContarInstanciasDoMesmoItem(GameObject prefab)
+    {
+        if (prefab == null)
         {
             return 0;
         }
 
-        string nomePrefab = item.PrefabDaUnidade.name;
+        string nomePrefab = prefab.name;
         int total = 0;
 
-        RegistroEntidadesJogo.FillUnidades(_bufferUnidades);
-
+        // AvaliarProducao atualiza o buffer antes de chamar este limite por ficha.
         for (int i = 0; i < _bufferUnidades.Count; i++)
         {
             IdentidadeUnidade identidade = _bufferUnidades[i];

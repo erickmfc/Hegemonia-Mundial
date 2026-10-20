@@ -34,6 +34,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
     private UnityEngine.UI.Text _overlayTextoAtaque;
 
     public List<Vector3> pontosPatrulha = new List<Vector3>();
+    public string UltimoResumoPatrulha { get; private set; } = string.Empty;
     private readonly List<GameObject> _alvosModo = new List<GameObject>(32);
 
     void Start()
@@ -77,6 +78,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
         }
 
         modoPatrulhaAtivo = true;
+        UltimoResumoPatrulha = string.Empty;
         modoSeguirAtivo = false;
         modoAtaqueAtivo = false;
         pontosPatrulha.Clear();
@@ -93,9 +95,9 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 consomeRMB = true
             },
             "Patrulha em edição");
-        MostrarOverlayHUD("🗺 MODO PATRULHA: Clique ESQUERDO ou DIREITO no mapa para marcar pontos. ENTER confirma. ESC cancela.", new Color(1f, 0.85f, 0f));
+        MostrarOverlayHUD("🗺 PATRULHA — Satélite: clique esquerdo adiciona; ENTER confirma; ESC/botão direito cancela. Mapa M: clique esquerdo adiciona; botão direito ou ENTER confirma.", new Color(1f, 0.85f, 0f));
         DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha iniciada (alvos=" + _alvosModo.Count + ")");
-        Debug.Log("MODO PATRULHA: Clique ESQUERDO ou DIREITO para marcar pontos de patrulha. ESC ou ENTER para finalizar.");
+        Debug.Log("PATRULHA: no Satélite, clique esquerdo adiciona pontos, ENTER confirma e ESC/botão direito cancela; no Mapa M, botão direito ou ENTER confirma.");
     }
 
     // ── MODO ATAQUE ──────────────────────────────────────────────────────────
@@ -182,6 +184,15 @@ public class DesenharLinhasOrdem : MonoBehaviour
             return;
         }
 
+        // Com o Satélite aberto, seus PointerDownEvents convertem o clique do
+        // miniplano para coordenadas do mapa. Não deixe esta entrada legada
+        // reinterpretar o mesmo clique pela Camera.main, atrás da interface.
+        if (MenuComandoController.Instancia != null
+            && MenuComandoController.Instancia.MenuAberto)
+        {
+            return;
+        }
+
         if (!modoPatrulhaAtivo && !modoSeguirAtivo && !modoAtaqueAtivo)
         {
             return;
@@ -218,9 +229,13 @@ public class DesenharLinhasOrdem : MonoBehaviour
             {
                 if (pontosPatrulha.Count >= 1)
                 {
-                    AplicarOrdemPatrulha();
-                    DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha confirmada (pontos=" + pontosPatrulha.Count + ", alvos=" + _alvosModo.Count + ")");
-                    Debug.Log("Patrulha confirmada e iniciada via Botão Direito.");
+                    int aceitas = AplicarOrdemPatrulha();
+                    DiagnosticoDesempenhoJogo.RegistrarEvento(
+                        "InputMode",
+                        $"Patrulha pelo botão direito: aceitas={aceitas} pontos={pontosPatrulha.Count} alvos={_alvosModo.Count}.");
+                    Debug.Log(aceitas > 0
+                        ? $"Patrulha iniciada por {aceitas} unidade(s) via Botão Direito."
+                        : "Nenhuma unidade aceitou a patrulha via Botão Direito.");
                 }
                 else
                 {
@@ -233,7 +248,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
             {
                 if (pontosPatrulha.Count >= 1)
                 {
-                    AplicarOrdemPatrulha();
+                    int aceitas = AplicarOrdemPatrulha();
+                    Debug.Log(aceitas > 0
+                        ? $"Patrulha iniciada por {aceitas} unidade(s) via teclado."
+                        : "Nenhuma unidade aceitou a patrulha via teclado.");
                 }
                 LimparTudo();
                 return;
@@ -268,10 +286,17 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 ControleUnidade alvo = hit.collider.GetComponentInParent<ControleUnidade>();
                 if (alvo != null)
                 {
-                    AplicarOrdemSeguir(alvo.transform);
-                    MostrarMarcadorPatrulha(alvo.transform.position, new Color(0.2f, 0.85f, 1f, 0.95f), 14f, 2.2f);
-                    DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir confirmado (alvos=" + _alvosModo.Count + ")");
-                    Debug.Log("Ordem de SEGUIR confirmada.");
+                    bool aceita = AplicarOrdemSeguir(alvo.transform);
+                    if (aceita)
+                    {
+                        MostrarMarcadorPatrulha(alvo.transform.position, new Color(0.2f, 0.85f, 1f, 0.95f), 14f, 2.2f);
+                        DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Seguir aceito (alvo=" + alvo.name + ", unidades=" + _alvosModo.Count + ")");
+                        Debug.Log("Ordem de SEGUIR aceita para " + alvo.name + ".");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("Nenhum controlador aceitou a ordem de SEGUIR para " + alvo.name + ".");
+                    }
                     LimparTudo();
                 }
                 else
@@ -316,12 +341,19 @@ public class DesenharLinhasOrdem : MonoBehaviour
 
             if (encontrou)
             {
-                AplicarOrdemAtaque(pontoAtaque, alvoUnidade != null ? alvoUnidade.transform : null);
+                int aceitas = AplicarOrdemAtaque(pontoAtaque, alvoUnidade != null ? alvoUnidade.transform : null);
 
                 // Marcador visual no ataque removido para não aparecer no jogo 3D, conforme pedido do usuário
                 DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode",
-                    "Ataque confirmado em " + pontoAtaque + (alvoUnidade != null ? " (alvo=" + alvoUnidade.name + ")" : ""));
-                Debug.Log("[ModoAtaque] Ordem de ataque emitida em " + pontoAtaque);
+                    "Ataque em " + pontoAtaque + ": aceitas=" + aceitas + (alvoUnidade != null ? " (alvo=" + alvoUnidade.name + ")" : ""));
+                if (aceitas > 0)
+                {
+                    Debug.Log("[ModoAtaque] Ordem aceita por " + aceitas + " unidade(s) para " + pontoAtaque);
+                }
+                else
+                {
+                    Debug.LogWarning("[ModoAtaque] Nenhum controlador aceitou o destino " + pontoAtaque);
+                }
                 LimparTudo();
             }
         }
@@ -503,7 +535,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
     {
         if (!modoPatrulhaAtivo) return false;
 
-        if (SelecaoContemUnidadeNaval())
+        // O ponto compartilhado continua na coordenada clicada quando há
+        // aviões e navios juntos. Cada navio ajusta a própria rota para água
+        // navegável em ControleUnidade.EmitirOrdemPatrulha.
+        if (SelecaoSomenteUnidadesNavais())
         {
             ponto.y = NavalPlacementResolver.ResolveSeaLevel();
             if (!NavalPlacementResolver.IsWaterAtPosition(ponto))
@@ -530,15 +565,20 @@ public class DesenharLinhasOrdem : MonoBehaviour
         return true;
     }
 
-    public void ConfirmarPatrulhaDoMenu()
+    public int ConfirmarPatrulhaDoMenu()
     {
-        if (!modoPatrulhaAtivo) return;
+        if (!modoPatrulhaAtivo) return 0;
         if (pontosPatrulha.Count >= 1)
         {
-            AplicarOrdemPatrulha();
-            DiagnosticoDesempenhoJogo.RegistrarEvento("InputMode", "Patrulha confirmada via menu.");
+            int aceitas = AplicarOrdemPatrulha();
+            DiagnosticoDesempenhoJogo.RegistrarEvento(
+                "InputMode",
+                $"Patrulha enviada pelo menu: aceitas={aceitas}, pontos={pontosPatrulha.Count}.");
             LimparTudo();
+            return aceitas;
         }
+
+        return 0;
     }
 
     public bool AplicarOrdemSeguirDoMenu(Transform alvo)
@@ -554,11 +594,12 @@ public class DesenharLinhasOrdem : MonoBehaviour
         return aplicado;
     }
 
-    public void AplicarOrdemAtaqueDoMenu(Vector3 pontoAlvo, Transform transformAlvo)
+    public int AplicarOrdemAtaqueDoMenu(Vector3 pontoAlvo, Transform transformAlvo)
     {
-        if (!modoAtaqueAtivo) return;
-        AplicarOrdemAtaque(pontoAlvo, transformAlvo);
+        if (!modoAtaqueAtivo) return 0;
+        int aceitas = AplicarOrdemAtaque(pontoAlvo, transformAlvo);
         LimparTudo();
+        return aceitas;
     }
 
     /// <summary>Cancela o modo patrulha ou seguir sem confirmar a ordem. Chamado pelo clique esquerdo.</summary>
@@ -735,6 +776,25 @@ public class DesenharLinhasOrdem : MonoBehaviour
         return false;
     }
 
+    bool SelecaoSomenteUnidadesNavais()
+    {
+        bool encontrouUnidade = false;
+        for (int i = 0; i < _alvosModo.Count; i++)
+        {
+            GameObject alvo = _alvosModo[i];
+            if (alvo == null)
+                continue;
+
+            ControleUnidade unidade = alvo.GetComponent<ControleUnidade>();
+            if (unidade == null || !unidade.EhUnidadeNaval())
+                return false;
+
+            encontrouUnidade = true;
+        }
+
+        return encontrouUnidade;
+    }
+
     void AtualizarLinhaVisualPatrulha()
     {
         if (pontosPatrulha.Count == 0)
@@ -770,10 +830,12 @@ public class DesenharLinhasOrdem : MonoBehaviour
         lineRenderer.SetPosition(totalPontos - 1, posInicial);
     }
 
-    void AplicarOrdemPatrulha()
+    int AplicarOrdemPatrulha()
     {
         int aceitas = 0;
         int recusadas = 0;
+        List<string> detalhesRecusa = new List<string>(4);
+        MenuComandoController menuComando = FindFirstObjectByType<MenuComandoController>();
         for (int i = 0; i < _alvosModo.Count; i++)
         {
             GameObject alvo = _alvosModo[i];
@@ -791,11 +853,20 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 if (emitida)
                 {
                     aceitas++;
+                    menuComando?.AdicionarLog("OPS", $"{alvo.name}: PATRULHAR aceita; rota entregue ao controlador da unidade.", "normal");
                 }
                 else
                 {
                     recusadas++;
-                    Debug.LogWarning($"[ModoPatrulha] Ordem recusada pelo controlador de {alvo.name}; ordem atual={unidade.OrdemAtual}.");
+                    string motivo = string.IsNullOrWhiteSpace(unidade.UltimoMotivoRecusaOrdem)
+                        ? "controlador recusou a rota sem informar o motivo"
+                        : unidade.UltimoMotivoRecusaOrdem;
+                    if (detalhesRecusa.Count < 4)
+                    {
+                        detalhesRecusa.Add($"{alvo.name}: {motivo}");
+                    }
+                    menuComando?.AdicionarLog("OPS", $"{alvo.name}: PATRULHAR recusada — {motivo}.", "alerta");
+                    Debug.LogWarning($"[ModoPatrulha] {alvo.name}: ordem recusada — {motivo}; ordem atual={unidade.OrdemAtual}.");
                 }
                 continue;
             }
@@ -806,12 +877,37 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 if (helicoptero.ReceberOrdemPatrulhaAeroporto(new List<Vector3>(pontosPatrulha)))
                 {
                     aceitas++;
+                    menuComando?.AdicionarLog("OPS", $"{alvo.name}: PATRULHAR aceita pelo controlador de helicóptero.", "normal");
                 }
                 else
                 {
                     recusadas++;
+                    string motivo = "controlador do helicóptero recusou a rota";
+                    if (detalhesRecusa.Count < 4)
+                    {
+                        detalhesRecusa.Add($"{alvo.name}: {motivo}");
+                    }
+                    menuComando?.AdicionarLog("OPS", $"{alvo.name}: PATRULHAR recusada — {motivo}.", "alerta");
                 }
+                continue;
             }
+
+            recusadas++;
+            string semExecutor = "controlador compatível ausente";
+            if (detalhesRecusa.Count < 4)
+            {
+                detalhesRecusa.Add($"{alvo.name}: {semExecutor}");
+            }
+            menuComando?.AdicionarLog("OPS", $"{alvo.name}: PATRULHAR recusada — {semExecutor}.", "alerta");
+        }
+
+        UltimoResumoPatrulha = $"Patrulha: {aceitas} aceita(s), {recusadas} recusada(s).";
+        if (detalhesRecusa.Count > 0)
+        {
+            UltimoResumoPatrulha += " Motivos: " + string.Join("; ", detalhesRecusa);
+            int ocultas = recusadas - detalhesRecusa.Count;
+            if (ocultas > 0) UltimoResumoPatrulha += $"; mais {ocultas} no registro OPS";
+            UltimoResumoPatrulha += ".";
         }
 
         DiagnosticoDesempenhoJogo.RegistrarEvento(
@@ -821,12 +917,15 @@ public class DesenharLinhasOrdem : MonoBehaviour
         {
             Debug.LogWarning("[ModoPatrulha] Nenhum controlador aceitou a ordem; a unidade permanecerá ociosa.");
         }
+
+        return aceitas;
     }
 
     // ── ATAQUE ───────────────────────────────────────────────────────────────
-    void AplicarOrdemAtaque(Vector3 pontoAlvo, Transform transformAlvo)
+    int AplicarOrdemAtaque(Vector3 pontoAlvo, Transform transformAlvo)
     {
         bool ataqueEmAlvoEspecifico = transformAlvo != null;
+        int aceitas = 0;
 
         for (int i = 0; i < _alvosModo.Count; i++)
         {
@@ -849,6 +948,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                     if (ordemAceita)
                     {
                         helicoptero.modoCombateAtivo = true;
+                        aceitas++;
                     }
                     else
                     {
@@ -860,6 +960,7 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 {
                     helicoptero.modoCombateAtivo = true;
                     helicoptero.OrdenarAtaque(transformAlvo, pontoAlvo);
+                    aceitas++;
                 }
                 continue;
             }
@@ -906,6 +1007,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
                         controleAviao.alvoEstrategico = alvoEstrategicoAnterior;
                     }
                 }
+                else
+                {
+                    aceitas++;
+                }
                 continue;
             }
 
@@ -914,7 +1019,10 @@ public class DesenharLinhasOrdem : MonoBehaviour
             if (navioRealista != null)
             {
                 Vector3 referenciaNaval = transformAlvo != null ? transformAlvo.position : pontoAlvo;
-                navioRealista.DefinirDestinoAtaqueLateral(referenciaNaval);
+                if (navioRealista.DefinirDestinoAtaqueLateral(referenciaNaval))
+                {
+                    aceitas++;
+                }
                 continue;
             }
 
@@ -925,7 +1033,11 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 ControleAviao aviao = alvo.GetComponent<ControleAviao>();
                 if (aviao != null)
                 {
-                    if (!unidade.EmitirMissaoAereaOfensiva(pontoAlvo, transformAlvo))
+                    if (unidade.EmitirMissaoAereaOfensiva(pontoAlvo, transformAlvo))
+                    {
+                        aceitas++;
+                    }
+                    else
                     {
                         Debug.LogWarning($"[ModoAtaque] Ordem ofensiva recusada pelo controlador de {alvo.name}.");
                     }
@@ -941,7 +1053,11 @@ public class DesenharLinhasOrdem : MonoBehaviour
                     Vector3 direcaoAlvo = (pontoAlvo - unidade.transform.position).normalized;
                     float distanciaAtaque = 60f; // recua um pouco para estar em alcance
                     Vector3 posicaoAtaque = pontoAlvo - direcaoAlvo * distanciaAtaque;
-                    if (!unidade.EmitirOrdemMover(posicaoAtaque, false))
+                    if (unidade.EmitirOrdemMover(posicaoAtaque, false))
+                    {
+                        aceitas++;
+                    }
+                    else
                     {
                         unidade.DefinirModoCombate(false);
                     }
@@ -950,7 +1066,11 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 {
                     // Ataque de área: move até o ponto diretamente
                     unidade.DefinirModoCombate(true);
-                    if (!unidade.EmitirOrdemMover(pontoAlvo, false))
+                    if (unidade.EmitirOrdemMover(pontoAlvo, false))
+                    {
+                        aceitas++;
+                    }
+                    else
                     {
                         unidade.DefinirModoCombate(false);
                     }
@@ -958,6 +1078,8 @@ public class DesenharLinhasOrdem : MonoBehaviour
                 continue;
             }
         }
+
+        return aceitas;
     }
 
     bool AplicarOrdemSeguir(Transform alvo, float distanciaSeguimento = -1f)

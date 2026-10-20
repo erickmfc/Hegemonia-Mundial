@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Prefeitura
   descricao: Sede inicial do governo e fundacao da nacao.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: bae76e8ea6691fb40bf909ce4e28747a, type: 3}
   itemId: capital.prefeitura
   aliases: prefeitura,capital,governo
   capacidades: 37

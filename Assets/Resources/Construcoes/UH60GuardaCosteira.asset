@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nomeItem: UH-60 Guarda Costeira
   descricao: Helicoptero de busca e salvamento da Guarda Costeira. Tripulacao de 5 e capacidade para 15 pessoas.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 829a943fa4bb81d4dab2f294f1cc4453, type: 3}
   itemId: UH60_GUARDA_COSTEIRA
   aliases: UH-60; helicoptero guarda costeira; resgate aereo
   capacidades: 0

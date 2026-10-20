@@ -628,7 +628,9 @@ public class ControleAviaoComercial : ControleAviao
             {
                 var cidDest = destinos[Random.Range(0, destinos.Count)];
                 nomeDestinoIA = cidDest.nome;
-                alvoGPSVoo    = (cidDest.marcador != null) ? cidDest.marcador.transform.position : Vector3.zero;
+                alvoGPSVoo    = cidDest.marcador != null
+                    ? cidDest.marcador.transform.position
+                    : cidDest.localizacao;
                 alvoGPSVoo.y  = altitudeCruzeiroComercial;
                 if (vooAssociado != null) vooAssociado.destino = nomeDestinoIA;
                 return;

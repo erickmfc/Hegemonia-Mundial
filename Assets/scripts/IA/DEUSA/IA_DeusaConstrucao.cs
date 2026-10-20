@@ -43,7 +43,7 @@ namespace Hegemonia.AI.DEUSA
             PrecisaPlataforma = politica.PriorizarNaval && snapshot.PlatformCount <= 0 && mapa.TemAreaNavalValida;
 
             UltimoResumo = "hq=" + PrecisaHQ
-                           + " | casas=" + PrecisaCasas
+                           + " | expansaoUrbana=" + PrecisaCasas
                            + " | farm=" + PrecisaFazenda
                            + " | energia=" + PrecisaEnergia
                            + " | quartel=" + PrecisaQuartel

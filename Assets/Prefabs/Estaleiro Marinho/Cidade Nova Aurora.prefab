@@ -9,6 +9,18 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 6344322536794122765, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 150
+      objectReference: {fileID: 0}
+    - target: {fileID: 6344322536794122765, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 170
+      objectReference: {fileID: 0}
+    - target: {fileID: 6344322536794122765, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 200
+      objectReference: {fileID: 0}
+    - target: {fileID: 6344322536794122765, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
       propertyPath: m_LocalPosition.x
       value: -864.79004
       objectReference: {fileID: 0}
@@ -51,6 +63,10 @@ PrefabInstance:
     - target: {fileID: 6746471572971053126, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
       propertyPath: m_Name
       value: Cidade Nova Aurora
+      objectReference: {fileID: 0}
+    - target: {fileID: 6746471572971053126, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
+      propertyPath: m_TagString
+      value: Imovel
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2730,8 +2746,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 27.438492, y: 37.3765, z: 2.536795}
-  m_Center: {x: 2.1874108, y: 6.7445884, z: 1.2356523}
+  m_Size: {x: 25.88, y: 45, z: 0.5}
+  m_Center: {x: 2, y: 3.74, z: 1.2356523}
 --- !u!114 &3878067566787950701
 MonoBehaviour:
   m_ObjectHideFlags: 0

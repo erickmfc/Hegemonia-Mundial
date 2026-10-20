@@ -98,6 +98,12 @@ public class NavioTransporteTropas : MonoBehaviour
     private Transform _containerCarga;
     private bool _menuAberto;
     private Vector2 _scrollMenuGeral;
+    private int _abaMenuAereoNavio;
+    private int _paginaHelisTropas;
+    private const int UI_HELIS_TROPAS_POR_PAGINA = 5;
+    private string _mensagemCompraAereaNavio = string.Empty;
+    private float _mensagemCompraAereaNavioAte;
+    private readonly List<DadosConstrucao> _fichasHelicopterosCompra = new List<DadosConstrucao>(24);
     private Vector2 _scrollVeiculos;
     private Vector2 _scrollSoldados;
     private Vector2 _scrollHelis;
@@ -461,9 +467,29 @@ public class NavioTransporteTropas : MonoBehaviour
         GUILayout.Label($"<b>🪖 Soldados:</b> <color=yellow>{_soldadosAtualCache}</color> / {capacidadeMaxSoldados}");
         GUILayout.Label($"<b>🚁 Helicópteros:</b> <color=yellow>{_aereosAtualCache}</color> / {capacidadeMaxAereos}");
 
+        GUILayout.BeginHorizontal("box");
+        if (GUILayout.Toggle(_abaMenuAereoNavio == 0, "Operações", "Button", GUILayout.Height(25f))) _abaMenuAereoNavio = 0;
+        if (GUILayout.Toggle(_abaMenuAereoNavio == 1, "Aeronaves", "Button", GUILayout.Height(25f))) _abaMenuAereoNavio = 1;
+        if (GUILayout.Toggle(_abaMenuAereoNavio == 2, "Tropas", "Button", GUILayout.Height(25f)))
+        {
+            if (_abaMenuAereoNavio != 2) _scrollMenuGeral.y = 0f;
+            _abaMenuAereoNavio = 2;
+        }
+        GUILayout.EndHorizontal();
+
         float alturaScrollMenu = Mathf.Max(320f, areaMenu.height - 68f);
         _scrollMenuGeral = GUILayout.BeginScrollView(_scrollMenuGeral, false, true, GUILayout.Height(alturaScrollMenu));
 
+        if (_abaMenuAereoNavio == 1)
+        {
+            DesenharCompraHelicopterosNavio();
+        }
+        else if (_abaMenuAereoNavio == 2)
+        {
+            DesenharAbaTropasHelicopteroNavio();
+        }
+        else
+        {
         bool temTerra = TemPontoEmTerra();
         if (!temTerra)
         {
@@ -704,6 +730,7 @@ public class NavioTransporteTropas : MonoBehaviour
             GUILayout.Space(6);
             GUILayout.Label($"<color=yellow>{_mensagemHUD}</color>");
         }
+        }
 
         GUILayout.EndScrollView();
         GUILayout.EndArea();
@@ -714,6 +741,124 @@ public class NavioTransporteTropas : MonoBehaviour
         GUI.skin.label.richText = oldLabelRichText;
         GUI.skin.box.richText = oldBoxRichText;
         GUI.skin.button.richText = oldButtonRichText;
+    }
+
+    private void DesenharCompraHelicopterosNavio()
+    {
+        GUILayout.BeginVertical("box");
+        GUILayout.Label("<b>🚁 COMPRAR HELICÓPTEROS PARA ESTE NAVIO</b>");
+        GUILayout.Label("Os helicópteros comprados são estacionados no convés e entram na lista de operações.", _uiLabelWrap);
+        GUILayout.Label($"Vagas ocupadas: {_aereosAtualCache}/{capacidadeMaxAereos}", _uiLabelCompacta);
+
+        GerenciadorAeroporto.ListarFichasAereasNavais(_fichasHelicopterosCompra, false, true);
+        if (_fichasHelicopterosCompra.Count == 0)
+        {
+            GUILayout.Label("Nenhum helicóptero compatível foi encontrado no catálogo.", _uiLabelWrap);
+        }
+
+        IdentidadeUnidade identidadeNavio = _idNavio != null ? _idNavio : GetComponent<IdentidadeUnidade>();
+        int teamId = identidadeNavio != null && identidadeNavio.teamID > 0 ? identidadeNavio.teamID : 1;
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        bool haVaga = ObterProximaParadaLivre() != null;
+
+        for (int i = 0; i < _fichasHelicopterosCompra.Count; i++)
+        {
+            DadosConstrucao ficha = _fichasHelicopterosCompra[i];
+            if (ficha == null || !ficha.TryGetPrefabBasico(out GameObject prefab)) continue;
+            long preco = ficha.ObterPrecoEfetivo();
+
+            GUILayout.BeginHorizontal("box");
+            GUILayout.Label("🚁 " + ficha.GetDisplayName(), _uiLabelCompacta, GUILayout.ExpandWidth(true));
+            bool podeComprar = recursos != null && recursos.dinheiro >= preco && preco >= 0 && haVaga;
+            bool guiAntes = GUI.enabled;
+            GUI.enabled = guiAntes && podeComprar;
+            if (GUILayout.Button($"Comprar  ${preco:N0}", GUILayout.Width(145f), GUILayout.Height(25f)))
+            {
+                bool comprado = TentarComprarHelicopteroNaval(ficha, prefab, teamId);
+                _mensagemCompraAereaNavio = comprado
+                    ? ficha.GetDisplayName() + " estacionado no navio."
+                    : "Compra recusada: confira saldo, efetivo, equipe e vagas.";
+                _mensagemCompraAereaNavioAte = Time.time + 4f;
+                _contagemCargaSuja = true;
+            }
+            GUI.enabled = guiAntes;
+            GUILayout.EndHorizontal();
+
+            if (!haVaga) GUILayout.Label("Sem vaga de helicóptero livre no convés.", _uiLabelCompacta);
+        }
+
+        if (recursos == null) GUILayout.Label("Economia indisponível; compra bloqueada.", _uiLabelWrap);
+        if (Time.time < _mensagemCompraAereaNavioAte && !string.IsNullOrEmpty(_mensagemCompraAereaNavio))
+        {
+            GUILayout.Space(4f);
+            GUILayout.Label("<color=yellow>" + _mensagemCompraAereaNavio + "</color>", _uiLabelWrap);
+        }
+        GUILayout.EndVertical();
+    }
+
+    public bool TentarComprarHelicopteroNaval(DadosConstrucao ficha, GameObject prefab, int teamId)
+    {
+        if (ficha == null || prefab == null || teamId <= 0
+            || prefab.GetComponentInChildren<Helicoptero>(true) == null
+            || !PodeReceberHelicopteroComprado(teamId)) return false;
+
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        long preco = ficha.ObterPrecoEfetivo();
+        if (recursos == null || preco < 0 || recursos.dinheiro < preco) return false;
+
+        if (!GovernadorGameplayRTS.PermitirProducaoDePrefab(
+                prefab,
+                TipoUnidade.Aereo,
+                teamId,
+                out string motivoGovernanca))
+        {
+            HUDAjudaRTS.MostrarMensagemTemporaria(motivoGovernanca, 3.2f);
+            return false;
+        }
+
+        Transform vaga = ObterProximaParadaLivre();
+        if (vaga == null) return false;
+
+        GameObject novoObjeto = Instantiate(prefab, vaga.position, vaga.rotation);
+        if (novoObjeto == null) return false;
+        novoObjeto.name = prefab.name;
+
+        IdentidadeUnidade identidade = novoObjeto.GetComponent<IdentidadeUnidade>();
+        if (identidade == null) identidade = novoObjeto.AddComponent<IdentidadeUnidade>();
+        identidade.teamID = teamId;
+        identidade.nomeDoPais = identidadeNavioNomePais();
+        identidade.tipoUnidade = TipoUnidade.Aereo;
+
+        Helicoptero helicoptero = novoObjeto.GetComponentInChildren<Helicoptero>(true);
+        if (helicoptero == null || !RegistrarHelicopteroComprado(helicoptero))
+        {
+            Destroy(novoObjeto);
+            return false;
+        }
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null && !governo.TentarMobilizarEfetivoDaUnidade(teamId, novoObjeto))
+        {
+            for (int i = _helisCarregados.Count - 1; i >= 0; i--)
+            {
+                if (_helisCarregados[i] != null && _helisCarregados[i].heli == helicoptero)
+                    _helisCarregados.RemoveAt(i);
+            }
+            Destroy(novoObjeto);
+            return false;
+        }
+
+        ServicoAbastecimento.AbastecerUnidadeProduzida(novoObjeto);
+        recursos.dinheiro -= preco;
+        return true;
+    }
+
+    private string identidadeNavioNomePais()
+    {
+        if (_idNavio == null) _idNavio = GetComponent<IdentidadeUnidade>();
+        return _idNavio != null && !string.IsNullOrWhiteSpace(_idNavio.nomeDoPais)
+            ? _idNavio.nomeDoPais
+            : "Hegemonia";
     }
 
     private void PrepararEstilosUISeNecessario()
@@ -1220,7 +1365,13 @@ public class NavioTransporteTropas : MonoBehaviour
         SistemaDeDanos dano = u.GetComponent<SistemaDeDanos>();
         if (dano != null) dano.vidaAtual = dano.vidaMaxima;
         CombustivelUnidade comb = u.GetComponent<CombustivelUnidade>();
-        if (comb != null) comb.PreencherSemCusto();
+        if (comb != null)
+        {
+            ServicoAbastecimento.TentarAbastecer(
+                comb,
+                comb.Capacidade - comb.CombustivelAtual,
+                out _);
+        }
 
         carga.manifesto = ManifestoCargaOperacional.Capturar(u);
         Destroy(u);
@@ -1306,10 +1457,13 @@ public class NavioTransporteTropas : MonoBehaviour
 
     public int TransferirSoldadosParaHelicoptero(Helicoptero heli, int quantidadeMax = int.MaxValue)
     {
-        if (heli == null || quantidadeMax <= 0) return 0;
+        if (!PodeTransferirTropasCom(heli) || quantidadeMax <= 0) return 0;
+
+        int limiteTransferencia = Mathf.Min(quantidadeMax, Mathf.Min(_soldadosCarregados.Count, heli.TemEspaco()));
+        if (limiteTransferencia <= 0) return 0;
 
         int transferidos = 0;
-        for (int i = _soldadosCarregados.Count - 1; i >= 0 && transferidos < quantidadeMax; i--)
+        for (int i = _soldadosCarregados.Count - 1; i >= 0 && transferidos < limiteTransferencia; i--)
         {
             CargaTerrestre carga = _soldadosCarregados[i];
             if (carga == null)
@@ -1348,7 +1502,13 @@ public class NavioTransporteTropas : MonoBehaviour
         SistemaDeDanos dano = soldado.GetComponent<SistemaDeDanos>();
         if (dano != null) dano.vidaAtual = dano.vidaMaxima;
         CombustivelUnidade comb = soldado.GetComponent<CombustivelUnidade>();
-        if (comb != null) comb.PreencherSemCusto();
+        if (comb != null)
+        {
+            ServicoAbastecimento.TentarAbastecer(
+                comb,
+                comb.Capacidade - comb.CombustivelAtual,
+                out _);
+        }
 
         carga.manifesto = ManifestoCargaOperacional.Capturar(soldado);
         Destroy(soldado);
@@ -1360,7 +1520,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     public int TransferirSoldadosDoHelicopteroParaNavio(Helicoptero heli, int quantidadeMax = int.MaxValue)
     {
-        if (heli == null || quantidadeMax <= 0) return 0;
+        if (!PodeTransferirTropasCom(heli) || quantidadeMax <= 0) return 0;
         return heli.TransferirSoldadosParaNavio(this, quantidadeMax);
     }
 
@@ -1761,8 +1921,6 @@ public class NavioTransporteTropas : MonoBehaviour
     {
         Helicoptero heli = ObterHelicopteroSelecionadoNoNavio();
         if (heli == null) return;
-        bool heliProntoNoConves = HelicopteroPodeTransferirNoConves(heli);
-        int qtdTransferencia = ObterQuantidadeOperacaoAtual();
 
         GUILayout.Space(6);
         GUILayout.BeginVertical("box");
@@ -1790,7 +1948,7 @@ public class NavioTransporteTropas : MonoBehaviour
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Reconhecimento);
             if (GUILayout.Button("🛡️ Patrulha", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.Patrulha);
-            if (GUILayout.Button("💥 Ataque local", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.AtaqueLocal);
+            if (heli.podeAtacar && GUILayout.Button("💥 Ataque local", GUILayout.Height(28f))) IniciarModoHelicopteroNavio(heli, ModoOrdemHelicopteroNavio.AtaqueLocal);
             GUILayout.EndHorizontal();
 
             if (heli.EhHelicopteroTransporte())
@@ -1803,43 +1961,140 @@ public class NavioTransporteTropas : MonoBehaviour
 
                 if (heli.PodeOperarTropasNoMenu())
                 {
+                    bool guiAntesAcoesTropa = GUI.enabled;
                     GUILayout.BeginHorizontal();
-                    GUI.enabled = heli.TemEspaco() > 0;
+                    GUI.enabled = guiAntesAcoesTropa && heli.TemEspaco() > 0;
                     if (GUILayout.Button("📥 Recolher tropas", GUILayout.Height(24f)))
                     {
-                        int recolhidas = heli.RecolherTropasPeloMenu();
+                        // O menu do navio opera sempre sobre o manifesto deste navio;
+                        // o resgate em terra continua usando a rotina já existente do helicóptero.
+                        int recolhidas = TransferirSoldadosParaHelicoptero(heli, heli.TemEspaco())
+                            + heli.ChamarReforcos();
                         MostrarMensagem(recolhidas > 0 ? $"📥 {heli.ObterRotuloExibicao()} recolheu {recolhidas} tropa(s)." : $"⚠️ Sem tropas para recolher.");
                     }
-                    GUI.enabled = heli.TemSoldados();
+                    GUI.enabled = guiAntesAcoesTropa && heli.TemSoldados();
                     if (GUILayout.Button("📤 Desembarcar", GUILayout.Height(24f)))
                     {
                         int desembarcadas = heli.DesembarcarTropasNoLocalAtual();
                         MostrarMensagem(desembarcadas > 0 ? $"📤 {heli.ObterRotuloExibicao()} desembarcou {desembarcadas} tropa(s)." : $"⚠️ Sem tropas para desembarcar.");
                     }
-                    GUI.enabled = true;
+                    GUI.enabled = guiAntesAcoesTropa;
                     GUILayout.EndHorizontal();
 
                     GUILayout.Space(4f);
                     GUILayout.Label($"Navio: {SoldadosAtual}/{capacidadeMaxSoldados} | Helicóptero: {heli.soldadosEmbarcados.Count}/{heli.capacidadeMaxima}");
-                    GUILayout.BeginHorizontal();
-                    GUI.enabled = heliProntoNoConves && SoldadosAtual > 0 && heli.TemEspaco() > 0;
-                    if (GUILayout.Button($"⬆️ Navio -> Heli ({_qtdOperacao})", GUILayout.Height(24f)))
-                    {
-                        int transferidos = TransferirSoldadosParaHelicoptero(heli, qtdTransferencia);
-                        MostrarMensagem(transferidos > 0 ? $"⬆️ {transferidos} soldado(s) transferidos." : $"⚠️ Falha na transferência.");
-                    }
-                    GUI.enabled = heliProntoNoConves && heli.TemSoldados() && SoldadosAtual < capacidadeMaxSoldados;
-                    if (GUILayout.Button($"⬇️ Heli -> Navio ({_qtdOperacao})", GUILayout.Height(24f)))
-                    {
-                        int transferidos = TransferirSoldadosDoHelicopteroParaNavio(heli, qtdTransferencia);
-                        MostrarMensagem(transferidos > 0 ? $"⬇️ {transferidos} soldado(s) transferidos." : $"⚠️ Falha na transferência.");
-                    }
-                    GUI.enabled = true;
-                    GUILayout.EndHorizontal();
-
-                    if (!heliProntoNoConves) GUILayout.Label("<color=grey>Transferência direta só no convés.</color>");
+                    GUILayout.Label("Transferência direta entre navio e helicóptero: use a aba Tropas.", _uiLabelCompacta);
                 }
             }
+        }
+        GUILayout.EndVertical();
+    }
+
+    private void DesenharAbaTropasHelicopteroNavio()
+    {
+        SanearHelicopterosCarregados();
+        AtualizarContagemCargaSeNecessario();
+
+        GUILayout.BeginVertical("box");
+        GUILayout.Label("<b>TRANSFERÊNCIA DE TROPAS</b>");
+        GUILayout.Label("Escolha o helicóptero estacionado neste navio. A transferência move os mesmos soldados entre os manifestos.", _uiLabelWrap);
+
+        int totalHelis = _helisCarregados.Count;
+        if (totalHelis == 0)
+        {
+            GUILayout.Label("Nenhum helicóptero está registrado no convés deste navio.", _uiLabelWrap);
+            GUILayout.EndVertical();
+            return;
+        }
+
+        int totalPaginas = Mathf.Max(1, Mathf.CeilToInt(totalHelis / (float)UI_HELIS_TROPAS_POR_PAGINA));
+        _paginaHelisTropas = Mathf.Clamp(_paginaHelisTropas, 0, totalPaginas - 1);
+        GUILayout.BeginHorizontal();
+        bool guiAntesPaginacao = GUI.enabled;
+        GUI.enabled = guiAntesPaginacao && _paginaHelisTropas > 0;
+        if (GUILayout.Button("◀", GUILayout.Width(42f), GUILayout.Height(24f))) _paginaHelisTropas--;
+        GUI.enabled = guiAntesPaginacao && _paginaHelisTropas < totalPaginas - 1;
+        if (GUILayout.Button("▶", GUILayout.Width(42f), GUILayout.Height(24f))) _paginaHelisTropas++;
+        GUI.enabled = guiAntesPaginacao;
+        GUILayout.Label($"Página {_paginaHelisTropas + 1}/{totalPaginas} — {totalHelis} helicóptero(s)");
+        GUILayout.EndHorizontal();
+
+        int primeiro = _paginaHelisTropas * UI_HELIS_TROPAS_POR_PAGINA;
+        int limite = Mathf.Min(totalHelis, primeiro + UI_HELIS_TROPAS_POR_PAGINA);
+        for (int i = primeiro; i < limite; i++)
+        {
+            CargaHeli carga = _helisCarregados[i];
+            Helicoptero heliLista = carga != null ? carga.heli : null;
+            if (heliLista == null) continue;
+
+            bool selecionado = heliLista == _helicopteroSelecionadoParaMissao;
+            string estado = HelicopteroEstaEmAproximacaoParaConves(heliLista)
+                ? "aproximando"
+                : HelicopteroEstaEmSaidaDoConves(heliLista)
+                    ? "saindo"
+                    : HelicopteroPertenceAEsteNavio(heliLista) && !heliLista.estaVoando
+                        ? "no convés"
+                        : "fora do convés";
+            GUILayout.BeginHorizontal("box");
+            if (GUILayout.Button((selecionado ? "► " : string.Empty) + CompactarTextoMenu(heliLista.ObterRotuloExibicao(), 25), _uiLinhaCompacta, GUILayout.ExpandWidth(true), GUILayout.Height(25f)))
+            {
+                _helicopteroSelecionadoParaMissao = heliLista;
+                _categoriaSelecionada = CategoriaSelecao.Heli;
+                _indiceSelecionadoHeli = i;
+                _indiceSelecionadoVeiculo = -1;
+                _indiceSelecionadoSoldado = -1;
+            }
+            GUILayout.Label($"{heliLista.soldadosEmbarcados.Count}/{Mathf.Max(0, heliLista.capacidadeMaxima)} — {estado}", _uiLabelCompacta, GUILayout.Width(150f));
+            GUILayout.EndHorizontal();
+        }
+
+        Helicoptero heli = ObterHelicopteroSelecionadoNoNavio();
+        if (heli == null)
+        {
+            GUILayout.Space(5f);
+            GUILayout.Label("Selecione um helicóptero da lista para transferir soldados.", _uiLabelWrap);
+            GUILayout.EndVertical();
+            return;
+        }
+
+        GUILayout.Space(6f);
+        GUILayout.Label($"<b>{CompactarTextoMenu(heli.ObterRotuloExibicao(), 32)}</b> — Navio {SoldadosAtual}/{capacidadeMaxSoldados} | Helicóptero {heli.soldadosEmbarcados.Count}/{Mathf.Max(0, heli.capacidadeMaxima)}", _uiLabelWrap);
+        GUILayout.BeginHorizontal("box");
+        GUILayout.Label($"Quantidade: {_qtdOperacao}", GUILayout.ExpandWidth(true));
+        if (GUILayout.Button("−", GUILayout.Width(34f), GUILayout.Height(24f))) _qtdOperacao = Mathf.Max(1, _qtdOperacao - 1);
+        if (GUILayout.Button("+", GUILayout.Width(34f), GUILayout.Height(24f))) _qtdOperacao = Mathf.Min(9998, _qtdOperacao + 1);
+        if (GUILayout.Button("Todos", GUILayout.Width(62f), GUILayout.Height(24f))) _qtdOperacao = 9999;
+        GUILayout.EndHorizontal();
+
+        bool prontoNoNavio = HelicopteroPodeTransferirNoConves(heli);
+        bool guiAntesTransferencia = GUI.enabled;
+        GUILayout.BeginHorizontal();
+        GUI.enabled = guiAntesTransferencia && prontoNoNavio && SoldadosAtual > 0 && heli.TemEspaco() > 0;
+        if (GUILayout.Button($"⬆ Navio → Helicóptero ({_qtdOperacao})", GUILayout.Height(28f)))
+        {
+            int transferidos = TransferirSoldadosParaHelicoptero(heli, ObterQuantidadeOperacaoAtual());
+            MostrarMensagem(transferidos > 0 ? $"{transferidos} soldado(s) embarcaram em {heli.ObterRotuloExibicao()}." : "Transferência recusada; confira o convés e as vagas.");
+        }
+        GUI.enabled = guiAntesTransferencia && prontoNoNavio && heli.TemSoldados() && SoldadosAtual < capacidadeMaxSoldados;
+        if (GUILayout.Button($"⬇ Helicóptero → Navio ({_qtdOperacao})", GUILayout.Height(28f)))
+        {
+            int transferidos = TransferirSoldadosDoHelicopteroParaNavio(heli, ObterQuantidadeOperacaoAtual());
+            MostrarMensagem(transferidos > 0 ? $"{transferidos} soldado(s) voltaram para o navio." : "Transferência recusada; confira o convés e a capacidade.");
+        }
+        GUI.enabled = guiAntesTransferencia;
+        GUILayout.EndHorizontal();
+
+        if (!heli.EhHelicopteroTransporte())
+            GUILayout.Label("Este helicóptero não está configurado para transportar tropas.", _uiLabelWrap);
+        else if (!prontoNoNavio)
+            GUILayout.Label("Pouse e estacione o helicóptero neste navio antes de transferir tropas.", _uiLabelWrap);
+        else if (SoldadosAtual == 0 && !heli.TemSoldados())
+            GUILayout.Label("Não há soldados no navio nem no helicóptero selecionado.", _uiLabelWrap);
+
+        if (Time.time < _mensagemAte && !string.IsNullOrEmpty(_mensagemHUD))
+        {
+            GUILayout.Space(4f);
+            GUILayout.Label("<color=yellow>" + _mensagemHUD + "</color>", _uiLabelWrap);
         }
         GUILayout.EndVertical();
     }
@@ -2176,8 +2431,20 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private bool HelicopteroPodeTransferirNoConves(Helicoptero heli)
     {
-        if (heli == null) return false;
-        return JaTenhoHeli(heli) && HelicopteroPertenceAEsteNavio(heli) && !heli.estaVoando && !heli.EstaEmPreparacaoDecolagem() && !HelicopteroEstaEmAproximacaoParaConves(heli);
+        return JaTenhoHeli(heli) && PodeTransferirTropasCom(heli);
+    }
+
+    /// <summary>
+    /// A transferência só ocorre quando o helicóptero de transporte está pousado
+    /// em uma vaga deste navio e nenhuma rotina de pouso ou saída está em curso.
+    /// Também pode ser consultado pelo menu de porta-aviões que compartilha o manifesto.
+    /// </summary>
+    public bool PodeTransferirTropasCom(Helicoptero heli)
+    {
+        if (!isActiveAndEnabled || heli == null || !heli.isActiveAndEnabled || !heli.EhHelicopteroTransporte()) return false;
+        if (!heli.PodeOperarTropasNoMenu() || heli.estaVoando || heli.EstaEmPreparacaoDecolagem()) return false;
+        if (HelicopteroEstaEmAproximacaoParaConves(heli) || HelicopteroEstaEmSaidaDoConves(heli)) return false;
+        return HelicopteroPertenceAEsteNavio(heli);
     }
 
     private int ObterQuantidadeOperacaoAtual() => _qtdOperacao >= 9999 ? int.MaxValue : Mathf.Max(1, _qtdOperacao);
@@ -2546,6 +2813,24 @@ public class NavioTransporteTropas : MonoBehaviour
             if (!ocupada) return p;
         }
         return null;
+    }
+
+    public bool PodeReceberHelicopteroComprado(int teamId)
+    {
+        if (!isActiveAndEnabled) return false;
+        if (_idNavio == null) _idNavio = GetComponent<IdentidadeUnidade>();
+        if (_idNavio != null && _idNavio.teamID != teamId) return false;
+        return ObterProximaParadaLivre() != null;
+    }
+
+    public bool RegistrarHelicopteroComprado(Helicoptero helicoptero)
+    {
+        if (helicoptero == null) return false;
+        IdentidadeUnidade identidade = helicoptero.GetComponent<IdentidadeUnidade>();
+        int teamId = identidade != null ? identidade.teamID : 1;
+        Transform vaga = ObterProximaParadaLivre();
+        if (vaga == null || !PodeReceberHelicopteroComprado(teamId)) return false;
+        return EstacionarHelicopteroNoNavio(helicoptero, vaga, true);
     }
 
     private Transform ObterStopAlternado()

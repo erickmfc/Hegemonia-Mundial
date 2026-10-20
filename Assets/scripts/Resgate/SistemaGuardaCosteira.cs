@@ -28,6 +28,7 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
     private float proximoDespacho;
     private int sequenciaIncidente;
     private bool inscritoNoRelogio;
+    private bool avisouPrefabBalsaAusente;
 
     public IReadOnlyList<RescueIncident> Incidentes => incidentes;
     public bool ModoAutomatico { get { return despachoAutomatico; } set { despachoAutomatico = value; } }
@@ -125,17 +126,138 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
         return incidentes.FirstOrDefault(x => x != null && x.IncidentId == incidentId);
     }
 
+    public List<RescueIncident> CapturarEstadoSave()
+    {
+        List<RescueIncident> copia = new List<RescueIncident>(incidentes.Count);
+        for (int i = 0; i < incidentes.Count; i++)
+        {
+            RescueIncident incidente = incidentes[i];
+            if (incidente != null) copia.Add(ClonarIncidente(incidente));
+        }
+        return copia;
+    }
+
+    public void RestaurarEstadoSave(IReadOnlyList<RescueIncident> estadoSalvo)
+    {
+        for (int i = 0; i < incidentes.Count; i++)
+        {
+            RescueIncident existente = incidentes[i];
+            if (existente != null) BalsaSalvamento.RemoverDoIncidente(existente.IncidentId);
+        }
+        incidentes.Clear();
+        perdasPessoaisAdiadas.Clear();
+        mortesProcessadas.Clear();
+        sequenciaIncidente = 0;
+        if (estadoSalvo == null) return;
+
+        for (int i = 0; i < estadoSalvo.Count; i++)
+        {
+            RescueIncident salvo = estadoSalvo[i];
+            if (salvo == null || string.IsNullOrWhiteSpace(salvo.IncidentId) || salvo.OwnerTeamId <= 0)
+                continue;
+
+            RescueIncident restaurado = ClonarIncidente(salvo);
+            BalsaSalvamento.RemoverDoIncidente(restaurado.IncidentId);
+            int pessoasEmTransito = Mathf.Clamp(restaurado.OnboardRescueUnits, 0,
+                Mathf.Min(Mathf.Max(0, restaurado.RescuedPersonnel),
+                    Mathf.Max(0, restaurado.OriginalPersonnel - restaurado.ReturnedPersonnel - restaurado.LostPersonnel)));
+
+            // Unidades de resgate são recriadas pelo SaveGame sem a missão em
+            // curso. Recoloca passageiros na ocorrência para novo despacho,
+            // sem alterar o efetivo já salvo.
+            if (pessoasEmTransito > 0 && restaurado.IsActiveAt(DiaAtual()))
+            {
+                restaurado.RescuedPersonnel = Mathf.Max(0, restaurado.RescuedPersonnel - pessoasEmTransito);
+                restaurado.MissingPersonnel = Mathf.Max(0, restaurado.MissingPersonnel) + pessoasEmTransito;
+            }
+            else if (pessoasEmTransito > 0)
+            {
+                // Passageiros a bordo quando o sinal já expirou são tratados
+                // como resgatados com segurança para não ficarem sem unidade.
+                restaurado.ReturnedPersonnel += pessoasEmTransito;
+                AdicionarAoEfetivo(restaurado.OwnerTeamId, pessoasEmTransito);
+            }
+            restaurado.UsaBalsasSalvamento = restaurado.UsaBalsasSalvamento
+                || restaurado.IncidentType == RescueIncidentType.NavioAfundado;
+            restaurado.ReservedForPickup = 0;
+            restaurado.OnboardRescueUnits = 0;
+            restaurado.AssignedUnits.Clear();
+            if (restaurado.UsaBalsasSalvamento && restaurado.IsActiveAt(DiaAtual()))
+                CriarBalsasParaIncidente(restaurado, restaurado.MissingPersonnel, null);
+            incidentes.Add(restaurado);
+            IncidenteAtualizado?.Invoke(restaurado);
+
+            const string prefixo = "RESCUE-";
+            if (restaurado.IncidentId.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(restaurado.IncidentId.Substring(prefixo.Length), out int sequencia))
+            {
+                sequenciaIncidente = Mathf.Max(sequenciaIncidente, sequencia);
+            }
+        }
+
+        proximoDespacho = Time.unscaledTime;
+    }
+
+    public void LimparEstadoParaNovoJogo()
+    {
+        for (int i = 0; i < incidentes.Count; i++)
+        {
+            RescueIncident existente = incidentes[i];
+            if (existente != null) BalsaSalvamento.RemoverDoIncidente(existente.IncidentId);
+        }
+        incidentes.Clear();
+        perdasPessoaisAdiadas.Clear();
+        mortesProcessadas.Clear();
+        sequenciaIncidente = 0;
+        proximoDespacho = Time.unscaledTime;
+    }
+
+    private static RescueIncident ClonarIncidente(RescueIncident origem)
+    {
+        return new RescueIncident
+        {
+            IncidentId = origem.IncidentId,
+            OwnerTeamId = origem.OwnerTeamId,
+            OwnerNationId = origem.OwnerNationId,
+            Position = origem.Position,
+            SearchAreaSize = origem.SearchAreaSize,
+            OriginalPersonnel = origem.OriginalPersonnel,
+            MissingPersonnel = origem.MissingPersonnel,
+            RescuedPersonnel = origem.RescuedPersonnel,
+            ReservedForPickup = origem.ReservedForPickup,
+            OnboardRescueUnits = origem.OnboardRescueUnits,
+            ReturnedPersonnel = origem.ReturnedPersonnel,
+            LostPersonnel = origem.LostPersonnel,
+            CreatedAtGameDay = origem.CreatedAtGameDay,
+            CreatedAtRealtime = origem.CreatedAtRealtime,
+            LastUpdatedGameDay = origem.LastUpdatedGameDay,
+            IncidentType = origem.IncidentType,
+            UsaBalsasSalvamento = origem.UsaBalsasSalvamento,
+            ThreatLevel = origem.ThreatLevel,
+            State = origem.State,
+            IsSignalActive = origem.IsSignalActive,
+            IsCompleted = origem.IsCompleted,
+            SourceName = origem.SourceName,
+            LastReason = origem.LastReason,
+            AssignedUnits = origem.AssignedUnits != null
+                ? new List<string>(origem.AssignedUnits)
+                : new List<string>()
+        };
+    }
+
     public RescueIncident CriarIncidente(int ownerTeamId, int ownerNationId, Vector3 position,
         int personnel, RescueIncidentType type, string sourceName, int threatLevel = 0,
         float searchAreaSize = -1f)
     {
+        bool usarBalsasSalvamento = type == RescueIncidentType.NavioAfundado;
         return CriarIncidenteInterno(ownerTeamId, ownerNationId, position, personnel, type,
-            sourceName, threatLevel, searchAreaSize, true);
+            sourceName, threatLevel, searchAreaSize, true, usarBalsasSalvamento);
     }
 
     private RescueIncident CriarIncidenteInterno(int ownerTeamId, int ownerNationId, Vector3 position,
         int personnel, RescueIncidentType type, string sourceName, int threatLevel,
-        float searchAreaSize, bool removerDoEfetivo)
+        float searchAreaSize, bool removerDoEfetivo, bool usarBalsasSalvamento = false,
+        SistemaDeDanos danosOrigem = null)
     {
         personnel = Mathf.Max(0, personnel);
         if (personnel <= 0) return null;
@@ -154,12 +276,15 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
             CreatedAtRealtime = Time.unscaledTime,
             LastUpdatedGameDay = day,
             IncidentType = type,
+            UsaBalsasSalvamento = usarBalsasSalvamento,
             ThreatLevel = Mathf.Clamp(threatLevel, 0, 3),
             SourceName = string.IsNullOrWhiteSpace(sourceName) ? "UNIDADE PERDIDA" : sourceName,
             LastReason = "INCIDENTE CRIADO"
         };
         incidentes.Add(incidente);
         if (removerDoEfetivo) RemoverDoEfetivo(incidente.OwnerTeamId, personnel);
+        if (incidente.UsaBalsasSalvamento)
+            CriarBalsasParaIncidente(incidente, personnel, danosOrigem);
         IncidenteCriado?.Invoke(incidente);
         return incidente;
     }
@@ -185,7 +310,15 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
         if (!incidente.AssignedUnits.Contains(unidade.RescueUnitId)) return 0;
 
         int reservado = Mathf.Min(Mathf.Max(0, quantidade), incidente.AvailableForReservation(DiaAtual()));
+        if (incidente.UsaBalsasSalvamento && BalsaSalvamento.ExisteParaIncidente(incidentId))
+            reservado = Mathf.Min(reservado, BalsaSalvamento.ContarSobreviventes(incidentId));
         if (reservado <= 0) return 0;
+        if (incidente.UsaBalsasSalvamento && BalsaSalvamento.ExisteParaIncidente(incidentId))
+        {
+            int resgatadosFisicos = BalsaSalvamento.ResgatarSobreviventes(incidentId, reservado);
+            reservado = Mathf.Min(reservado, resgatadosFisicos);
+            if (reservado <= 0) return 0;
+        }
         incidente.ReservedForPickup += reservado;
         incidente.ReservedForPickup -= reservado;
         incidente.MissingPersonnel = Mathf.Max(0, incidente.MissingPersonnel - reservado);
@@ -228,9 +361,12 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
             anterior.RescuedPersonnel = Mathf.Max(0, anterior.RescuedPersonnel - unidade.PessoasEmbarcadas);
             anterior.LastReason = "UNIDADE DE RESGATE PERDIDA";
         }
+        IdentidadeUnidade identidade = SistemaDeDanos.ResolverIdentidade(unidade);
+        bool usarBalsa = identidade != null && identidade.tipoUnidade == TipoUnidade.Naval;
         CriarIncidenteInterno(unidade.TeamId, unidade.NationId, unidade.transform.position,
             unidade.PessoasEmbarcadas, RescueIncidentType.UnidadeDeResgateDestruida,
-            unidade.name, 2, unidade.AreaBusca, false);
+            unidade.name, 2, unidade.AreaBusca, false, usarBalsa,
+            unidade.GetComponent<SistemaDeDanos>() ?? unidade.GetComponentInParent<SistemaDeDanos>());
         unidade.LimparPessoasEmbarcadas();
     }
 
@@ -250,7 +386,7 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
         if (!criarIncidentesAutomaticamente || danos == null) return;
         IdentidadeUnidade identidade = SistemaDeDanos.ResolverIdentidade(danos);
         if (identidade == null || identidade.teamID <= 0 || identidade.tipoUnidade == TipoUnidade.Estrutura) return;
-        if (!mortesProcessadas.Add(danos.GetInstanceID())) return;
+        if (!mortesProcessadas.Add(identidade.GetInstanceID())) return;
 
         GuardaCosteiraUnidade unidadeResgate = danos.GetComponent<GuardaCosteiraUnidade>()
             ?? danos.GetComponentInParent<GuardaCosteiraUnidade>()
@@ -261,7 +397,9 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
         if (pessoal <= 0) return;
         perdasPessoaisAdiadas.Add(identidade.GetInstanceID());
         RescueIncidentType tipo = ResolverTipoIncidente(identidade, unidadeResgate != null);
-        CriarIncidenteInterno(identidade.teamID, 0, identidade.transform.position, pessoal, tipo, identidade.name, 0, -1f, true);
+        bool usarBalsa = identidade.tipoUnidade == TipoUnidade.Naval;
+        CriarIncidenteInterno(identidade.teamID, identidade.teamID, identidade.transform.position,
+            pessoal, tipo, identidade.name, 0, -1f, true, usarBalsa, danos);
     }
 
     private void AtualizarJanelas()
@@ -278,7 +416,9 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
             int limiteRestante = Mathf.Max(0, maximo - incidente.RescuedPersonnel);
             int perdaPorJanela = Mathf.Max(0, aindaRastreado - limiteRestante);
             if (dia > incidente.CreatedAtGameDay && perdaPorJanela > 0)
+            {
                 RegistrarPerdaDefinitiva(incidente, perdaPorJanela, "JANELA DE SOBREVIVENCIA REDUZIDA");
+            }
 
             if (incidente.AgeDays(dia) > diasJanelaMaxima || incidente.AgeDays(dia) > 10)
                 EncerrarPorSinalPerdido(incidente);
@@ -335,6 +475,8 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
         int perdaAusente = Mathf.Min(incidente.MissingPersonnel, quantidade - perdaReservada);
         incidente.MissingPersonnel -= perdaAusente;
         incidente.LostPersonnel += perdaReservada + perdaAusente;
+        if (incidente.UsaBalsasSalvamento)
+            BalsaSalvamento.PerderSobreviventes(incidente.IncidentId, perdaReservada + perdaAusente);
         incidente.LastReason = motivo;
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null
             ? SistemaGovernoMundial.Instancia.ObterPais(incidente.OwnerTeamId) : null;
@@ -344,6 +486,79 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
     private static int DiaAtual()
     {
         return GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+    }
+
+    private void CriarBalsasParaIncidente(RescueIncident incidente, int sobreviventes, SistemaDeDanos danosOrigem)
+    {
+        if (incidente == null || sobreviventes <= 0) return;
+
+        GameObject prefab = Resources.Load<GameObject>("Resgate/BalsaSalvamento");
+        if (prefab == null)
+        {
+            if (!avisouPrefabBalsaAusente)
+            {
+                Debug.LogWarning("[SistemaGuardaCosteira] Prefab Resources/Resgate/BalsaSalvamento nao encontrado; o incidente SAR continuara sem a visualizacao fisica das balsas.", this);
+                avisouPrefabBalsaAusente = true;
+            }
+            return;
+        }
+
+        BalsaSalvamento.RemoverDoIncidente(incidente.IncidentId);
+        int capacidade = BalsaSalvamento.CapacidadePadrao;
+        int quantidadeBalsas = Mathf.CeilToInt(sobreviventes / (float)capacidade);
+        float raioBase = 8f;
+        if (danosOrigem != null)
+        {
+            Renderer[] renderizadores = danosOrigem.GetComponentsInChildren<Renderer>(true);
+            float raioCasco = 0f;
+            for (int i = 0; i < renderizadores.Length; i++)
+            {
+                Renderer renderizador = renderizadores[i];
+                if (renderizador == null || renderizador is ParticleSystemRenderer) continue;
+                raioCasco = Mathf.Max(raioCasco,
+                    Mathf.Max(renderizador.bounds.extents.x, renderizador.bounds.extents.z));
+            }
+            if (raioCasco > 0f) raioBase = Mathf.Clamp(raioCasco + 5f, 8f, 60f);
+        }
+
+        Vector3 centro = incidente.Position;
+        if (RegistroSuperficieMapa.TryGetAltura(centro, TipoSuperficieMapa.Agua, out float alturaCentro))
+            centro.y = alturaCentro + 0.04f;
+
+        int restantes = sobreviventes;
+        uint hash = 2166136261u;
+        unchecked
+        {
+            for (int i = 0; i < incidente.IncidentId.Length; i++)
+                hash = (hash ^ incidente.IncidentId[i]) * 16777619u;
+        }
+        float anguloInicial = (hash % 36000u) * (Mathf.PI / 18000f);
+        const float passoAngular = 2.39996323f; // Angulo dourado: distribui balsas sem empilhar.
+        const int balsasPorAnel = 12;
+
+        for (int i = 0; i < quantidadeBalsas && restantes > 0; i++)
+        {
+            int anel = i / balsasPorAnel;
+            float angulo = anguloInicial + i * passoAngular;
+            float raio = raioBase + anel * 5.5f;
+            Vector3 deslocamento = new Vector3(Mathf.Cos(angulo) * raio, 0f, Mathf.Sin(angulo) * raio);
+            Vector3 posicao = centro + deslocamento;
+            if (RegistroSuperficieMapa.TryGetAltura(posicao, TipoSuperficieMapa.Agua, out float alturaBalsa))
+                posicao.y = alturaBalsa + 0.04f;
+
+            GameObject objeto = Instantiate(prefab, posicao, Quaternion.Euler(0f, angulo * Mathf.Rad2Deg, 0f));
+            BalsaSalvamento balsa = objeto.GetComponent<BalsaSalvamento>();
+            if (balsa == null)
+            {
+                Debug.LogError("[SistemaGuardaCosteira] O prefab BalsaSalvamento esta sem o componente BalsaSalvamento.", objeto);
+                Destroy(objeto);
+                break;
+            }
+
+            int ocupantes = Mathf.Min(capacidade, restantes);
+            balsa.Configurar(incidente.IncidentId, ocupantes);
+            restantes -= ocupantes;
+        }
     }
 
     private static int PessoalDaUnidade(IdentidadeUnidade identidade)

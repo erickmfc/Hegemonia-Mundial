@@ -125,6 +125,67 @@ public sealed class IntegridadeERegistroTests
         Assert.That((bool)LerCampoOuPropriedade(resultado, "PassouGate"), Is.True);
     }
 
+    [Test]
+    public void AuditoriaConteudo_AceitaPersistenciaAnexadaPeloSaveParaFichaMilitarExistente()
+    {
+        Type auditoriaType = ResolverTipo("AuditoriaConteudoJogo");
+        UnityEngine.Object ficha = Resources.Load("Construcoes/F16B");
+        Assert.That(ficha, Is.Not.Null, "A ficha F16B precisa estar disponível no catálogo de Resources.");
+
+        GameObject prefab = LerCampoOuPropriedade(ficha, "PrefabDaUnidade") as GameObject;
+        Assert.That(prefab, Is.Not.Null);
+        Assert.That(prefab.GetComponent(ResolverTipo("SaveableEntity")), Is.Null,
+            "A fixture deve representar a ficha sem SaveableEntity serializado no prefab.");
+        Assert.That(prefab.GetComponent(ResolverTipo("IdentidadeUnidade")), Is.Not.Null,
+            "O save captura unidades pela identidade e anexa SaveableEntity ao gravar.");
+
+        InvocarMetodoStatico(auditoriaType, "DefinirCatalogoSobrescritoParaTeste",
+            CriarListaTipada(ResolverTipo("DadosConstrucao"), ficha));
+
+        GameObject auditorGo = new GameObject("Auditoria_Persistencia_Runtime");
+        objetosParaDestruir.Add(auditorGo);
+        object auditor = objetoSeguroAddComponent(auditorGo, auditoriaType);
+
+        bool ignorarLogsAnterior = LogAssert.ignoreFailingMessages;
+        LogAssert.ignoreFailingMessages = true;
+        try
+        {
+            InvocarMetodoInstancia(auditor, "ExecutarAuditoriaImediata");
+        }
+        finally
+        {
+            LogAssert.ignoreFailingMessages = ignorarLogsAnterior;
+        }
+
+        object resultado = LerPropriedadeStatica(auditoriaType, "UltimoResultado");
+        Assert.That(LerCampoOuPropriedade(resultado, "Erros"), Is.EqualTo(0));
+        Assert.That(LerCampoOuPropriedade(resultado, "Avisos"), Is.EqualTo(0),
+            "A auditoria deve aceitar a rota de persistência que o SistemaSaveGame já executa em runtime.");
+    }
+
+    [Test]
+    public void AuditoriaConteudo_NaoTrataMinistralComoCombateQuandoFichaDeclaraTransporte()
+    {
+        Type auditoriaType = ResolverTipo("AuditoriaConteudoJogo");
+        Type dadosType = ResolverTipo("DadosConstrucao");
+        UnityEngine.Object ficha = Resources.Load("Construcoes/Ministral");
+        Assert.That(ficha, Is.Not.Null, "Ficha de catálogo do Ministral não foi encontrada.");
+
+        object lista = CriarListaTipada(dadosType, ficha);
+        InvocarMetodoStatico(auditoriaType, "DefinirCatalogoSobrescritoParaTeste", lista);
+
+        GameObject auditorGo = new GameObject("Auditoria_Ministral_Transporte");
+        objetosParaDestruir.Add(auditorGo);
+        object auditor = objetoSeguroAddComponent(auditorGo, auditoriaType);
+        InvocarMetodoInstancia(auditor, "ExecutarAuditoriaImediata");
+
+        object resultado = LerPropriedadeStatica(auditoriaType, "UltimoResultado");
+        Assert.That(LerCampoOuPropriedade(resultado, "TotalFichas"), Is.EqualTo(1));
+        Assert.That(LerCampoOuPropriedade(resultado, "Erros"), Is.EqualTo(0));
+        Assert.That(LerCampoOuPropriedade(resultado, "Avisos"), Is.EqualTo(0),
+            "A ficha e os aliases descrevem o Ministral como transporte, não como unidade de combate.");
+    }
+
     private static Type ResolverTipo(string nomeTipo)
     {
         foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())

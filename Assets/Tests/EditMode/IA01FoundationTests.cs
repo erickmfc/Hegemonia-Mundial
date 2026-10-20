@@ -122,6 +122,52 @@ public sealed class IA01FoundationTests
     }
 
     [Test]
+    public void GarantirMoedasUnicasPreservesConfiguredIdentityAndGeneratesMissingValues()
+    {
+        Type registryType = ResolveType("IA01NationNameRegistry");
+        Type dadosPaisType = ResolveType("DadosPaisGoverno");
+        Type listaPaisesType = typeof(List<>).MakeGenericType(dadosPaisType);
+        IList paises = (IList)Activator.CreateInstance(listaPaisesType);
+
+        object jogador = Activator.CreateInstance(dadosPaisType);
+        SetMemberValue(jogador, "teamId", 1);
+        SetMemberValue(jogador, "nomePais", "Republica Atlas");
+        SetMemberValue(jogador, "nomeMoeda", "Atlas");
+        SetMemberValue(jogador, "simboloMoeda", "AT$");
+        paises.Add(jogador);
+
+        object valdoria = Activator.CreateInstance(dadosPaisType);
+        SetMemberValue(valdoria, "teamId", 2);
+        SetMemberValue(valdoria, "nomePais", "Valdoria");
+        SetMemberValue(valdoria, "nomeMoeda", "Valdoria");
+        SetMemberValue(valdoria, "simboloMoeda", "VA$");
+        paises.Add(valdoria);
+
+        object generated = Activator.CreateInstance(dadosPaisType);
+        SetMemberValue(generated, "teamId", 3);
+        SetMemberValue(generated, "nomePais", "Karsovia");
+        SetMemberValue(generated, "nomeMoeda", string.Empty);
+        SetMemberValue(generated, "simboloMoeda", string.Empty);
+        paises.Add(generated);
+
+        object duplicate = Activator.CreateInstance(dadosPaisType);
+        SetMemberValue(duplicate, "teamId", 4);
+        SetMemberValue(duplicate, "nomePais", "Outra Nacao");
+        SetMemberValue(duplicate, "nomeMoeda", "Valdoria");
+        SetMemberValue(duplicate, "simboloMoeda", "OV$");
+        paises.Add(duplicate);
+
+        MethodInfo garantirMoedas = registryType.GetMethod("GarantirMoedasUnicas", BindingFlags.Public | BindingFlags.Static);
+        Assert.That(garantirMoedas, Is.Not.Null);
+        Assert.DoesNotThrow(() => garantirMoedas.Invoke(null, new object[] { paises }));
+
+        Assert.That(GetMemberValue(valdoria, "nomeMoeda"), Is.EqualTo("Valdoria"));
+        Assert.That(GetMemberValue(valdoria, "simboloMoeda"), Is.EqualTo("VA$"));
+        Assert.That(GetMemberValue(generated, "nomeMoeda"), Is.EqualTo("Karsoviao"));
+        Assert.That(GetMemberValue(duplicate, "nomeMoeda"), Is.EqualTo("Valdoria2"));
+    }
+
+    [Test]
     public void ReapplyingTheSameIdentityDoesNotResetRandomOrDirtyState()
     {
         object context = Activator.CreateInstance(RuntimeContextType);

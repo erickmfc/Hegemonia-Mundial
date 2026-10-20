@@ -15,7 +15,7 @@ MonoBehaviour:
   nomeItem: Heliporto
   descricao: "Base para opera\xE7\xF5es a\xE9reas. Permite compra e reabastecimento
     de helic\xF3pteros."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 5b9717dc73a52e34caaa766a0132a9f4, type: 3}
   itemId: ''
   aliases: ''
   capacidades: 0

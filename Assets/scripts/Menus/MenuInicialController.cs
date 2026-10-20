@@ -345,6 +345,7 @@ public class MenuInicialController : MonoBehaviour
 
     public void Btn_Multijogador()
     {
+        sistemaSave.IniciarNovoJogo(ConfiguracaoCenasJogo.CenaMapaGlobal);
         DefinirStatus("Abrindo mapa global...", false);
         CarregarCena(ConfiguracaoCenasJogo.CenaMapaGlobal, LoadingRequestKind.Campanha);
     }

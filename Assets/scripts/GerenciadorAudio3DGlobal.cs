@@ -3,6 +3,11 @@ using UnityEngine;
 
 public static class AudioRuntime
 {
+    private const string FontePartidaAereaName = "AudioRuntime_AircraftStartup";
+    private const string FonteNavalName = "AudioRuntime_NavalEngine";
+    private static AudioClip audioPartidaAerea;
+    private static AudioClip audioNavios;
+
     private enum Categoria
     {
         Geral,
@@ -38,18 +43,27 @@ public static class AudioRuntime
     {
         if (aeronave == null) return;
 
+        AudioSource fontePartida = EncontrarFontePartidaAerea(aeronave, false);
+        bool partidaEmCurso = ligado && fontePartida != null && fontePartida.isPlaying;
         AudioSource[] fontes = aeronave.GetComponentsInChildren<AudioSource>(true);
         for (int i = 0; i < fontes.Length; i++)
         {
             AudioSource fonte = fontes[i];
             if (fonte == null) continue;
+            if (fonte == fontePartida)
+            {
+                fonte.mute = !ligado;
+                if (!ligado && fonte.isPlaying) fonte.Stop();
+                continue;
+            }
+
             bool fonteDeMotor = EhFonteDeMotor(fonte);
             // Em modo desligado, também encerra loops de motor com nomes
             // genéricos dos prefabs G15/G18; tiros e efeitos one-shot não são
             // afetados. Ao religar, só reinicia fontes reconhecidas como motor.
             if (!fonteDeMotor && (ligado || !fonte.loop)) continue;
 
-            fonte.mute = !ligado;
+            fonte.mute = !ligado || (fonteDeMotor && partidaEmCurso);
             if (ligado && fonteDeMotor && fonte.clip != null && fonte.loop && !fonte.isPlaying)
             {
                 fonte.Play();
@@ -59,6 +73,118 @@ public static class AudioRuntime
                 fonte.Stop();
             }
         }
+    }
+
+    /// <summary>
+    /// Reproduz o loop de partida enquanto a aeronave sai do pátio e percorre
+    /// a sequência de decolagem. Os loops de motor do prefab ficam silenciados
+    /// até a transição para voo.
+    /// </summary>
+    public static void DefinirAudioPartidaAerea(GameObject aeronave, bool ligado)
+    {
+        if (aeronave == null) return;
+
+        AudioSource fonte = EncontrarFontePartidaAerea(aeronave, ligado);
+        if (fonte == null) return;
+
+        AudioClip clip = ObterAudioPartidaAerea();
+        if (clip == null)
+        {
+            if (fonte.isPlaying) fonte.Stop();
+            return;
+        }
+
+        fonte.clip = clip;
+        fonte.loop = true;
+        fonte.playOnAwake = false;
+        fonte.spatialBlend = 1f;
+        fonte.mute = false;
+        ConfigurarFonteGenerica(fonte);
+
+        if (ligado)
+        {
+            if (!fonte.isPlaying) fonte.Play();
+        }
+        else if (fonte.isPlaying)
+        {
+            fonte.Stop();
+        }
+    }
+
+    public static AudioClip ObterAudioNavios()
+    {
+        if (audioNavios == null)
+            audioNavios = Resources.Load<AudioClip>("Audio/navios");
+        return audioNavios;
+    }
+
+    /// <summary>Controla o loop naval em controladores que não usam ControleNavioRealista.</summary>
+    public static void DefinirAudioNaval(GameObject unidade, bool ligado)
+    {
+        if (unidade == null) return;
+
+        Transform child = unidade.transform.Find(FonteNavalName);
+        if (child == null && ligado)
+        {
+            GameObject fonteObjeto = new GameObject(FonteNavalName);
+            child = fonteObjeto.transform;
+            child.SetParent(unidade.transform, false);
+        }
+
+        AudioSource fonte = child != null ? child.GetComponent<AudioSource>() : null;
+        if (fonte == null && ligado && child != null)
+            fonte = child.gameObject.AddComponent<AudioSource>();
+        if (fonte == null) return;
+
+        AudioClip clip = ObterAudioNavios();
+        if (clip == null)
+        {
+            if (fonte.isPlaying) fonte.Stop();
+            return;
+        }
+
+        fonte.clip = clip;
+        fonte.loop = true;
+        fonte.playOnAwake = false;
+        fonte.spatialBlend = 1f;
+        fonte.mute = !ligado;
+        ConfigurarFonteGenerica(fonte);
+
+        if (ligado)
+        {
+            if (!fonte.isPlaying) fonte.Play();
+        }
+        else if (fonte.isPlaying)
+        {
+            fonte.Stop();
+        }
+    }
+
+    private static AudioClip ObterAudioPartidaAerea()
+    {
+        if (audioPartidaAerea == null)
+            audioPartidaAerea = Resources.Load<AudioClip>("Audio/aviao ligando");
+        return audioPartidaAerea;
+    }
+
+    private static AudioSource EncontrarFontePartidaAerea(GameObject aeronave, bool criar)
+    {
+        if (aeronave == null) return null;
+
+        Transform child = aeronave.transform.Find(FontePartidaAereaName);
+        if (child == null && criar)
+        {
+            GameObject fonteObjeto = new GameObject(FontePartidaAereaName);
+            child = fonteObjeto.transform;
+            child.SetParent(aeronave.transform, false);
+        }
+
+        if (child == null) return null;
+
+        AudioSource fonte = child.GetComponent<AudioSource>();
+        if (fonte == null && criar)
+            fonte = child.gameObject.AddComponent<AudioSource>();
+        return fonte;
     }
 
     public static void ConfigurarFonteDeArmamento(AudioSource fonte)

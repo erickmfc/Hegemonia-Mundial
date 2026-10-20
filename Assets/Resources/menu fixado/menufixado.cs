@@ -638,7 +638,7 @@ public class MenuFixadoController : MonoBehaviour
                     : "Construa uma Prefeitura para centralizar o governo da nação.",
                 prefeituraOperacional ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
                 prefeituraOperacional ? string.Empty : "ABRIR CONSTRUCAO",
-                prefeituraOperacional ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Selecione uma Prefeitura para iniciar a fundacao."));
+                prefeituraOperacional ? null : (System.Action)(() => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Selecione uma Prefeitura para iniciar a fundacao.")));
         }
 
         // A Prefeitura e a fundacao da partida. Enquanto ela nao existe,
@@ -693,7 +693,7 @@ public class MenuFixadoController : MonoBehaviour
                     : "A nação precisa de comida: aumente a produção ou providencie importações.",
                 comidaEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Critical,
                 comidaEstavel ? string.Empty : "CONSTRUIR FAZENDA",
-                comidaEstavel ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Construa uma Fazenda para recuperar a producao de comida."));
+                comidaEstavel ? null : (System.Action)(() => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Construa uma Fazenda para recuperar a producao de comida.")));
         }
 
         float deficitEnergia = economia != null ? Mathf.Max(0f, economia.deficitEnergia) : 0f;
@@ -723,7 +723,7 @@ public class MenuFixadoController : MonoBehaviour
                         + " estrutura(s) sem energia.",
                 energiaEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Critical,
                 energiaEstavel ? string.Empty : "CONSTRUIR USINA",
-                energiaEstavel ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Energia, "Escolha uma usina para ampliar a geracao."));
+                energiaEstavel ? null : (System.Action)(() => AbrirConstrucao(DadosConstrucao.CategoriaItem.Energia, "Escolha uma usina para ampliar a geracao.")));
         }
 
         float deficitPetroleo = economia != null ? economia.deficitPetroleo : 0f;
@@ -753,7 +753,7 @@ public class MenuFixadoController : MonoBehaviour
                         : "Estoque: " + Mathf.Max(0, recursos.petroleo) + " L; a operacao esta bloqueada por falta de combustivel.",
                 combustivelEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Critical,
                 combustivelEstavel ? string.Empty : "ABRIR INFRAESTRUTURA",
-                combustivelEstavel ? null : () => AbrirConstrucao(DadosConstrucao.CategoriaItem.Infraestrutura, "Construa producao ou armazenamento de combustivel."));
+                combustivelEstavel ? null : (System.Action)(() => AbrirConstrucao(DadosConstrucao.CategoriaItem.Infraestrutura, "Construa producao ou armazenamento de combustivel.")));
         }
 
         SistemaGastosMilitares.GarantirInstancia();
@@ -780,7 +780,7 @@ public class MenuFixadoController : MonoBehaviour
                     : "Estoque atual: 0 cartuchos; fabrique municao antes de iniciar a proxima operacao.",
                 municaoEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
                 municaoEstavel ? string.Empty : "ABRIR DEFESA",
-                municaoEstavel ? null : () => AbrirGoverno("Abra Defesa > Alertas para fabricar municao."));
+                municaoEstavel ? null : (System.Action)(() => AbrirGoverno("Abra Defesa > Alertas para fabricar municao.")));
         }
 
         bool manutencaoEstavel = economia == null || economia.estruturasContadas <= 0 || economia.saldoOperacional >= 0f;
@@ -795,7 +795,7 @@ public class MenuFixadoController : MonoBehaviour
                     : "Custo de manutencao: $" + Mathf.CeilToInt(Mathf.Max(0f, economia.custoManutencao)) + "; o saldo operacional esta negativo.",
                 manutencaoEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
                 manutencaoEstavel ? string.Empty : "ABRIR ORCAMENTO",
-                manutencaoEstavel ? null : () => AbrirGoverno("Abra Economia > Orcamento para revisar a manutencao."));
+                manutencaoEstavel ? null : (System.Action)(() => AbrirGoverno("Abra Economia > Orcamento para revisar a manutencao.")));
         }
 
         int marcadoresProprios = 0;
@@ -827,7 +827,7 @@ public class MenuFixadoController : MonoBehaviour
                     : "A construcao esta fora de uma area reivindicada; expanda a fronteira antes de continuar.",
                 territorioEstavel ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
                 territorioEstavel ? string.Empty : "ABRIR MAPA",
-                territorioEstavel ? null : AbrirMapaEstrategico);
+                territorioEstavel ? null : (System.Action)AbrirMapaEstrategico);
         }
     }
 

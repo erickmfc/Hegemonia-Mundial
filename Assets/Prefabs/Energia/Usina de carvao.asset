@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Usina de Carvão
   descricao: Usina térmica de carvão. Gera 240 MW, custa muito imposto por dia e aumenta a poluição.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 249d03f24e8e7004ca58a6baf5c8ad2f, type: 3}
   itemId: energia.usina.carvao
   aliases: usina, carvao, carvão, coal, energia, power
   capacidades: 524353

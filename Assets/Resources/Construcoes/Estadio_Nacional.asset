@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Estadio Nacional
   descricao: Estadio para grandes partidas, shows e festivais. Gera empregos e turismo.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 4e02ec57d5f95ba4eafa33d050a9b308, type: 3}
   itemId: estadio_nacional
   aliases: estadio, arena esportiva, futebol, cultura, entretenimento
   capacidades: 0

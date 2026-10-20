@@ -119,6 +119,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!4 &19694937 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 1344049398}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &19886388
 GameObject:
   m_ObjectHideFlags: 0
@@ -215,6 +220,107 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 19886388}
   m_CullTransparentMesh: 1
+--- !u!1 &68161523
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 68161524}
+  m_Layer: 0
+  m_Name: __CodexAttachProbe
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &68161524
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 68161523}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1277943858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &77172051
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1285206651}
+    m_Modifications:
+    - target: {fileID: 86618026691249289, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: alcance
+      value: 1000
+      objectReference: {fileID: 0}
+    - target: {fileID: 1732038228339872988, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: teamID
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 3304
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -56.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112992261118, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_Name
+      value: Karsovia_Tank_01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f7b14804196071e41b50717bd952653a, type: 3}
+--- !u!4 &77172052 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+  m_PrefabInstance: {fileID: 77172051}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &100287161
 GameObject:
   m_ObjectHideFlags: 0
@@ -736,6 +842,68 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 163428512}
   m_CullTransparentMesh: 1
+--- !u!1 &165310004
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 165310005}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N3_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &165310005
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 165310004}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 143.1, y: 0, z: 67.8}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &172440522
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 172440523}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaAerea_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &172440523
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 172440522}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 8413}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &177210666
 GameObject:
   m_ObjectHideFlags: 0
@@ -924,6 +1092,67 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2010727219}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &216589059
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 216589060}
+  - component: {fileID: 216589061}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaNaval_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &216589060
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 216589059}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18594, y: 0, z: 33089}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &216589061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 216589059}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaNaval-1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 1
+  nivelDeConflito: 4
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 15000
 --- !u!1001 &237691167
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -975,6 +1204,10 @@ PrefabInstance:
     - target: {fileID: 5443981862646916581, guid: 5b7a0b939d2128d4295d009ab13ccb17, type: 3}
       propertyPath: m_Name
       value: F200
+      objectReference: {fileID: 0}
+    - target: {fileID: 5443981862646916581, guid: 5b7a0b939d2128d4295d009ab13ccb17, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1263,6 +1496,37 @@ MonoBehaviour:
   meuTeamID: 1
   nivelDoMar: 0
   mapaCartograficoInicial: 1
+--- !u!1 &373741939
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 373741940}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N2_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &373741940
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 373741939}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -47.7, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &384385052
 GameObject:
   m_ObjectHideFlags: 0
@@ -1402,6 +1666,67 @@ MonoBehaviour:
   prefabMarcadorPatrulha: {fileID: 0}
   espacamento: 2.5
   unidadesSelecionadas: []
+--- !u!1 &431328338
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 431328339}
+  - component: {fileID: 431328340}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N3_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &431328339
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 431328338}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1543, y: 0, z: 3065}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &431328340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 431328338}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-N3-1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 5
+  nivelDeConflito: 3
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 5000
 --- !u!1 &437497743
 GameObject:
   m_ObjectHideFlags: 0
@@ -1637,6 +1962,16 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 457433680}
   m_CullTransparentMesh: 1
+--- !u!4 &461294274 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 1322116961}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &510116485 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 941414447}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &537939191
 GameObject:
   m_ObjectHideFlags: 0
@@ -1823,6 +2158,37 @@ PhysicsMaterial:
   m_Bounciness: 0
   m_FrictionCombine: 0
   m_BounceCombine: 0
+--- !u!1 &601573247
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 601573248}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N2_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &601573248
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 601573247}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &612855825
 GameObject:
   m_ObjectHideFlags: 0
@@ -1919,6 +2285,11 @@ Transform:
   - {fileID: 2034409422}
   m_Father: {fileID: 1232395131}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &638781864 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 1753108587}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &641988229
 GameObject:
   m_ObjectHideFlags: 0
@@ -1974,6 +2345,37 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
+--- !u!1 &651124752
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 651124753}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaNaval_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &651124753
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 651124752}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 23124, y: 0, z: 21858}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &652061721
 GameObject:
   m_ObjectHideFlags: 0
@@ -2126,6 +2528,94 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 652061721}
   m_CullTransparentMesh: 1
+--- !u!1 &756648829
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 756648830}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N1_3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &756648830
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 756648829}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 20.8, y: 0, z: 9245}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &772264650
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 7157
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 17.930233
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3986.789
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (2)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
 --- !u!1 &773644482
 GameObject:
   m_ObjectHideFlags: 0
@@ -2392,6 +2882,74 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &803649417
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 803649418}
+  m_Layer: 0
+  m_Name: Creatys_Manuais
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &803649418
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 803649417}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1199505862}
+  - {fileID: 172440523}
+  - {fileID: 216589060}
+  - {fileID: 965361533}
+  - {fileID: 1640338970}
+  - {fileID: 1621938341}
+  - {fileID: 431328339}
+  - {fileID: 2059684464}
+  - {fileID: 1123574299}
+  - {fileID: 601573248}
+  - {fileID: 978008879}
+  - {fileID: 1042338959}
+  - {fileID: 756648830}
+  - {fileID: 3100000011}
+  - {fileID: 3100000021}
+  - {fileID: 3100000031}
+  - {fileID: 3100000041}
+  - {fileID: 3100000051}
+  - {fileID: 3100000061}
+  - {fileID: 3100000071}
+  - {fileID: 3100000081}
+  - {fileID: 3100000091}
+  - {fileID: 3100000101}
+  - {fileID: 3100000111}
+  - {fileID: 3100000121}
+  - {fileID: 3100000131}
+  - {fileID: 3100000141}
+  - {fileID: 3100000291}
+  - {fileID: 3100000311}
+  - {fileID: 3100000321}
+  - {fileID: 3100000331}
+  - {fileID: 3100000341}
+  - {fileID: 3100000351}
+  - {fileID: 3100000361}
+  - {fileID: 3100000371}
+  - {fileID: 3100000381}
+  - {fileID: 3100000391}
+  m_Father: {fileID: 1683863950}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &852996025
 GameObject:
   m_ObjectHideFlags: 0
@@ -2681,6 +3239,180 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &877622653
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 877622654}
+  - component: {fileID: 877622655}
+  m_Layer: 0
+  m_Name: IA03_Area_Pier
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &877622654
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 877622653}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -745, y: 0, z: 3107}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1123575602}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &877622655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 877622653}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 11
+  AllowInactiveObject: 0
+  ForceExactPlacement: 0
+  UsePlacementArea: 1
+  PlacementAreaRadius: 1400
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
+--- !u!1001 &878715497
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 4256.6406
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1.742734
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1934
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (1)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
+--- !u!1 &913498675
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 913498676}
+  - component: {fileID: 913498677}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N2_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &913498676
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 913498675}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 145.2, y: 0, z: 75.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &913498677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 913498675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-N2-1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 6
+  nivelDeConflito: 2
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 1.25
 --- !u!1 &925739428
 GameObject:
   m_ObjectHideFlags: 0
@@ -2709,13 +3441,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 925739428}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.07830795, y: 0.86820626, z: 0.1452879, w: 0.46795}
-  m_LocalPosition: {x: -198492, y: 768, z: 78946}
+  m_LocalRotation: {x: -0.008422459, y: 0.8757104, z: 0.0152856205, w: 0.48252112}
+  m_LocalPosition: {x: -198492, y: 768, z: 78948.34}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1232395131}
-  m_LocalEulerAnglesHint: {x: -10.311, y: 121.895, z: 16.046}
+  m_LocalEulerAnglesHint: {x: -2, y: 122.29, z: 0}
 --- !u!114 &925739430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2846,6 +3578,279 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1001 &941414447
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 9372
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 17.930233
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 6590
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (4)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
+--- !u!1 &948154745
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 948154746}
+  - component: {fileID: 948154747}
+  m_Layer: 0
+  m_Name: IA03_Area_Energia
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &948154746
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 948154745}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 650, y: 0, z: 100}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1123575602}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &948154747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 948154745}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 10
+  AllowInactiveObject: 0
+  ForceExactPlacement: 0
+  UsePlacementArea: 1
+  PlacementAreaRadius: 300
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
+--- !u!1 &965361532
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 965361533}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaNaval_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &965361533
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 965361532}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -10111, y: 0, z: -6645}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &969145735
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 969145736}
+  m_Layer: 0
+  m_Name: Creatys_Manuais
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &969145736
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 969145735}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1683087102}
+  - {fileID: 1747995765}
+  - {fileID: 1437974154}
+  - {fileID: 651124753}
+  - {fileID: 2092833406}
+  - {fileID: 1568409756}
+  - {fileID: 2110901012}
+  - {fileID: 165310005}
+  - {fileID: 913498676}
+  - {fileID: 373741940}
+  - {fileID: 2070012872}
+  - {fileID: 1920581077}
+  - {fileID: 1748567462}
+  - {fileID: 3100000151}
+  - {fileID: 3100000161}
+  - {fileID: 3100000171}
+  - {fileID: 3100000181}
+  - {fileID: 3100000191}
+  - {fileID: 3100000201}
+  - {fileID: 3100000211}
+  - {fileID: 3100000221}
+  - {fileID: 3100000231}
+  - {fileID: 3100000241}
+  - {fileID: 3100000251}
+  - {fileID: 3100000261}
+  - {fileID: 3100000271}
+  - {fileID: 3100000281}
+  - {fileID: 3100000301}
+  - {fileID: 3100000401}
+  - {fileID: 3100000411}
+  - {fileID: 3100000421}
+  - {fileID: 3100000431}
+  - {fileID: 3100000441}
+  - {fileID: 3100000451}
+  - {fileID: 3100000461}
+  - {fileID: 3100000471}
+  - {fileID: 3100000481}
+  m_Father: {fileID: 1106922945}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &978008878
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 978008879}
+  - component: {fileID: 978008880}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N1_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &978008879
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 978008878}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 45.8, y: 0, z: 10125}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &978008880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 978008878}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-N1-1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 7
+  nivelDeConflito: 1
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 2000
 --- !u!1 &1006435692
 GameObject:
   m_ObjectHideFlags: 0
@@ -2910,6 +3915,37 @@ Transform:
   m_Children:
   - {fileID: 205787059}
   m_Father: {fileID: 1232395131}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1042338958
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1042338959}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N1_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1042338959
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1042338958}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 32.8, y: 0, z: 8611}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1068792857
 GameObject:
@@ -2979,6 +4015,238 @@ MonoBehaviour:
   m_PivotReferenceSize: 0
   m_Pivot: 0
   m_WorldSpaceCollider: {fileID: 0}
+--- !u!1 &1106922944
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1106922945}
+  - component: {fileID: 1106922947}
+  - component: {fileID: 1106922946}
+  m_Layer: 0
+  m_Name: PaisA_Valdoria_Team2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1106922945
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1106922944}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -53802, y: 0, z: -177370}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 969145736}
+  - {fileID: 1123575602}
+  m_Father: {fileID: 1277943858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1106922946
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1106922944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20be778ccea68e04e890ce8635427088, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.IA03EstrategaNacional
+  ativo: 1
+  perfilPais: {fileID: 11400000, guid: cb1ae5be1efdfc54fbf4af289290442c, type: 2}
+  paisAlvoTeamId: 3
+  missoesEstrategicas:
+  - {fileID: 11400000, guid: 43e2c8f6e8f9f484282f841f7dcd9933, type: 2}
+  - {fileID: 11400000, guid: 48664abd57a6a334fbbd090bb9339afb, type: 2}
+  - {fileID: 11400000, guid: 1840cc9485aff9447a31d484cb0a78d4, type: 2}
+  - {fileID: 11400000, guid: e8a9e36da4d71264f82af7ded2532e9d, type: 2}
+  - {fileID: 11400000, guid: 2049b7a4953071143b6229d12f89ce9c, type: 2}
+  - {fileID: 11400000, guid: 051942aad798c634fb9103d41697ec0f, type: 2}
+  - {fileID: 11400000, guid: d10ae0ead7bb4c99b815ba334216d8c8, type: 2}
+  - {fileID: 11400000, guid: 7daa5866aac24d6e90bdc30091123404, type: 2}
+  - {fileID: 11400000, guid: 4000e9d2d6ed4e7d8cd295fbbb6792eb, type: 2}
+  - {fileID: 11400000, guid: 939879415e8b4ec8bd8262c71d2b8dc9, type: 2}
+  - {fileID: 11400000, guid: a8edd8ca7bab438d9ba12b138a8e3f92, type: 2}
+  - {fileID: 11400000, guid: 1c5d4c73c9ca413fb9ec4c6b71dd5a80, type: 2}
+  intervaloRelatorioSegundos: 300
+  debugIA03: 1
+  nivelDeConflito: 0
+  estadoNacional: 0
+  ultimaDecisao: aguardando perfil nacional
+  ultimaMissao: 
+  reposicoesPendentes: []
+--- !u!114 &1106922947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1106922944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d446d4bc7cb9bfb40ae76cb333a69e3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_BrainMaster
+  TeamId: 2
+  NationName: Valdoria
+  CurrencyName: Valdoria
+  CurrencySymbol: VA$
+  NationProfile: 3
+  InitialNationMode: 5
+  DiplomacyWeight: 0.5
+  TradeWeight: 0.55
+  IndustryWeight: 0.5
+  MilitarismWeight: 0.45
+  AggressionWeight: 0.35
+  ExternalDependencyWeight: 0.45
+  SelfSufficiencyWeight: 0.45
+  EconomicRiskWeight: 0.35
+  StockControlWeight: 0.55
+  AllyLoyaltyWeight: 0.55
+  RivalHatredWeight: 0.45
+  InitialCredits: 30000000
+  IncomePerSecond: 60
+  Credits: 0
+  IntegrationMode: 1
+  DisableLegacyAIWhenFull: 1
+  MaxCommandsPerFrame: 4
+  UseScriptedBootstrap: 1
+  BootstrapMobilizationSeconds: 60
+  EnableVerboseLogs: 0
+  EnableBootstrapConsoleTrace: 0
+  UseManualBuildPoints: 1
+  RuntimeSummary: 
+  BootstrapStatus: 
+  BootstrapLastError: 
+  NavalDiagnosticSummary: 
+  CombatPressureSummary: 
+  RuntimeTracePath: 
+  WarPosture: 1
+  StrategicPhase: 0
+  ActiveImperialPlan: abertura
+  ImperialLastFailure: 
+  TargetFleet: 4
+  TargetAircraft: 8
+  TargetOilTankers: 2
+  TargetPlatforms: 2
+  TargetPiers: 2
+  TargetShipyards: 1
+  TargetCoastalDefenseShips: 3
+  TargetRadars: 1
+  TargetCiws: 1
+  PlayerFleetEstimate: 0
+  PlayerAircraftEstimate: 0
+  WeakEmpireRecoveryActive: 0
+  ActiveStrategicTarget: 
+  ImperialPlanSummary: 
+--- !u!1 &1123574298
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1123574299}
+  - component: {fileID: 1123574300}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N2_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1123574299
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123574298}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1123, y: 0, z: 2417}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1123574300
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123574298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-N2-1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 6
+  nivelDeConflito: 2
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 5000
+--- !u!1 &1123575601
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1123575602}
+  m_Layer: 0
+  m_Name: IA03_Areas_Construcao
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1123575602
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1123575601}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3100000601}
+  - {fileID: 2117179726}
+  - {fileID: 948154746}
+  - {fileID: 877622654}
+  - {fileID: 1619804374}
+  - {fileID: 1938864002}
+  m_Father: {fileID: 1106922945}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1150063742
 GameObject:
   m_ObjectHideFlags: 0
@@ -3162,6 +4430,67 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2010727219}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1199505861
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1199505862}
+  - component: {fileID: 1199505863}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaAerea_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1199505862
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1199505861}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -5722, y: 0, z: 3435}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1199505863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1199505861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaAerea-1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 2
+  nivelDeConflito: 4
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 5000
 --- !u!1 &1210878376
 GameObject:
   m_ObjectHideFlags: 0
@@ -3482,6 +4811,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: type-45_destroyer_class
       objectReference: {fileID: 0}
+    - target: {fileID: -6689036041284674117, guid: b3faa5cae794f224f81ea88eb0e3d89e, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: b3faa5cae794f224f81ea88eb0e3d89e, type: 3}
       propertyPath: m_LocalScale.x
       value: 31.568165
@@ -3539,6 +4872,73 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: b3faa5cae794f224f81ea88eb0e3d89e, type: 3}
+--- !u!1 &1277943856
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1277943858}
+  m_Layer: 0
+  m_Name: IA03_GlobalRuntime
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1277943858
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1277943856}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -82356, y: 270.6, z: 115117}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1106922945}
+  - {fileID: 1683863950}
+  - {fileID: 68161524}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1285206650
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1285206651}
+  m_Layer: 0
+  m_Name: Unidades_Reais
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1285206651
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1285206650}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 6822}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 77172052}
+  - {fileID: 1481294692}
+  m_Father: {fileID: 1683863950}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1319298034
 GameObject:
   m_ObjectHideFlags: 0
@@ -3626,12 +5026,134 @@ MonoBehaviour:
   intervaloReconciliacaoSeguranca: 2
   corBorda: {r: 0.18, g: 0.15, b: 0.12, a: 1}
   corFundoRadar: {r: 0.85, g: 0.78, b: 0.6, a: 0.1}
-  espessuraBorda: 8
+  espessuraBorda: 0
   corTrianguloJogador: {r: 1, g: 0, b: 0, a: 1}
   tamanhoTriangulo: 14
   mostrarInimigos: 1
   mostrarAliados: 1
   raioDeteccao: 500
+--- !u!1001 &1322116961
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 905722813668682672, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: tipoUnidade
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2278
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.6997709
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 354
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_TagString
+      value: Imovel
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
+--- !u!1001 &1344049398
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 15051
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 17.930233
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3986.789
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (3)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
 --- !u!1 &1345856046
 GameObject:
   m_ObjectHideFlags: 0
@@ -3813,6 +5335,67 @@ MonoBehaviour:
   corBotaoPatrulha: {r: 0.8, g: 0.5, b: 0, a: 1}
   corBotaoSeguir: {r: 0.5, g: 0, b: 0.5, a: 1}
   fonteUI: {fileID: 0}
+--- !u!1 &1437974153
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1437974154}
+  - component: {fileID: 1437974155}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaNaval_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1437974154
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1437974153}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -15104, y: 0, z: 11091}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1437974155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1437974153}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaNaval-1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 1
+  nivelDeConflito: 4
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 10000
 --- !u!1 &1451157269
 GameObject:
   m_ObjectHideFlags: 0
@@ -4019,6 +5602,76 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1462460651}
   m_CullTransparentMesh: 1
+--- !u!1001 &1481294691
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1285206651}
+    m_Modifications:
+    - target: {fileID: 86618026691249289, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: alcance
+      value: 1000
+      objectReference: {fileID: 0}
+    - target: {fileID: 1732038228339872988, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: teamID
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3352
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 62.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8362449112992261118, guid: f7b14804196071e41b50717bd952653a, type: 3}
+      propertyPath: m_Name
+      value: Karsovia_Tank_02
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f7b14804196071e41b50717bd952653a, type: 3}
+--- !u!4 &1481294692 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
+  m_PrefabInstance: {fileID: 1481294691}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1481355152
 GameObject:
   m_ObjectHideFlags: 0
@@ -4158,6 +5811,15 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 22c326fdd9332f84f9db0a8a1f3e9025, type: 2}
   - {fileID: 11400000, guid: 4dd1c24eae38ba04e845a054d7fa9f04, type: 2}
   - {fileID: 11400000, guid: 75f445caaab87464489112d09b8275e5, type: 2}
+  - {fileID: 11400000, guid: b493898a897b8074882fa7654a554fde, type: 2}
+  - {fileID: 11400000, guid: f9ac2523422580346816c206dd9835e0, type: 2}
+  - {fileID: 11400000, guid: 8c7a9c1a5e0f4b1f9dcd2e5a6fef3d40, type: 2}
+  - {fileID: 11400000, guid: 8ca896c2a55dfa94a84d831cd9e48bde, type: 2}
+  - {fileID: 11400000, guid: e17fd7e162d499f4ebba9a28377391e0, type: 2}
+  - {fileID: 11400000, guid: a6d8e2e5b281fb8489d15890a31b7777, type: 2}
+  - {fileID: 11400000, guid: 25f3ab81f77f52e4fb040151fc9a9475, type: 2}
+  - {fileID: 11400000, guid: e1b725f02b9ca3a4dbd933147d1b64fe, type: 2}
+  - {fileID: 11400000, guid: 8898c68352fc439b98739a7b67d1a754, type: 2}
 --- !u!1 &1498349612
 GameObject:
   m_ObjectHideFlags: 0
@@ -4221,6 +5883,11 @@ MonoBehaviour:
   totalConsumoPetroleo: 0
   totalConsumoAco: 0
   totalConsumoEnergia: 0
+--- !u!4 &1510274272 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 1793280362}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1529089054
 GameObject:
   m_ObjectHideFlags: 0
@@ -4285,6 +5952,102 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &1568409755
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1568409756}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N4_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1568409756
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1568409755}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 80.8, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1582100448
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 905722813668682672, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: tipoUnidade
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2643
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.6997709
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3418
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (6)
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_TagString
+      value: Imovel
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
 --- !u!1001 &1617855475
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4297,13 +6060,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: steregushchiy_class_corvette
       objectReference: {fileID: 0}
+    - target: {fileID: -6689036041284674117, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
       propertyPath: m_LocalScale.x
-      value: 45.657
+      value: 65.8
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
       propertyPath: m_LocalScale.y
-      value: 44.374813
+      value: 51.4
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
       propertyPath: m_LocalScale.z
@@ -4354,6 +6121,93 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
+--- !u!1 &1619804373
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1619804374}
+  - component: {fileID: 1619804375}
+  m_Layer: 0
+  m_Name: IA03_Area_Estaleiro
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1619804374
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1619804373}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1487, y: 0, z: 2477}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1123575602}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1619804375
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1619804373}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 12
+  AllowInactiveObject: 0
+  ForceExactPlacement: 0
+  UsePlacementArea: 1
+  PlacementAreaRadius: 1400
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
+--- !u!1 &1621938340
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1621938341}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N4_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1621938341
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1621938340}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1639976928
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4366,9 +6220,13 @@ PrefabInstance:
       propertyPath: m_Name
       value: uss_zumwalt_ddg-1000
       objectReference: {fileID: 0}
+    - target: {fileID: -6689036041284674117, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
       propertyPath: m_LocalScale.x
-      value: 6.3295
+      value: 8.25
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
       propertyPath: m_LocalScale.y
@@ -4384,7 +6242,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0033950806
+      value: 4.3
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
       propertyPath: m_LocalPosition.z
@@ -4423,6 +6281,67 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
+--- !u!1 &1640338969
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1640338970}
+  - component: {fileID: 1640338971}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N4_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1640338970
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640338969}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 5916}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1640338971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1640338969}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-N4-1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 4
+  nivelDeConflito: 4
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 2000
 --- !u!1 &1644089482
 GameObject:
   m_ObjectHideFlags: 0
@@ -4700,6 +6619,200 @@ MonoBehaviour:
   sampleInterval: 1
   benchmarkLabel: 250km-parado
   benchmarkKey: 290
+--- !u!1 &1683087101
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1683087102}
+  - component: {fileID: 1683087103}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaAerea_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1683087102
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683087101}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 63.8, y: 0, z: 12150}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1683087103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683087101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaAerea-1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 1
+  tipo: 2
+  nivelDeConflito: 4
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 5000
+--- !u!1 &1683863949
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1683863950}
+  - component: {fileID: 1683863952}
+  - component: {fileID: 1683863951}
+  m_Layer: 0
+  m_Name: PaisB_Karsovia_Team3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1683863950
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683863949}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -43132, y: 0, z: -9166}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 803649418}
+  - {fileID: 1285206651}
+  m_Father: {fileID: 1277943858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1683863951
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683863949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20be778ccea68e04e890ce8635427088, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.IA03EstrategaNacional
+  ativo: 1
+  perfilPais: {fileID: 11400000, guid: f988e362d20a44141b1893fa1c6f66c1, type: 2}
+  paisAlvoTeamId: 1
+  missoesEstrategicas:
+  - {fileID: 11400000, guid: 43e2c8f6e8f9f484282f841f7dcd9933, type: 2}
+  - {fileID: 11400000, guid: 48664abd57a6a334fbbd090bb9339afb, type: 2}
+  - {fileID: 11400000, guid: 1840cc9485aff9447a31d484cb0a78d4, type: 2}
+  - {fileID: 11400000, guid: e8a9e36da4d71264f82af7ded2532e9d, type: 2}
+  - {fileID: 11400000, guid: 2049b7a4953071143b6229d12f89ce9c, type: 2}
+  - {fileID: 11400000, guid: 051942aad798c634fb9103d41697ec0f, type: 2}
+  - {fileID: 11400000, guid: d10ae0ead7bb4c99b815ba334216d8c8, type: 2}
+  - {fileID: 11400000, guid: 7daa5866aac24d6e90bdc30091123404, type: 2}
+  - {fileID: 11400000, guid: 4000e9d2d6ed4e7d8cd295fbbb6792eb, type: 2}
+  - {fileID: 11400000, guid: 939879415e8b4ec8bd8262c71d2b8dc9, type: 2}
+  - {fileID: 11400000, guid: a8edd8ca7bab438d9ba12b138a8e3f92, type: 2}
+  intervaloRelatorioSegundos: 300
+  debugIA03: 1
+  nivelDeConflito: 0
+  estadoNacional: 0
+  ultimaDecisao: aguardando perfil nacional
+  ultimaMissao: 
+  reposicoesPendentes: []
+--- !u!114 &1683863952
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683863949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d446d4bc7cb9bfb40ae76cb333a69e3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_BrainMaster
+  TeamId: 3
+  NationName: Karsovia
+  CurrencyName: Karsov
+  CurrencySymbol: KA$
+  NationProfile: 4
+  InitialNationMode: 3
+  DiplomacyWeight: 0.5
+  TradeWeight: 0.55
+  IndustryWeight: 0.5
+  MilitarismWeight: 0.45
+  AggressionWeight: 0.35
+  ExternalDependencyWeight: 0.45
+  SelfSufficiencyWeight: 0.45
+  EconomicRiskWeight: 0.35
+  StockControlWeight: 0.55
+  AllyLoyaltyWeight: 0.55
+  RivalHatredWeight: 0.45
+  InitialCredits: 300000
+  IncomePerSecond: 60
+  Credits: 0
+  IntegrationMode: 1
+  DisableLegacyAIWhenFull: 1
+  MaxCommandsPerFrame: 4
+  UseScriptedBootstrap: 0
+  BootstrapMobilizationSeconds: 60
+  EnableVerboseLogs: 0
+  EnableBootstrapConsoleTrace: 0
+  UseManualBuildPoints: 1
+  RuntimeSummary: 
+  BootstrapStatus: 
+  BootstrapLastError: 
+  NavalDiagnosticSummary: 
+  CombatPressureSummary: 
+  RuntimeTracePath: 
+  WarPosture: 1
+  StrategicPhase: 0
+  ActiveImperialPlan: abertura
+  ImperialLastFailure: 
+  TargetFleet: 4
+  TargetAircraft: 8
+  TargetOilTankers: 2
+  TargetPlatforms: 2
+  TargetPiers: 2
+  TargetShipyards: 1
+  TargetCoastalDefenseShips: 3
+  TargetRadars: 1
+  TargetCiws: 1
+  PlayerFleetEstimate: 0
+  PlayerAircraftEstimate: 0
+  WeakEmpireRecoveryActive: 0
+  ActiveStrategicTarget: 
+  ImperialPlanSummary: 
 --- !u!1 &1707234389
 GameObject:
   m_ObjectHideFlags: 0
@@ -5013,6 +7126,125 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: b2fe5033d7fc7ab4b8badb297d040686, type: 3}
+--- !u!1 &1747995764
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1747995765}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaAerea_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1747995765
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1747995764}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18304, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1748567461
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1748567462}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N1_3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1748567462
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1748567461}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -57.7}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1753108587
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2000
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 17.930233
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 6121
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (5)
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
 --- !u!1 &1757997230
 GameObject:
   m_ObjectHideFlags: 0
@@ -5049,6 +7281,71 @@ Transform:
   - {fileID: 1816411008}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1793280362
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2064377788}
+    m_Modifications:
+    - target: {fileID: 905722813668682672, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: tipoUnidade
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -6168
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.6997709
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1899
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_Name
+      value: City (7)
+      objectReference: {fileID: 0}
+    - target: {fileID: 3400848569100608902, guid: e51415fb69670f9499215302060e90ab, type: 3}
+      propertyPath: m_TagString
+      value: Imovel
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
 --- !u!1 &1803721176
 GameObject:
   m_ObjectHideFlags: 0
@@ -5589,6 +7886,11 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!4 &1872334166 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 1582100448}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1878281230
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5600,6 +7902,10 @@ PrefabInstance:
     - target: {fileID: -6689036041284674117, guid: 24d3ffdfbd9ad794396fcaf086144eef, type: 3}
       propertyPath: m_Name
       value: ins_visakhapatnam
+      objectReference: {fileID: 0}
+    - target: {fileID: -6689036041284674117, guid: 24d3ffdfbd9ad794396fcaf086144eef, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 24d3ffdfbd9ad794396fcaf086144eef, type: 3}
       propertyPath: m_LocalScale.x
@@ -5810,6 +8116,98 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1906979408}
   m_CullTransparentMesh: 1
+--- !u!4 &1919929260 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 772264650}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1920581076
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1920581077}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N1_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1920581077
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1920581076}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -54.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1938864001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1938864002}
+  - component: {fileID: 1938864003}
+  m_Layer: 0
+  m_Name: IA03_Area_Plataforma_Petroleo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1938864002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1938864001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1600, y: 0, z: 3000}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1123575602}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1938864003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1938864001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 13
+  AllowInactiveObject: 0
+  ForceExactPlacement: 0
+  UsePlacementArea: 1
+  PlacementAreaRadius: 1000
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1 &1956591382
 GameObject:
   m_ObjectHideFlags: 0
@@ -6250,16 +8648,3346 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1 &2059684463
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2059684464}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_N3_2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2059684464
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2059684463}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2064377787
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2064377788}
+  m_Layer: 0
+  m_Name: City
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2064377788
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2064377787}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -198643.44, y: 7.32001, z: 80277.664}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 461294274}
+  - {fileID: 1872334166}
+  - {fileID: 1510274272}
+  - {fileID: 2139956075}
+  - {fileID: 1919929260}
+  - {fileID: 19694937}
+  - {fileID: 510116485}
+  - {fileID: 638781864}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2070012871
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2070012872}
+  - component: {fileID: 2070012873}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N1_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2070012872
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2070012871}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -82.2, y: 0, z: 167.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2070012873
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2070012871}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-N1-1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 7
+  nivelDeConflito: 1
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 1.25
+--- !u!1 &2092833405
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2092833406}
+  - component: {fileID: 2092833407}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N4_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2092833406
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2092833405}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 78.4, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2092833407
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2092833405}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-N4-1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 1
+  tipo: 4
+  nivelDeConflito: 4
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 1.25
+--- !u!1 &2110901011
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2110901012}
+  - component: {fileID: 2110901013}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_N3_1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2110901012
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2110901011}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -226.8, y: 0, z: 110.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2110901013
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2110901011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-N3-1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 5
+  nivelDeConflito: 3
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: 
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 1.25
+--- !u!1 &2117179725
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2117179726}
+  - component: {fileID: 2117179727}
+  m_Layer: 0
+  m_Name: IA03_Area_Cidade_Prefeitura
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2117179726
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2117179725}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 400, y: 0, z: 250}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1123575602}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2117179727
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2117179725}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 9
+  AllowInactiveObject: 0
+  ForceExactPlacement: 0
+  UsePlacementArea: 1
+  PlacementAreaRadius: 1000
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
+--- !u!4 &2139956075 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
+  m_PrefabInstance: {fileID: 878715497}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3100000010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000011}
+  - component: {fileID: 3100000012}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaTerrestre_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000011
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000010}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 5916}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N4
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 0
+  nivelDeConflito: 4
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000020
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000021}
+  - component: {fileID: 3100000022}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaSubmarino_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000021
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000020}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18594, y: 0, z: 33089}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000020}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N4
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 3
+  nivelDeConflito: 4
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000030
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000031}
+  - component: {fileID: 3100000032}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaSubmarino_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000031
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000030}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18450, y: 0, z: 33200}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000032
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000030}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N3
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 3
+  nivelDeConflito: 3
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000040
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000041}
+  - component: {fileID: 3100000042}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaSubmarino_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000041
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000040}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18300, y: 0, z: 33300}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000042
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 3
+  nivelDeConflito: 2
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000050
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000051}
+  - component: {fileID: 3100000052}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaSubmarino_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000051
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000050}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18150, y: 0, z: 33400}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000052
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 3
+  nivelDeConflito: 1
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000060
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000061}
+  - component: {fileID: 3100000062}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_ZonaPortaAvioes_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000061
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000060}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18750, y: 0, z: 32800}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000060}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-ZonaPortaAvioes_N3
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 8
+  nivelDeConflito: 3
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000070
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000071}
+  - component: {fileID: 3100000072}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_ZonaPortaAvioes_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000071
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000070}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -19000, y: 0, z: 33000}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000072
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000070}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-ZonaPortaAvioes_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 8
+  nivelDeConflito: 2
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000080
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000081}
+  - component: {fileID: 3100000082}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_ZonaPortaAvioes_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000081
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000080}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -19300, y: 0, z: 33300}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000080}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-ZonaPortaAvioes_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 8
+  nivelDeConflito: 1
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000090
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000091}
+  - component: {fileID: 3100000092}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_EmbarqueTransporte_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000091
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000090}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18594, y: 0, z: 33089}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000092
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000090}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-EmbarqueTransporte_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 9
+  nivelDeConflito: 2
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 3100000102}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000100
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000101}
+  - component: {fileID: 3100000102}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_DesembarqueAnfibio_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000101
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000100}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1123, y: 0, z: 2417}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-DesembarqueAnfibio_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 10
+  nivelDeConflito: 2
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000110
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000111}
+  - component: {fileID: 3100000112}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_EmbarqueTransporte_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000111
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000110}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18800, y: 0, z: 33300}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000112
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-EmbarqueTransporte_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 9
+  nivelDeConflito: 1
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 3100000122}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000120
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000121}
+  - component: {fileID: 3100000122}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_DesembarqueAnfibio_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000121
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000120}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 45.8, y: 0, z: 10125}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000122
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-DesembarqueAnfibio_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 10
+  nivelDeConflito: 1
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000130
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000131}
+  - component: {fileID: 3100000132}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_HelipontoDiplomatico_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000131
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000130}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 45.8, y: 0, z: 10125}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000130}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-HelipontoDiplomatico_N4
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 11
+  nivelDeConflito: 4
+  dominio: 4
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 3100000142}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000140
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000141}
+  - component: {fileID: 3100000142}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_RecepcaoPresidencial_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000141
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000140}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 5916}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000142
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-RecepcaoPresidencial_N4
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 12
+  nivelDeConflito: 4
+  dominio: 4
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000150
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000151}
+  - component: {fileID: 3100000152}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaTerrestre_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000151
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000150}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 145.2, y: 0, z: -6096}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000152
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000150}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N4
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 0
+  nivelDeConflito: 4
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 5000
+--- !u!1 &3100000160
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000161}
+  - component: {fileID: 3100000162}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaSubmarino_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000161
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000160}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -169.3, y: 0, z: 28549}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000162
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000160}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N4
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 3
+  nivelDeConflito: 4
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 8000
+--- !u!1 &3100000170
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000171}
+  - component: {fileID: 3100000172}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaSubmarino_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000171
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000170}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 46304, y: 0, z: 65143}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000172
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000170}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N3
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 3
+  nivelDeConflito: 3
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 20000
+--- !u!1 &3100000180
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000181}
+  - component: {fileID: 3100000182}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaSubmarino_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000181
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000180}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -42378, y: 0, z: 50378}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 3
+  nivelDeConflito: 2
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 20000
+--- !u!1 &3100000190
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000191}
+  - component: {fileID: 3100000192}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaSubmarino_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000191
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000190}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -320, y: 0, z: 75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000192
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000190}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 3
+  nivelDeConflito: 1
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000200
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000201}
+  - component: {fileID: 3100000202}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_ZonaPortaAvioes_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000201
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000200}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -250, y: 0, z: 45418}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-ZonaPortaAvioes_N3
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 8
+  nivelDeConflito: 3
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 3
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 10000
+--- !u!1 &3100000210
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000211}
+  - component: {fileID: 3100000212}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_ZonaPortaAvioes_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000211
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000210}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -320, y: 0, z: 77366}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-ZonaPortaAvioes_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 8
+  nivelDeConflito: 2
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 10000
+--- !u!1 &3100000220
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000221}
+  - component: {fileID: 3100000222}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_ZonaPortaAvioes_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000221
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000220}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -390, y: 0, z: 102725}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-ZonaPortaAvioes_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 8
+  nivelDeConflito: 1
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 10000
+--- !u!1 &3100000230
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000231}
+  - component: {fileID: 3100000232}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_EmbarqueTransporte_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000231
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000230}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -169.3, y: 0, z: 3523}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000230}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-EmbarqueTransporte_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 9
+  nivelDeConflito: 2
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 3100000242}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 2000
+--- !u!1 &3100000240
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000241}
+  - component: {fileID: 3100000242}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_DesembarqueAnfibio_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000241
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000240}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 145.2, y: 0, z: 2771}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000240}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-DesembarqueAnfibio_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 10
+  nivelDeConflito: 2
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000250
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000251}
+  - component: {fileID: 3100000252}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_EmbarqueTransporte_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000251
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000250}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -200, y: 0, z: 50}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000250}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-EmbarqueTransporte_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 9
+  nivelDeConflito: 1
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 3100000262}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000261}
+  - component: {fileID: 3100000262}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_DesembarqueAnfibio_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000261
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000260}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -82.2, y: 0, z: 167.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-DesembarqueAnfibio_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 10
+  nivelDeConflito: 1
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000270
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000271}
+  - component: {fileID: 3100000272}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_HelipontoDiplomatico_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000271
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000270}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 78.4, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-HelipontoDiplomatico_N4
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 11
+  nivelDeConflito: 4
+  dominio: 4
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 3100000282}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000280
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000281}
+  - component: {fileID: 3100000282}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_RecepcaoPresidencial_N4
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000281
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000280}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 145.2, y: 0, z: 75.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000280}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-RecepcaoPresidencial_N4
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 12
+  nivelDeConflito: 4
+  dominio: 4
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000290
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000291}
+  - component: {fileID: 3100000292}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PontoGenerico_Paz
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000291
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000290}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 5916}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000292
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000290}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PontoGenerico-Paz
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 13
+  nivelDeConflito: 0
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000300
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000301}
+  - component: {fileID: 3100000302}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PontoGenerico_Paz
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000301
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000300}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 145.2, y: 0, z: 75.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000302
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000300}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PontoGenerico-Paz
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 13
+  nivelDeConflito: 0
+  dominio: 3
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000310
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000311}
+  - component: {fileID: 3100000312}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaTerrestre_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000311
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000310}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1543, y: 0, z: 3065}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000312
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000310}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N3
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 0
+  nivelDeConflito: 3
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000320
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000321}
+  - component: {fileID: 3100000322}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaTerrestre_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000320}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 1123, y: 0, z: 2417}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 0
+  nivelDeConflito: 2
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000330
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000331}
+  - component: {fileID: 3100000332}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaTerrestre_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000331
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000330}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 45.8, y: 0, z: 10125}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000332
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 0
+  nivelDeConflito: 1
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000340
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000341}
+  - component: {fileID: 3100000342}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaNaval_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000341
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000340}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18450, y: 0, z: 33600}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000340}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaNaval_N3
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 1
+  nivelDeConflito: 3
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000350
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000351}
+  - component: {fileID: 3100000352}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaNaval_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000351
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000350}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18300, y: 0, z: 33900}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000352
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000350}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaNaval_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 1
+  nivelDeConflito: 2
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000360
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000361}
+  - component: {fileID: 3100000362}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaNaval_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000361
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000360}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -18150, y: 0, z: 34200}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000360}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaNaval_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 1
+  nivelDeConflito: 1
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000370
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000371}
+  - component: {fileID: 3100000372}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaAerea_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000371
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000370}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -5722, y: 0, z: 3635}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaAerea_N3
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 2
+  nivelDeConflito: 3
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000380
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000381}
+  - component: {fileID: 3100000382}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaAerea_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000381
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000380}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -5922, y: 0, z: 3435}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000380}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaAerea_N2
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 2
+  nivelDeConflito: 2
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000390
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000391}
+  - component: {fileID: 3100000392}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Karsovia_PatrulhaAerea_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000391
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000390}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -6122, y: 0, z: 3435}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000390}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-KARSOVIA-PatrulhaAerea_N1
+  paisProprietarioTeamId: 3
+  paisAlvoTeamId: 1
+  tipo: 2
+  nivelDeConflito: 1
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-KARSOVIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000400
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000401}
+  - component: {fileID: 3100000402}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaTerrestre_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000401
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000400}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -226.8, y: 0, z: 110.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000400}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N3
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 0
+  nivelDeConflito: 3
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000410
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000411}
+  - component: {fileID: 3100000412}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaTerrestre_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000411
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000410}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 145.2, y: 0, z: 75.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 0
+  nivelDeConflito: 2
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000420
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000421}
+  - component: {fileID: 3100000422}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaTerrestre_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000421
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000420}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -82.2, y: 0, z: 167.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000420}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 0
+  nivelDeConflito: 1
+  dominio: 0
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 250
+--- !u!1 &3100000430
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000431}
+  - component: {fileID: 3100000432}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaNaval_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000431
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000430}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -220, y: 0, z: 9487}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000432
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaNaval_N3
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 1
+  nivelDeConflito: 3
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 5000
+--- !u!1 &3100000440
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000441}
+  - component: {fileID: 3100000442}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaNaval_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000441
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000440}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -270, y: 0, z: 39436}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000440}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaNaval_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 1
+  nivelDeConflito: 2
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 15000
+--- !u!1 &3100000450
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000451}
+  - component: {fileID: 3100000452}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaNaval_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000451
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000450}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -745, y: 0, z: 51566}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000452
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000450}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaNaval_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 1
+  nivelDeConflito: 1
+  dominio: 1
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 47761
+--- !u!1 &3100000460
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000461}
+  - component: {fileID: 3100000462}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaAerea_N3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000461
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000460}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 63.8, y: 0, z: 45}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaAerea_N3
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 2
+  nivelDeConflito: 3
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 20000
+--- !u!1 &3100000470
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000471}
+  - component: {fileID: 3100000472}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaAerea_N2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000471
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000470}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 100, y: 0, z: 38863}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000470}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaAerea_N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 2
+  nivelDeConflito: 2
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 20000
+--- !u!1 &3100000480
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000481}
+  - component: {fileID: 3100000482}
+  m_Layer: 0
+  m_Name: SLOT_MANUAL_Valdoria_PatrulhaAerea_N1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000481
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000480}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 140, y: 0, z: 79453}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 969145736}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000480}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-TEST-VALDORIA-PatrulhaAerea_N1
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 2
+  nivelDeConflito: 1
+  dominio: 2
+  prioridade: 50
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 60
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-TEST-VALDORIA
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 0
+  tamanhoGizmo: 50000
+--- !u!1 &3100000600
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3100000601}
+  - component: {fileID: 3100000602}
+  - component: {fileID: 3100000603}
+  m_Layer: 0
+  m_Name: IA03_Creaty_Aeroporto_Valdoria_N2_POSICIONAR
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3100000601
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000600}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -1199, y: 0, z: 538}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1123575602}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3100000602
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000600}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
+  id: IA03-VALDORIA-ATAQUE-AEROPORTO-N2
+  paisProprietarioTeamId: 2
+  paisAlvoTeamId: 3
+  tipo: 6
+  nivelDeConflito: 2
+  dominio: 2
+  prioridade: 85
+  pesoDeEscolha: 1
+  maximoDeUnidades: 12
+  tempoDeReutilizacaoSegundos: 120
+  ativo: 1
+  proximoPonto: {fileID: 0}
+  grupo: IA03-VALDORIA-ATAQUE-AEROPORTO
+  paisesPermitidos: 
+  paisesProibidos: 
+  alvoPreferencial: 1
+  tamanhoGizmo: 250
+--- !u!114 &3100000603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3100000600}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  ItemFilters: 
+  ManualRole: 14
+  AllowInactiveObject: 0
+  ForceExactPlacement: 0
+  UsePlacementArea: 1
+  PlacementAreaRadius: 600
+  ReusePoint: 0
+  OccupiedRadius: 18
+  RestrictToBootstrapStage: 0
+  BootstrapStage: 0
+  GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
+  GizmoRadius: 5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1232395131}
-  - {fileID: 1803721178}
-  - {fileID: 2010727219}
-  - {fileID: 1757997231}
+  - {fileID: 1639976928}
+  - {fileID: 1256667837}
+  - {fileID: 1617855475}
   - {fileID: 237691167}
   - {fileID: 1878281230}
-  - {fileID: 1617855475}
-  - {fileID: 1256667837}
-  - {fileID: 1639976928}
+  - {fileID: 1232395131}
+  - {fileID: 1277943858}
+  - {fileID: 1757997231}
+  - {fileID: 1803721178}
+  - {fileID: 2010727219}
+  - {fileID: 2064377788}

@@ -123,7 +123,7 @@ public class LancadorMisselCaca : MonoBehaviour
             }
         }
         
-        _meuTime = GetComponent<IdentidadeIA>()?.teamID ?? GetComponent<IdentidadeUnidade>()?.teamID ?? 1;
+        _meuTime = ResolverTimeProprio();
         // Evita que todos os caças escaneiem e disparem no mesmo frame.
         tempoUltimoScan = Time.time + UnityEngine.Random.Range(0.05f, 0.85f);
 
@@ -214,10 +214,16 @@ public class LancadorMisselCaca : MonoBehaviour
                 CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
                 if (combustivel != null && combustivel.usaCombustivel && combustivel.Percentual <= 0.50f)
                 {
-                    combustivel.PreencherSemCusto();
                     if (_vooModerno != null)
                     {
                         _vooModerno.ReabastecerSeAbaixoDe(0.50f);
+                    }
+                    else
+                    {
+                        ServicoAbastecimento.TentarAbastecer(
+                            combustivel,
+                            combustivel.Capacidade - combustivel.CombustivelAtual,
+                            out _);
                     }
                 }
 
@@ -276,10 +282,18 @@ public class LancadorMisselCaca : MonoBehaviour
 
         if (municaoAtual > 0 && cronometroRecarga <= 0 && inimigosNaArea.Count > 0)
         {
-            AlvoDetectado alvo = inimigosNaArea[0];
-            bool autorizado = !somenteAlvosAutorizadosHud || _alvosAutorizadosHud.Contains(alvo.transform);
-            if (alvo.transform != null && autorizado)
-                Disparar(alvo.transform);
+            // Um contato neutro pode aparecer antes de um inimigo real na
+            // ordenação de sensores. Procura o primeiro alvo autorizado para
+            // que esse contato não trave a aquisição automática do caça.
+            for (int i = 0; i < inimigosNaArea.Count; i++)
+            {
+                AlvoDetectado alvo = inimigosNaArea[i];
+                if (alvo.transform == null) continue;
+                if (somenteAlvosAutorizadosHud && !_alvosAutorizadosHud.Contains(alvo.transform)) continue;
+                IdentidadeUnidade identidadeAlvo = ResolverIdentidadeAlvo(alvo.transform);
+                if (!ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(_meuTime, identidadeAlvo)) continue;
+                if (Disparar(alvo.transform)) break;
+            }
         }
 
         // Volta para a base se ficar sem munição
@@ -404,6 +418,7 @@ public class LancadorMisselCaca : MonoBehaviour
     {
         inimigosNaArea.Clear();
         _alvosJaVistos.Clear();
+        _meuTime = ResolverTimeProprio();
 
         // OTIMIZAÇÃO MAXIMA: Ao invés de usar a Física da Unity (OverlapSphere) que pesa a CPU em raios gigantes,
         // agora buscamos direto na memória do jogo apenas o que de fato é Unidade Militar.
@@ -416,7 +431,8 @@ public class LancadorMisselCaca : MonoBehaviour
             if (idAlvo == null || idAlvo.teamID == _meuTime) continue;
             if (!ControleSubmarino.PodeSerAlvoConvencional(idAlvo.transform)) continue;
 
-            SistemaDeDanos alvoDanos = idAlvo.GetComponent<SistemaDeDanos>();
+            SistemaDeDanos alvoDanos = idAlvo.GetComponent<SistemaDeDanos>()
+                ?? idAlvo.GetComponentInChildren<SistemaDeDanos>(true);
             if (alvoDanos == null || alvoDanos.vidaAtual <= 0) continue;
 
             Transform alvoTransform = alvoDanos.transform;
@@ -443,6 +459,24 @@ public class LancadorMisselCaca : MonoBehaviour
             if (comparacaoPrioridade != 0) return comparacaoPrioridade;
             return a.distancia.CompareTo(b.distancia);
         });
+    }
+
+    private int ResolverTimeProprio()
+    {
+        IdentidadeIA identidadeIA = GetComponentInParent<IdentidadeIA>()
+            ?? GetComponentInChildren<IdentidadeIA>(true);
+        if (identidadeIA != null && identidadeIA.teamID > 0) return identidadeIA.teamID;
+        IdentidadeUnidade identidade = GetComponentInParent<IdentidadeUnidade>()
+            ?? GetComponentInChildren<IdentidadeUnidade>(true);
+        return identidade != null && identidade.teamID > 0 ? identidade.teamID : 1;
+    }
+
+    private static IdentidadeUnidade ResolverIdentidadeAlvo(Transform alvo)
+    {
+        if (alvo == null) return null;
+        return alvo.GetComponent<IdentidadeUnidade>()
+            ?? alvo.GetComponentInParent<IdentidadeUnidade>()
+            ?? alvo.GetComponentInChildren<IdentidadeUnidade>(true);
     }
 
     bool Disparar(Transform alvo)

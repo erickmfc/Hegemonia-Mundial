@@ -23,6 +23,11 @@ namespace Hegemonia.AI.BrainMaster
         // continuam registrados; o detalhamento pesado fica opt-in.
         public static bool FrameTraceEnabled { get; set; }
         public static bool ModuleTraceEnabled { get; set; }
+        // Permite separar o custo dos eventos de negocio do custo do restante
+        // da IA em diagnosticos controlados. A escrita sincronizada fica
+        // desligada no jogo normal e so e habilitada explicitamente durante
+        // uma sessao de diagnostico.
+        public static bool BusinessTraceEnabled { get; set; }
 
         public static string CurrentPath
         {
@@ -81,11 +86,21 @@ namespace Hegemonia.AI.BrainMaster
 
         public static void LogText(int teamId, string component, string category, string message)
         {
+            if (!BusinessTraceEnabled)
+            {
+                return;
+            }
+
             Write(teamId, component, category, message);
         }
 
         public static void LogCommand(int teamId, string component, string transition, IA_CommandRequest request, string message)
         {
+            if (!BusinessTraceEnabled)
+            {
+                return;
+            }
+
             Write(teamId, component, transition, BuildCommandMessage(request, message));
         }
 

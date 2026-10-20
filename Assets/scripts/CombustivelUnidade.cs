@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.AI;
@@ -13,6 +14,14 @@ public enum ClasseCombustivelUnidade
 
 public class CombustivelUnidade : MonoBehaviour
 {
+    private const int VersaoAumentoCapacidadeClasse = 1;
+    private const float AumentoCapacidadeAerea = 1.15f;
+    private const float AumentoCapacidadeNaval = 1.12f;
+    // O mundo global usa centenas de quilômetros; o consumo legado do caça
+    // foi calibrado para cenários locais e impedia até um voo de ida e volta
+    // entre países. A mesma taxa efetiva alimenta a previsão e o gasto real.
+    private const float FatorConsumoCacaMapaGlobal = 0.125f;
+
     [Header("Config")]
     public bool usaCombustivel = true;
     [Tooltip("Quando ativo, a unidade ignora consumo e nunca para por falta de combustivel. Usado pelo Cartel.")]
@@ -29,6 +38,7 @@ public class CombustivelUnidade : MonoBehaviour
     [Header("Spawn")]
     public bool preencherAoIniciar = true;
     public bool pararAoEsvaziar = true;
+    [SerializeField, HideInInspector] private int versaoAumentoCapacidadeClasse;
 
     [Header("Indicador")]
     public bool mostrarIndicadorMundo = true;
@@ -46,7 +56,19 @@ public class CombustivelUnidade : MonoBehaviour
     private string textoIndicadorCache = "";
     private ControleUnidade controleCache;
     private Camera cameraCache;
+    [System.NonSerialized] private bool cargaInicialPagaAplicada;
     private static readonly StringBuilder textoBuilder = new StringBuilder(96);
+    private static GlobalTerrainStreamer streamerGlobalCache;
+    private static float proximaBuscaStreamerGlobal;
+    private static bool buscaStreamerGlobalFeita;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void LimparCacheStreamerGlobal()
+    {
+        streamerGlobalCache = null;
+        proximaBuscaStreamerGlobal = 0f;
+        buscaStreamerGlobalFeita = false;
+    }
 
     public float Percentual => capacidade > 0f ? Mathf.Clamp01(combustivelAtual / capacidade) : 1f;
     public float CombustivelAtual => Mathf.Max(0f, combustivelAtual);
@@ -98,7 +120,7 @@ public class CombustivelUnidade : MonoBehaviour
 
             if (!sendoTransportado)
             {
-                Consumir(consumoPorSegundoMovendo * dt);
+                Consumir(ConsumoEfetivoPorSegundoMovendo() * dt);
             }
         }
 
@@ -192,6 +214,13 @@ public class CombustivelUnidade : MonoBehaviour
 
     public void ConfigurarSeNecessario(bool preencher)
     {
+        // A configuração tardia feita por outro controlador não pode repor
+        // gratuitamente uma carga inicial já liquidada pelo serviço nacional.
+        if (cargaInicialPagaAplicada)
+        {
+            preencher = false;
+        }
+
         if (combustivelInfinito)
         {
             usaCombustivel = false;
@@ -219,7 +248,9 @@ public class CombustivelUnidade : MonoBehaviour
         classe = classeDetectada;
         usaCombustivel = true;
 
-        float capacidadeIdeal = CapacidadePadrao(classe);
+        float multiplicadorCapacidade = MultiplicadorAumentoCapacidade(classe);
+        AplicarAumentoCapacidadeConfigurada(multiplicadorCapacidade);
+        float capacidadeIdeal = CapacidadePadrao(classe) * multiplicadorCapacidade;
         if ((classe == ClasseCombustivelUnidade.Aerea || classe == ClasseCombustivelUnidade.Naval) && capacidadeIdeal > 0f)
         {
             bool capacidadeAntigaPadrao = classe == ClasseCombustivelUnidade.Naval && capacidade > 0f && capacidade <= 300f;
@@ -284,6 +315,45 @@ public class CombustivelUnidade : MonoBehaviour
         return abastecido;
     }
 
+    internal bool PrepararTanqueParaCargaInicialPaga()
+    {
+        if (cargaInicialPagaAplicada)
+        {
+            return false;
+        }
+
+        cargaInicialPagaAplicada = true;
+        preencherAoIniciar = false;
+        ConfigurarSeNecessario(false);
+        if (!usaCombustivel || Capacidade <= 0f)
+        {
+            return true;
+        }
+
+        combustivelAtual = 0f;
+        paradaAplicada = true;
+        return true;
+    }
+
+    internal void RestaurarEstadoPersistido(float capacidadeSalva, float combustivelSalvo, bool aplicarAumentoLegado = false)
+    {
+        // O Start de unidades novas pode preencher o tanque por configuração
+        // do prefab. Uma restauração deve preservar o snapshot sem nova carga.
+        cargaInicialPagaAplicada = true;
+        preencherAoIniciar = false;
+        ConfigurarSeNecessario(false);
+
+        float multiplicadorSalvo = aplicarAumentoLegado ? MultiplicadorAumentoCapacidade(classe) : 1f;
+        capacidade = Mathf.Max(0f, capacidadeSalva) * multiplicadorSalvo;
+        combustivelAtual = Mathf.Clamp(combustivelSalvo * multiplicadorSalvo, 0f, capacidade);
+        versaoAumentoCapacidadeClasse = VersaoAumentoCapacidadeClasse;
+        configurado = true;
+        // A instância recém-restaurada ainda não recebeu a ordem de parada
+        // desta sessão, mesmo se o snapshot estiver vazio.
+        paradaAplicada = false;
+        ultimaPosicao = transform.position;
+    }
+
     public bool Consumir(float delta)
     {
         if (combustivelInfinito)
@@ -325,7 +395,66 @@ public class CombustivelUnidade : MonoBehaviour
 
         float velocidade = Mathf.Max(1f, velocidadeMetrosSegundo);
         float tempo = distanciaMetros / velocidade;
-        return consumoPorSegundoMovendo * tempo;
+        return ConsumoEfetivoPorSegundoMovendo() * tempo;
+    }
+
+    private float ConsumoEfetivoPorSegundoMovendo()
+    {
+        if (classe != ClasseCombustivelUnidade.Aerea || GetComponent<ControleAviaoCaca>() == null)
+            return consumoPorSegundoMovendo;
+
+        if (!buscaStreamerGlobalFeita || Time.unscaledTime >= proximaBuscaStreamerGlobal)
+        {
+            streamerGlobalCache = FindFirstObjectByType<GlobalTerrainStreamer>();
+            proximaBuscaStreamerGlobal = Time.unscaledTime + 5f;
+            buscaStreamerGlobalFeita = true;
+        }
+
+        bool mapaGlobalAtivo = streamerGlobalCache != null && streamerGlobalCache.world != null;
+        return consumoPorSegundoMovendo * (mapaGlobalAtivo ? FatorConsumoCacaMapaGlobal : 1f);
+    }
+
+    public bool PossuiAutonomiaParaRota(Vector3 origem, IList<Vector3> rota, float velocidadeMetrosSegundo)
+    {
+        if (combustivelInfinito || !usaCombustivel || Capacidade <= 0f)
+        {
+            return true;
+        }
+
+        if (EstaVazio)
+        {
+            return false;
+        }
+
+        if (rota == null || rota.Count == 0)
+        {
+            return true;
+        }
+
+        float distanciaTotal = 0f;
+        Vector3 pontoAnterior = origem;
+        for (int i = 0; i < rota.Count; i++)
+        {
+            Vector3 ponto = rota[i];
+            float distanciaTrecho = Vector3.Distance(pontoAnterior, ponto);
+            if (float.IsNaN(distanciaTrecho) || float.IsInfinity(distanciaTrecho))
+            {
+                return false;
+            }
+
+            distanciaTotal += distanciaTrecho;
+            if (float.IsNaN(distanciaTotal) || float.IsInfinity(distanciaTotal))
+            {
+                return false;
+            }
+
+            pontoAnterior = ponto;
+        }
+
+        float consumoPrevisto = EstimarConsumoParaDistancia(distanciaTotal, velocidadeMetrosSegundo);
+        return !float.IsNaN(consumoPrevisto)
+               && !float.IsInfinity(consumoPrevisto)
+               && CombustivelAtual + 0.01f >= consumoPrevisto;
     }
 
     public void PararPorFaltaDeCombustivel()
@@ -575,6 +704,33 @@ public class CombustivelUnidade : MonoBehaviour
             default:
                 return 0f;
         }
+    }
+
+    private static float MultiplicadorAumentoCapacidade(ClasseCombustivelUnidade classeAlvo)
+    {
+        if (classeAlvo == ClasseCombustivelUnidade.Aerea) return AumentoCapacidadeAerea;
+        if (classeAlvo == ClasseCombustivelUnidade.Naval) return AumentoCapacidadeNaval;
+        return 1f;
+    }
+
+    private void AplicarAumentoCapacidadeConfigurada(float multiplicador)
+    {
+        if (versaoAumentoCapacidadeClasse >= VersaoAumentoCapacidadeClasse || multiplicador <= 1f)
+        {
+            return;
+        }
+
+        if (capacidade > 0f)
+        {
+            capacidade *= multiplicador;
+            if (combustivelAtual >= 0f)
+            {
+                // Mantém a mesma porcentagem de tanque ao aumentar a capacidade.
+                combustivelAtual *= multiplicador;
+            }
+        }
+
+        versaoAumentoCapacidadeClasse = VersaoAumentoCapacidadeClasse;
     }
 
     private float ConsumoPadrao(ClasseCombustivelUnidade classeAlvo)

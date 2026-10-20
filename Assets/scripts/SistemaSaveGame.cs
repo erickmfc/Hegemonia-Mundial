@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -7,6 +7,7 @@ using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.DEUSA;
 using Hegemonia.AI.IA01;
 using Hegemonia.AI.IA02;
+using Hegemonia.AI.IA03;
 using Hegemonia.AI.Shared;
 using Hegemonia.RTS;
 using UnityEngine;
@@ -16,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 17;
+    public int saveVersion = 26;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -32,7 +33,10 @@ public class DadosDoJogo
     public SaveQuaternion cameraRotacao;
     public List<string> itensDesbloqueados = new List<string>();
     public List<SaveEntityData> entidades = new List<SaveEntityData>();
+    public List<RTSPersistentFormationSaveData> formacoesTaticas = new List<RTSPersistentFormationSaveData>();
+    public List<SaveCidadeAbstrataData> cidadesAbstratas = new List<SaveCidadeAbstrataData>();
     public List<SaveQuartelStateData> estadosQuarteis = new List<SaveQuartelStateData>();
+    public List<RescueIncident> incidentesSAR = new List<RescueIncident>();
     public List<SaveTransportManifestData> manifestosTransporte = new List<SaveTransportManifestData>();
     public List<SaveProductionOrderData> filaProducao = new List<SaveProductionOrderData>();
     public List<SaveAiStrategicStateData> estadosIA = new List<SaveAiStrategicStateData>();
@@ -48,6 +52,7 @@ public class DadosDoJogo
     public float qgPosZ;
     public int totalDias = 1;
     public IndustrialSaveData industria = new IndustrialSaveData();
+    public SistemaLogisticaMercadoSaveData logisticaMercado = new SistemaLogisticaMercadoSaveData();
     // Sistema Industrial: salvo permanentemente (perfil mineral nunca muda)
     public List<SavePerfilMineral>  perfisMineral  = new List<SavePerfilMineral>();
     public List<SaveEstoqueMineral> estoquesMineral = new List<SaveEstoqueMineral>();
@@ -211,6 +216,39 @@ public struct SaveQuaternion
 }
 
 [Serializable]
+public sealed class SaveCidadeAbstrataData
+{
+    public string id;
+    public string nome;
+    public int teamID;
+    public string nomePais;
+    public SaveVector3 localizacao;
+    public int populacaoCivil;
+    public int capacidadeHabitacional;
+    public int empregosTotais;
+    public float desenvolvimento;
+    public float importanciaEstrategica;
+    public float estadoDano;
+    public float producaoEconomicaMensal;
+    public float producaoAgricola;
+    public float taxaCrescimentoAnual;
+    public int populacaoEstagio2;
+    public int populacaoEstagio3;
+    public int populacaoEstagio4;
+    public float scoreIndustrial;
+    public float scoreComercial;
+    public float scoreAgricola;
+    public float scoreTurismo;
+    public float scoreLogistica;
+    public float scoreEnergia;
+    public string identidadePrincipal;
+    public float atratividade;
+    public bool temAeroporto;
+    public bool temPorto;
+    public string prefabCidade;
+}
+
+[Serializable]
 public class SaveEntityData
 {
     public string uniqueId;
@@ -223,12 +261,15 @@ public class SaveEntityData
     public int teamID;
     public string nomeDoPais;
     public TipoUnidade tipoUnidade;
+    public bool possuiMilitaresConsumidos;
+    public int militaresConsumidos;
     public bool possuiVida;
     public float vidaAtual;
     public float vidaMaxima;
     public bool possuiCombustivel;
     public float combustivelAtual;
     public float capacidadeCombustivel;
+    public bool capacidadeCombustivelAtualizada;
     public OrdemControleUnidade ordemAtual;
     public bool modoCombateAtivo;
     public bool possuiDestino;
@@ -236,10 +277,28 @@ public class SaveEntityData
     public List<SaveVector3> pontosPatrulha = new List<SaveVector3>();
     public int indicePatrulha;
     public string seguirAlvoId;
+    public string baseAereaAtualId;
+    public string destinoPousoAereoId;
+    public bool destinoManualAereo;
+    public bool aeronaveEstavaEmVoo;
     public bool possuiPrazoAeroportoTemporario;
     public bool prazoAeroportoTemporarioAtivo;
     public int diasAeroportoTemporario;
     public int diaExpiracaoAeroportoTemporario;
+    public bool possuiCidadeComplexoUrbano;
+    public TemaCidade cidadeTema;
+    public string cidadeNome;
+    public int cidadeTeamId;
+    public int cidadeCapacidadeHospitalarInicial;
+    public bool cidadePossuiRedeSaudeBasica;
+    public int cidadeCapacidadeHabitacional;
+    public int cidadePopulacaoResidente;
+    public int cidadeQualidadeVida;
+    public float cidadeProporcaoComercio;
+    public float cidadeRendaPorTrabalhador;
+    public float cidadeConsumoEnergiaPorMorador;
+    public float cidadeConsumoEnergiaPorEmprego;
+    public bool cidadeSemEnergia;
 }
 
 [Serializable]
@@ -331,6 +390,7 @@ public class SistemaSaveGame : MonoBehaviour
     private string diretorioSaves;
     private string saveSelecionadoId = string.Empty;
     private bool restauracaoPendente;
+    private bool economiaMapaGlobalInicializada;
     [Header("Desempenho de restauracao")]
     [SerializeField, Min(1)] private int entidadesPorFrameNaRestauracao = 12;
     [SerializeField, Min(1)] private int ordensPorFrameNaRestauracao = 24;
@@ -525,7 +585,8 @@ public class SistemaSaveGame : MonoBehaviour
 
         GarantirColecoesIA01();
         GarantirColecoesIA02();
-        dadosAtuais.saveVersion = 17;
+        GarantirColecoesCidadesAbstratas();
+        dadosAtuais.saveVersion = 26;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -536,15 +597,19 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarFilaProducao();
         CapturarEstadoGovernoMundial();
         CapturarEstadoTerritorial();
+        CapturarCidadesAbstratas();
         CapturarEstadoIAImperial();
         CapturarEstadoIA01();
         CapturarEstadoIA02();
         CapturarProducaoAutomaticaIA();
         CapturarEstadoDeusa();
         CapturarEstadoQuarteis();
+        CapturarEstadoSAR();
         CapturarEntidades();
+        CapturarFormacoesTaticas();
         CapturarManifestosTransporte();
         CapturarSistemaIndustrial();
+        CapturarSistemaLogisticaMercado();
         CapturarRTSState();
         dadosAtuais.totalDias = GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : dadosAtuais.totalDias;
 
@@ -584,6 +649,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         GarantirColecoesIA01();
         GarantirColecoesIA02();
+        GarantirColecoesCidadesAbstratas();
         bool saveLegadoAntesDaVersao12 = dadosAtuais.saveVersion < 12;
         if (dadosAtuais.saveVersion <= 0)
         {
@@ -595,21 +661,26 @@ public class SistemaSaveGame : MonoBehaviour
             dadosAtuais.totalDias = 1;
         }
 
+        // Remove filas da sessão que está sendo substituída. O estado salvo
+        // volta a entrar só depois da restauração de Governo e armazéns.
+        SistemaLogisticaMercado.Instancia?.RestaurarSaveData(null);
         MigrarIndustriaLegadaSeNecessario();
 
         carregouDeSave = true;
         partidaNovaRecemIniciada = false;
-        restauracaoPendente = dadosAtuais.saveVersion >= 2 && ((dadosAtuais.entidades != null && dadosAtuais.entidades.Count > 0) || (dadosAtuais.estadosIA01 != null && dadosAtuais.estadosIA01.Count > 0) || (dadosAtuais.estadosIA02 != null && dadosAtuais.estadosIA02.Count > 0));
+        restauracaoPendente = PossuiEstadoRestauravel(dadosAtuais);
         // Limpa ordens da sessão anterior imediatamente. A restauração tardia
         // continua sendo repetida após a cena para manter o mesmo ponto de
         // sincronização das demais ordens salvas.
-        IAAutoProductionRegistry.RestoreSaveData(dadosAtuais.producaoAutomaticaIA);
+        RestaurarRegistroProducaoAutomaticaIA(notificarIA03: false);
         AplicarIdiomaSalvo();
         AplicarDificuldadeSalva();
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
         AplicarRTSState();
         AplicarEstadoTerritorial();
+        if (dadosAtuais.saveVersion >= 19 && GerenciadorDivisaoTerritorial.Instancia != null)
+            RestaurarCidadesAbstratas(criarGerenciadorSeAusente: false);
         if (saveLegadoAntesDaVersao12)
         {
             // JsonUtility converte o numero antigo para long sem arredondamento.
@@ -619,9 +690,72 @@ public class SistemaSaveGame : MonoBehaviour
         LogInfo("Jogo carregado com sucesso.");
     }
 
+    private static bool PossuiEstadoRestauravel(DadosDoJogo dados)
+    {
+        if (dados == null || dados.saveVersion < 2) return false;
+
+        bool possuiDadosIndustriais = dados.industria != null
+            && (TemItens(dados.industria.perfisMineral)
+                || TemItens(dados.industria.estoques)
+                || TemItens(dados.industria.ordensExtracao)
+                || TemItens(dados.industria.ordensRefino)
+                || TemItens(dados.industria.linhas)
+                || TemItens(dados.industria.impactosPendentes)
+                || TemItens(dados.industria.historico));
+        bool possuiEstadoRts = TemItens(dados.rtsObjectives)
+            || dados.rtsSimulationTime > 0f
+            || dados.rtsSimulationTick != 0
+            || dados.rtsMatchResult != 0
+            || dados.tempoJogo > 0f;
+        bool possuiProducaoAutomatica = dados.producaoAutomaticaIA != null
+            && TemItens(dados.producaoAutomaticaIA.orders);
+        bool possuiCameraSalva = dados.cameraPosicao.x != 0f
+            || dados.cameraPosicao.y != 0f
+            || dados.cameraPosicao.z != 0f
+            || dados.cameraRotacao.x != 0f
+            || dados.cameraRotacao.y != 0f
+            || dados.cameraRotacao.z != 0f
+            || dados.cameraRotacao.w != 0f;
+
+        return TemItens(dados.entidades)
+            || TemItens(dados.estadosIA01)
+            || TemItens(dados.estadosIA02)
+            || TemItens(dados.estadosIA)
+            || TemItens(dados.estadosDeusa)
+            || TemItens(dados.estadosQuarteis)
+            || TemItens(dados.incidentesSAR)
+            || TemItens(dados.manifestosTransporte)
+            || TemItens(dados.filaProducao)
+            || possuiProducaoAutomatica
+            || TemItens(dados.territoriosCapturados)
+            || TemItens(dados.perfisMineral)
+            || TemItens(dados.estoquesMineral)
+            || dados.governoMundial != null
+            || possuiDadosIndustriais
+            || dados.totalDias > 1
+            || possuiEstadoRts
+            || possuiCameraSalva
+            || (dados.saveVersion >= 19 && TemItens(dados.cidadesAbstratas))
+            || (dados.saveVersion >= 22 && dados.logisticaMercado != null
+                && (TemItens(dados.logisticaMercado.pedidos) || TemItens(dados.logisticaMercado.repeticoes)));
+    }
+
+    private static bool TemItens<T>(List<T> itens)
+    {
+        return itens != null && itens.Count > 0;
+    }
+
+    private static bool DeveSubstituirEntidadesDaCena(DadosDoJogo dados)
+    {
+        return dados != null && TemItens(dados.entidades);
+    }
+
     public void IniciarNovoJogo(string cenaInicial = null)
     {
         dadosAtuais = new DadosDoJogo();
+        SistemaGuardaCosteira.GarantirInstancia();
+        SistemaGuardaCosteira.Instancia?.LimparEstadoParaNovoJogo();
+        SistemaLogisticaMercado.Instancia?.LimparEstadoParaNovoJogo();
         GerenteDeTerritorio.Instancia?.RestaurarProprietariosCapturados(null);
         IAAutoProductionRegistry.Clear();
         saveSelecionadoId = string.Empty;
@@ -633,6 +767,7 @@ public class SistemaSaveGame : MonoBehaviour
         dadosAtuais.creditosJogador = perfil.DinheiroInicial;
         carregouDeSave = false;
         partidaNovaRecemIniciada = true;
+        economiaMapaGlobalInicializada = false;
         restauracaoPendente = false;
         RegistrarCenaAtual(string.IsNullOrWhiteSpace(cenaInicial) ? dadosAtuais.mapaAtual : cenaInicial);
         if (GerenciadorRecursos.Instancia != null)
@@ -741,12 +876,26 @@ public class SistemaSaveGame : MonoBehaviour
         {
             // Ao iniciar uma cena diretamente, preserve os recursos definidos
             // no proprio mapa em vez de aplicar o objeto de save vazio (5.000).
+            // GlobalMapRTS e um modo jogavel autonomo: sem save carregado, sua
+            // primeira entrada precisa criar o estoque nacional usado pelas
+            // unidades iniciais e pelos spawns da IA.
+            if (string.Equals(cena.name, ConfiguracaoCenasJogo.CenaMapaGlobal, StringComparison.OrdinalIgnoreCase)
+                && !economiaMapaGlobalInicializada)
+            {
+                InicializarEconomiaDePartidaNova();
+            }
+
             return;
         }
 
         AplicarRecursosSalvos();
         if (!carregouDeSave)
         {
+            if (aplicarRecursosDePartidaNova)
+            {
+                InicializarEconomiaDePartidaNova();
+            }
+
             return;
         }
 
@@ -756,17 +905,99 @@ public class SistemaSaveGame : MonoBehaviour
         }
     }
 
+    private void InicializarEconomiaDePartidaNova()
+    {
+        AtivarAutonomiaDeValdoriaEmPartidaNova();
+        SistemaGovernoMundial.GarantirInstancia();
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null)
+        {
+            Debug.LogError("[NovoJogo] Não foi possível inicializar o tesouro nacional: SistemaGovernoMundial indisponível.");
+            return;
+        }
+
+        int playerTeamId = GerenciadorDePartida.Instancia != null
+            ? Mathf.Max(1, GerenciadorDePartida.Instancia.idJogador)
+            : Mathf.Max(1, governo.teamJogador);
+        HashSet<int> teamsComEstoqueInicial = new HashSet<int> { playerTeamId };
+        IA_BrainMaster[] brains = FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        for (int i = 0; i < brains.Length; i++)
+        {
+            IA_BrainMaster brain = brains[i];
+            if (brain != null && brain.isActiveAndEnabled && brain.gameObject.activeInHierarchy && brain.TeamId > 0)
+                teamsComEstoqueInicial.Add(brain.TeamId);
+        }
+
+        int iasFinanciadas = governo.AplicarSaldoInicialPartidaNovaParaIAsAtivas(playerTeamId);
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        if (industrial == null)
+            industrial = FindFirstObjectByType<SistemaIndustrialNacional>();
+        if (industrial == null)
+        {
+            Debug.LogError("[NovoJogo] Não foi possível inicializar os combustíveis nacionais: SistemaIndustrialNacional indisponível.");
+            return;
+        }
+
+        industrial.InicializarEstoquesCombustivelPartidaNova(teamsComEstoqueInicial);
+        int iasComComidaInicial = governo.AplicarComidaInicialPartidaNovaParaIAsAtivas(playerTeamId);
+        Debug.Log("[NovoJogo] Tesouro inicial aplicado a " + iasFinanciadas
+            + " IA(s) ativa(s); comida inicial de " + iasComComidaInicial + " IA(s) definida para "
+            + SistemaGovernoMundial.ComidaInicialNacionalPorIAEmPartidaNova
+            + "; estoques de combustíveis iniciais aplicados aos times "
+            + string.Join(",", teamsComEstoqueInicial) + ".");
+        economiaMapaGlobalInicializada = true;
+    }
+
+    private static void AtivarAutonomiaDeValdoriaEmPartidaNova()
+    {
+        IA_BrainMaster[] brains = FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        for (int i = 0; i < brains.Length; i++)
+        {
+            IA_BrainMaster brain = brains[i];
+            if (brain == null || !brain.isActiveAndEnabled || brain.TeamId != 2)
+            {
+                continue;
+            }
+
+            IA_DeusaBrain deusa = brain.GetComponent<IA_DeusaBrain>();
+            if (deusa == null)
+            {
+                deusa = brain.gameObject.AddComponent<IA_DeusaBrain>();
+            }
+
+            if (deusa.config == null)
+            {
+                deusa.config = new IA_DeusaConfig();
+            }
+
+            deusa.config.modoObservadorDebug = false;
+            if (deusa.politicaNacional != null)
+            {
+                deusa.politicaNacional.modoObservador = false;
+            }
+
+            Debug.Log("[NovoJogo][Valdoria] DEUSA ativada em modo autônomo; autoridade de construção permanece no BrainMaster.", brain);
+            return;
+        }
+
+        Debug.LogWarning("[NovoJogo][Valdoria] BrainMaster team 2 não foi encontrado; autonomia não foi aplicada.");
+    }
+
     private IEnumerator RestaurarMundoDepoisDaCena()
     {
         restauracaoPendente = false;
         yield return null;
         yield return null;
 
-        LimparEntidadesPersistidasDaCena();
+        bool possuiEntidadesSalvas = DeveSubstituirEntidadesDaCena(dadosAtuais);
+        if (possuiEntidadesSalvas)
+        {
+            LimparEntidadesPersistidasDaCena();
+        }
         saveablesPorId.Clear();
         prefabsPorChaveSave.Clear();
 
-        if (dadosAtuais.entidades != null)
+        if (possuiEntidadesSalvas)
         {
             float inicioInstanciacao = Time.realtimeSinceStartup;
             int loteEntidades = Mathf.Max(1, entidadesPorFrameNaRestauracao);
@@ -782,10 +1013,18 @@ public class SistemaSaveGame : MonoBehaviour
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica("save_restore_entities", dadosAtuais.entidades.Count);
 
             yield return null;
+        }
+        else
+        {
+            MapearSaveablesDaCenaAtiva();
+        }
 
-            RestaurarManifestosTransporte();
-            RestaurarEstadoQuarteis();
+        RestaurarManifestosTransporte();
+        RestaurarBasesAereasSalvas();
+        RestaurarEstadoQuarteis();
 
+        if (possuiEntidadesSalvas)
+        {
             float inicioOrdens = Time.realtimeSinceStartup;
             int loteOrdens = Mathf.Max(1, ordensPorFrameNaRestauracao);
             for (int i = 0; i < dadosAtuais.entidades.Count; i++)
@@ -799,20 +1038,29 @@ public class SistemaSaveGame : MonoBehaviour
             DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("save_restore_orders_ms", (Time.realtimeSinceStartup - inicioOrdens) * 1000f);
         }
 
+        RTSPersistentFormationService.GarantirInstancia().RestaurarEstado(
+            dadosAtuais.formacoesTaticas,
+            saveablesPorId);
+
         RestaurarFilaProducao();
         AplicarEstadoGovernoMundial();
+        if (dadosAtuais.saveVersion >= 19) RestaurarCidadesAbstratas(criarGerenciadorSeAusente: true);
+        RestaurarDadosCidadesSalvas();
         AplicarEstadoTerritorial();
         SistemaGovernoMundial.Instancia?.ReconciliarAcordosTemporarios();
         AplicarEstadoIAImperial();
         AplicarEstadoDeusa();
         RestaurarEstadoIA01();
         RestaurarEstadoIA02();
+        SistemaGuardaCosteira.GarantirInstancia();
+        SistemaGuardaCosteira.Instancia?.RestaurarEstadoSave(dadosAtuais.incidentesSAR);
         RestaurarProducaoAutomaticaIA();
         AplicarCameraSalva();
         AplicarRecursosSalvos();
         AplicarTempoSalvo();
         AplicarRTSState();
         RestaurarSistemaIndustrial();
+        RestaurarSistemaLogisticaMercado();
         DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Mundo restaurado (entidades=" + (dadosAtuais.entidades != null ? dadosAtuais.entidades.Count : 0) + ")");
     }
 
@@ -820,6 +1068,15 @@ public class SistemaSaveGame : MonoBehaviour
     {
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cena.name))
         {
+            return;
+        }
+
+        // GlobalMapRTS contem unidades de cenario colocadas intencionalmente
+        // (por exemplo, a forca inicial da Valdoria). Elas nao sao restos de
+        // save; preserva-las tambem permite que recebam o combustivel inicial.
+        if (string.Equals(cena.name, ConfiguracaoCenasJogo.CenaMapaGlobal, StringComparison.OrdinalIgnoreCase))
+        {
+            partidaNovaRecemIniciada = false;
             return;
         }
 
@@ -1258,6 +1515,27 @@ public class SistemaSaveGame : MonoBehaviour
             : new List<SaveProprietarioTerritorio>();
     }
 
+    private void CapturarCidadesAbstratas()
+    {
+        if (dadosAtuais == null) return;
+        GerenciadorDivisaoTerritorial gerente = GerenciadorDivisaoTerritorial.Instancia;
+        dadosAtuais.cidadesAbstratas = gerente != null
+            ? gerente.CapturarCidadesAbstratas()
+            : new List<SaveCidadeAbstrataData>();
+    }
+
+    private void RestaurarCidadesAbstratas(bool criarGerenciadorSeAusente)
+    {
+        if (dadosAtuais == null || dadosAtuais.saveVersion < 19) return;
+        GerenciadorDivisaoTerritorial gerente = GerenciadorDivisaoTerritorial.Instancia;
+        if (gerente == null && criarGerenciadorSeAusente)
+        {
+            GerenciadorDivisaoTerritorial.GarantirInstancia();
+            gerente = GerenciadorDivisaoTerritorial.Instancia;
+        }
+        gerente?.RestaurarCidadesAbstratas(dadosAtuais.cidadesAbstratas ?? new List<SaveCidadeAbstrataData>());
+    }
+
     private void CapturarEstadoIA02()
     {
         if (dadosAtuais == null)
@@ -1308,7 +1586,16 @@ public class SistemaSaveGame : MonoBehaviour
     private void RestaurarProducaoAutomaticaIA()
     {
         if (dadosAtuais == null) return;
+        RestaurarRegistroProducaoAutomaticaIA(notificarIA03: true);
+    }
+
+    private void RestaurarRegistroProducaoAutomaticaIA(bool notificarIA03)
+    {
         IAAutoProductionRegistry.RestoreSaveData(dadosAtuais.producaoAutomaticaIA);
+        if (notificarIA03)
+        {
+            IA03EstrategaNacional.NotificarRestauracaoProducaoAutomatica();
+        }
     }
 
     private void CapturarEstadoDeusa()
@@ -1586,6 +1873,16 @@ public class SistemaSaveGame : MonoBehaviour
         }
     }
 
+    private void CapturarEstadoSAR()
+    {
+        if (dadosAtuais == null) return;
+
+        SistemaGuardaCosteira.GarantirInstancia();
+        dadosAtuais.incidentesSAR = SistemaGuardaCosteira.Instancia != null
+            ? SistemaGuardaCosteira.Instancia.CapturarEstadoSave()
+            : new List<RescueIncident>();
+    }
+
     private void CapturarEstadoQuarteis()
     {
         if (dadosAtuais == null)
@@ -1761,12 +2058,32 @@ public class SistemaSaveGame : MonoBehaviour
                 continue;
             }
 
+            // O frete fretado é temporário. A ordem logística será restaurada
+            // e despachará outro navio; salvar o clone pelo prefab genérico o
+            // faria voltar como cargueiro permanente e disponível.
+            NavioCargaMercado navioCarga = obj.GetComponent<NavioCargaMercado>();
+            if (navioCarga != null && navioCarga.Fretado)
+            {
+                continue;
+            }
+
             SaveEntityData data = CapturarEntidade(obj);
             if (data != null && !string.IsNullOrWhiteSpace(data.prefabKey))
             {
                 dadosAtuais.entidades.Add(data);
             }
         }
+    }
+
+    private void CapturarFormacoesTaticas()
+    {
+        if (dadosAtuais == null)
+        {
+            return;
+        }
+
+        RTSPersistentFormationService service = RTSPersistentFormationService.GarantirInstancia();
+        dadosAtuais.formacoesTaticas = service.CapturarEstado(SceneManager.GetActiveScene());
     }
 
     private void AdicionarCandidatos(IEnumerable<GameObject> candidatos)
@@ -1796,8 +2113,9 @@ public class SistemaSaveGame : MonoBehaviour
         ControleUnidade controle = obj.GetComponent<ControleUnidade>();
         ComportamentoPatrulhaUniversal patrulha = obj.GetComponent<ComportamentoPatrulhaUniversal>();
         ComportamentoSeguirUniversal seguir = obj.GetComponent<ComportamentoSeguirUniversal>();
-        int teamId = identidade != null ? identidade.teamID : 1;
-        if (identidade == null)
+        CidadeComplexoUrbano cidade = obj.GetComponent<CidadeComplexoUrbano>();
+        int teamId = cidade != null ? cidade.teamId : identidade != null ? identidade.teamID : 1;
+        if (identidade == null && cidade == null)
         {
             IA01Controller[] controllers = IA_UnitySearch.FindAll<IA01Controller>();
             for (int i = 0; i < controllers.Length; i++)
@@ -1811,6 +2129,7 @@ public class SistemaSaveGame : MonoBehaviour
             }
         }
 
+        ControleAviao controleAviao = obj.GetComponent<ControleAviao>();
         SaveEntityData data = new SaveEntityData
         {
             uniqueId = saveable.UniqueId,
@@ -1822,16 +2141,28 @@ public class SistemaSaveGame : MonoBehaviour
             escala = new SaveVector3(obj.transform.localScale),
             teamID = teamId,
             nomeDoPais = identidade != null ? identidade.nomeDoPais : string.Empty,
+            baseAereaAtualId = controleAviao != null && controleAviao.baseEstacionamentoAtual != null
+                ? SaveableEntity.Garantir(controleAviao.baseEstacionamentoAtual.gameObject).UniqueId : string.Empty,
+            destinoPousoAereoId = controleAviao != null && controleAviao.DestinoPousoEscolhido != null
+                ? SaveableEntity.Garantir(controleAviao.DestinoPousoEscolhido.gameObject).UniqueId : string.Empty,
+            destinoManualAereo = controleAviao != null && controleAviao.DestinoManualDefinido,
+            aeronaveEstavaEmVoo = controleAviao != null
+                && (controleAviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                    || controleAviao.estadoAtual == ControleAviao.EstadoAviao.Decolando),
             tipoUnidade = identidade != null ? identidade.tipoUnidade : TipoUnidade.Estrutura,
+            possuiMilitaresConsumidos = identidade != null,
+            militaresConsumidos = identidade != null ? Mathf.Max(0, identidade.militaresConsumidos) : 0,
             possuiVida = danos != null,
             vidaAtual = danos != null ? danos.vidaAtual : 0f,
             vidaMaxima = danos != null ? danos.vidaMaxima : 0f,
             possuiCombustivel = combustivel != null && combustivel.usaCombustivel,
             combustivelAtual = combustivel != null ? combustivel.combustivelAtual : 0f,
             capacidadeCombustivel = combustivel != null ? combustivel.capacidade : 0f,
+            capacidadeCombustivelAtualizada = true,
             ordemAtual = controle != null ? controle.OrdemAtual : OrdemControleUnidade.Ociosa,
             modoCombateAtivo = true
         };
+        CapturarDadosCidade(cidade, data);
 
         AeroportoTemporarioC400 aeroportoTemporario = obj.GetComponent<AeroportoTemporarioC400>();
         if (aeroportoTemporario != null)
@@ -1871,14 +2202,116 @@ public class SistemaSaveGame : MonoBehaviour
         return data;
     }
 
+    private static void CapturarDadosCidade(CidadeComplexoUrbano cidade, SaveEntityData destino)
+    {
+        if (cidade == null || destino == null) return;
+
+        destino.possuiCidadeComplexoUrbano = true;
+        destino.cidadeTema = cidade.tema;
+        destino.cidadeNome = cidade.nomeCidade;
+        destino.cidadeTeamId = cidade.teamId;
+        destino.cidadeCapacidadeHospitalarInicial = cidade.capacidadeHospitalarInicial;
+        destino.cidadePossuiRedeSaudeBasica = cidade.possuiRedeSaudeBasica;
+        destino.cidadeCapacidadeHabitacional = cidade.capacidadeHabitacional;
+        destino.cidadePopulacaoResidente = cidade.populacaoResidente;
+        destino.cidadeQualidadeVida = cidade.qualidadeVida;
+        destino.cidadeProporcaoComercio = cidade.proporcaoComercio;
+        destino.cidadeRendaPorTrabalhador = cidade.rendaPorTrabalhador;
+        destino.cidadeConsumoEnergiaPorMorador = cidade.consumoEnergiaPorMorador;
+        destino.cidadeConsumoEnergiaPorEmprego = cidade.consumoEnergiaPorEmprego;
+        destino.cidadeSemEnergia = cidade.semEnergia;
+    }
+
+    private static void AplicarDadosCidade(GameObject objeto, SaveEntityData origem)
+    {
+        if (objeto == null || origem == null || !origem.possuiCidadeComplexoUrbano) return;
+        CidadeComplexoUrbano cidade = objeto.GetComponent<CidadeComplexoUrbano>();
+        if (cidade == null) return;
+
+        cidade.tema = origem.cidadeTema;
+        cidade.nomeCidade = origem.cidadeNome ?? cidade.nomeCidade;
+        cidade.teamId = Mathf.Max(0, origem.cidadeTeamId);
+        cidade.capacidadeHospitalarInicial = Mathf.Max(0, origem.cidadeCapacidadeHospitalarInicial);
+        cidade.possuiRedeSaudeBasica = origem.cidadePossuiRedeSaudeBasica;
+        cidade.capacidadeHabitacional = origem.cidadeCapacidadeHabitacional;
+        cidade.populacaoResidente = origem.cidadePopulacaoResidente;
+        cidade.qualidadeVida = origem.cidadeQualidadeVida;
+        cidade.proporcaoComercio = origem.cidadeProporcaoComercio;
+        cidade.rendaPorTrabalhador = origem.cidadeRendaPorTrabalhador;
+        cidade.consumoEnergiaPorMorador = origem.cidadeConsumoEnergiaPorMorador;
+        cidade.consumoEnergiaPorEmprego = origem.cidadeConsumoEnergiaPorEmprego;
+
+        IdentidadeUnidade identidade = objeto.GetComponent<IdentidadeUnidade>();
+        if (identidade != null)
+        {
+            identidade.teamID = cidade.teamId;
+            identidade.nomeDoPais = origem.nomeDoPais ?? identidade.nomeDoPais;
+            identidade.tipoUnidade = TipoUnidade.Estrutura;
+        }
+
+        CidadeSaudePopulacional saude = objeto.GetComponent<CidadeSaudePopulacional>();
+        if (saude != null)
+        {
+            saude.teamId = cidade.teamId;
+            saude.capacidadeBase = cidade.possuiRedeSaudeBasica
+                ? Mathf.Max(0, cidade.capacidadeHospitalarInicial)
+                : 0;
+        }
+
+        cidade.SincronizarEstruturaEconomica();
+        cidade.DefinirStatusEnergia(origem.cidadeSemEnergia);
+        cidade.SincronizarEstruturaEconomica();
+    }
+
+    private void RestaurarDadosCidadesSalvas()
+    {
+        if (dadosAtuais == null || dadosAtuais.entidades == null || saveablesPorId == null) return;
+        for (int i = 0; i < dadosAtuais.entidades.Count; i++)
+        {
+            SaveEntityData entidade = dadosAtuais.entidades[i];
+            if (entidade == null || !entidade.possuiCidadeComplexoUrbano
+                || string.IsNullOrWhiteSpace(entidade.uniqueId)
+                || !saveablesPorId.TryGetValue(entidade.uniqueId, out SaveableEntity saveable)
+                || saveable == null)
+            {
+                continue;
+            }
+
+            AplicarDadosCidade(saveable.gameObject, entidade);
+        }
+    }
+
     private void LimparEntidadesPersistidasDaCena()
     {
+        Scene cenaAtiva = SceneManager.GetActiveScene();
         SaveableEntity[] existentes = IA_UnitySearch.FindAll<SaveableEntity>();
         foreach (SaveableEntity existente in existentes)
         {
-            if (existente != null && existente.gameObject != gameObject)
+            if (existente != null
+                && existente.gameObject != gameObject
+                && existente.gameObject.scene == cenaAtiva)
             {
                 Destroy(existente.gameObject);
+            }
+        }
+    }
+
+    private void MapearSaveablesDaCenaAtiva()
+    {
+        Scene cenaAtiva = SceneManager.GetActiveScene();
+        SaveableEntity[] existentes = IA_UnitySearch.FindAll<SaveableEntity>();
+        for (int i = 0; i < existentes.Length; i++)
+        {
+            SaveableEntity existente = existentes[i];
+            if (existente == null || existente.gameObject == gameObject || existente.gameObject.scene != cenaAtiva)
+            {
+                continue;
+            }
+
+            string id = existente.UniqueId;
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                saveablesPorId[id] = existente;
             }
         }
     }
@@ -1957,6 +2390,9 @@ public class SistemaSaveGame : MonoBehaviour
             identidade.teamID = data.teamID;
             identidade.nomeDoPais = data.nomeDoPais;
             identidade.tipoUnidade = data.tipoUnidade;
+            identidade.militaresConsumidos = data.possuiMilitaresConsumidos
+                ? Mathf.Max(0, data.militaresConsumidos)
+                : SistemaGovernoMundial.ObterEfetivoNecessario(obj, data.tipoUnidade);
         }
 
         SistemaDeDanos danos = obj.GetComponent<SistemaDeDanos>();
@@ -1969,9 +2405,21 @@ public class SistemaSaveGame : MonoBehaviour
         CombustivelUnidade combustivel = obj.GetComponent<CombustivelUnidade>();
         if (combustivel != null && data.possuiCombustivel)
         {
-            combustivel.capacidade = Mathf.Max(0f, data.capacidadeCombustivel);
-            combustivel.combustivelAtual = Mathf.Clamp(data.combustivelAtual, 0f, combustivel.capacidade);
+            bool migrarCapacidadeAntiga = dadosAtuais != null
+                && dadosAtuais.saveVersion < 24
+                && !data.capacidadeCombustivelAtualizada;
+            combustivel.RestaurarEstadoPersistido(data.capacidadeCombustivel, data.combustivelAtual, migrarCapacidadeAntiga);
+            if (migrarCapacidadeAntiga)
+            {
+                // A restauração pode ser repetida após a troca de cena. Grave o
+                // tanque migrado no snapshot em memória para evitar regressão.
+                data.capacidadeCombustivel = combustivel.capacidade;
+                data.combustivelAtual = combustivel.combustivelAtual;
+            }
+            data.capacidadeCombustivelAtualizada = true;
         }
+
+        AplicarDadosCidade(obj, data);
 
         NavMeshAgent agente = obj.GetComponent<NavMeshAgent>();
         if (agente != null && agente.enabled && !agente.isOnNavMesh)
@@ -1981,6 +2429,29 @@ public class SistemaSaveGame : MonoBehaviour
                 agente.Warp(hit.position);
             }
         }
+    }
+
+    private void RestaurarBasesAereasSalvas()
+    {
+        if (dadosAtuais == null || dadosAtuais.entidades == null) return;
+        for (int i = 0; i < dadosAtuais.entidades.Count; i++)
+        {
+            SaveEntityData salvo = dadosAtuais.entidades[i];
+            if (salvo == null || string.IsNullOrWhiteSpace(salvo.uniqueId)
+                || !saveablesPorId.TryGetValue(salvo.uniqueId, out SaveableEntity entidade) || entidade == null) continue;
+            ControleAviao aviao = entidade.GetComponent<ControleAviao>();
+            if (aviao == null) continue;
+            GerenciadorAeroporto baseAtual = ResolverBaseAereaPorId(salvo.baseAereaAtualId);
+            GerenciadorAeroporto destino = ResolverBaseAereaPorId(salvo.destinoPousoAereoId);
+            if (dadosAtuais.saveVersion < 23 || destino == null) destino = baseAtual;
+            aviao.RestaurarBasesSalvas(baseAtual, destino, salvo.destinoManualAereo, salvo.aeronaveEstavaEmVoo);
+        }
+    }
+
+    private GerenciadorAeroporto ResolverBaseAereaPorId(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id) || !saveablesPorId.TryGetValue(id, out SaveableEntity entidade) || entidade == null) return null;
+        return entidade.GetComponent<GerenciadorAeroporto>();
     }
 
     private void RestaurarOrdemEntidade(SaveEntityData data)
@@ -2122,8 +2593,16 @@ public class SistemaSaveGame : MonoBehaviour
         CombustivelUnidade combustivel = obj.GetComponent<CombustivelUnidade>();
         if (combustivel != null && data.possuiCombustivel)
         {
-            combustivel.capacidade = Mathf.Max(0f, data.capacidadeCombustivel);
-            combustivel.combustivelAtual = Mathf.Clamp(data.combustivelAtual, 0f, combustivel.capacidade);
+            bool migrarCapacidadeAntiga = dadosAtuais != null
+                && dadosAtuais.saveVersion < 24
+                && !data.capacidadeCombustivelAtualizada;
+            combustivel.RestaurarEstadoPersistido(data.capacidadeCombustivel, data.combustivelAtual, migrarCapacidadeAntiga);
+            if (migrarCapacidadeAntiga)
+            {
+                data.capacidadeCombustivel = combustivel.capacidade;
+                data.combustivelAtual = combustivel.combustivelAtual;
+            }
+            data.capacidadeCombustivelAtualizada = true;
         }
 
         ControleUnidade controle = obj.GetComponent<ControleUnidade>();
@@ -2199,13 +2678,72 @@ public class SistemaSaveGame : MonoBehaviour
 
         industrial.RestaurarSaveData(dadosAtuais.industria);
         SincronizarCompatibilidadeIndustrialLegada(dadosAtuais.industria);
+        ReconciliarCulturasAlimentaresRestauradas();
 
         if (GerenciadorTempo.Instancia != null)
         {
-            GerenciadorTempo.Instancia.RestaurarDias(Mathf.Max(1, dadosAtuais.totalDias));
+            GerenciadorTempo.Instancia.RestaurarDiasSemNotificar(Mathf.Max(1, dadosAtuais.totalDias));
         }
 
         LogInfo("[SistemaIndustrial] Sistema industrial restaurado do save.");
+    }
+
+    private void ReconciliarCulturasAlimentaresRestauradas()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        IndustrialSaveData saveIndustrial = dadosAtuais != null ? dadosAtuais.industria : null;
+        if (governo == null || saveIndustrial == null || saveIndustrial.estoques == null) return;
+
+        foreach (DadosPaisGoverno pais in governo.Paises)
+        {
+            if (pais == null) continue;
+            string teamKey = pais.teamId.ToString();
+            bool encontrouCultivoComEstoque = false;
+            for (int i = 0; i < saveIndustrial.estoques.Count && !encontrouCultivoComEstoque; i++)
+            {
+                SaveEstoqueIndustrial estoquePais = saveIndustrial.estoques[i];
+                if (estoquePais == null || !string.Equals(estoquePais.paisId, teamKey, StringComparison.Ordinal)
+                    || estoquePais.estoques == null) continue;
+
+                for (int r = 0; r < estoquePais.estoques.Count && !encontrouCultivoComEstoque; r++)
+                {
+                    QuantidadeRecursoIndustrial recurso = estoquePais.estoques[r];
+                    if (recurso == null || recurso.quantidade <= 0d) continue;
+                    for (int c = 0; c < AgriculturaNacional.QuantidadeCulturas; c++)
+                    {
+                        if (string.Equals(recurso.recursoId, AgriculturaNacional.ObterIdCultura(c), StringComparison.OrdinalIgnoreCase))
+                        {
+                            encontrouCultivoComEstoque = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Saves antigos podem ter apenas o estoque agregado. Nesses casos,
+            // manter a comida salva evita apagar recursos que ainda não tinham
+            // sido separados por cultura.
+            if (encontrouCultivoComEstoque)
+                governo.ReconciliarEstoqueComidaCulturas(pais.teamId);
+        }
+    }
+
+    private void CapturarSistemaLogisticaMercado()
+    {
+        if (dadosAtuais == null) return;
+
+        SistemaLogisticaMercado logistica = SistemaLogisticaMercado.Instancia;
+        dadosAtuais.logisticaMercado = logistica != null
+            ? logistica.CriarSaveData()
+            : new SistemaLogisticaMercadoSaveData();
+    }
+
+    private void RestaurarSistemaLogisticaMercado()
+    {
+        if (dadosAtuais == null) return;
+
+        SistemaLogisticaMercado.GarantirInstancia();
+        SistemaLogisticaMercado.Instancia?.RestaurarSaveData(dadosAtuais.logisticaMercado);
     }
 
     private void AplicarTempoSalvo()
@@ -2221,7 +2759,7 @@ public class SistemaSaveGame : MonoBehaviour
             totalDias = dadosAtuais.industria.totalDias;
         }
 
-        GerenciadorTempo.Instancia.RestaurarDias(Mathf.Max(1, totalDias));
+        GerenciadorTempo.Instancia.RestaurarDiasSemNotificar(Mathf.Max(1, totalDias));
     }
 
     private void CapturarRTSState()
@@ -2590,6 +3128,13 @@ public class SistemaSaveGame : MonoBehaviour
         {
             dadosAtuais.estadosIA02 = new List<SaveIA02NationState>();
         }
+    }
+
+    private void GarantirColecoesCidadesAbstratas()
+    {
+        if (dadosAtuais == null) return;
+        if (dadosAtuais.cidadesAbstratas == null)
+            dadosAtuais.cidadesAbstratas = new List<SaveCidadeAbstrataData>();
     }
 
     private static IA01Controller EncontrarControllerIA01(IEnumerable<IA01Controller> controllers, SaveIA01NationState state)

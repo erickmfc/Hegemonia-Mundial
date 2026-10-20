@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Usina Nuclear
   descricao: Usina de alto custo e manutenção que estabiliza cidades de aproximadamente 400 mil habitantes.
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 54e7e59794d82344d9d60a25ef127b6b, type: 3}
   itemId: energia.usina_nuclear
   aliases: usina nuclear, nuclear, reator, energia nuclear, power plant
   capacidades: 524353

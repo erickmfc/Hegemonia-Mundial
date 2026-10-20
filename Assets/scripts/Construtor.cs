@@ -667,6 +667,10 @@ public class Construtor : MonoBehaviour
 
         fantasmaUnico.transform.position = posFinalPreview;
         if (usarRotacaoPreviewNaval) fantasmaUnico.transform.rotation = rotacaoPreviewNaval;
+        if (!usarPosicaoPreviewNaval && AlinharCidadeAoPontoDoTerreno(fantasmaUnico, ponto.y))
+        {
+            posFinalPreview = fantasmaUnico.transform.position;
+        }
 
         if (!previewLocalInvalido && !ehSiloEstrategico)
         {
@@ -772,6 +776,7 @@ public class Construtor : MonoBehaviour
         MenuComandoController.Instancia?.BloquearAberturaAposConstrucao();
 
         GameObject novo = Instantiate(prefabSelecionado, posFinal, rotFinal);
+        if (!previewUsaColocacaoNavalManual) AlinharCidadeAoPontoDoTerreno(novo, pontoMouse.y);
         IA_RuntimeConstructionIntegration.Apply(novo, fichaSelecionada);
         GerenciadorQuartel quartelConstruido = novo.GetComponent<GerenciadorQuartel>()
             ?? novo.GetComponentInChildren<GerenciadorQuartel>(true);
@@ -1485,6 +1490,7 @@ public class Construtor : MonoBehaviour
         }
 
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
+        AlinharCidadeAoPontoDoTerreno(novoPredio, posicao.y);
         AjustarAlturaRuaInstanciada(novoPredio);
         EnsureCollider(novoPredio);
         LimpezaVegetacaoConstrucao.Aplicar(novoPredio);
@@ -2048,6 +2054,41 @@ public class Construtor : MonoBehaviour
         if (objetoRua == null || objetoRua.GetComponent<RuaConectora>() == null) return;
         float elevacao = Mathf.Max(0.12f, elevacaoRua);
         objetoRua.transform.position += Vector3.up * elevacao;
+    }
+
+    private static bool AlinharCidadeAoPontoDoTerreno(GameObject objeto, float alturaTerreno)
+    {
+        if (objeto == null || objeto.GetComponentInChildren<CidadeComplexoUrbano>(true) == null)
+        {
+            return false;
+        }
+
+        Renderer[] renderers = objeto.GetComponentsInChildren<Renderer>(true);
+        bool encontrouMalhaVisivel = false;
+        float menorY = float.PositiveInfinity;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || !renderer.enabled
+                || (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)))
+            {
+                continue;
+            }
+
+            encontrouMalhaVisivel = true;
+            menorY = Mathf.Min(menorY, renderer.bounds.min.y);
+        }
+
+        if (!encontrouMalhaVisivel || float.IsInfinity(menorY)) return false;
+
+        float deslocamentoVertical = alturaTerreno - menorY;
+        // Corrige pivôs deslocados sem deixar uma ficha mal configurada
+        // teleportar a cidade para outra região do mapa.
+        if (Mathf.Abs(deslocamentoVertical) > 250f) return false;
+        Vector3 posicao = objeto.transform.position;
+        posicao.y += deslocamentoVertical;
+        objeto.transform.position = posicao;
+        return true;
     }
 
     private Vector3 PosicaoRaizComInicioRua(GameObject objetoRua, Vector3 inicioDesejado)

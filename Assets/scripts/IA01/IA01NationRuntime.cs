@@ -3620,7 +3620,7 @@ namespace Hegemonia.AI.IA01
             {
                 Position = position,
                 Rotation = rotation,
-                Footprint = definition != null ? definition.Footprint : Vector3.one,
+                Footprint = definition != null ? definition.Footprint : Vector2.one,
                 Key = "anchor:" + Mathf.RoundToInt(position.x / 2f) + ":" + Mathf.RoundToInt(position.z / 2f),
                 State = IA01LotState.Free
             };
@@ -5443,17 +5443,21 @@ namespace Hegemonia.AI.IA01
             }
 
             MarcadorTerritorio target = world.FindEnemyCapital(country.rivalTeamId);
-            if (target == null || !IsHostile(target, country))
+            IdentidadeUnidade targetIdentity = target != null ? target.GetComponent<IdentidadeUnidade>() : null;
+            if (target == null || !IsHostile(targetIdentity, country))
             {
                 Status = "Em guerra sem prefeitura inimiga hostil confirmada.";
                 return false;
             }
 
+            int attackTargetTeamId = targetIdentity.teamID;
             board.Publish(IA01IntentType.CampaignAgainstCapital, 950, "Neutralizar prefeitura inimiga", now);
-            if (Campaign.FinalTarget != target.transform || now - Campaign.LastReplanAt > 8f)
+            if (Campaign.FinalTarget != target.transform
+                || Campaign.TargetTeamId != attackTargetTeamId
+                || now - Campaign.LastReplanAt > 8f)
             {
                 Campaign.FinalTarget = target.transform;
-                Campaign.TargetTeamId = target.GetComponent<IdentidadeUnidade>().teamID;
+                Campaign.TargetTeamId = attackTargetTeamId;
                 Campaign.CurrentObjective = target.transform;
                 Campaign.PreferredRoutePoint = ResolveApproach(target.transform.position);
                 Campaign.LastReplanAt = now;
@@ -5467,9 +5471,11 @@ namespace Hegemonia.AI.IA01
             if (brain == null) { Status = "Campanha aguardando BrainMaster do proprio time."; return false; }
             Vector3 objective = Campaign.PreferredRoutePoint;
             bool finalAttack = (objective - target.transform.position).sqrMagnitude < 1600f;
-            missions.Queue("war:" + Campaign.TargetTeamId + ":" + Campaign.RouteVersion,
+            Transform attackTarget = target.transform;
+            int targetTeamId = Campaign.TargetTeamId;
+            missions.Queue("war:" + targetTeamId + ":" + Campaign.RouteVersion,
                 () => finalAttack
-                    ? brain.TryIssueAttack(context.TeamId, "ia01_campaign_capital", target.transform.position, 1000)
+                    ? brain.TryIssueAttackAgainstTeam(context.TeamId, "ia01_campaign_capital", attackTarget, targetTeamId, 1000)
                     : brain.TryIssueMovePackage(context.TeamId, "ia01_campaign_corridor", objective, 950),
                 success => Status = success ? (finalAttack ? "Campanha atacando prefeitura inimiga." : "Campanha abrindo corredor ate a prefeitura.") : "Ordem de campanha recusada; aguardando replano.");
             return true;
@@ -5495,7 +5501,12 @@ namespace Hegemonia.AI.IA01
             nextOrderAt = now + 4f;
             int attackerTeamId = contact.TeamId;
             missions.Queue("retaliate:" + context.TeamId + ":" + attackerTeamId,
-                () => brain.TryIssueAttack(context.TeamId, "ia01_retaliacao_" + attackerTeamId, target, 1150),
+                () => brain.TryIssueAttackAtCoordinateAgainstTeam(
+                    context.TeamId,
+                    "ia01_retaliacao_" + attackerTeamId,
+                    target,
+                    attackerTeamId,
+                    1150),
                 success => Status = success
                     ? "Retaliacao enviada contra o time " + attackerTeamId + "."
                     : "Agressor identificado; retaliacao aguardando unidades disponiveis.");
@@ -5605,9 +5616,8 @@ namespace Hegemonia.AI.IA01
             return NavMesh.SamplePosition(candidate, out NavMeshHit hit, 80f, NavMesh.AllAreas) ? hit.position : candidate;
         }
 
-        private bool IsHostile(MarcadorTerritorio target, DadosPaisGoverno country)
+        private bool IsHostile(IdentidadeUnidade identity, DadosPaisGoverno country)
         {
-            IdentidadeUnidade identity = target.GetComponent<IdentidadeUnidade>();
             return identity != null && identity.teamID != context.TeamId && identity.teamID != country.aliadoPrioritarioTeamId;
         }
 

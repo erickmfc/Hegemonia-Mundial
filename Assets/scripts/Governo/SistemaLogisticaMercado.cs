@@ -28,10 +28,18 @@ public sealed class RepeticaoMercado
 {
     public string chave;
     public string itemId;
+    public int teamId;
     public int quantidade;
     public bool comprar;
     public bool ativa;
     public int ultimoDiaProcessado = -1;
+}
+
+[Serializable]
+public sealed class SistemaLogisticaMercadoSaveData
+{
+    public List<PedidoMercadoLogistico> pedidos = new List<PedidoMercadoLogistico>();
+    public List<RepeticaoMercado> repeticoes = new List<RepeticaoMercado>();
 }
 
 /// <summary>
@@ -41,6 +49,8 @@ public sealed class RepeticaoMercado
 /// </summary>
 public sealed class SistemaLogisticaMercado : MonoBehaviour
 {
+    private const int MaxPedidosTerminaisRetidos = 64;
+
     private sealed class Viagem
     {
         public NavioCargaMercado navio;
@@ -115,6 +125,7 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
         ProcessarViagens();
         ProcessarEntregasPendentes();
         ProcessarRepeticoes();
+        PodarHistoricoTerminado();
     }
 
     public void RegistrarNavio(NavioCargaMercado navio)
@@ -171,23 +182,168 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
         return true;
     }
 
+    public SistemaLogisticaMercadoSaveData CriarSaveData()
+    {
+        SistemaLogisticaMercadoSaveData salvo = new SistemaLogisticaMercadoSaveData();
+        for (int i = 0; i < pedidos.Count; i++)
+        {
+            PedidoMercadoLogistico pedido = pedidos[i];
+            if (pedido == null || PedidoTerminal(pedido)) continue;
+            salvo.pedidos.Add(new PedidoMercadoLogistico
+            {
+                id = pedido.id,
+                compradorTeamId = pedido.compradorTeamId,
+                vendedorTeamId = pedido.vendedorTeamId,
+                itemId = pedido.itemId,
+                quantidade = pedido.quantidade,
+                precoUnitario = pedido.precoUnitario,
+                total = pedido.total,
+                frete = pedido.frete,
+                status = pedido.status,
+                mensagem = pedido.mensagem,
+                diaCriacao = pedido.diaCriacao,
+                diaEntrega = pedido.diaEntrega,
+                navioId = pedido.navioId,
+                repeticaoAutomatica = pedido.repeticaoAutomatica
+            });
+        }
+
+        for (int i = 0; i < repeticoes.Count; i++)
+        {
+            RepeticaoMercado repeticao = repeticoes[i];
+            if (repeticao == null) continue;
+            salvo.repeticoes.Add(new RepeticaoMercado
+            {
+                chave = repeticao.chave,
+                itemId = repeticao.itemId,
+                teamId = repeticao.teamId,
+                quantidade = repeticao.quantidade,
+                comprar = repeticao.comprar,
+                ativa = repeticao.ativa,
+                ultimoDiaProcessado = repeticao.ultimoDiaProcessado
+            });
+        }
+
+        return salvo;
+    }
+
+    public void RestaurarSaveData(SistemaLogisticaMercadoSaveData salvo)
+    {
+        pedidos.Clear();
+        repeticoes.Clear();
+        viagens.Clear();
+        entregasPendentes.Clear();
+        navios.Clear();
+        ultimoDiaRepeticao = -1;
+
+        if (salvo != null)
+        {
+            if (salvo.pedidos != null)
+            {
+                for (int i = 0; i < salvo.pedidos.Count; i++)
+                {
+                    PedidoMercadoLogistico pedido = salvo.pedidos[i];
+                    if (pedido == null || PedidoTerminal(pedido)) continue;
+
+                    // Viagens e corrotinas não são persistidas. Reenfileirar
+                    // preserva a transação já paga sem deixar carga órfã.
+                    pedido.status = "AGUARDANDO EMBARQUE";
+                    pedido.navioId = string.Empty;
+                    pedido.mensagem = "Pedido restaurado; aguardando novo embarque.";
+                    pedidos.Add(pedido);
+                }
+            }
+
+            if (salvo.repeticoes != null)
+            {
+                for (int i = 0; i < salvo.repeticoes.Count; i++)
+                {
+                    RepeticaoMercado repeticao = salvo.repeticoes[i];
+                    if (repeticao == null || string.IsNullOrWhiteSpace(repeticao.itemId)) continue;
+                    repeticoes.Add(new RepeticaoMercado
+                    {
+                        chave = CriarChave(
+                            repeticao.teamId > 0 ? repeticao.teamId : ResolverTeamJogador(),
+                            repeticao.itemId,
+                            repeticao.comprar),
+                        itemId = repeticao.itemId,
+                        teamId = repeticao.teamId > 0 ? repeticao.teamId : ResolverTeamJogador(),
+                        quantidade = Mathf.Max(1, repeticao.quantidade),
+                        comprar = repeticao.comprar,
+                        ativa = repeticao.ativa,
+                        ultimoDiaProcessado = repeticao.ultimoDiaProcessado
+                    });
+                }
+            }
+        }
+
+        RegistrarNaviosDaCena();
+    }
+
+    public void LimparEstadoParaNovoJogo()
+    {
+        RestaurarSaveData(null);
+    }
+
+    private void PodarHistoricoTerminado()
+    {
+        int terminais = 0;
+        for (int i = 0; i < pedidos.Count; i++)
+        {
+            if (pedidos[i] != null && PedidoTerminal(pedidos[i])) terminais++;
+        }
+
+        for (int i = 0; i < pedidos.Count && terminais > MaxPedidosTerminaisRetidos;)
+        {
+            if (PedidoTerminal(pedidos[i]))
+            {
+                pedidos.RemoveAt(i);
+                terminais--;
+            }
+            else
+            {
+                i++;
+            }
+        }
+    }
+
+    private static bool PedidoTerminal(PedidoMercadoLogistico pedido)
+    {
+        return pedido != null
+            && (string.Equals(pedido.status, "ENTREGUE", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(pedido.status, "RECUPERADO", StringComparison.OrdinalIgnoreCase));
+    }
+
     public bool TemRepeticao(string itemId, bool comprar)
     {
-        string chave = CriarChave(itemId, comprar);
+        return TemRepeticao(ResolverTeamJogador(), itemId, comprar);
+    }
+
+    public bool TemRepeticao(int teamId, string itemId, bool comprar)
+    {
+        NormalizarRepeticoes();
+        string chave = CriarChave(teamId, itemId, comprar);
         return repeticoes.Any(x => x != null && x.ativa && x.chave == chave);
     }
 
     public void ConfigurarRepeticao(string itemId, int quantidade, bool comprar, bool ativa)
     {
-        if (string.IsNullOrWhiteSpace(itemId)) return;
+        ConfigurarRepeticao(ResolverTeamJogador(), itemId, quantidade, comprar, ativa);
+    }
+
+    public void ConfigurarRepeticao(int teamId, string itemId, int quantidade, bool comprar, bool ativa)
+    {
+        if (teamId <= 0 || string.IsNullOrWhiteSpace(itemId)) return;
         GarantirInstancia();
-        string chave = CriarChave(itemId, comprar);
+        NormalizarRepeticoes();
+        string chave = CriarChave(teamId, itemId, comprar);
         RepeticaoMercado repeticao = repeticoes.FirstOrDefault(x => x != null && x.chave == chave);
         if (repeticao == null)
         {
-            repeticao = new RepeticaoMercado { chave = chave, itemId = itemId, comprar = comprar };
+            repeticao = new RepeticaoMercado { chave = chave, itemId = itemId, teamId = teamId, comprar = comprar };
             repeticoes.Add(repeticao);
         }
+        repeticao.teamId = teamId;
         repeticao.quantidade = Mathf.Max(1, quantidade);
         repeticao.ativa = ativa;
         repeticao.ultimoDiaProcessado = ObterDiaAtual();
@@ -195,6 +351,7 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
 
     private void ProcessarRepeticoes()
     {
+        NormalizarRepeticoes();
         int dia = ObterDiaAtual();
         if (dia == ultimoDiaRepeticao || dia <= 0) return;
         ultimoDiaRepeticao = dia;
@@ -211,8 +368,8 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
 
             string mensagem;
             bool ok = repeticao.comprar
-                ? mercado.ComprarAutomaticamente(1, repeticao.itemId, repeticao.quantidade, out mensagem)
-                : mercado.VenderAutomaticamente(1, repeticao.itemId, repeticao.quantidade, out mensagem);
+                ? mercado.ComprarAutomaticamente(Mathf.Max(1, repeticao.teamId), repeticao.itemId, repeticao.quantidade, out mensagem)
+                : mercado.VenderAutomaticamente(Mathf.Max(1, repeticao.teamId), repeticao.itemId, repeticao.quantidade, out mensagem);
             if (!ok && Time.unscaledTime >= proximoLogSemPorto)
             {
                 proximoLogSemPorto = Time.unscaledTime + 20f;
@@ -437,7 +594,7 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
         if (!entregue)
         {
             pedido.status = "AGUARDANDO DESTINO";
-            pedido.mensagem = "Carga no pier; aguardando aeroporto, estaleiro ou quartel do comprador.";
+            pedido.mensagem = "Carga no pier; aguardando destino militar válido ou liberação de limite/efetivo do comprador.";
             if (!entregasPendentes.Contains(pedido)) entregasPendentes.Add(pedido);
             return;
         }
@@ -475,30 +632,152 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     {
         DadosConstrucao ficha = EncontrarFicha(item.prefabId);
         if (ficha == null || !ficha.TryGetPrefabBasico(out GameObject prefab)) return false;
-        Transform destino = EncontrarDestino(item.tipoEntrega, teamId);
+
+        int lote = Mathf.Max(1, quantidade);
+        // Avalie o limite antes de procurar destinos na cena. Pedidos que ainda
+        // nao podem ser entregues continuam pendentes, mas evitam buscas globais
+        // de aeroporto a cada ciclo do scheduler.
+        if (teamId == 1 && !GovernadorGameplayRTS.PermitirProducao(ficha, lote, out _))
+        {
+            return false;
+        }
+
+        GerenciadorAeroporto aeroportoDestino;
+        Transform destino = EncontrarDestinoComAeroporto(item.tipoEntrega, teamId, out aeroportoDestino);
         if (destino == null) return false;
         string tipoEntrega = item.tipoEntrega ?? string.Empty;
+        bool entregaAerea = string.Equals(tipoEntrega, "aeronave", StringComparison.OrdinalIgnoreCase);
+        C700TransporteAereo prefabC700 = entregaAerea
+            ? prefab.GetComponentInChildren<C700TransporteAereo>(true)
+            : null;
+        if (entregaAerea
+            && (aeroportoDestino == null
+                || (prefabC700 == null
+                    && prefab.GetComponentInChildren<Helicoptero>(true) == null
+                    && prefab.GetComponentInChildren<ControleAviao>(true) == null)))
+        {
+            return false;
+        }
 
-        for (int i = 0; i < Mathf.Max(1, quantidade); i++)
+        Transform paradaC700 = null;
+        if (prefabC700 != null)
+        {
+            paradaC700 = aeroportoDestino.ObterParadaRecebimentoTransporteAereo();
+            if (paradaC700 == null) return false;
+        }
+
+        TipoUnidade tipoUnidadeEntrega = tipoEntrega.IndexOf("aeronave", StringComparison.OrdinalIgnoreCase) >= 0
+            ? TipoUnidade.Aereo
+            : tipoEntrega.IndexOf("navio", StringComparison.OrdinalIgnoreCase) >= 0
+                ? TipoUnidade.Naval : TipoUnidade.Veiculo;
+
+        int efetivoNecessario = SistemaGovernoMundial.ObterEfetivoNecessario(prefab, tipoUnidadeEntrega);
+        SistemaGovernoMundial governoEfetivo = efetivoNecessario > 0 ? SistemaGovernoMundial.Instancia : null;
+        if (efetivoNecessario > 0
+            && (governoEfetivo == null
+                || !governoEfetivo.PodeProduzirUnidadeComEfetivo(teamId, prefab, lote, tipoUnidadeEntrega)))
+        {
+            return false;
+        }
+
+        List<GameObject> unidadesCriadas = new List<GameObject>(lote);
+        for (int i = 0; i < lote; i++)
         {
             GameObject unidade = Instantiate(prefab, destino.position + Vector3.up * (1.2f + i * 0.35f), destino.rotation);
+            unidadesCriadas.Add(unidade);
             IdentidadeUnidade identidade = unidade.GetComponent<IdentidadeUnidade>() ?? unidade.AddComponent<IdentidadeUnidade>();
             identidade.teamID = teamId;
-            identidade.tipoUnidade = tipoEntrega.IndexOf("aeronave", StringComparison.OrdinalIgnoreCase) >= 0
-                ? TipoUnidade.Aereo
-                : tipoEntrega.IndexOf("navio", StringComparison.OrdinalIgnoreCase) >= 0
-                    ? TipoUnidade.Naval : TipoUnidade.Veiculo;
+            identidade.tipoUnidade = tipoUnidadeEntrega;
+            governoEfetivo = governoEfetivo != null ? governoEfetivo : SistemaGovernoMundial.Instancia;
+            if (SistemaGovernoMundial.ObterEfetivoNecessario(unidade, tipoUnidadeEntrega) > 0
+                && (governoEfetivo == null || !governoEfetivo.TentarMobilizarEfetivoDaUnidade(teamId, unidade)))
+            {
+                ReverterUnidadesCriadas(unidadesCriadas, teamId, governoEfetivo);
+                return false;
+            }
+            ServicoAbastecimento.AbastecerUnidadeProduzida(unidade);
+
+            if (entregaAerea)
+            {
+                C700TransporteAereo c700 = unidade.GetComponentInChildren<C700TransporteAereo>(true);
+                if (c700 != null)
+                {
+                    if (!aeroportoDestino.RegistrarTransporteAereoRecebido(c700))
+                    {
+                        Debug.LogError($"[Mercado] Aeroporto {aeroportoDestino.name} recusou o C-700 após validar a vaga; pedido permanece pendente.");
+                        ReverterUnidadesCriadas(unidadesCriadas, teamId, governoEfetivo);
+                        return false;
+                    }
+                    continue;
+                }
+
+                Helicoptero helicoptero = unidade.GetComponentInChildren<Helicoptero>(true);
+                if (helicoptero != null)
+                {
+                    if (!aeroportoDestino.RegistrarHelicopteroRecebido(helicoptero))
+                    {
+                        ReverterUnidadesCriadas(unidadesCriadas, teamId, governoEfetivo);
+                        return false;
+                    }
+                    continue;
+                }
+
+                ControleAviao aviao = unidade.GetComponentInChildren<ControleAviao>(true);
+                if (aviao != null)
+                {
+                    if (!aeroportoDestino.RegistrarAeronaveRecebida(aviao))
+                    {
+                        ReverterUnidadesCriadas(unidadesCriadas, teamId, governoEfetivo);
+                        return false;
+                    }
+                }
+            }
         }
         return true;
     }
 
+    private static void ReverterUnidadesCriadas(List<GameObject> unidades, int teamId, SistemaGovernoMundial governo)
+    {
+        if (unidades == null) return;
+        for (int i = 0; i < unidades.Count; i++)
+        {
+            GameObject unidade = unidades[i];
+            if (unidade == null) continue;
+            governo?.LiberarEfetivoMobilizadoSemBaixa(teamId, unidade);
+            Destroy(unidade);
+        }
+        unidades.Clear();
+    }
+
     private Transform EncontrarDestino(string tipo, int teamId)
     {
+        return EncontrarDestinoComAeroporto(tipo, teamId, out _);
+    }
+
+    private Transform EncontrarDestinoComAeroporto(string tipo, int teamId, out GerenciadorAeroporto aeroportoDestino)
+    {
+        aeroportoDestino = null;
         if (string.Equals(tipo, "aeronave", StringComparison.OrdinalIgnoreCase))
         {
-            GerenciadorAeroporto aeroporto = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None)
-                .FirstOrDefault(x => ObterTeam(x) == teamId);
-            return aeroporto != null ? (aeroporto.hangarAviao != null ? aeroporto.hangarAviao : aeroporto.transform) : null;
+            GerenciadorAeroporto[] aeroportos = FindObjectsByType<GerenciadorAeroporto>(FindObjectsSortMode.None);
+            for (int i = 0; i < aeroportos.Length; i++)
+            {
+                GerenciadorAeroporto candidato = aeroportos[i];
+                if (candidato == null) continue;
+
+                IdentidadeUnidade identidade = candidato.GetComponentInParent<IdentidadeUnidade>();
+                // Sem identidade não há como provar a quem a base pertence.
+                // Falhar fechado evita entregar aeronaves na base de outro país.
+                if (identidade != null && identidade.teamID == teamId)
+                {
+                    aeroportoDestino = candidato;
+                    break;
+                }
+            }
+
+            return aeroportoDestino != null
+                ? (aeroportoDestino.hangarAviao != null ? aeroportoDestino.hangarAviao : aeroportoDestino.transform)
+                : null;
         }
 
         if (string.Equals(tipo, "navio", StringComparison.OrdinalIgnoreCase))
@@ -626,7 +905,26 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
         return null;
     }
 
-    private static string CriarChave(string itemId, bool comprar) => (comprar ? "C:" : "V:") + itemId;
+    private static string CriarChave(int teamId, string itemId, bool comprar)
+        => teamId + ":" + (comprar ? "C:" : "V:") + itemId;
+
+    private static int ResolverTeamJogador()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        return governo != null ? Mathf.Max(1, governo.teamJogador) : 1;
+    }
+
+    private void NormalizarRepeticoes()
+    {
+        if (repeticoes == null) repeticoes = new List<RepeticaoMercado>();
+        for (int i = 0; i < repeticoes.Count; i++)
+        {
+            RepeticaoMercado repeticao = repeticoes[i];
+            if (repeticao == null || string.IsNullOrWhiteSpace(repeticao.itemId)) continue;
+            if (repeticao.teamId <= 0) repeticao.teamId = ResolverTeamJogador();
+            repeticao.chave = CriarChave(repeticao.teamId, repeticao.itemId, repeticao.comprar);
+        }
+    }
 
     private static int ObterDiaAtual()
     {

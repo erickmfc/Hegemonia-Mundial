@@ -28,6 +28,7 @@ public class CidadeComplexoUrbano : MonoBehaviour
 {
     private static readonly HashSet<CidadeComplexoUrbano> CidadesAtivas = new HashSet<CidadeComplexoUrbano>();
     private static readonly List<CidadeComplexoUrbano> BufferCidades = new List<CidadeComplexoUrbano>(16);
+    private static readonly List<int> BufferDeltaPopulacional = new List<int>(16);
 
     [Header("🏛️ Identidade e Tema")]
     [Tooltip("Tema visual e cultural da cidade")]
@@ -90,13 +91,16 @@ public class CidadeComplexoUrbano : MonoBehaviour
     private EstruturaEconomica estrutura;
     private int limitePopulacaoAdicionadoRecursos;
     private bool populacaoRegistrada;
+    private bool capacidadeHabitacionalNotificada;
     private float timerSincronizacao = 0f;
     private float timerBlackout = 0f;
-    private bool mouseHover = false;
-    private Texture2D _texturaTooltip;
 
     private void Awake()
     {
+        // Cidades fazem parte das entidades persistidas, inclusive quando
+        // foram colocadas diretamente na cena. O SaveGame usa este marcador
+        // para substituir a instancia-base ao restaurar um snapshot.
+        SaveableEntity.Garantir(gameObject);
         GarantirEstrutura();
         GarantirSaude();
         ValidarLimites();
@@ -108,10 +112,19 @@ public class CidadeComplexoUrbano : MonoBehaviour
         SincronizarEstruturaEconomica();
         RegistrarPopulacaoInicialNaNacao();
         populacaoRegistrada = true;
+
+        if (Application.isPlaying)
+        {
+            GerenciadorDivisaoTerritorial.GarantirInstancia();
+            GerenciadorDivisaoTerritorial.Instancia?.RegistrarCidadeUrbana(this);
+        }
+
+        NotificarSeCapacidadeHabitacionalAtingida();
     }
 
     private void OnEnable()
     {
+        capacidadeHabitacionalNotificada = false;
         CidadesAtivas.Add(this);
         GarantirEstrutura();
         GarantirSaude();
@@ -128,37 +141,148 @@ public class CidadeComplexoUrbano : MonoBehaviour
     {
         CidadesAtivas.Clear();
         BufferCidades.Clear();
+        BufferDeltaPopulacional.Clear();
     }
 
     /// <summary>
-    /// Distribui a população civil nacional pelas cidades do time, segundo a
-    /// capacidade de cada uma. O crescimento populacional nacional continua
-    /// sendo calculado uma única vez por SistemaPopulacao.
+    /// Sincroniza a população civil nacional com as cidades materializadas.
+    /// Mantém a distribuição local existente e aplica somente a variação do
+    /// total nacional, para não apagar migrações entre cidades a cada tick.
     /// </summary>
     public static void SincronizarPopulacaoNacional(int timeId, int populacaoCivil)
     {
         PrepararBufferCidades(timeId);
-        if (BufferCidades.Count == 0) return;
+        GerenciadorDivisaoTerritorial gerenciador = GerenciadorDivisaoTerritorial.Instancia;
+        long capacidadeAbstrata = 0;
+        long residentesAbstratos = 0;
+        gerenciador?.ObterTotaisCidadesAbstratas(timeId, out capacidadeAbstrata, out residentesAbstratos);
+        if (BufferCidades.Count == 0 && capacidadeAbstrata <= 0) return;
 
         long capacidadeTotal = 0;
         for (int i = 0; i < BufferCidades.Count; i++)
             capacidadeTotal += Mathf.Max(0, BufferCidades[i].capacidadeHabitacional);
+        capacidadeTotal += capacidadeAbstrata;
         if (capacidadeTotal <= 0) return;
 
-        int residentesParaDistribuir = (int)Math.Min(Mathf.Max(0, populacaoCivil), capacidadeTotal);
-        int distribuidos = 0;
+        int residentesAlvo = (int)Math.Min(Mathf.Max(0, populacaoCivil), capacidadeTotal);
+        long residentesAtuais = 0;
         for (int i = 0; i < BufferCidades.Count; i++)
         {
             CidadeComplexoUrbano cidade = BufferCidades[i];
-            int alvo = i == BufferCidades.Count - 1
-                ? residentesParaDistribuir - distribuidos
-                : (int)((long)residentesParaDistribuir * Mathf.Max(0, cidade.capacidadeHabitacional) / capacidadeTotal);
-            alvo = Mathf.Clamp(alvo, 0, Mathf.Max(0, cidade.capacidadeHabitacional));
-            distribuidos += alvo;
-            if (cidade.populacaoResidente == alvo) continue;
-            cidade.populacaoResidente = alvo;
-            cidade.SincronizarEstruturaEconomica();
+            int capacidade = Mathf.Max(0, cidade.capacidadeHabitacional);
+            int residenteValido = Mathf.Clamp(cidade.populacaoResidente, 0, capacidade);
+            if (cidade.populacaoResidente != residenteValido)
+                DefinirPopulacaoSincronizada(cidade, residenteValido);
+            residentesAtuais += residenteValido;
         }
+        residentesAtuais += residentesAbstratos;
+
+        long delta = (long)residentesAlvo - residentesAtuais;
+        if (delta > 0)
+        {
+            long margemMaterializada = Math.Max(0L, capacidadeTotal - capacidadeAbstrata
+                - (residentesAtuais - residentesAbstratos));
+            long pesoTotal = Math.Max(0L, capacidadeTotal - residentesAtuais);
+            long deltaMaterializado = pesoTotal > 0 ? delta * margemMaterializada / pesoTotal : 0;
+            DistribuirDeltaPopulacional(deltaMaterializado, margemMaterializada, adicionar: true);
+            gerenciador?.AplicarDeltaPopulacionalAbstrato(timeId, delta - deltaMaterializado);
+        }
+        else if (delta < 0)
+        {
+            long moradoresMaterializados = residentesAtuais - residentesAbstratos;
+            long pesoTotal = residentesAtuais;
+            long deltaMaterializado = pesoTotal > 0 ? -delta * moradoresMaterializados / pesoTotal : 0;
+            DistribuirDeltaPopulacional(deltaMaterializado, moradoresMaterializados, adicionar: false);
+            gerenciador?.AplicarDeltaPopulacionalAbstrato(timeId, delta + deltaMaterializado);
+        }
+    }
+
+    internal static void CopiarCidadesAtivas(List<CidadeComplexoUrbano> destino)
+    {
+        if (destino == null) return;
+
+        CidadesAtivas.RemoveWhere(cidade => cidade == null || !cidade.isActiveAndEnabled);
+        destino.Clear();
+        foreach (CidadeComplexoUrbano cidade in CidadesAtivas)
+        {
+            if (cidade != null && cidade.isActiveAndEnabled)
+                destino.Add(cidade);
+        }
+        destino.Sort((a, b) => a.GetInstanceID().CompareTo(b.GetInstanceID()));
+    }
+
+    /// <summary>
+    /// Move moradores entre cidades do mesmo país sem alterar a população
+    /// nacional. Crescimento e perdas nacionais continuam em seus próprios
+    /// sistemas; esta operação só muda a distribuição urbana.
+    /// </summary>
+    internal int TransferirPopulacaoPara(CidadeComplexoUrbano destino, int quantidadeSolicitada)
+    {
+        if (destino == null || destino == this || teamId <= 0 || destino.teamId != teamId || quantidadeSolicitada <= 0)
+            return 0;
+
+        ValidarLimites();
+        destino.ValidarLimites();
+
+        int transferidos = Mathf.Min(quantidadeSolicitada, Mathf.Min(populacaoResidente, destino.VagasHabitacionaisLivres));
+        if (transferidos <= 0) return 0;
+
+        populacaoResidente -= transferidos;
+        destino.populacaoResidente += transferidos;
+        SincronizarEstruturaEconomica();
+        destino.SincronizarEstruturaEconomica();
+        return transferidos;
+    }
+
+    private static void DistribuirDeltaPopulacional(long quantidade, long pesoTotal, bool adicionar)
+    {
+        if (quantidade <= 0 || pesoTotal <= 0) return;
+
+        BufferDeltaPopulacional.Clear();
+        long distribuidos = 0;
+        for (int i = 0; i < BufferCidades.Count; i++)
+        {
+            CidadeComplexoUrbano cidade = BufferCidades[i];
+            int capacidade = Mathf.Max(0, cidade.capacidadeHabitacional);
+            int residentes = Mathf.Clamp(cidade.populacaoResidente, 0, capacidade);
+            int peso = adicionar ? capacidade - residentes : residentes;
+            int parcela = (int)Math.Min(peso, quantidade * peso / pesoTotal);
+            BufferDeltaPopulacional.Add(parcela);
+            distribuidos += parcela;
+        }
+
+        long restante = quantidade - distribuidos;
+        for (int i = 0; i < BufferCidades.Count && restante > 0; i++)
+        {
+            CidadeComplexoUrbano cidade = BufferCidades[i];
+            int capacidade = Mathf.Max(0, cidade.capacidadeHabitacional);
+            int residentes = Mathf.Clamp(cidade.populacaoResidente, 0, capacidade);
+            int margemRestante = adicionar
+                ? capacidade - residentes - BufferDeltaPopulacional[i]
+                : residentes - BufferDeltaPopulacional[i];
+            if (margemRestante <= 0) continue;
+
+            BufferDeltaPopulacional[i]++;
+            restante--;
+        }
+
+        for (int i = 0; i < BufferCidades.Count; i++)
+        {
+            int parcela = BufferDeltaPopulacional[i];
+            if (parcela <= 0) continue;
+
+            CidadeComplexoUrbano cidade = BufferCidades[i];
+            int residentes = Mathf.Clamp(cidade.populacaoResidente, 0, Mathf.Max(0, cidade.capacidadeHabitacional));
+            int novoTotal = adicionar ? residentes + parcela : residentes - parcela;
+            DefinirPopulacaoSincronizada(cidade, novoTotal);
+        }
+    }
+
+    private static void DefinirPopulacaoSincronizada(CidadeComplexoUrbano cidade, int residentes)
+    {
+        if (cidade == null || cidade.populacaoResidente == residentes) return;
+        cidade.populacaoResidente = residentes;
+        cidade.SincronizarEstruturaEconomica();
     }
 
     private static void PrepararBufferCidades(int timeId)
@@ -323,6 +447,18 @@ public class CidadeComplexoUrbano : MonoBehaviour
 
         // Se o sistema marcou como SemEnergia, refletimos no script
         semEnergia = (estrutura.status == StatusEstruturaEconomica.SemEnergia);
+        if (populacaoRegistrada)
+            NotificarSeCapacidadeHabitacionalAtingida();
+    }
+
+    private void NotificarSeCapacidadeHabitacionalAtingida()
+    {
+        if (capacidadeHabitacionalNotificada || !Application.isPlaying || !populacaoRegistrada
+            || teamId <= 0 || populacaoResidente < capacidadeHabitacional)
+            return;
+
+        capacidadeHabitacionalNotificada = true;
+        MarcadorTerritorio.NotificarCidadeAtingiuCapacidade(this);
     }
 
     private void GarantirEstrutura()
@@ -373,69 +509,13 @@ public class CidadeComplexoUrbano : MonoBehaviour
         }
     }
 
-    private void OnMouseEnter() { mouseHover = true; }
-    private void OnMouseExit() { mouseHover = false; }
-
-    private Texture2D ObterTexturaTooltip()
-    {
-        if (_texturaTooltip == null)
-        {
-            _texturaTooltip = new Texture2D(1, 1);
-            _texturaTooltip.SetPixel(0, 0, new Color(0.06f, 0.08f, 0.12f, 0.94f));
-            _texturaTooltip.Apply();
-        }
-        return _texturaTooltip;
-    }
-
-    private void OnGUI()
-    {
-        if (!mouseHover) return;
-
-        GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
-        boxStyle.normal.background = ObterTexturaTooltip();
-        boxStyle.padding = new RectOffset(12, 12, 12, 12);
-        boxStyle.alignment = TextAnchor.MiddleLeft;
-
-        GUIStyle textStyle = new GUIStyle(GUI.skin.label);
-        textStyle.richText = true;
-        textStyle.fontSize = 13;
-        textStyle.normal.textColor = Color.white;
-
-        string iconeTema = (tema == TemaCidade.Egito) ? "🏺" : "🏙️";
-        string statusEnergia = semEnergia
-            ? "<color=#ff5555>⚡ SEM ENERGIA (Blecaute)</color>"
-            : "<color=#55ff55>⚡ REDE CONECTADA</color>";
-
-        string content = $"<b>{iconeTema} CIDADE METRÓPOLE [{tema.ToString().ToUpperInvariant()}]</b>\n" +
-                         $"<i>{nomeCidade}</i> (Time {teamId})\n\n" +
-                         $"🏠 <b>Imobiliária (Moradia):</b>\n" +
-                         $"   👥 Residentes: <b>{populacaoResidente:N0}</b> / {capacidadeHabitacional:N0} ({(TaxaOcupacaoHabitacional * 100f):F1}%)\n" +
-                         $"   🌿 Qualidade de Vida: <b>{qualidadeVida}%</b>\n\n" +
-                         $"🏪 <b>Comércio & Empregos (50% da Moradia):</b>\n" +
-                         $"   💼 Postos de Trabalho: <b>{EmpregosOcupados:N0}</b> / {CapacidadeComercial:N0}\n" +
-                         $"   💰 Receita Comercial: <b>+${ReceitaComercialPorSegundo:F2}/s</b>\n\n" +
-                         $"⚡ <b>Energia Elétrica:</b>\n" +
-                         $"   🔌 Consumo: <b>{ConsumoEnergiaTotal:N1} MW</b>\n" +
-                         $"      (Habitação: {ConsumoEnergiaResidencial:N1} MW | Comércio: {ConsumoEnergiaComercial:N1} MW)\n" +
-                         $"   Status: {statusEnergia}";
-
-        Vector2 size = textStyle.CalcSize(new GUIContent(content));
-        float width = size.x + 24f;
-        float height = size.y + 24f;
-
-        Vector2 mousePos = Input.mousePosition;
-        Rect rect = new Rect(mousePos.x + 15f, Screen.height - mousePos.y + 15f, width, height);
-
-        if (rect.xMax > Screen.width) rect.x = mousePos.x - width - 15f;
-        if (rect.yMax > Screen.height) rect.y = Screen.height - mousePos.y - height - 15f;
-
-        GUI.Box(rect, "", boxStyle);
-        GUI.Label(new Rect(rect.x + 12, rect.y + 12, size.x, size.y), content, textStyle);
-    }
-
     private void OnDestroy()
     {
         CidadesAtivas.Remove(this);
+        MarcadorTerritorio.RemoverCidadeGuiaExpansao(this);
+        if (Application.isPlaying)
+            GerenciadorDivisaoTerritorial.Instancia?.RemoverCidadeUrbana(this);
+
         if (populacaoRegistrada && populacaoResidente > 0)
         {
             AplicarVariacaoPopulacionalNacional(-populacaoResidente);

@@ -5,6 +5,51 @@ using Hegemonia.AI.Shared;
 
 public class GerenciadorAeroporto : MonoBehaviour
 {
+    private static readonly List<DadosConstrucao> fichasAereasNavaisCache = new List<DadosConstrucao>();
+    private static bool fichasAereasNavaisCarregadas;
+
+    /// <summary>
+    /// Lista as fichas aeronauticas que podem usar o ciclo de convés existente.
+    /// Aeronaves comerciais e transportes com controlador especializado ficam
+    /// fora porque usam bases e rotinas de entrega próprias.
+    /// </summary>
+    public static void ListarFichasAereasNavais(List<DadosConstrucao> destino, bool incluirAvioes, bool incluirHelicopteros)
+    {
+        if (destino == null) return;
+        destino.Clear();
+
+        if (!fichasAereasNavaisCarregadas)
+        {
+            fichasAereasNavaisCache.Clear();
+            fichasAereasNavaisCache.AddRange(Resources.LoadAll<DadosConstrucao>("Construcoes"));
+            fichasAereasNavaisCache.Sort((a, b) =>
+                string.Compare(a != null ? a.GetDisplayName() : string.Empty,
+                    b != null ? b.GetDisplayName() : string.Empty,
+                    System.StringComparison.OrdinalIgnoreCase));
+            fichasAereasNavaisCarregadas = true;
+        }
+
+        for (int i = 0; i < fichasAereasNavaisCache.Count; i++)
+        {
+            DadosConstrucao ficha = fichasAereasNavaisCache[i];
+            if (ficha == null || ficha.categoria != DadosConstrucao.CategoriaItem.Aeronautica
+                || !ficha.TryGetPrefabBasico(out GameObject prefab)) continue;
+
+            if (prefab.GetComponentInChildren<ControleAviaoComercial>(true) != null
+                || prefab.GetComponentInChildren<C700TransporteAereo>(true) != null
+                || prefab.GetComponentInChildren<Hegemonia.Aeronaves.C17.C17TransporteController>(true) != null)
+            {
+                continue;
+            }
+
+            bool helicoptero = prefab.GetComponentInChildren<Helicoptero>(true) != null;
+            if ((helicoptero && incluirHelicopteros) || (!helicoptero && incluirAvioes))
+            {
+                destino.Add(ficha);
+            }
+        }
+    }
+
     // Estruturas comerciais removidas e transferidas para GerenciadorAeroportoComercial.cs
     
     private enum ModoOrdemHelicoptero
@@ -88,6 +133,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     private readonly List<Vector3> _posicoesVagaOcupadas = new List<Vector3>(64);
     private readonly List<Vector3> _rotaPatrulhaHelicoptero = new List<Vector3>();
     private readonly List<ControleAviao> _bufferSortidaAereaIA = new List<ControleAviao>(24);
+    private readonly List<GerenciadorAeroporto> _basesDestinoAereoUI = new List<GerenciadorAeroporto>(16);
     private Camera cameraPrincipal;
     private ModoOrdemHelicoptero _modoOrdemHelicoptero = ModoOrdemHelicoptero.Nenhum;
     private string _modeloPatrulhaGrupo = string.Empty;
@@ -595,6 +641,14 @@ public class GerenciadorAeroporto : MonoBehaviour
                 }
             }
         }
+
+        // Preserve a missão de uma aeronave estacionada sem estoque e
+        // reavalie-a depois de cada transferência incremental de combustível.
+        ControleAviao aviao = aeronave as ControleAviao;
+        if (aviao != null)
+        {
+            aviao.TentarRetomarMissaoAposReabastecimento();
+        }
     }
 
     private void ProcessarFilaCompraAeronavesIA()
@@ -602,6 +656,10 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (!usarFilaSpawnAereoIA) return;
         if (_filaSpawnAeronavesIA == null || _filaSpawnAeronavesIA.Count == 0) return;
         if (Time.unscaledTime < _proximoSpawnAeronaveIA) return;
+
+        // A fila conserva pedidos pagos enquanto o país não puder mobilizar o
+        // efetivo da próxima aeronave. Não descarte a unidade ao tentar spawn.
+        if (semEnergia || !PodeProduzirAeronave(_filaSpawnAeronavesIA.Peek())) return;
 
         // O primeiro caça da IA não pode ficar preso indefinidamente pelo
         // limitador de desempenho: a fila é escalonada, mas depois de alguns
@@ -614,8 +672,23 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
-        GameObject prefab = _filaSpawnAeronavesIA.Dequeue();
-        if (prefab != null) ComprarAviaoImediato(prefab);
+        GameObject prefab = _filaSpawnAeronavesIA.Peek();
+        if (!ComprarAviaoImediato(prefab))
+        {
+            // A compra já pode ter sido aceita pelo chamador. Preserve o item
+            // pago quando uma condição de spawn muda enquanto ele aguarda na
+            // fila; uma tentativa recusada não pode apagar silenciosamente a
+            // aeronave nem deixar o débito sem entrega.
+            float intervaloFalha = DiagnosticoDesempenhoJogo.RuntimeSaturado()
+                ? intervaloSpawnIaCritico
+                : DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                    ? intervaloSpawnIaPressao
+                    : intervaloSpawnIaSaudavel;
+            _proximoSpawnAeronaveIA = Time.unscaledTime + Mathf.Max(0.05f, intervaloFalha);
+            return;
+        }
+
+        _filaSpawnAeronavesIA.Dequeue();
         if (_filaSpawnAeronavesIA.Count == 0) _primeiroEnfileiramentoAeronaveIA = -999f;
 
         float cooldown = intervaloSpawnIaSaudavel;
@@ -659,7 +732,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
 
-        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Alpha7))
+        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Keypad7))
         {
             AlternarMenuPorAtalho();
         }
@@ -1265,8 +1338,14 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (semEnergia)
         {
-            Debug.LogWarning($"[Aeroporto] {name} está sem energia! Compra de aeronaves bloqueada (Ignorado pelo patch).");
-            // return;
+            Debug.LogWarning($"[Aeroporto] {name} está sem energia. Compra de aeronaves bloqueada.");
+            return false;
+        }
+
+        if (!PodeProduzirAeronave(prefabDeAeronave))
+        {
+            Debug.LogWarning($"[Aeroporto] Produção de {prefabDeAeronave.name} aguardando efetivo disponível.");
+            return false;
         }
 
         // --- SISTEMA DE IDENTIDADE (HERANÇA DO AEROPORTO) ---
@@ -1281,6 +1360,15 @@ public class GerenciadorAeroporto : MonoBehaviour
         // Para IA, enfileira para não spawnar vários aviões no mesmo segundo e travar o jogo.
         if (aeroportoEhIA && usarFilaSpawnAereoIA)
         {
+            // Validar antes de aceitar uma compra paga e enfileirá-la. O spawn
+            // imediato repete a validação porque a infraestrutura pode mudar
+            // enquanto a aeronave aguarda na fila.
+            if (prefabDeAeronave.GetComponentInChildren<C700TransporteAereo>(true) != null
+                && ObterParadaRecebimentoTransporteAereo() == null)
+            {
+                return false;
+            }
+
             if (_filaSpawnAeronavesIA.Count == 0) _primeiroEnfileiramentoAeronaveIA = Time.unscaledTime;
             _filaSpawnAeronavesIA.Enqueue(prefabDeAeronave);
             ProcessarFilaCompraAeronavesIA();
@@ -1290,12 +1378,25 @@ public class GerenciadorAeroporto : MonoBehaviour
         return ComprarAviaoImediato(prefabDeAeronave);
     }
 
+    private bool PodeProduzirAeronave(GameObject prefab)
+    {
+        if (prefab == null) return false;
+
+        if (SistemaGovernoMundial.ObterEfetivoNecessario(prefab, TipoUnidade.Aereo) <= 0) return true;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        IdentidadeUnidade identidadeBase = GetComponent<IdentidadeUnidade>();
+        int teamId = identidadeBase != null ? identidadeBase.teamID : 1;
+        return governo != null
+            && governo.PodeProduzirUnidadeComEfetivo(teamId, prefab, 1, TipoUnidade.Aereo);
+    }
+
     /// <summary>
-    /// Compra acionada pela interface do aeroporto. Só debita depois que a
-    /// aeronave foi aceita pelo fluxo de spawn/fila; uma entrega recusada não
-    /// pode consumir dinheiro.
+    /// Compra acionada pela interface do aeroporto. Reserva o valor pelo
+    /// ledger antes do spawn e estorna pela mesma rota se a base recusar a
+    /// aeronave, mantendo tesouro e notificações consistentes.
     /// </summary>
-    private bool TentarComprarAviaoComPagamento(GameObject prefabDeAeronave, long custo)
+    protected bool TentarComprarAviaoComPagamento(GameObject prefabDeAeronave, long custo)
     {
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (prefabDeAeronave == null || semEnergia || custo < 0 || recursos == null || recursos.dinheiro < custo)
@@ -1303,13 +1404,37 @@ public class GerenciadorAeroporto : MonoBehaviour
             return false;
         }
 
-        if (!ComprarAviao(prefabDeAeronave))
+        IdentidadeUnidade identidadeBase = GetComponent<IdentidadeUnidade>();
+        if ((identidadeBase == null || identidadeBase.teamID == 1)
+            && !GovernadorGameplayRTS.PermitirProducaoDePrefab(
+                prefabDeAeronave,
+                TipoUnidade.Aereo,
+                1,
+                out string motivoGovernanca))
+        {
+            HUDAjudaRTS.MostrarMensagemTemporaria(motivoGovernanca, 3.2f);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", prefabDeAeronave.name + ": " + motivoGovernanca);
+            return false;
+        }
+
+        if (!recursos.TentarGastarDinheiro(custo))
         {
             return false;
         }
 
-        recursos.dinheiro -= custo;
-        return true;
+        bool compraAceita = false;
+        try
+        {
+            compraAceita = ComprarAviao(prefabDeAeronave);
+            return compraAceita;
+        }
+        finally
+        {
+            if (!compraAceita)
+            {
+                recursos.AdicionarRecursos(addDinheiro: custo);
+            }
+        }
     }
 
     /// <summary>
@@ -1327,9 +1452,42 @@ public class GerenciadorAeroporto : MonoBehaviour
     /// </summary>
     public bool TryComprarAviaoIAImediato(GameObject prefabDeAeronave, string productionOrderId = "")
     {
+        return TryComprarAviaoIAImediatoRastreado(prefabDeAeronave, productionOrderId, null);
+    }
+
+    /// <summary>
+    /// Tenta uma base durante uma busca com fallback. O chamador encerra a
+    /// reserva somente depois de testar todas as bases disponíveis.
+    /// </summary>
+    public bool TryComprarAviaoIAImediato(
+        GameObject prefabDeAeronave,
+        string productionOrderId,
+        bool liberarReservaEmFalha)
+    {
+        return TryComprarAviaoIAImediatoRastreado(prefabDeAeronave, productionOrderId, null, liberarReservaEmFalha);
+    }
+
+    public bool TryComprarAviaoIAImediatoRastreado(
+        GameObject prefabDeAeronave,
+        string productionOrderId,
+        System.Action onPhysicalAcceptance)
+    {
+        return TryComprarAviaoIAImediatoRastreado(
+            prefabDeAeronave,
+            productionOrderId,
+            onPhysicalAcceptance,
+            true);
+    }
+
+    public bool TryComprarAviaoIAImediatoRastreado(
+        GameObject prefabDeAeronave,
+        string productionOrderId,
+        System.Action onPhysicalAcceptance,
+        bool liberarReservaEmFalha)
+    {
         if (semEnergia)
         {
-            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             return false;
         }
 
@@ -1338,19 +1496,47 @@ public class GerenciadorAeroporto : MonoBehaviour
         // erro de prefab sem nome e interrompia a fila militar.
         if (prefabDeAeronave == null || string.IsNullOrWhiteSpace(prefabDeAeronave.name))
         {
-            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogWarning("[Aeroporto] Ordem da IA ignorada: prefab de aeronave invalido.", this);
             return false;
         }
 
-        return ComprarAviaoImediato(prefabDeAeronave, productionOrderId);
+        return ComprarAviaoImediato(prefabDeAeronave, productionOrderId, onPhysicalAcceptance, liberarReservaEmFalha);
     }
 
 
-    private bool ComprarAviaoImediato(GameObject prefabDeAeronave, string productionOrderId = "")
+    private bool ComprarAviaoImediato(
+        GameObject prefabDeAeronave,
+        string productionOrderId = "",
+        System.Action onPhysicalAcceptance = null)
+    {
+        return ComprarAviaoImediato(prefabDeAeronave, productionOrderId, onPhysicalAcceptance, true);
+    }
+
+    private bool ComprarAviaoImediato(
+        GameObject prefabDeAeronave,
+        string productionOrderId,
+        System.Action onPhysicalAcceptance,
+        bool liberarReservaEmFalha)
     {
         if (prefabDeAeronave == null)
         {
+            return false;
+        }
+
+        if (!PodeProduzirAeronave(prefabDeAeronave))
+        {
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            return false;
+        }
+
+        // O C-700 só pode ser aceito quando a base tem um ponto físico de
+        // recebimento. Sem esta validação antecipada, o spawn retornava sucesso
+        // e a coroutine ocultava o avião depois, mantendo a cobrança do menu.
+        if (prefabDeAeronave.GetComponentInChildren<C700TransporteAereo>(true) != null
+            && ObterParadaRecebimentoTransporteAereo() == null)
+        {
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             return false;
         }
 
@@ -1374,8 +1560,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         // fallback usava uma base construída/posicionada sobre a água.
         if (!(this is GerenciadorPortaAvioes) && NavalPlacementResolver.IsWaterAtPosition(posSpawn))
         {
-            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
-            Debug.LogError($"[Aeroporto] Spawn aéreo bloqueado em água: {name} ({posSpawn:F1}). Corrija o ponto Preparacao/pista da base.", this);
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            string mensagemAgua = $"[Aeroporto] Spawn aéreo bloqueado em água: {name} ({posSpawn:F1}). Corrija o ponto Preparacao/pista da base.";
+            if (liberarReservaEmFalha)
+                Debug.LogError(mensagemAgua, this);
+            else
+                Debug.LogWarning(mensagemAgua + " A IA tentará outra base elegível.", this);
             return false;
         }
 
@@ -1385,15 +1575,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         GameObject aeronaveNascente = UnityEngine.Object.Instantiate((UnityEngine.Object)prefabDeAeronave, posSpawn, rotacaoSpawn) as GameObject;
         if (aeronaveNascente == null)
         {
-            IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
             Debug.LogError("[Aeroporto] Nao foi possivel instanciar o prefab de aeronave: " + prefabDeAeronave.name, this);
             return false;
         }
 
-        // A aeronave já foi entregue ao aeroporto, mesmo que o pátio esteja
-        // cheio e ela precise aguardar no hangar interno. Não há vaga
-        // emergencial a criar para satisfazer uma ordem já materializada.
-        IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
+        IAAutoProductionRegistry.ConfirmConstructionStarted(productionOrderId, GetInstanceID(), Time.time);
 
         string nomePrefabNormalizado = prefabDeAeronave.name.ToLowerInvariant();
         if ((nomePrefabNormalizado.Contains("nara") || nomePrefabNormalizado.Contains("american_plane_transport"))
@@ -1429,8 +1616,27 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         else if (idAviao != null)
         {
+            // Bases legadas do jogador podem não ter IdentidadeUnidade. A
+            // validação de efetivo usa time 1 nesse caso; mantenha o mesmo
+            // proprietário no avião em vez de herdar o teamID serializado no prefab.
+            idAviao.teamID = 1;
+            idAviao.nomeDoPais = "Hegemonia";
             idAviao.tipoUnidade = TipoUnidade.Aereo;
         }
+
+        int teamAeronave = idAviao != null ? idAviao.teamID : 1;
+        SistemaGovernoMundial governoAeronave = SistemaGovernoMundial.Instancia;
+        if (governoAeronave != null && !governoAeronave.TentarMobilizarEfetivoDaUnidade(teamAeronave, aeronaveNascente))
+        {
+            Destroy(aeronaveNascente);
+            if (liberarReservaEmFalha) IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+            return false;
+        }
+
+        // A aeronave já foi aceita pelo aeroporto, mesmo que o pátio esteja
+        // cheio e ela precise aguardar no hangar interno.
+        IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
+        onPhysicalAcceptance?.Invoke();
 
         // Publica a compra no boletim mundial. O painel STATUS consome este
         // feed sem acoplar o aeroporto a nenhuma tela especifica.
@@ -1448,7 +1654,7 @@ public class GerenciadorAeroporto : MonoBehaviour
                 StatusNotificacaoSeveridade.Info);
         }
 
-        CombustivelUnidade.Garantir(aeronaveNascente, true);
+        ServicoAbastecimento.AbastecerUnidadeProduzida(aeronaveNascente);
 
         C700TransporteAereo c700 = aeronaveNascente != null
             ? aeronaveNascente.GetComponentInChildren<C700TransporteAereo>(true)
@@ -1695,7 +1901,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         GuardarNoHangarAutomatico(aviao);
-        return avioesNoHangar.Contains(aviao);
+        // Algumas bases especializadas, como porta-aviões, podem estacionar
+        // no pátio/convés mesmo quando não há vaga interna disponível.
+        return avioesNoHangar.Contains(aviao) || avioesNoPatio.Contains(aviao);
     }
 
     /// <summary>Finaliza a chegada de um helicóptero no pátio ou reserva.</summary>
@@ -1727,18 +1935,46 @@ public class GerenciadorAeroporto : MonoBehaviour
         return true;
     }
 
+    /// <summary>Resolve a vaga que o recebimento de um C-700 usará.</summary>
+    public virtual Transform ObterParadaRecebimentoTransporteAereo()
+    {
+        Transform parada = ObterParadaGrandePreferencial(false);
+        if (parada == null) parada = ObterPrimeiraVagaLivre();
+        if (parada == null)
+        {
+            Transform fallbackOcupado = ObterParadaGrandePreferencial(true);
+            // A chegada de um C-700 não pode compartilhar uma parada já
+            // ocupada. Devolver null faz o chamador rejeitar a unidade e
+            // executar o rollback transacional do lote.
+            if (fallbackOcupado != null)
+            {
+                for (int i = transportesC700NoPatio.Count - 1; i >= 0; i--)
+                {
+                    C700TransporteAereo transporte = transportesC700NoPatio[i];
+                    if (transporte == null)
+                    {
+                        transportesC700NoPatio.RemoveAt(i);
+                        continue;
+                    }
+
+                    if (transporte.pontoEstacionamentoPreferencial == fallbackOcupado
+                        || (transporte.transform.position - fallbackOcupado.position).sqrMagnitude <= 100f)
+                    {
+                        return null;
+                    }
+                }
+            }
+            parada = fallbackOcupado;
+        }
+        return parada;
+    }
+
     /// <summary>Finaliza a chegada de um C-700 no ponto grande do pátio.</summary>
     public virtual bool RegistrarTransporteAereoRecebido(C700TransporteAereo aviao)
     {
-        if (aviao == null)
-        {
-            return false;
-        }
-
+        if (aviao == null) return false;
         aviao.DefinirAeroportoOrigem(this);
-        Transform parada = ObterParadaGrandePreferencial(false);
-        if (parada == null) parada = ObterPrimeiraVagaLivre();
-        if (parada == null) parada = ObterParadaGrandePreferencial(true);
+        Transform parada = ObterParadaRecebimentoTransporteAereo();
         if (parada == null)
         {
             aviao.gameObject.SetActive(false);
@@ -1758,15 +1994,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     {
         if (aviao == null) yield break;
 
-        Transform paradaGrande = ObterParadaGrandePreferencial(false);
-        if (paradaGrande == null)
-        {
-            paradaGrande = ObterPrimeiraVagaLivre();
-        }
-        if (paradaGrande == null)
-        {
-            paradaGrande = ObterParadaGrandePreferencial(true);
-        }
+        Transform paradaGrande = ObterParadaRecebimentoTransporteAereo();
 
         if (paradaGrande == null)
         {
@@ -1942,6 +2170,25 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (wp == null || _vagasOcupadas.Contains(wp) || EstaVagaOcupadaPorPosicao(wp.position)) continue;
 
             bool ocupadoPorC700 = false;
+            for (int c = transportesC700NoPatio.Count - 1; c >= 0; c--)
+            {
+                C700TransporteAereo transporte = transportesC700NoPatio[c];
+                if (transporte == null)
+                {
+                    transportesC700NoPatio.RemoveAt(c);
+                    continue;
+                }
+
+                if (transporte.pontoEstacionamentoPreferencial == wp
+                    || (transporte.transform.position - wp.position).sqrMagnitude <= 100f)
+                {
+                    ocupadoPorC700 = true;
+                    break;
+                }
+            }
+
+            if (ocupadoPorC700) continue;
+
             Collider[] hits = Physics.OverlapSphere(wp.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             for (int h = 0; h < hits.Length; h++)
             {
@@ -2382,6 +2629,27 @@ public class GerenciadorAeroporto : MonoBehaviour
 
             if (helicoptero.ObterVagaAeroporto() == vaga
                 && (helicoptero.EstaEstacionadoNoAeroporto() || !helicoptero.estaVoando)) return true;
+        }
+
+        // Transportes C-700 ocupam uma parada grande mesmo quando o prefab
+        // não possui um Collider utilizável. A lista é atualizada antes do
+        // posicionamento final, então ela também fecha a janela em que duas
+        // chegadas do mesmo lote tentariam reservar a mesma vaga no mesmo
+        // frame.
+        for (int i = transportesC700NoPatio.Count - 1; i >= 0; i--)
+        {
+            C700TransporteAereo transporte = transportesC700NoPatio[i];
+            if (transporte == null)
+            {
+                transportesC700NoPatio.RemoveAt(i);
+                continue;
+            }
+
+            if (transporte.pontoEstacionamentoPreferencial == vaga
+                || (transporte.transform.position - vaga.position).sqrMagnitude <= 100f)
+            {
+                return true;
+            }
         }
 
         Collider[] hits = Physics.OverlapSphere(vaga.position, 10f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
@@ -2952,6 +3220,28 @@ public class GerenciadorAeroporto : MonoBehaviour
             {
                 string nomeLimpo = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristal, out string vidaStr);
                 GUILayout.Label($"<b>PAINEL DE ORDENS: <color={corCristal}>■</color> {nomeLimpo}{vidaStr}</b>");
+                GUILayout.Label($"📍 {aviaoSelecionadoParaMissao.ObterResumoLocalizacao()}");
+                GerenciadorAeroporto destinoAtualAereo = aviaoSelecionadoParaMissao.DestinoPousoEscolhido;
+                if (destinoAtualAereo != null && !ControleAviao.PodeReceberPouso(destinoAtualAereo))
+                    GUILayout.Label("<color=orange>Destino mantido; base indisponível ou sem vaga. Escolha outra base manualmente se desejar.</color>");
+                ControleAviao.ListarDestinosPouso(aviaoSelecionadoParaMissao, _basesDestinoAereoUI);
+                if (_basesDestinoAereoUI.Count > 0)
+                {
+                    GUILayout.Label("<b>DEFINIR BASE DE POUSO</b>");
+                    for (int i = 0; i < _basesDestinoAereoUI.Count; i++)
+                    {
+                        GerenciadorAeroporto baseDestinoUI = _basesDestinoAereoUI[i];
+                        if (baseDestinoUI == null) continue;
+                        bool destinoAtual = baseDestinoUI == destinoAtualAereo;
+                        if (GUILayout.Button((destinoAtual ? "✓ " : "✈ ") + ControleAviao.RotuloBase(baseDestinoUI), GUILayout.Height(24)))
+                        {
+                            bool emVoo = aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                                || aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.Decolando;
+                            if (!aviaoSelecionadoParaMissao.SelecionarDestinoPouso(baseDestinoUI, emVoo))
+                                HUDAjudaRTS.MostrarMensagemTemporaria("A base não pode receber esta aeronave agora.", 3f);
+                        }
+                    }
+                }
                 GUI.enabled = true;
 
                 if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
@@ -3194,7 +3484,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             {
                 IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Patrulha);
             }
-            if (GUILayout.Button("💥 Ataque local", GUILayout.Height(38)))
+            if (helicopteroSelecionadoParaMissao.podeAtacar && GUILayout.Button("💥 Ataque local", GUILayout.Height(38)))
             {
                 IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.AtaqueLocal);
             }
@@ -3436,6 +3726,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     protected void GuardarAviaoNoHangarInstantaneo(ControleAviao aviao, bool removerDoPatio)
     {
         if (aviao == null) return;
+        aviao.baseEstacionamentoAtual = this;
 
         if (removerDoPatio)
         {
@@ -3468,6 +3759,7 @@ public class GerenciadorAeroporto : MonoBehaviour
     protected bool ColocarAviaoInstantaneamenteNoPatio(ControleAviao aviao, Transform vaga, bool removerDoHangar)
     {
         if (aviao == null || vaga == null) return false;
+        aviao.baseEstacionamentoAtual = this;
 
         if (removerDoHangar)
         {

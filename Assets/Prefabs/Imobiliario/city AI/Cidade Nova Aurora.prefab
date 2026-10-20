@@ -64,6 +64,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Cidade Nova Aurora
       objectReference: {fileID: 0}
+    - target: {fileID: 6746471572971053126, guid: 99be74d2cec36bd48af5135141913bc4, type: 3}
+      propertyPath: m_TagString
+      value: Imovel
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1257,7 +1261,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 27.438492, y: 37.3765, z: 2.536795}
+  m_Size: {x: 26.45, y: 15.8, z: 2.536795}
   m_Center: {x: 2.18741, y: 6.744588, z: 1.235652}
 --- !u!114 &4164362248961176327
 MonoBehaviour:

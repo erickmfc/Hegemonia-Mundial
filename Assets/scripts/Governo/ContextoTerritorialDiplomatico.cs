@@ -242,6 +242,7 @@ public static class ContextoTerritorialDiplomatico
 
         bool posturaHostil = relacao != null
             && relacao.PosturaDe(teamAtacante) == PosturaRelacaoPais.Inimigo;
+        if (relacao != null && relacao.cessarFogoAtivo) return false;
         bool emGuerra = !posturaHostil && PodeDispararEmGuerra(teamAtacante, alvo.teamID);
         if (!posturaHostil && !emGuerra) return false;
 

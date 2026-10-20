@@ -51,7 +51,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
-            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            long tickStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             if (_context.Brain != null && _context.Brain.IsBootstrapActive)
             {
                 return;
@@ -71,19 +71,18 @@ namespace Hegemonia.AI.BrainMaster
             {
                 baseCenter = _context.Brain.transform.position;
             }
-            long sensorStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            long sensorStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Transform priorityEnemy = _context.WorldState.GetNearestVisibleEnemy(baseCenter, IA_Domain.Land);
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(
+                CategoriaBudgetGameplay.Sensor,
+                sensorStart);
             if (priorityEnemy != null)
             {
                 _lastEnemySeenTime = now;
             }
+            long targetingStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Vector3 strategicObjective = ResolveStrategicObjective(baseCenter, priorityEnemy, now);
-            float sensorMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - sensorStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-            if (sensorMs > 0f)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", sensorMs);
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", sensorMs);
-            }
+            RegistrarTempoTargeting(targetingStart);
             Vector3 hiddenEnemyAnchor;
             if (priorityEnemy == null
                 && now >= ForcedAssaultStartSeconds
@@ -94,19 +93,61 @@ namespace Hegemonia.AI.BrainMaster
             }
             Vector3 threatSector = _context.ThreatAnalyzer.GetHighestThreatSectorCenter();
 
+            long reconStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchRecon(baseCenter, priorityEnemy, strategicObjective);
+            RegistrarTempoDispatch("tactical_recon_ms", reconStart);
+            long localDefenseStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchLocalDefense(baseCenter, threatSector, priorityEnemy);
+            RegistrarTempoDispatch("tactical_local_defense_ms", localDefenseStart);
+            long borderPatrolStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchBorderPatrol(baseCenter, strategicObjective);
+            RegistrarTempoDispatch("tactical_border_patrol_ms", borderPatrolStart);
+            long armoredStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchArmoredAssault(baseCenter, priorityEnemy, strategicObjective);
+            RegistrarTempoDispatch("tactical_armored_assault_ms", armoredStart);
+            long amphibiousStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchAmphibious(baseCenter, priorityEnemy, strategicObjective);
+            RegistrarTempoDispatch("tactical_amphibious_ms", amphibiousStart);
+            long logisticsStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchGroundLogistics(baseCenter);
+            RegistrarTempoDispatch("tactical_ground_logistics_ms", logisticsStart);
+            long offensiveWaveStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchOffensiveWave(now, baseCenter, priorityEnemy, strategicObjective);
+            RegistrarTempoDispatch("tactical_offensive_wave_ms", offensiveWaveStart);
 
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica("active_land_fronts", _activeLandFrontsThisTick);
-            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-            if (elapsedMs > 0f)
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Terra, tickStart);
+        }
+
+        private static void RegistrarTempoDispatch(string nome, long inicioTimestamp)
+        {
+            if (inicioTimestamp == 0L)
             {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("land_unit_update_ms", elapsedMs);
+                return;
+            }
+
+            long ticks = System.Diagnostics.Stopwatch.GetTimestamp() - inicioTimestamp;
+            if (ticks <= 0L)
+            {
+                return;
+            }
+
+            float elapsedMs = (float)(ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+            DiagnosticoDesempenhoJogo.RegistrarMetricaTempo(nome, elapsedMs);
+        }
+
+        private static void RegistrarTempoTargeting(long inicioTimestamp)
+        {
+            if (inicioTimestamp == 0L)
+            {
+                return;
+            }
+
+            long ticks = System.Diagnostics.Stopwatch.GetTimestamp() - inicioTimestamp;
+            if (ticks > 0L)
+            {
+                float elapsedMs = (float)(ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", elapsedMs);
             }
         }
 
@@ -961,11 +1002,17 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            IdentidadeUnidade targetIdentity = target != null
+                ? target.GetComponentInParent<IdentidadeUnidade>()
+                : null;
+
             IA_AttackOrderData payload = new IA_AttackOrderData
             {
                 Units = availableUnits,
                 Target = target,
-                TargetPosition = targetPosition
+                TargetPosition = targetPosition,
+                RequiresDeclaredWar = target != null,
+                TargetTeamId = targetIdentity != null ? targetIdentity.teamID : 0
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Hegemonia.AI.IA03;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -8,6 +9,7 @@ namespace Hegemonia.AI.BrainMaster
     {
         private const float ForcedNavalStrikeStartSeconds = 40f;
         private readonly IA_Context _context;
+        private readonly IA03EstrategaNacional _ia03Estratega;
         private readonly List<IA_EnemyObservation> _enemyMemoryBuffer = new List<IA_EnemyObservation>(64);
         private readonly List<IA_StrategicTargetData> _strategicTargetsBuffer = new List<IA_StrategicTargetData>(6);
         private readonly List<GameObject> _escortActiveBuffer = new List<GameObject>(8);
@@ -21,6 +23,9 @@ namespace Hegemonia.AI.BrainMaster
         public IA_NavalDirector(IA_Context context)
         {
             _context = context;
+            _ia03Estratega = context != null && context.Brain != null
+                ? context.Brain.GetComponent<IA03EstrategaNacional>()
+                : null;
         }
 
         public string Name
@@ -44,7 +49,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public void Tick(float now, float deltaTime)
         {
-            long tickStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            long tickStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             _escortActiveBuffer.Clear();
             _heavyActiveBuffer.Clear();
             _subActiveBuffer.Clear();
@@ -65,8 +70,10 @@ namespace Hegemonia.AI.BrainMaster
             {
                 baseCenter = _context.Brain.transform.position;
             }
-            long targetStart = System.Diagnostics.Stopwatch.GetTimestamp();
+            long sensorStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Transform navalTarget = GetVisibleNavalTarget();
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Sensor, sensorStart);
+            long targetingStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
             bool pressurePhase = brain != null && brain.StrategicPhase >= IA_StrategicPhase.PressaoEconomica;
@@ -111,13 +118,9 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            float targetMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - targetStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-            if (targetMs > 0f)
-            {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("sensor_update_ms", targetMs);
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", targetMs);
-            }
+            RegistrarTempoTargeting(targetingStart);
             Vector3 objective = heavyTarget != null ? heavyTarget.position : pressureTarget;
+            long formationStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Vector3 assemblyCenter = ResolveAssemblyPoint(baseCenter, objective);
             Vector3 escortStage = ResolveStagePoint(assemblyCenter, objective, -320f, 240f);
             Vector3 heavyStage = ResolveStagePoint(assemblyCenter, objective, 0f, 360f);
@@ -137,11 +140,22 @@ namespace Hegemonia.AI.BrainMaster
             if (_heavyActiveBuffer.Count > 0) activeTaskforces++;
             if (_subActiveBuffer.Count > 0) activeTaskforces++;
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica("active_naval_taskforces", activeTaskforces);
-            float elapsedMs = (float)((System.Diagnostics.Stopwatch.GetTimestamp() - tickStart) * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
-            if (elapsedMs > 0f)
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Formacao, formationStart);
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Naval, tickStart);
+        }
+
+        private static void RegistrarTempoTargeting(long inicioTimestamp)
+        {
+            if (inicioTimestamp == 0L)
             {
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("naval_unit_update_ms", elapsedMs);
-                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("formation_update_ms", elapsedMs * 0.45f);
+                return;
+            }
+
+            long ticks = System.Diagnostics.Stopwatch.GetTimestamp() - inicioTimestamp;
+            if (ticks > 0L)
+            {
+                float elapsedMs = (float)(ticks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+                DiagnosticoDesempenhoJogo.RegistrarMetricaTempo("targeting_ms", elapsedMs);
             }
         }
 
@@ -434,9 +448,15 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueMove(string key, List<GameObject> units, Vector3 destination, int priority, float cooldown)
         {
+            List<GameObject> availableUnits = CloneUnits(units);
+            if (availableUnits.Count == 0)
+            {
+                return;
+            }
+
             IA_MoveOrderData payload = new IA_MoveOrderData
             {
-                Units = CloneUnits(units),
+                Units = availableUnits,
                 Destination = destination
             };
 
@@ -457,11 +477,23 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueAttack(string key, List<GameObject> units, Transform target, Vector3 targetPosition, int priority, float cooldown)
         {
+            List<GameObject> availableUnits = CloneUnits(units);
+            if (availableUnits.Count == 0)
+            {
+                return;
+            }
+
+            IdentidadeUnidade targetIdentity = target != null
+                ? target.GetComponentInParent<IdentidadeUnidade>()
+                : null;
+
             IA_AttackOrderData payload = new IA_AttackOrderData
             {
-                Units = CloneUnits(units),
+                Units = availableUnits,
                 Target = target,
-                TargetPosition = targetPosition
+                TargetPosition = targetPosition,
+                RequiresDeclaredWar = target != null,
+                TargetTeamId = targetIdentity != null ? targetIdentity.teamID : 0
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -479,7 +511,7 @@ namespace Hegemonia.AI.BrainMaster
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
         }
 
-        private static List<GameObject> CloneUnits(List<GameObject> source)
+        private List<GameObject> CloneUnits(List<GameObject> source)
         {
             var output = source != null ? new List<GameObject>(source.Count) : new List<GameObject>();
             if (source == null)
@@ -490,7 +522,8 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < source.Count; i++)
             {
                 GameObject unit = source[i];
-                if (unit != null)
+                if (unit != null
+                    && (_ia03Estratega == null || !_ia03Estratega.IsUnitReservedForActiveMission(unit)))
                 {
                     output.Add(unit);
                 }

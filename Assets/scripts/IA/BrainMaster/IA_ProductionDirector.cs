@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using Hegemonia.AI.IA01;
+using Hegemonia.AI.IA03;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -31,6 +33,7 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextRuntimeProductionQueueTime;
         private float _nextTransportPlanRefreshTime;
         private float _nextCapacityRefreshTime;
+        private float _nextValdoriaAirportBlockLogTime;
         private int _cachedAircraftCapacity = BaseAircraftCapacity;
         private int _cachedNavalCapacity = BaseNavalCapacity;
         private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
@@ -83,14 +86,24 @@ namespace Hegemonia.AI.BrainMaster
                 // de bootstrap militar pode consumir a fila antes de a cadeia
                 // fundacional estar pronta.
                 IA_ForceSnapshot foundationSnapshot = GetSnapshot();
-                bool foundationInfrastructureReady = foundationSnapshot.HasMilitaryAirport
-                    && foundationSnapshot.HasCommercialAirport
-                    && foundationSnapshot.ShipyardCount > 0
-                    && foundationSnapshot.HasFactory;
+                bool hasAnyMilitaryProductionFacility = foundationSnapshot.HasBarracks
+                    || foundationSnapshot.HasFactory
+                    || foundationSnapshot.HasMilitaryAirport
+                    || foundationSnapshot.HasHeliport
+                    || foundationSnapshot.ShipyardCount > 0
+                    || foundationSnapshot.PierCount > 0;
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
-                    "ia_foundation_infrastructure_ready",
-                    foundationInfrastructureReady ? 1 : 0);
-                if (!foundationInfrastructureReady)
+                    "ia_any_military_production_facility_ready",
+                    hasAnyMilitaryProductionFacility ? 1 : 0);
+                if (!hasAnyMilitaryProductionFacility)
+                {
+                    return;
+                }
+
+                // A IA03 começa com uma força pequena, utilizável e barata.
+                // Os navios mais caros continuam sujeitos às metas dinâmicas
+                // do BrainMaster, que já consideram ameaça, renda e indústria.
+                if (TryQueueIA03OpeningAssets(foundationSnapshot))
                 {
                     return;
                 }
@@ -132,13 +145,9 @@ namespace Hegemonia.AI.BrainMaster
                     && snapshot.ShipyardCount > 0
                     && hasFactory;
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("ia_foundation_infrastructure_ready", foundationInfrastructureStillReady ? 1 : 0);
-                if (!foundationInfrastructureStillReady)
-                {
-                    // A produção militar começa somente depois da sequência de
-                    // infraestrutura da IA01. O BrainMaster permanece vivo,
-                    // aguardando as instalações corretas.
-                    return;
-                }
+                // As ordens abaixo verificam a instalação necessária para
+                // cada unidade. Não bloqueia caças pelo estaleiro, navios pelo
+                // aeroporto comercial nem todas as forças por uma fábrica.
 
                 Vector3 baseCenter = ResolveBaseCenter();
                 IA_TransportPlan transportPlan = _context.TransportPlan;
@@ -201,6 +210,17 @@ namespace Hegemonia.AI.BrainMaster
                         infantryTarget = Mathf.Max(infantryTarget, 20);
                         tankTarget = Mathf.Max(tankTarget, 6);
                     }
+                }
+                IA03EstrategaNacional ia03 = brain != null
+                    ? brain.GetComponent<IA03EstrategaNacional>()
+                    : null;
+                if (ia03 != null && ia03.isActiveAndEnabled && ia03.TemPerfilConfigurado)
+                {
+                    // Este pacote pede um petroleiro nacional de cada vez; a
+                    // meta maior da IA continua aplicável às demais classes.
+                    oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0
+                        ? Mathf.Min(1, oilTankerTarget)
+                        : 0;
                 }
                 int subTarget = hasNavalBase && fleetCombatCount >= 1 && (counter.ReinforceCoast || counter.NavalWeight > 0.18f)
                     ? 1
@@ -473,6 +493,125 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
+        private bool TryQueueIA03OpeningAssets(IA_ForceSnapshot snapshot)
+        {
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            IA03EstrategaNacional estratega = brain != null
+                ? brain.GetComponent<IA03EstrategaNacional>()
+                : null;
+            if (snapshot == null
+                || estratega == null
+                || !estratega.isActiveAndEnabled
+                || !estratega.TemPerfilConfigurado)
+            {
+                return false;
+            }
+
+            // Uma aeronave inicial permite à IA03 patrulhar e cumprir as
+            // missões aéreas que já estão configuradas para o país.
+            if (snapshot.HasMilitaryAirport
+                && snapshot.FixedWingAircraft < 1
+                && QueuePreferredAircraft(1000, 3.0f))
+            {
+                return true;
+            }
+
+            bool hasNavalBase = (snapshot.HasNavalBase || HasImmediateNavalBase())
+                                && snapshot.ShipyardCount > 0;
+            if (hasNavalBase
+                && snapshot.NavalUnits < 2
+                && QueueSurfaceFleetStep(snapshot.NavalUnits, 999, 3.5f))
+            {
+                return true;
+            }
+
+            // Só publique compras navais depois de haver um estaleiro próprio;
+            // antes disso o serviço de produção as recusaria e queimaria a
+            // janela de tentativa da IA. Plataforma e pier habilitam o petroleiro,
+            // e o pier dá suporte ao cargueiro de transporte.
+            if (snapshot.ShipyardCount > 0
+                && snapshot.PierCount > 0
+                && snapshot.PlatformCount > 0
+                && snapshot.OilTankers < 1
+                && QueueOilTanker(998, 6.0f))
+            {
+                return true;
+            }
+
+            return snapshot.ShipyardCount > 0
+                   && snapshot.PierCount > 0
+                   && snapshot.CargoShips < 1
+                   && QueueCargoShip(997, 8.0f);
+        }
+
+        private bool QueueCargoShip(int priority, float cooldown)
+        {
+            if (_context == null || _context.Brain == null || _context.Backend == null)
+            {
+                return false;
+            }
+
+            DadosConstrucao data = _context.Backend.FindFirstAvailable(
+                "navio_carga_mercado",
+                "navio de carga",
+                "navio cargueiro",
+                "cargueiro");
+            if (data == null)
+            {
+                IA_RuntimeTextTrace.LogText(_context.Brain.TeamId, "IA_ProductionDirector", "CARGO_PROD_NO_CANDIDATE", "ficha navio_carga_mercado indisponível");
+                return false;
+            }
+
+            IA_ForceSnapshot snapshot = GetSnapshot();
+            int teamId = _context.Brain.TeamId;
+            if (!IAAutoProductionRegistry.TryReserveProduction(
+                    teamId,
+                    "CargoShip",
+                    "ia03-logistics",
+                    1,
+                    snapshot.CargoShips,
+                    out string orderId,
+                    Time.time,
+                    180f))
+            {
+                return false;
+            }
+
+            IA_ProduceOrderData payload = new IA_ProduceOrderData
+            {
+                ItemKey = data.NomeItem,
+                Quantity = 1,
+                ProductionOrderId = orderId
+            };
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Produce,
+                "IA_ProductionDirector",
+                "production",
+                "cargueiro logístico IA03",
+                priority,
+                "production",
+                "produce:" + IA_Text.Normalize(data.NomeItem),
+                cooldown,
+                payload);
+
+            string reason;
+            bool enqueued = PublishProductionIntent(request, data, priority, "cargueiro logístico IA03", out reason);
+            if (enqueued)
+            {
+                IAAutoProductionRegistry.ConfirmQueued(orderId, 0, Time.time);
+                DiagnosticoDesempenhoJogo.RegistrarProducao(data.NomeItem, "IA03_Logistica");
+                IA_RuntimeTextTrace.LogText(teamId, "IA_ProductionDirector", "CARGO_PROD_OK", "item=" + data.NomeItem + " | meta=1 cargueiro próprio");
+                ArmRuntimeQueueCooldown();
+            }
+            else
+            {
+                IAAutoProductionRegistry.Release(orderId, Time.time);
+                IA_RuntimeTextTrace.LogText(teamId, "IA_ProductionDirector", "CARGO_PROD_FAIL", "item=" + data.NomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
+            }
+
+            return enqueued;
+        }
+
         private bool QueueProduceBest(int priority, float cooldown, params string[] keys)
         {
             DadosConstrucao data = _context.Backend.FindFirstAvailable(keys);
@@ -542,6 +681,23 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool QueuePreferredAircraft(int priority, float cooldown)
         {
+            if (_context != null && _context.Brain != null && _context.Brain.TeamId == 2)
+            {
+                string airportBlockReason;
+                if (!HasOperationalValdoriaAirport(out airportBlockReason))
+                {
+                    if (Time.time >= _nextValdoriaAirportBlockLogTime)
+                    {
+                        _nextValdoriaAirportBlockLogTime = Time.time + 20f;
+                        string message = "[IA03][Valdoria] compra aérea aguardando: " + airportBlockReason;
+                        Debug.LogWarning(message, _context.Brain);
+                        IA_RuntimeTextTrace.LogText(2, "IA_ProductionDirector", "AIR_PROD_BLOCKED", airportBlockReason);
+                    }
+
+                    return false;
+                }
+            }
+
             DadosConstrucao data = ChoosePreferredAircraftVariant();
             if (data == null)
             {
@@ -591,6 +747,61 @@ namespace Hegemonia.AI.BrainMaster
             return enqueued;
         }
 
+        private bool HasOperationalValdoriaAirport(out string reason)
+        {
+            reason = "aeroporto militar próprio ainda não foi construído";
+            if (_context == null || _context.WorldState == null)
+            {
+                reason = "estado do país indisponível";
+                return false;
+            }
+
+            bool foundMilitaryAirport = false;
+            bool foundDryAirport = false;
+            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            {
+                GameObject structure = _context.WorldState.OwnStructures[i];
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                GerenciadorAeroporto airport = structure.GetComponent<GerenciadorAeroporto>()
+                    ?? structure.GetComponentInChildren<GerenciadorAeroporto>(true);
+                if (airport == null || airport is GerenciadorAeroportoComercial)
+                {
+                    continue;
+                }
+
+                foundMilitaryAirport = true;
+                if (NavalPlacementResolver.IsWaterAtPosition(structure.transform.position))
+                {
+                    continue;
+                }
+
+                foundDryAirport = true;
+                if (airport.semEnergia)
+                {
+                    reason = "aeroporto em terra está sem energia";
+                    continue;
+                }
+
+                reason = string.Empty;
+                return true;
+            }
+
+            if (foundMilitaryAirport && !foundDryAirport)
+            {
+                reason = "aeroporto militar próprio está sobre água";
+            }
+            else if (foundDryAirport)
+            {
+                reason = "aeroporto militar próprio está sem energia";
+            }
+
+            return false;
+        }
+
         private static int CurrentCountFor(IA01MilitaryAssetKind kind, IA_ForceSnapshot snapshot)
         {
             if (snapshot == null) return 0;
@@ -622,7 +833,7 @@ namespace Hegemonia.AI.BrainMaster
                 Kind = IA_IntentKind.Produce,
                 Priority = priority,
                 Urgency = priority,
-                EstimatedCost = data != null ? data.preco : 0f,
+                EstimatedCost = data != null ? data.ObterPrecoEfetivo() : 0L,
                 ExpectedBenefit = 35f,
                 ValidUntil = Time.time + 8f,
                 Command = request
@@ -766,6 +977,14 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool QueueSurfaceFleetStep(int navalCount, int priority, float cooldown)
         {
+            IA03EstrategaNacional estratega = _context != null && _context.Brain != null
+                ? _context.Brain.GetComponent<IA03EstrategaNacional>()
+                : null;
+            if (estratega != null && estratega.isActiveAndEnabled && estratega.TemPerfilConfigurado)
+            {
+                return QueueIA03SurfaceFleetStep(estratega, navalCount, priority, cooldown);
+            }
+
             if (navalCount <= 0)
             {
                 return QueueProduceBest(priority, cooldown, "corveta sam", "uss arrowhead", "arrowhead", "wall", "navio wall", "lancha", "ww", "corveta");
@@ -784,6 +1003,72 @@ namespace Hegemonia.AI.BrainMaster
             if (navalCount < 15)
             {
                 return QueueProduceBest(priority, cooldown, "f200", "uss sovereign", "sovereign", "uss ironclad", "ironclad", "dominion", "liberty", "vindicator", "destroy", "destroyer", "porta");
+            }
+
+            return false;
+        }
+
+        private bool QueueIA03SurfaceFleetStep(
+            IA03EstrategaNacional estratega,
+            int navalCount,
+            int priority,
+            float cooldown)
+        {
+            if (navalCount <= 0)
+            {
+                DadosConstrucao vigia = _context.Backend.FindFirstAvailable("Nav_Vigia", "Nav Vigia", "Vigia");
+                if (vigia != null)
+                {
+                    return QueueProduceBest(priority, cooldown, vigia.GetDisplayName());
+                }
+
+                return QueueProduceBest(priority, cooldown, "corveta sam", "uss arrowhead", "arrowhead", "wall", "navio wall", "lancha", "ww", "corveta");
+            }
+
+            if (navalCount == 1)
+            {
+                DadosConstrucao corvetaC = _context.Backend.FindFirstAvailable("Corveta Fortaleza", "fortaleza");
+                if (corvetaC != null)
+                {
+                    return QueueProduceBest(priority, cooldown, corvetaC.GetDisplayName());
+                }
+
+                return QueueProduceBest(priority, cooldown, "f200", "fragata", "wall", "navio wall", "uss arrowhead", "arrowhead", "corveta sam", "destroy", "destroyer", "vindicator", "lancha", "ww", "corveta");
+            }
+
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            if (brain == null || navalCount >= brain.TargetFleet)
+            {
+                return false;
+            }
+
+            // N4 conserva a abertura D/C. N3 autoriza navio B; N2 permite
+            // avançar para A; S fica reservado à guerra total e a uma meta de
+            // frota que a economia do país consiga sustentar.
+            if (estratega.NivelDeConflito == IA03NivelConflito.Paz
+                || estratega.NivelDeConflito > IA03NivelConflito.AvancoMilitar)
+            {
+                return false;
+            }
+
+            if (navalCount == 2)
+            {
+                return QueueProduceBest(priority, cooldown, "corveta sam", "des wall", "des_wall", "corveta");
+            }
+
+            if (navalCount == 3)
+            {
+                if (estratega.NivelDeConflito > IA03NivelConflito.ConflitoLimitado)
+                {
+                    return false;
+                }
+
+                return QueueProduceBest(priority, cooldown, "nav michele", "navio nagoya", "destroyer nagoya", "uss ironclad", "uss sovereign", "destroyer", "fragata");
+            }
+
+            if (navalCount >= 4 && estratega.NivelDeConflito == IA03NivelConflito.GuerraTotal)
+            {
+                return QueueProduceBest(priority, cooldown, "uss sovereign", "porta avioes", "porta-aviões", "f200", "f201", "uss ironclad", "destroyer");
             }
 
             return false;
@@ -867,7 +1152,10 @@ namespace Hegemonia.AI.BrainMaster
                     if (!hasMilitaryAirport)
                     {
                         brain.ReportBootstrapError("avioes: aeroporto militar indisponivel");
-                        return true;
+                        // A fase inicial registra o problema, mas nao pode
+                        // monopolizar o diretor quando a infraestrutura ainda
+                        // nao existe; outras categorias continuam produzindo.
+                        return false;
                     }
 
                     if (fighterCount < 2 && QueuePreferredAircraft(996, 2.6f))
@@ -876,14 +1164,14 @@ namespace Hegemonia.AI.BrainMaster
                     }
 
                     brain.ReportBootstrapError("avioes: aguardando catalogo, fila ou vaga do aeroporto");
-                    return true;
+                    return false;
 
                 case IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker:
                     brain.SetBootstrapStatus("bootstrap: produzindo navio petroleiro");
                     if (!hasNavalBase)
                     {
                         brain.ReportBootstrapError("petroleiro: estaleiro/pier indisponivel");
-                        return true;
+                        return false;
                     }
 
                     if (snapshot.OilTankers >= 1)
@@ -897,14 +1185,14 @@ namespace Hegemonia.AI.BrainMaster
                         return true;
                     }
 
-                    return true;
+                    return false;
 
                 case IA_BrainMaster.IA_BootstrapStage.ProduceShip:
                     brain.SetBootstrapStatus("bootstrap: produzindo primeiro navio");
                     if (!hasNavalBase)
                     {
                         brain.ReportBootstrapError("navio: estaleiro/pier indisponivel");
-                        return true;
+                        return false;
                     }
 
                     if (_bootstrapShipGoalCount < 0)
@@ -924,7 +1212,7 @@ namespace Hegemonia.AI.BrainMaster
                     }
 
                     brain.ReportBootstrapError("navio: falha ao enfileirar producao naval");
-                    return true;
+                    return false;
 
                 case IA_BrainMaster.IA_BootstrapStage.HoldShipLaunch:
                     brain.SetBootstrapStatus("bootstrap: segurando ordens, aguardando navio sair em seguranca");

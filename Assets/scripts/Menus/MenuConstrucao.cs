@@ -170,6 +170,11 @@ public class MenuConstrucao : MonoBehaviour
         if (Instancia == this)
         {
             Instancia = null;
+            // catalogoGlobal pertence à instância/cena que acabou de sair.
+            // Mantê-lo vivo faz a IA reutilizar um catálogo parcial ao entrar
+            // numa cena de validação sem menu, impedindo o fallback de catálogo
+            // do Editor e podendo carregar fichas de outra cena.
+            catalogoGlobal = null;
         }
     }
 
@@ -193,7 +198,7 @@ public class MenuConstrucao : MonoBehaviour
             "Assets/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.asset",
             "Assets/Prefabs/Construtor de Veiculos/Construtor de Veiculos.asset",
             "Assets/Prefabs/Construtor de Veiculos/Tenda/Construcao_Tenda.asset",
-            "Assets/Prefabs/Estaleiro Marinho/Estaleiro_Naval.asset",
+            "Assets/Resources/Construcoes/Estaleiro_Naval.asset",
             "Assets/Prefabs/Imobiliario/Fabrica/Industria.asset",
             "Assets/Prefabs/Imobiliario/casa/Casa.asset",
             "Assets/Prefabs/Imobiliario/Pred Medio/Predio Medio.asset",
@@ -330,9 +335,11 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         GarantirUsinaCarvaoNoCatalogo();
+        GarantirEstaleiroNavalNoCatalogo();
         GarantirComerciosNoCatalogo();
         GarantirPrefeituraNoCatalogo();
         GarantirNaviosNovosNoCatalogo();
+        GarantirHelicopterosNavaisNoCatalogo();
         GarantirF16BNoCatalogo();
         GarantirCidadeEgitoNoCatalogo();
         GarantirCidadeModernaNoCatalogo();
@@ -348,6 +355,11 @@ public class MenuConstrucao : MonoBehaviour
 
             GameObject prefab;
             if (!item.TryGetPrefabBasico(out prefab))
+            {
+                continue;
+            }
+
+            if (EhConstrucaoUrbanaManual(item, prefab))
             {
                 continue;
             }
@@ -393,6 +405,62 @@ public class MenuConstrucao : MonoBehaviour
         CatalogoProdutoCompartilhado.RegistrarConstrucoes(catalogoGlobal);
     }
 
+    private static bool EhConstrucaoUrbanaManual(DadosConstrucao item, GameObject prefab)
+    {
+        if (item == null || prefab == null) return false;
+
+        // Cidades completas continuam sendo decisões estratégicas. Somente
+        // peças residenciais e viárias isoladas saem do catálogo de colocação.
+        if (IA_CityExpansionPolicy.IsCityConstruction(item)
+            || IA_CityExpansionPolicy.IsCityPrefab(prefab))
+        {
+            return false;
+        }
+
+        string identificacao = IA_Text.Normalize(
+            item.GetStableId() + " " + item.GetDisplayName() + " " + prefab.name);
+        bool residenciaIndividual = ContemTermoIdentificacao(identificacao, "residencial")
+            || ContemTermoIdentificacao(identificacao, "residencia")
+            || ContemTermoIdentificacao(identificacao, "moradia")
+            || ContemTermoIdentificacao(identificacao, "casa")
+            || ContemTermoIdentificacao(identificacao, "imovel")
+            || ContemTermoIdentificacao(identificacao, "house")
+            || ContemTermoIdentificacao(identificacao, "housing")
+            || ContemTermoIdentificacao(identificacao, "apartamento")
+            || ContemTermoIdentificacao(identificacao, "apartment")
+            || ContemTermoIdentificacao(identificacao, "vila")
+            || ContemTermoIdentificacao(identificacao, "village")
+            || ContemTermoIdentificacao(identificacao, "condo");
+        bool viaIndividual = ContemTermoIdentificacao(identificacao, "rua")
+            || ContemTermoIdentificacao(identificacao, "street")
+            || ContemTermoIdentificacao(identificacao, "road")
+            || ContemTermoIdentificacao(identificacao, "estrada")
+            || ContemTermoIdentificacao(identificacao, "pavement")
+            || ContemTermoIdentificacao(identificacao, "pavimento");
+        bool imovelUrbanoAvulso = item.categoria == DadosConstrucao.CategoriaItem.Urbana
+            && prefab.GetComponentInChildren<Imovel>(true) != null;
+
+        return residenciaIndividual || viaIndividual || imovelUrbanoAvulso;
+    }
+
+    private static bool ContemTermoIdentificacao(string texto, string termo)
+    {
+        int inicio = 0;
+        while (inicio < texto.Length)
+        {
+            int indice = texto.IndexOf(termo, inicio, System.StringComparison.Ordinal);
+            if (indice < 0) return false;
+
+            int fim = indice + termo.Length;
+            bool limiteInicial = indice == 0 || !char.IsLetterOrDigit(texto[indice - 1]);
+            bool limiteFinal = fim == texto.Length || !char.IsLetterOrDigit(texto[fim]);
+            if (limiteInicial && limiteFinal) return true;
+            inicio = fim;
+        }
+
+        return false;
+    }
+
     private void GarantirUsinaCarvaoNoCatalogo()
     {
         DadosConstrucao usinaCarvao = Resources.Load<DadosConstrucao>("Usina Carvao");
@@ -405,6 +473,36 @@ public class MenuConstrucao : MonoBehaviour
         if (!quantidadesPorItem.ContainsKey(usinaCarvao.NomeItem))
         {
             quantidadesPorItem.Add(usinaCarvao.NomeItem, 1);
+        }
+    }
+
+    private void GarantirEstaleiroNavalNoCatalogo()
+    {
+        DadosConstrucao estaleiro = Resources.Load<DadosConstrucao>("Construcoes/Estaleiro_Naval");
+        if (estaleiro == null || catalogo.Contains(estaleiro)) return;
+
+        GameObject prefabEstaleiro;
+        bool temPrefab = estaleiro.TryGetPrefabBasico(out prefabEstaleiro);
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao existente = catalogo[i];
+            if (existente == null) continue;
+            if (string.Equals(existente.GetStableId(), estaleiro.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            GameObject prefabExistente;
+            if (temPrefab && existente.TryGetPrefabBasico(out prefabExistente) && prefabExistente == prefabEstaleiro)
+            {
+                return;
+            }
+        }
+
+        catalogo.Add(estaleiro);
+        if (!quantidadesPorItem.ContainsKey(estaleiro.NomeItem))
+        {
+            quantidadesPorItem.Add(estaleiro.NomeItem, 1);
         }
     }
 
@@ -683,6 +781,24 @@ public class MenuConstrucao : MonoBehaviour
             {
                 quantidadesPorItem.Add(ficha.NomeItem, 1);
             }
+        }
+    }
+
+    private void GarantirHelicopterosNavaisNoCatalogo()
+    {
+        string[] caminhos = { "Construcoes/MI80Marine", "Construcoes/CH60Marine" };
+        for (int i = 0; i < caminhos.Length; i++)
+        {
+            DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
+            if (ficha == null) continue;
+            bool jaExiste = catalogo.Any(item => item != null
+                && (item == ficha
+                    || string.Equals(item.GetStableId(), ficha.GetStableId(), System.StringComparison.OrdinalIgnoreCase)
+                    || item.PrefabDaUnidade == ficha.PrefabDaUnidade));
+            if (jaExiste) continue;
+            catalogo.Add(ficha);
+            if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+                quantidadesPorItem.Add(ficha.NomeItem, 1);
         }
     }
 
@@ -3598,7 +3714,16 @@ public class MenuConstrucao : MonoBehaviour
 
     void ProduzirUnidadeTerrestre(DadosConstrucao item, int quantidade, Image cardImage)
     {
-        gerente.ComprarUnidade(item.PrefabDaUnidade, PrecoEfetivo(item), quantidade);
+        if (!gerente.TentarComprarUnidade(item.PrefabDaUnidade, PrecoEfetivo(item), quantidade))
+        {
+            if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
+            EmitirAvisoJogador(LocalizationManager.T(
+                "build.ground_production_unavailable",
+                "Produção bloqueada. Verifique instalação terrestre operacional, efetivo e saldo."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": pedido terrestre recusado");
+            return;
+        }
+
         if (cardImage != null) StartCoroutine(FlashCard(cardImage));
         AlternarMenu(false);
     }
@@ -3614,6 +3739,8 @@ public class MenuConstrucao : MonoBehaviour
 
     void ProduzirUnidadeAerea(DadosConstrucao item, int quantidade, Image cardImage)
     {
+        bool helicopteroMarinho = item != null && item.PrefabDaUnidade != null
+            && (item.PrefabDaUnidade.name == "MI-80_Marine" || item.PrefabDaUnidade.name == "Sh60_Marine");
         bool isHelicopter = false;
         bool ehUH60GuardaCosteira = item != null
             && (string.Equals(item.ItemId, "UH60_GUARDA_COSTEIRA", System.StringComparison.OrdinalIgnoreCase)
@@ -3625,6 +3752,17 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
+        NavioTransporteTropas[] transportesNavais = helicopteroMarinho
+            ? FindObjectsByType<NavioTransporteTropas>(FindObjectsSortMode.None)
+            : System.Array.Empty<NavioTransporteTropas>();
+        List<GerenciadorPortaAvioes> portaAvioesNavais = helicopteroMarinho
+            ? bufferAeroportos.OfType<GerenciadorPortaAvioes>()
+                .Where(p => p != null && !p.semEnergia && EhEstruturaDoJogador(p)
+                    && p.ObterVagaHelicopteroPreferencial(false) != null)
+                .ToList()
+            : new List<GerenciadorPortaAvioes>();
+        bool existeVagaNaval = transportesNavais.Any(n => n != null && n.PodeReceberHelicopteroComprado(1))
+            || portaAvioesNavais.Count > 0;
 
         List<GerenciadorAeroporto> meusAeroportos = bufferAeroportos
             .Where(a =>
@@ -3650,7 +3788,7 @@ public class MenuConstrucao : MonoBehaviour
                 .ToList();
         }
 
-        if (meusAeroportos.Count == 0 && meusHeliportos.Count == 0)
+        if (meusAeroportos.Count == 0 && meusHeliportos.Count == 0 && !existeVagaNaval)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             string erroMsg = isHelicopter 
@@ -3690,7 +3828,18 @@ public class MenuConstrucao : MonoBehaviour
                     })
                     .FirstOrDefault();
 
-                if (targetAeroporto == null)
+                // O UH-60 prioriza o aeroporto para aparecer no menu tático,
+                // mas um aeroporto sem energia não é um destino utilizável.
+                // Tente o heliporto funcional antes de selecionar uma base
+                // indisponível como fallback.
+                if (targetAeroporto == null && ehUH60GuardaCosteira)
+                {
+                    targetHeliporto = meusHeliportos
+                        .Where(h => h.TemEspacoParaPousar() && !HeliportoSemEnergia(h))
+                        .FirstOrDefault();
+                }
+
+                if (targetAeroporto == null && targetHeliporto == null)
                 {
                     targetAeroporto = meusAeroportos
                         .OrderByDescending(a =>
@@ -3706,7 +3855,7 @@ public class MenuConstrucao : MonoBehaviour
 
             // Se o UH-60 não encontrar aeroporto, mantém o fallback para um
             // heliporto funcional em vez de bloquear a compra.
-            if (ehUH60GuardaCosteira && targetAeroporto == null)
+            if (ehUH60GuardaCosteira && targetAeroporto == null && targetHeliporto == null)
             {
                 targetHeliporto = meusHeliportos
                     .Where(h => h.TemEspacoParaPousar() && !HeliportoSemEnergia(h))
@@ -3757,15 +3906,15 @@ public class MenuConstrucao : MonoBehaviour
             targetIsPowerless = targetAeroporto.semEnergia;
         }
 
-        if (targetIsPowerless)
+        if (targetIsPowerless && !existeVagaNaval)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(LocalizationManager.T("build.destination_no_power", "Aviso: o aeroporto de destino esta sem energia, mas a compra foi liberada."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": sem energia (ignorado pelo patch)");
-            // return; // <-- REMOVIDO para permitir a compra mesmo se o script de energia falhar
+            EmitirAvisoJogador(LocalizationManager.T("build.destination_no_power", "A base aerea de destino esta sem energia. A producao foi bloqueada."));
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": base aerea sem energia");
+            return;
         }
 
-        if (targetHeliporto == null && targetAeroporto == null)
+        if (targetHeliporto == null && targetAeroporto == null && !existeVagaNaval)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             EmitirAvisoJogador(LocalizationManager.T("build.no_airport", "Erro: nenhum aeroporto ou heliporto valido encontrado para entregar esta aeronave."));
@@ -3773,16 +3922,93 @@ public class MenuConstrucao : MonoBehaviour
             return;
         }
 
+        if (helicopteroMarinho && existeVagaNaval && targetIsPowerless)
+        {
+            targetHeliporto = null;
+            targetAeroporto = null;
+        }
+
         int comprados = 0;
         for (int i = 0; i < quantidade; i++)
         {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            bool precisaEfetivo = SistemaGovernoMundial.ObterEfetivoNecessario(
+                item.PrefabDaUnidade,
+                TipoUnidade.Aereo) > 0;
+            if (precisaEfetivo
+                && (governo == null
+                    || !governo.PodeProduzirUnidadeComEfetivo(1, item.PrefabDaUnidade, 1, TipoUnidade.Aereo)))
+            {
+                EmitirAvisoJogador(string.Format(
+                    LocalizationManager.T("build.no_manpower", "Efetivo insuficiente para produzir {0}."),
+                    item.NomeItem));
+                break;
+            }
+
             if (!gerente.TentarGastarDinheiro(PrecoEfetivo(item)))
             {
                 break;
             }
 
             bool compraConcluida = false;
-            if (targetHeliporto != null)
+            if (helicopteroMarinho)
+            {
+                NavioTransporteTropas transporte = transportesNavais
+                    .Where(n => n != null && n.PodeReceberHelicopteroComprado(1))
+                    .OrderBy(n => Vector3.SqrMagnitude(n.transform.position - transform.position))
+                    .FirstOrDefault();
+                GerenciadorPortaAvioes portaAvioes = portaAvioesNavais
+                    .Where(p => p != null && !p.semEnergia && p.ObterVagaHelicopteroPreferencial(false) != null)
+                    .OrderBy(p => Vector3.SqrMagnitude(p.transform.position - transform.position))
+                    .FirstOrDefault();
+                if (transporte != null || portaAvioes != null)
+                {
+                    Transform vaga = transporte != null
+                        ? null
+                        : portaAvioes.ObterVagaHelicopteroPreferencial(false);
+                    Vector3 spawn = transporte != null
+                        ? transporte.transform.position + transporte.transform.up * 8f
+                        : (vaga != null ? vaga.position : portaAvioes.transform.position + portaAvioes.transform.up * 8f);
+                    Quaternion rotacao = transporte != null ? transporte.transform.rotation : portaAvioes.transform.rotation;
+                    GameObject heliObj = Instantiate(item.PrefabDaUnidade, spawn, rotacao);
+                    if (heliObj != null)
+                    {
+                        IdentidadeUnidade id = heliObj.GetComponent<IdentidadeUnidade>();
+                        if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
+                        id.teamID = 1;
+                        id.nomeDoPais = "Hegemonia";
+                        id.tipoUnidade = TipoUnidade.Aereo;
+                        if (SistemaGovernoMundial.Instancia != null
+                            && !SistemaGovernoMundial.Instancia.TentarMobilizarEfetivoDaUnidade(1, heliObj))
+                        {
+                            Destroy(heliObj);
+                        }
+                        else
+                        {
+                            Helicoptero heli = heliObj.GetComponent<Helicoptero>();
+                            if (heli == null) heli = heliObj.GetComponentInChildren<Helicoptero>(true);
+                            ControleUnidade controle = heliObj.GetComponent<ControleUnidade>();
+                            if (controle == null) controle = heliObj.AddComponent<ControleUnidade>();
+                            ServicoAbastecimento.AbastecerUnidadeProduzida(heliObj);
+                            compraConcluida = heli != null && (transporte != null
+                                ? transporte.RegistrarHelicopteroComprado(heli)
+                                : portaAvioes.RegistrarHelicopteroRecebido(heli));
+                            if (!compraConcluida) Destroy(heliObj);
+                        }
+                    }
+                }
+
+                // Sem vaga naval, mantém os destinos aéreos normais como fallback.
+                if (!compraConcluida && targetHeliporto != null)
+                {
+                    Vector3 spawnPos = targetHeliporto.ObterPontoDePousoMundial();
+                    GameObject heliObj = Instantiate(item.PrefabDaUnidade, spawnPos, targetHeliporto.transform.rotation);
+                    compraConcluida = PrepararHelicopteroComprado(heliObj, targetHeliporto);
+                }
+                else if (!compraConcluida && targetAeroporto != null)
+                    compraConcluida = targetAeroporto.ComprarAviao(item.PrefabDaUnidade);
+            }
+            else if (targetHeliporto != null)
             {
                 Vector3 spawnPos = targetHeliporto.ObterPontoDePousoMundial();
                 GameObject heliObj = Instantiate(item.PrefabDaUnidade, spawnPos, targetHeliporto.transform.rotation);
@@ -3792,9 +4018,24 @@ public class MenuConstrucao : MonoBehaviour
                     if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
                     id.teamID = 1;
                     id.nomeDoPais = "Hegemonia";
+                    id.tipoUnidade = TipoUnidade.Aereo;
+
+                    SistemaGovernoMundial governoHelicoptero = SistemaGovernoMundial.Instancia;
+                    if (governoHelicoptero != null
+                        && !governoHelicoptero.TentarMobilizarEfetivoDaUnidade(1, heliObj))
+                    {
+                        Destroy(heliObj);
+                        ReembolsarDinheiro(PrecoEfetivo(item));
+                        EmitirAvisoJogador(string.Format(
+                            LocalizationManager.T("build.no_manpower", "Efetivo insuficiente para produzir {0}."),
+                            item.NomeItem));
+                        break;
+                    }
 
                     ControleUnidade controle = heliObj.GetComponent<ControleUnidade>();
                     if (controle == null) controle = heliObj.AddComponent<ControleUnidade>();
+
+                    ServicoAbastecimento.AbastecerUnidadeProduzida(heliObj);
 
                     Helicoptero heli = heliObj.GetComponent<Helicoptero>();
                     if (heli == null) heli = heliObj.GetComponentInChildren<Helicoptero>(true);
@@ -3835,6 +4076,33 @@ public class MenuConstrucao : MonoBehaviour
 
         if (cardImage != null) StartCoroutine(FlashCard(cardImage));
         AlternarMenu(false);
+    }
+
+    private bool PrepararHelicopteroComprado(GameObject heliObj, Heliporto heliporto)
+    {
+        if (heliObj == null || heliporto == null) return false;
+        IdentidadeUnidade id = heliObj.GetComponent<IdentidadeUnidade>();
+        if (id == null) id = heliObj.AddComponent<IdentidadeUnidade>();
+        id.teamID = 1;
+        id.nomeDoPais = "Hegemonia";
+        id.tipoUnidade = TipoUnidade.Aereo;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null && !governo.TentarMobilizarEfetivoDaUnidade(1, heliObj))
+        {
+            Destroy(heliObj);
+            return false;
+        }
+        if (heliObj.GetComponent<ControleUnidade>() == null) heliObj.AddComponent<ControleUnidade>();
+        ServicoAbastecimento.AbastecerUnidadeProduzida(heliObj);
+        Helicoptero heli = heliObj.GetComponent<Helicoptero>();
+        if (heli == null) heli = heliObj.GetComponentInChildren<Helicoptero>(true);
+        if (heli == null)
+        {
+            Destroy(heliObj);
+            return false;
+        }
+        heliporto.HelicopteroPousou(heli);
+        return true;
     }
 
     void ProduzirUnidadeNaval(DadosConstrucao item, int quantidade, Image cardImage)

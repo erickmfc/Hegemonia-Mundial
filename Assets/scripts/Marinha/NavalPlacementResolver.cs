@@ -82,10 +82,17 @@ public static class NavalPlacementResolver
         public float Timestamp;
     }
 
+    private struct WaterRouteQueueEntry
+    {
+        public int Node;
+        public float Priority;
+    }
+
     private const float WaterTolerance = 1.15f;
     private const float VisibleWaterDepthTolerance = 0.05f;
     private const float SeaLevelCacheTtl = 0.35f;
     private const float ProbeCacheTtl = 0.18f;
+    private const float GlobalTerrainLookupRetrySeconds = 1f;
     private const float CacheCellSize = 4f;
     private const int MaxProbeCacheEntries = 64;
     private static float _nextExplicitWaterProbeTime = -1f;
@@ -95,6 +102,8 @@ public static class NavalPlacementResolver
     private static Construtor _cachedConstrutor;
     private static readonly Dictionary<ProbeCacheKey, WaterDirectionCacheEntry> WaterDirectionCache = new Dictionary<ProbeCacheKey, WaterDirectionCacheEntry>(32);
     private static readonly Dictionary<ProbeCacheKey, PreviewPoseCacheEntry> PreviewPoseCache = new Dictionary<ProbeCacheKey, PreviewPoseCacheEntry>(32);
+    private static GlobalTerrainStreamer _cachedGlobalTerrainStreamer;
+    private static float _nextGlobalTerrainLookupTime;
 
     public static bool RequiresCoastalPlacement(GameObject target)
     {
@@ -635,9 +644,9 @@ public static class NavalPlacementResolver
     }
 
     /// <summary>
-    /// Cria uma rota curta exclusivamente sobre água. O primeiro teste é uma
-    /// linha direta; quando uma ilha/continente bloqueia o trajeto, usa uma
-    /// malha 2D local e A* para contornar a costa. O método é compartilhado
+    /// Cria uma rota exclusivamente sobre água. O primeiro teste é uma linha
+    /// direta; quando uma ilha/continente bloqueia o trajeto, amplia em etapas
+    /// uma malha 2D limitada e usa A* para contornar a costa. É compartilhado
     /// por ordens do jogador e por patrulhas da IA.
     /// </summary>
     public static bool TryBuildWaterRoute(Vector3 start, Vector3 destination, float clearance, out List<Vector3> route)
@@ -664,12 +673,94 @@ public static class NavalPlacementResolver
             new Vector2(start.x, start.z),
             new Vector2(destination.x, destination.z));
         float margem = Mathf.Clamp(Mathf.Max(300f, distancia * 0.18f, clearance * 8f), 300f, 1800f);
+        float[] margens = {
+            margem,
+            Mathf.Max(margem * 2.5f, distancia * 0.35f),
+            Mathf.Max(margem * 5f, distancia * 0.8f)
+        };
+
+        // Os registros de superfície representam somente tiles carregados. No
+        // mapa global, a máscara costeira classifica também destinos distantes;
+        // portanto, seus limites lógicos são os limites de navegação corretos.
+        GlobalWorldDefinition mundoGlobal = _cachedGlobalTerrainStreamer != null
+            ? _cachedGlobalTerrainStreamer.world
+            : null;
+        bool temLimitesMapa = mundoGlobal != null
+            && mundoGlobal.worldSize.x > 0f
+            && mundoGlobal.mapFootprintHeight > 0f;
+        Bounds limitesMapa = default;
+        if (temLimitesMapa)
+        {
+            limitesMapa = new Bounds(
+                new Vector3((mundoGlobal.MapMinX + mundoGlobal.MapMaxX) * 0.5f, seaLevel,
+                    (mundoGlobal.MapMinZ + mundoGlobal.MapMaxZ) * 0.5f),
+                new Vector3(mundoGlobal.worldSize.x, 0f, mundoGlobal.mapFootprintHeight));
+        }
+        else
+        {
+            temLimitesMapa = TryGetMapBounds(out limitesMapa);
+        }
+
+        int refinamentosRestantes = 4;
+        float anteriorMinX = float.NaN;
+        float anteriorMaxX = float.NaN;
+        float anteriorMinZ = float.NaN;
+        float anteriorMaxZ = float.NaN;
+        for (int tentativa = 0; tentativa < margens.Length; tentativa++)
+        {
+            float minX = Mathf.Min(start.x, destination.x) - margens[tentativa];
+            float maxX = Mathf.Max(start.x, destination.x) + margens[tentativa];
+            float minZ = Mathf.Min(start.z, destination.z) - margens[tentativa];
+            float maxZ = Mathf.Max(start.z, destination.z) + margens[tentativa];
+            if (temLimitesMapa)
+            {
+                minX = Mathf.Max(minX, limitesMapa.min.x);
+                maxX = Mathf.Min(maxX, limitesMapa.max.x);
+                minZ = Mathf.Max(minZ, limitesMapa.min.z);
+                maxZ = Mathf.Min(maxZ, limitesMapa.max.z);
+            }
+
+            if (minX == anteriorMinX && maxX == anteriorMaxX
+                && minZ == anteriorMinZ && maxZ == anteriorMaxZ)
+            {
+                continue;
+            }
+            anteriorMinX = minX;
+            anteriorMaxX = maxX;
+            anteriorMinZ = minZ;
+            anteriorMaxZ = maxZ;
+
+            if (TryBuildWaterRouteInArea(start, destination, seaLevel, clearance,
+                margens[tentativa], temLimitesMapa, limitesMapa, true,
+                ref refinamentosRestantes, out List<Vector3> candidata))
+            {
+                route = candidata;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryBuildWaterRouteInArea(
+        Vector3 start,
+        Vector3 destination,
+        float seaLevel,
+        float clearance,
+        float margem,
+        bool temLimitesMapa,
+        Bounds limitesMapa,
+        bool repararTrechos,
+        ref int refinamentosRestantes,
+        out List<Vector3> route)
+    {
+        route = new List<Vector3>(12);
         float minX = Mathf.Min(start.x, destination.x) - margem;
         float maxX = Mathf.Max(start.x, destination.x) + margem;
         float minZ = Mathf.Min(start.z, destination.z) - margem;
         float maxZ = Mathf.Max(start.z, destination.z) + margem;
 
-        if (TryGetMapBounds(out Bounds limitesMapa))
+        if (temLimitesMapa)
         {
             minX = Mathf.Max(minX, limitesMapa.min.x);
             maxX = Mathf.Min(maxX, limitesMapa.max.x);
@@ -698,14 +789,11 @@ public static class NavalPlacementResolver
         int total = largura * altura;
         byte[] passavel = new byte[total];
         float[] custo = new float[total];
-        float[] prioridade = new float[total];
         int[] anterior = new int[total];
         bool[] fechado = new bool[total];
-        bool[] aberto = new bool[total];
         for (int i = 0; i < total; i++)
         {
             custo[i] = float.PositiveInfinity;
-            prioridade[i] = float.PositiveInfinity;
             anterior[i] = -1;
         }
 
@@ -718,36 +806,22 @@ public static class NavalPlacementResolver
 
         int noInicio = indiceInicio.y * largura + indiceInicio.x;
         int noDestino = indiceDestino.y * largura + indiceDestino.x;
-        List<int> fila = new List<int>(Mathf.Min(total, 2048));
+        List<WaterRouteQueueEntry> fila = new List<WaterRouteQueueEntry>(Mathf.Min(total, 2048));
         custo[noInicio] = 0f;
-        prioridade[noInicio] = DistanciaHeuristica(indiceInicio, indiceDestino);
-        fila.Add(noInicio);
-        aberto[noInicio] = true;
+        EnfileirarRotaAgua(fila, noInicio, DistanciaHeuristica(indiceInicio, indiceDestino));
 
         int noAtual = -1;
         int iteracoes = 0;
-        while (fila.Count > 0 && iteracoes++ < total * 2)
+        while (fila.Count > 0 && iteracoes++ < total * 4)
         {
-            int melhorFila = 0;
-            for (int i = 1; i < fila.Count; i++)
-            {
-                if (prioridade[fila[i]] < prioridade[fila[melhorFila]])
-                {
-                    melhorFila = i;
-                }
-            }
-
-            noAtual = fila[melhorFila];
-            fila.RemoveAt(melhorFila);
-            aberto[noAtual] = false;
-            if (noAtual == noDestino)
-            {
-                break;
-            }
-
+            noAtual = DesenfileirarRotaAgua(fila);
             if (fechado[noAtual])
             {
                 continue;
+            }
+            if (noAtual == noDestino)
+            {
+                break;
             }
             fechado[noAtual] = true;
 
@@ -786,12 +860,8 @@ public static class NavalPlacementResolver
 
                     custo[noVizinho] = novoCusto;
                     anterior[noVizinho] = noAtual;
-                    prioridade[noVizinho] = novoCusto + DistanciaHeuristica(new Vector2Int(vizinhoX, vizinhoZ), indiceDestino);
-                    if (!aberto[noVizinho])
-                    {
-                        aberto[noVizinho] = true;
-                        fila.Add(noVizinho);
-                    }
+                    float prioridade = novoCusto + DistanciaHeuristica(new Vector2Int(vizinhoX, vizinhoZ), indiceDestino);
+                    EnfileirarRotaAgua(fila, noVizinho, prioridade);
                 }
             }
         }
@@ -815,16 +885,51 @@ public static class NavalPlacementResolver
         caminho.Insert(0, start);
         caminho.Add(destination);
 
-        List<Vector3> simplificado = new List<Vector3>(caminho.Count);
-        simplificado.Add(start);
+        // Uma célula de uma grade continental pode estar na água enquanto o
+        // segmento até a próxima cruza uma ilha estreita. Refina somente esses
+        // trechos em uma grade local; nenhuma aresta insegura entra na rota.
+        List<Vector3> caminhoSeguro = new List<Vector3>(caminho.Count);
+        caminhoSeguro.Add(start);
         for (int i = 1; i < caminho.Count; i++)
         {
+            Vector3 origemTrecho = caminhoSeguro[caminhoSeguro.Count - 1];
+            Vector3 destinoTrecho = caminho[i];
+            if (SegmentStaysInWater(origemTrecho, destinoTrecho, seaLevel, clearance))
+            {
+                caminhoSeguro.Add(destinoTrecho);
+                continue;
+            }
+
+            if (!repararTrechos || refinamentosRestantes <= 0)
+            {
+                return false;
+            }
+            refinamentosRestantes--;
+
+            float margemLocal = Mathf.Max(300f, espacamento * 1.5f);
+            if (!TryBuildWaterRouteInArea(origemTrecho, destinoTrecho, seaLevel, clearance,
+                    margemLocal, temLimitesMapa, limitesMapa, false,
+                    ref refinamentosRestantes, out List<Vector3> reparo)
+                && !TryBuildWaterRouteInArea(origemTrecho, destinoTrecho, seaLevel, clearance,
+                    margemLocal * 2.5f, temLimitesMapa, limitesMapa, false,
+                    ref refinamentosRestantes, out reparo))
+            {
+                return false;
+            }
+
+            caminhoSeguro.AddRange(reparo);
+        }
+
+        List<Vector3> simplificado = new List<Vector3>(caminhoSeguro.Count);
+        simplificado.Add(start);
+        for (int i = 1; i < caminhoSeguro.Count; i++)
+        {
             while (simplificado.Count > 1
-                && SegmentStaysInWater(simplificado[simplificado.Count - 2], caminho[i], seaLevel, clearance))
+                && SegmentStaysInWater(simplificado[simplificado.Count - 2], caminhoSeguro[i], seaLevel, clearance))
             {
                 simplificado.RemoveAt(simplificado.Count - 1);
             }
-            simplificado.Add(caminho[i]);
+            simplificado.Add(caminhoSeguro[i]);
         }
 
         for (int i = 1; i < simplificado.Count; i++)
@@ -905,6 +1010,48 @@ public static class NavalPlacementResolver
     private static float DistanciaHeuristica(Vector2Int a, Vector2Int b)
     {
         return Vector2Int.Distance(a, b);
+    }
+
+    private static void EnfileirarRotaAgua(List<WaterRouteQueueEntry> fila, int no, float prioridade)
+    {
+        int indice = fila.Count;
+        fila.Add(new WaterRouteQueueEntry { Node = no, Priority = prioridade });
+        while (indice > 0)
+        {
+            int pai = (indice - 1) / 2;
+            if (fila[pai].Priority <= prioridade)
+                break;
+            fila[indice] = fila[pai];
+            indice = pai;
+        }
+        fila[indice] = new WaterRouteQueueEntry { Node = no, Priority = prioridade };
+    }
+
+    private static int DesenfileirarRotaAgua(List<WaterRouteQueueEntry> fila)
+    {
+        int no = fila[0].Node;
+        int ultimoIndice = fila.Count - 1;
+        WaterRouteQueueEntry ultimo = fila[ultimoIndice];
+        fila.RemoveAt(ultimoIndice);
+        if (fila.Count == 0)
+            return no;
+
+        int indice = 0;
+        while (true)
+        {
+            int filho = indice * 2 + 1;
+            if (filho >= fila.Count)
+                break;
+            int direito = filho + 1;
+            if (direito < fila.Count && fila[direito].Priority < fila[filho].Priority)
+                filho = direito;
+            if (ultimo.Priority <= fila[filho].Priority)
+                break;
+            fila[indice] = fila[filho];
+            indice = filho;
+        }
+        fila[indice] = ultimo;
+        return no;
     }
 
     private static bool SegmentStaysInWater(Vector3 start, Vector3 destination, float seaLevel, float clearance)
@@ -1003,6 +1150,14 @@ public static class NavalPlacementResolver
 
     public static bool IsWaterAtPosition(Vector3 position, float seaLevel)
     {
+        // No mapa global, a máscara geográfica oficial é a referência estável
+        // para terra e água. Os colliders locais podem estar ausentes durante
+        // o streaming ou pertencer a um tile distante do ponto escolhido no M.
+        if (TryClassifyWaterFromGlobalMap(position, out bool waterFromGlobalMap))
+        {
+            return waterFromGlobalMap;
+        }
+
         ClassificacaoSuperficieMapa classificacaoMarcada;
         float alturaMarcada;
         bool possuiClassificacaoMarcada = RegistroSuperficieMapa.TryClassify(
@@ -1089,6 +1244,47 @@ public static class NavalPlacementResolver
         // Fallback genérico: se o chão estiver abaixo do nível do mar, consideramos água.
         float alturaChao = SampleGroundHeight(position, seaLevel);
         return alturaChao <= seaLevel + WaterTolerance;
+    }
+
+    private static bool TryClassifyWaterFromGlobalMap(Vector3 position, out bool isWater)
+    {
+        isWater = false;
+        if (!TryGetGlobalSignedCoastDistanceAtPosition(position, out float signedCoastDistance))
+        {
+            return false;
+        }
+
+        isWater = signedCoastDistance <= 0f;
+        return true;
+    }
+
+    /// <summary>
+    /// Retorna a distância assinada até a costa oficial do mapa global:
+    /// positiva em terra e negativa no mar. Falso quando a posição não está
+    /// coberta por uma definição global ativa.
+    /// </summary>
+    public static bool TryGetGlobalSignedCoastDistanceAtPosition(Vector3 position, out float signedCoastDistance)
+    {
+        signedCoastDistance = 0f;
+        float now = Time.realtimeSinceStartup;
+        if (_cachedGlobalTerrainStreamer == null && now >= _nextGlobalTerrainLookupTime)
+        {
+            _cachedGlobalTerrainStreamer = UnityEngine.Object.FindFirstObjectByType<GlobalTerrainStreamer>();
+            _nextGlobalTerrainLookupTime = now + GlobalTerrainLookupRetrySeconds;
+        }
+
+        GlobalWorldDefinition world = _cachedGlobalTerrainStreamer != null
+            ? _cachedGlobalTerrainStreamer.world
+            : null;
+        if (world == null
+            || !world.TryWorldToMapUv(position, out _, out bool insideFootprint)
+            || !insideFootprint)
+        {
+            return false;
+        }
+
+        signedCoastDistance = world.SignedCoastDistanceAtWorld(position.x, position.z);
+        return true;
     }
 
     /// <summary>

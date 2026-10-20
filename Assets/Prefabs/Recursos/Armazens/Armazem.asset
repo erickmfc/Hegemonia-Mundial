@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: 'Armazem '
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: 4eb6e09a9b04b314ebc0b348e957e296, type: 3}
   itemId: logistica.armazem
   aliases: armazem, deposito, storage, warehouse, logistica
   capacidades: 262209

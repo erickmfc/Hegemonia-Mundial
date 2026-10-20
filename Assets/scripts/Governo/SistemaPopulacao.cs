@@ -23,27 +23,64 @@ public static class SistemaPopulacao
     private static GerenciadorAeroportoComercial _aeroportoCache;
     private static int _aeroportoFrame = -1;
 
+    /// <summary>
+    /// Crise que impede ganhos demográficos e de felicidade. Um déficit de
+    /// produção só é fome quando o estoque caiu abaixo de duas rodadas de
+    /// consumo; reservas suficientes continuam sustentando o crescimento.
+    /// </summary>
+    public static bool HaCriseBasica(DadosPaisGoverno pais, DadosEconomiaPais economia, bool houveMortesNoCiclo)
+    {
+        if (houveMortesNoCiclo) return true;
+        if (pais == null || economia == null) return false;
+
+        float reservaMinimaComida = UnityEngine.Mathf.Max(1f, economia.comidaConsumida * 2f);
+        bool fome = economia.deficitComida > 0f && pais.comida < reservaMinimaComida;
+        bool faltaEnergia = economia.deficitEnergia > 0f || economia.estruturasSemEnergia > 0;
+        return fome || faltaEnergia;
+    }
+
+    public static int BloquearCrescimentoEmCrise(
+        DadosPaisGoverno pais, DadosEconomiaPais economia, int variacaoMigratoria, bool houveMortesNoCiclo)
+    {
+        return variacaoMigratoria > 0 && HaCriseBasica(pais, economia, houveMortesNoCiclo)
+            ? 0
+            : variacaoMigratoria;
+    }
+
+    public static float ImpedirGanhoFelicidadeEmCrise(
+        DadosPaisGoverno pais, DadosEconomiaPais economia, bool houveMortesNoCiclo,
+        float felicidadeAnterior, float felicidadeCalculada)
+    {
+        return HaCriseBasica(pais, economia, houveMortesNoCiclo)
+            ? UnityEngine.Mathf.Min(felicidadeAnterior, felicidadeCalculada)
+            : felicidadeCalculada;
+    }
+
     public static void Processar(DadosPaisGoverno pais, DadosEconomiaPais economia)
+    {
+        Processar(pais, economia, true);
+    }
+
+    /// <summary>
+    /// Atualiza os indicadores demográficos no ciclo econômico. O consumo de
+    /// comida pode ser adiado para a virada do dia, onde a agricultura credita
+    /// primeiro a colheita diária.
+    /// </summary>
+    public static void Processar(DadosPaisGoverno pais, DadosEconomiaPais economia, bool processarConsumoComida)
     {
         if (pais == null || economia == null) return;
 
         int populacaoCivilAtual = UnityEngine.Mathf.Max(0, pais.populacaoCivil);
 
         // CONSUMO DE COMIDA
-        float necessidadeComida = (pais.populacaoCivil / 100f * 1f)
-                                + (pais.populacaoMilitarAtiva / 100f * 2f);
+        float necessidadeComida = CalcularNecessidadeComida(pais);
         economia.deficitComida = UnityEngine.Mathf.Max(0f, necessidadeComida - economia.comidaProduzida);
         economia.comidaConsumida = necessidadeComida;
+        pais.deficitComida = economia.deficitComida;
 
-        int consumoReal = UnityEngine.Mathf.Min(pais.comida, UnityEngine.Mathf.CeilToInt(necessidadeComida));
-        pais.comida -= consumoReal;
-
-        if (SistemaGovernoMundial.Instancia != null
-            && pais.teamId == SistemaGovernoMundial.Instancia.teamJogador
-            && GerenciadorRecursos.Instancia != null
-            && consumoReal > 0)
+        if (processarConsumoComida)
         {
-            GerenciadorRecursos.Instancia.RemoverRecurso("Comida", consumoReal);
+            ConsumirComidaDoEstoque(pais, UnityEngine.Mathf.CeilToInt(necessidadeComida));
         }
 
         // CAMADA 1 - INDICE DE ATRATIVIDADE NACIONAL (0 a 1)
@@ -102,20 +139,8 @@ public static class SistemaPopulacao
         int evacuacaoForcada = 0;
         int mortesPorCrise = 0;
 
-        if (populacaoCivilAtual > 0 && pais.comida <= 0 && economia.deficitComida > 0f)
-        {
-            mortesPorCrise += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * 0.03f));
-            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.45f, 1f, 20f);
-        }
-        else if (populacaoCivilAtual > 0 && pais.comida < necessidadeComida * 2f && economia.deficitComida > 0f)
-        {
-            mortesPorCrise += UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * 0.008f));
-            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.12f, 1f, 20f);
-        }
-        else
-        {
-            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade - 0.05f, 1f, 5f);
-        }
+        if (processarConsumoComida)
+            mortesPorCrise = AplicarConsequenciasDaFome(pais, necessidadeComida, economia.deficitComida);
 
         if (populacaoCivilAtual > 0 && economia.estruturasSemEnergia > 0 && economia.deficitEnergia > 2f)
         {
@@ -130,10 +155,16 @@ public static class SistemaPopulacao
         mortesPorCrise = UnityEngine.Mathf.Clamp(mortesPorCrise, 0, populacaoCivilAtual);
         evacuacaoForcada = UnityEngine.Mathf.Clamp(evacuacaoForcada, 0, UnityEngine.Mathf.Max(0, populacaoCivilAtual - mortesPorCrise));
 
-        int deltaPopulacao = variacaoMigratoria - evacuacaoForcada - mortesPorCrise;
         int mortesPorDoenca = populacaoCivilAtual > 0
             ? UnityEngine.Mathf.Clamp(UnityEngine.Mathf.RoundToInt(populacaoCivilAtual * saude.mortalidadeExtra), 0, populacaoCivilAtual)
             : 0;
+        int variacaoMigratoriaAntesDaCrise = variacaoMigratoria;
+        variacaoMigratoria = BloquearCrescimentoEmCrise(
+            pais, economia, variacaoMigratoria, mortesPorCrise + mortesPorDoenca > 0);
+        if (variacaoMigratoriaAntesDaCrise > 0 && variacaoMigratoria == 0)
+            pais.taxaMigracao = 0f;
+
+        int deltaPopulacao = variacaoMigratoria - evacuacaoForcada - mortesPorCrise;
         deltaPopulacao -= mortesPorDoenca;
         mortesPorCrise += mortesPorDoenca;
 
@@ -179,6 +210,204 @@ public static class SistemaPopulacao
             pais.felicidade = UnityEngine.Mathf.Clamp(pais.felicidade - saude.penalidadeFelicidade * 0.05f, 0f, 100f);
             economia.custoSocial += saude.custoDiario / 24f;
         }
+    }
+
+    /// <summary>
+    /// Consome a necessidade de um dia uma vez, junto da colheita. As culturas
+    /// são consumidas do armazém específico e do estoque geral em conjunto.
+    /// </summary>
+    public static void ProcessarConsumoComidaDiaria(
+        DadosPaisGoverno pais, float producaoComidaDiaria, DadosEconomiaPais economia)
+    {
+        if (pais == null) return;
+
+        float necessidadeComida = CalcularNecessidadeComida(pais);
+        float producao = UnityEngine.Mathf.Max(0f, producaoComidaDiaria);
+        float deficit = UnityEngine.Mathf.Max(0f, necessidadeComida - producao);
+        if (economia != null)
+        {
+            economia.comidaProduzida = producao;
+            economia.comidaConsumida = necessidadeComida;
+            economia.deficitComida = deficit;
+        }
+        pais.deficitComida = deficit;
+
+        ConsumirComidaDoEstoque(pais, UnityEngine.Mathf.CeilToInt(necessidadeComida));
+        int mortesPorFome = AplicarConsequenciasDaFome(pais, necessidadeComida, deficit);
+        AplicarMortesPorFome(pais, mortesPorFome);
+    }
+
+    /// <summary>
+    /// Inicia o consumo diário antes da produção, liberando espaço de armazém.
+    /// O retorno é a quantidade de toneladas que ainda precisa ser atendida.
+    /// </summary>
+    public static int IniciarConsumoComidaDiario(DadosPaisGoverno pais)
+    {
+        if (pais == null) return 0;
+        int necessidade = UnityEngine.Mathf.CeilToInt(CalcularNecessidadeComida(pais));
+        int consumido = ConsumirComidaDoEstoque(pais, necessidade);
+        return UnityEngine.Mathf.Max(0, necessidade - consumido);
+    }
+
+    /// <summary>
+    /// Finaliza o consumo diário com a comida recém-produzida e calcula a falta
+    /// real da refeição depois de contabilizar estoque e colheita.
+    /// </summary>
+    public static void FinalizarConsumoComidaDiario(
+        DadosPaisGoverno pais, int necessidadeAindaNaoAtendida,
+        float producaoComidaDiaria, DadosEconomiaPais economia)
+    {
+        if (pais == null) return;
+
+        float necessidadeComida = CalcularNecessidadeComida(pais);
+        float producao = UnityEngine.Mathf.Max(0f, producaoComidaDiaria);
+        float deficit = UnityEngine.Mathf.Max(0f, necessidadeComida - producao);
+        if (economia != null)
+        {
+            economia.comidaProduzida = producao;
+            economia.comidaConsumida = necessidadeComida;
+            economia.deficitComida = deficit;
+        }
+        pais.deficitComida = deficit;
+
+        int pendente = UnityEngine.Mathf.Max(0, necessidadeAindaNaoAtendida);
+        int consumidoDaProducao = ConsumirComidaDoEstoque(pais, pendente);
+        bool faltouComidaNoDia = consumidoDaProducao < pendente;
+        int mortesPorFome = faltouComidaNoDia
+            ? AplicarConsequenciasDaFome(pais, necessidadeComida, UnityEngine.Mathf.Max(deficit, pendente - consumidoDaProducao))
+            : 0;
+        if (!faltouComidaNoDia && deficit > 0f && pais.comida < necessidadeComida * 2f)
+            mortesPorFome = AplicarConsequenciasDaFome(pais, necessidadeComida, deficit);
+        else if (!faltouComidaNoDia)
+            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade - 0.05f, 1f, 5f);
+
+        AplicarMortesPorFome(pais, mortesPorFome);
+    }
+
+    private static void AplicarMortesPorFome(DadosPaisGoverno pais, int mortesPorFome)
+    {
+        if (mortesPorFome <= 0) return;
+
+        int mortesAplicadas = UnityEngine.Mathf.Min(
+            UnityEngine.Mathf.Max(0, pais.populacaoCivil), mortesPorFome);
+        if (mortesAplicadas <= 0) return;
+
+        pais.populacaoCivil = UnityEngine.Mathf.Max(0, pais.populacaoCivil - mortesAplicadas);
+        pais.populacao = UnityEngine.Mathf.Max(0, pais.populacao - mortesAplicadas);
+        pais.mortosAcumulados += mortesAplicadas;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null && pais.teamId == governo.teamJogador
+            && GerenciadorRecursos.Instancia != null)
+        {
+            GerenciadorRecursos.Instancia.populacaoAtual = pais.populacao;
+            GerenciadorRecursos.Instancia.populacaoMaxima = pais.populacaoMaxima;
+        }
+        CidadeComplexoUrbano.SincronizarPopulacaoNacional(pais.teamId, pais.populacaoCivil);
+    }
+
+    private static float CalcularNecessidadeComida(DadosPaisGoverno pais)
+    {
+        if (pais == null) return 0f;
+        return (UnityEngine.Mathf.Max(0, pais.populacaoCivil) / 100f)
+            + (UnityEngine.Mathf.Max(0, pais.populacaoMilitarAtiva) / 100f * 2f);
+    }
+
+    private static int AplicarConsequenciasDaFome(
+        DadosPaisGoverno pais, float necessidadeComida, float deficitComida)
+    {
+        int populacaoCivil = UnityEngine.Mathf.Max(0, pais != null ? pais.populacaoCivil : 0);
+        if (pais == null || populacaoCivil <= 0) return 0;
+
+        if (pais.comida <= 0 && deficitComida > 0f)
+        {
+            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.45f, 1f, 20f);
+            return UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(populacaoCivil * 0.03f));
+        }
+
+        if (pais.comida < necessidadeComida * 2f && deficitComida > 0f)
+        {
+            pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade + 0.12f, 1f, 20f);
+            return UnityEngine.Mathf.Max(1, UnityEngine.Mathf.RoundToInt(populacaoCivil * 0.008f));
+        }
+
+        pais.mortalidade = UnityEngine.Mathf.Clamp(pais.mortalidade - 0.05f, 1f, 5f);
+        return 0;
+    }
+
+    private static int ConsumirComidaDoEstoque(DadosPaisGoverno pais, int quantidadeSolicitada)
+    {
+        if (pais == null || quantidadeSolicitada <= 0) return 0;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null)
+        {
+            int consumidaSemGoverno = UnityEngine.Mathf.Min(
+                UnityEngine.Mathf.Max(0, pais.comida), quantidadeSolicitada);
+            pais.comida = UnityEngine.Mathf.Max(0, pais.comida - quantidadeSolicitada);
+            return consumidaSemGoverno;
+        }
+
+        governo.ReconciliarEstoqueComidaCulturas(pais.teamId);
+        int consumo = UnityEngine.Mathf.Min(
+            UnityEngine.Mathf.Max(0, pais.comida), quantidadeSolicitada);
+        if (consumo <= 0) return 0;
+
+        int quantidadeCulturas = AgriculturaNacional.QuantidadeCulturas;
+        int[] estoques = new int[quantidadeCulturas];
+        int[] alocacoes = new int[quantidadeCulturas];
+        long estoqueCulturasTotalLong = 0L;
+        for (int i = 0; i < quantidadeCulturas; i++)
+        {
+            estoques[i] = UnityEngine.Mathf.Max(0,
+                governo.ObterEstoque(pais.teamId, AgriculturaNacional.ObterIdCultura(i)));
+            estoqueCulturasTotalLong = System.Math.Min(
+                int.MaxValue, estoqueCulturasTotalLong + estoques[i]);
+        }
+
+        int estoqueCulturasTotal = (int)estoqueCulturasTotalLong;
+        int consumirCulturas = UnityEngine.Mathf.Min(consumo, estoqueCulturasTotal);
+        int alocado = 0;
+        if (estoqueCulturasTotal > 0 && consumirCulturas > 0)
+        {
+            for (int i = 0; i < quantidadeCulturas; i++)
+            {
+                alocacoes[i] = UnityEngine.Mathf.Min(estoques[i],
+                    UnityEngine.Mathf.FloorToInt((float)consumirCulturas * estoques[i] / estoqueCulturasTotal));
+                alocado += alocacoes[i];
+            }
+
+            int restanteCulturas = consumirCulturas - alocado;
+            while (restanteCulturas > 0)
+            {
+                int maiorDisponivel = -1;
+                for (int i = 0; i < quantidadeCulturas; i++)
+                {
+                    if (alocacoes[i] >= estoques[i]) continue;
+                    if (maiorDisponivel < 0
+                        || estoques[i] - alocacoes[i] > estoques[maiorDisponivel] - alocacoes[maiorDisponivel])
+                    {
+                        maiorDisponivel = i;
+                    }
+                }
+
+                if (maiorDisponivel < 0) break;
+                alocacoes[maiorDisponivel]++;
+                restanteCulturas--;
+            }
+
+            for (int i = 0; i < quantidadeCulturas; i++)
+            {
+                if (alocacoes[i] <= 0) continue;
+                governo.RemoverEstoque(pais.teamId, AgriculturaNacional.ObterIdCultura(i), alocacoes[i]);
+            }
+        }
+
+        int consumoGenerico = consumo - consumirCulturas;
+        if (consumoGenerico > 0)
+            governo.RemoverEstoque(pais.teamId, RecursoMercado.Comida, consumoGenerico);
+        governo.ReconciliarEstoqueComidaCulturas(pais.teamId);
+        return consumo;
     }
 
     // --- CALCULO DO INDICE DE ATRATIVIDADE (0 a 1) ---

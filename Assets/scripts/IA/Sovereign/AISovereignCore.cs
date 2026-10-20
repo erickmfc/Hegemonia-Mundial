@@ -371,6 +371,10 @@ namespace Hegemonia.AI.Sovereign
         }
 
         private static readonly Dictionary<int, ClaimEntry> Claims = new Dictionary<int, ClaimEntry>();
+        // A autoridade de produção é uma faixa separada da autoridade de
+        // comando. IA01/IA02 podem administrar infraestrutura e produção sem
+        // bloquear as ordens táticas do BrainMaster/IA03 para o mesmo time.
+        private static readonly Dictionary<int, ClaimEntry> ProductionClaims = new Dictionary<int, ClaimEntry>();
 
         public static bool Claim(int teamId, string ownerKey)
         {
@@ -379,19 +383,53 @@ namespace Hegemonia.AI.Sovereign
 
         public static bool Claim(int teamId, string ownerKey, int priority)
         {
+            return ClaimInLane(Claims, teamId, ownerKey, priority);
+        }
+
+        public static bool ClaimProduction(int teamId, string ownerKey, int priority)
+        {
+            return ClaimInLane(ProductionClaims, teamId, ownerKey, priority);
+        }
+
+        public static void Release(int teamId, string ownerKey)
+        {
+            ReleaseFromLane(Claims, teamId, ownerKey);
+        }
+
+        public static void ReleaseProduction(int teamId, string ownerKey)
+        {
+            ReleaseFromLane(ProductionClaims, teamId, ownerKey);
+        }
+
+        public static bool CanIssue(int teamId, string ownerKey)
+        {
+            return CanIssueInLane(Claims, teamId, ownerKey);
+        }
+
+        public static bool CanIssueProduction(int teamId, string ownerKey)
+        {
+            return CanIssueInLane(ProductionClaims, teamId, ownerKey);
+        }
+
+        private static bool ClaimInLane(
+            Dictionary<int, ClaimEntry> claims,
+            int teamId,
+            string ownerKey,
+            int priority)
+        {
             if (teamId <= 0 || string.IsNullOrWhiteSpace(ownerKey))
             {
                 return false;
             }
 
             ClaimEntry entry;
-            if (Claims.TryGetValue(teamId, out entry))
+            if (claims.TryGetValue(teamId, out entry))
             {
                 if (string.Equals(entry.OwnerKey, ownerKey, StringComparison.Ordinal))
                 {
                     entry.Priority = Mathf.Max(entry.Priority, priority);
                     entry.ClaimedAt = Time.unscaledTime;
-                    Claims[teamId] = entry;
+                    claims[teamId] = entry;
                     return true;
                 }
 
@@ -401,7 +439,7 @@ namespace Hegemonia.AI.Sovereign
                 }
             }
 
-            Claims[teamId] = new ClaimEntry
+            claims[teamId] = new ClaimEntry
             {
                 OwnerKey = ownerKey,
                 Priority = priority,
@@ -410,23 +448,25 @@ namespace Hegemonia.AI.Sovereign
             return true;
         }
 
-        public static void Release(int teamId, string ownerKey)
+        private static void ReleaseFromLane(
+            Dictionary<int, ClaimEntry> claims,
+            int teamId,
+            string ownerKey)
         {
             ClaimEntry entry;
-            if (!Claims.TryGetValue(teamId, out entry))
+            if (!claims.TryGetValue(teamId, out entry)
+                || !string.Equals(entry.OwnerKey, ownerKey, StringComparison.Ordinal))
             {
                 return;
             }
 
-            if (!string.Equals(entry.OwnerKey, ownerKey, StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            Claims.Remove(teamId);
+            claims.Remove(teamId);
         }
 
-        public static bool CanIssue(int teamId, string ownerKey)
+        private static bool CanIssueInLane(
+            Dictionary<int, ClaimEntry> claims,
+            int teamId,
+            string ownerKey)
         {
             if (teamId <= 0 || string.IsNullOrWhiteSpace(ownerKey))
             {
@@ -434,12 +474,7 @@ namespace Hegemonia.AI.Sovereign
             }
 
             ClaimEntry entry;
-            if (!Claims.TryGetValue(teamId, out entry))
-            {
-                return false;
-            }
-
-            if (entry.Priority < 0)
+            if (!claims.TryGetValue(teamId, out entry) || entry.Priority < 0)
             {
                 return false;
             }

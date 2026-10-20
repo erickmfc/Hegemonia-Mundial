@@ -10,6 +10,7 @@ public static class MissilePrefabAutoBinder
 #if UNITY_EDITOR
     private const string LogPrefix = "[AutoMissil]";
     private const string PrefabMisselNavalPadrao = "Assets/Prefabs/Navios_Guerra/Efeitos/N-02 Tridente.prefab";
+    private const string PrefabMisselNavalCruzeiro = "Assets/Prefabs/Navios_Guerra/Efeitos/Missel Kh-23 Cruzeiro.prefab";
     private const string PrefabTorpedoNavalPadrao = "Assets/Prefabs/Navios_Guerra/Leviathan/missel_sub.prefab";
 
     public static bool BindLancadorMisseis(LancadorMisseis alvo, bool forcar = false)
@@ -23,6 +24,7 @@ public static class MissilePrefabAutoBinder
     {
         bool alterado = false;
         alterado |= BindIfMissingFromPath(alvo, nameof(LancadorNaval.prefabMissel), forcar, PrefabMisselNavalPadrao);
+        alterado |= BindIfMissingFromPath(alvo, nameof(LancadorNaval.prefabMisselCruzeiro), forcar, PrefabMisselNavalCruzeiro);
         alterado |= BindIfMissingFromPath(alvo, nameof(LancadorNaval.prefabTorpedo), forcar, PrefabTorpedoNavalPadrao);
         return alterado;
     }

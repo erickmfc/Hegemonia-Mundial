@@ -7,9 +7,12 @@ namespace Hegemonia.AI.Sovereign
 {
     public sealed class AILegacyObserverAdapter
     {
+        private const float EmptyScanRescanIntervalSeconds = 1f;
+
         private readonly int _teamId;
         private readonly string _ownerKey;
         private readonly List<MonoBehaviour> _disabled = new List<MonoBehaviour>(16);
+        private float _nextEmptyScanTime;
 
         public AILegacyObserverAdapter(int teamId, string ownerKey)
         {
@@ -30,6 +33,16 @@ namespace Hegemonia.AI.Sovereign
                 return;
             }
 
+            float now = Time.realtimeSinceStartup;
+            if (now < _nextEmptyScanTime)
+            {
+                return;
+            }
+
+            // Preserve the immediate first scan, but do not enumerate every
+            // MonoBehaviour on every frame when this team has no legacy AI.
+            // Periodic rescans still catch legacy controllers spawned later.
+            _nextEmptyScanTime = now + EmptyScanRescanIntervalSeconds;
             MonoBehaviour[] behaviours = IA_UnitySearch.FindAll<MonoBehaviour>();
             for (int i = 0; i < behaviours.Length; i++)
             {
@@ -72,6 +85,7 @@ namespace Hegemonia.AI.Sovereign
                 }
             }
             _disabled.Clear();
+            _nextEmptyScanTime = 0f;
         }
 
         private void ApplyObserverIfSupported(MonoBehaviour behaviour)

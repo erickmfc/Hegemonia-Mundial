@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: F16B 60fc
   descricao: "Descri\xE7\xE3o curta..."
-  icone: {fileID: 0}
+  icone: {fileID: 21300000, guid: efd9c14b90c11334b8a54c17bd06bdc0, type: 3}
   itemId: 
   aliases: 
   capacidades: 0

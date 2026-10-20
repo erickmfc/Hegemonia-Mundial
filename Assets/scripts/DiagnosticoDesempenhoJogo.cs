@@ -27,6 +27,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public bool EmWarmup;
         public float FpsMedio;
         public float FpsEquivalente;
+        public float TimeScale;
+        public float RtsSimulationSpeed;
+        public float RtsSimulationSeconds;
         public float FpsMinimo;
         public float FpsMaximo;
         public float FrameMsMedio;
@@ -558,6 +561,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         float largura = Mathf.Min(Screen.width - 20f, 780f);
         float altura = 380f;
+        // Deixa livre a faixa superior central usada pelos controles de tempo.
         GUILayout.BeginArea(new Rect(10f, 10f, largura, altura), _caixaStyle);
         GUILayout.Label("Diagnostico de Desempenho", _tituloStyle);
         GUILayout.Label(_overlayLine1, _textoStyle);
@@ -977,6 +981,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         string topOffenders = MontarResumoTopOffenders();
         string dificuldadeAtual = GameDifficultyManager.Instancia.ObterCodigoDificuldade();
 
+        Hegemonia.RTS.RTSSimulationClock simulationClock = Hegemonia.RTS.RTSSimulationClock.Instancia;
         ResumoSegundo resumo = new ResumoSegundo
         {
             Cena = SceneManager.GetActiveScene().name,
@@ -984,6 +989,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             Inicio = _inicioSegundoAtual,
             Fim = tempoFim,
             EmWarmup = emWarmup,
+            TimeScale = Time.timeScale,
+            RtsSimulationSpeed = simulationClock != null ? simulationClock.SimulationSpeed : 0f,
+            RtsSimulationSeconds = simulationClock != null ? simulationClock.SimulationTime : 0f,
             FpsMedio = fpsMedio,
             FpsEquivalente = frameMsMedio > 0.01f ? 1000f / frameMsMedio : 0f,
             FpsMinimo = _fpsMinimo == float.MaxValue ? 0f : _fpsMinimo,
@@ -1629,7 +1637,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                 pasta,
                 "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
             _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes;fps_equivalente;cartel_decision_ms;cartel_naval_steering_ms;cartel_bases;cartel_tankers_cached;cartel_orders_reissued;cartel_order_failures;cartel_spawn_ms");
+            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes;fps_equivalente;cartel_decision_ms;cartel_naval_steering_ms;cartel_bases;cartel_tankers_cached;cartel_orders_reissued;cartel_order_failures;cartel_spawn_ms;time_scale;rts_simulation_speed;rts_simulation_seconds");
             _csvWriter.Flush();
         }
         catch (Exception excecao)
@@ -1734,7 +1742,10 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.CartelTankersCached.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.CartelOrdersReissued.ToString(CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.CartelOrderFailures.ToString(CultureInfo.InvariantCulture)).Append(';')
-            .Append(resumo.CartelSpawnMs.ToString("0.00", CultureInfo.InvariantCulture));
+            .Append(resumo.CartelSpawnMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.TimeScale.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.RtsSimulationSpeed.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.RtsSimulationSeconds.ToString("0.00", CultureInfo.InvariantCulture));
 
         _csvWriter.WriteLine(_csvBuilder.ToString());
         _csvWriter.Flush();

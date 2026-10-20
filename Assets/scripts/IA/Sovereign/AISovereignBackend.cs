@@ -70,30 +70,42 @@ namespace Hegemonia.AI.Sovereign
                 }
             }
 
-            GameObject created = null;
-            if (Construtor.Instancia != null && data.PrefabDaUnidade != null)
+            string buildFailureReason = string.Empty;
+            bool built = IA_NationalTreasury.TentarConstruirComTesouroNacional(_teamId, data, () =>
             {
-                created = Construtor.Instancia.ConstruirEstruturaIA(data.PrefabDaUnidade, position, rotation);
-            }
-            if (created == null && data.PrefabDaUnidade != null)
-            {
-                created = Object.Instantiate(data.PrefabDaUnidade, position, rotation);
-            }
+                GameObject created = null;
+                if (Construtor.Instancia != null && data.PrefabDaUnidade != null)
+                {
+                    created = Construtor.Instancia.ConstruirEstruturaIA(data.PrefabDaUnidade, position, rotation);
+                }
+                if (created == null && data.PrefabDaUnidade != null)
+                {
+                    created = Object.Instantiate(data.PrefabDaUnidade, position, rotation);
+                }
 
-            if (created == null)
-            {
-                reason = "falha_instanciacao";
-                return false;
-            }
+                if (created == null)
+                {
+                    buildFailureReason = "falha_instanciacao";
+                    return false;
+                }
 
-            EnsureIdentity(created);
-            Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
-            if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
-            PierMarinha createdPier = created.GetComponent<PierMarinha>();
-            if (createdPier != null) createdPier.OwnerTeamId = _teamId;
-            IA_BackendBridge.AttachConstructionMetadata(created, data);
-            DiagnosticoDesempenhoJogo.RegistrarConstrucao(data.GetDisplayName(), position, "IA_Soberana_Build");
-            return true;
+                EnsureIdentity(created);
+                Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
+                if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
+                PierMarinha createdPier = created.GetComponent<PierMarinha>();
+                if (createdPier != null) createdPier.OwnerTeamId = _teamId;
+                IA_BackendBridge.AttachConstructionMetadata(created, data);
+                DiagnosticoDesempenhoJogo.RegistrarConstrucao(data.GetDisplayName(), position, "IA_Soberana_Build");
+                return true;
+            });
+
+            if (!built)
+            {
+                reason = string.IsNullOrEmpty(buildFailureReason)
+                    ? "tesouro_nacional_indisponivel_ou_insuficiente"
+                    : buildFailureReason;
+            }
+            return built;
         }
 
         public bool TryProduce(AISovereignCatalogRole role, AISovereignEnvelope envelope, AISovereignPerception perception, out string reason)
@@ -105,7 +117,29 @@ namespace Hegemonia.AI.Sovereign
                 return false;
             }
 
+            string productionReason = string.Empty;
+            bool produced = IA_NationalTreasury.TentarProduzirComTesouroNacional(
+                _teamId,
+                data,
+                () => TryProduceResolved(role, data, envelope, perception, out productionReason));
+            reason = productionReason;
+            if (!produced && string.IsNullOrEmpty(reason)) reason = "tesouro nacional indisponivel ou insuficiente";
+            return produced;
+        }
+
+        private bool TryProduceResolved(AISovereignCatalogRole role, DadosConstrucao data, AISovereignEnvelope envelope, AISovereignPerception perception, out string reason)
+        {
+            reason = string.Empty;
+
             IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
+            bool possuiTipoUnidade = assetKind != IA01MilitaryAssetKind.Other;
+            TipoUnidade tipoFallback = assetKind == IA01MilitaryAssetKind.Infantry
+                ? TipoUnidade.Infantaria
+                : assetKind == IA01MilitaryAssetKind.Fighter
+                    ? TipoUnidade.Aereo
+                    : assetKind == IA01MilitaryAssetKind.Naval || assetKind == IA01MilitaryAssetKind.OilTanker
+                        ? TipoUnidade.Naval
+                        : TipoUnidade.Veiculo;
             string unitType = assetKind == IA01MilitaryAssetKind.Other ? data.GetStableId() : assetKind.ToString();
             int alive = CountOwnedForProduction(assetKind);
             string orderId;
@@ -116,7 +150,28 @@ namespace Hegemonia.AI.Sovereign
             }
 
             bool allowEmergencySpawn = envelope >= AISovereignEnvelope.SemiTrapaca;
-            if (TryProduceViaInfrastructure(data, orderId, out GameObject produced))
+            string normalizedItem = IA_Text.Normalize(data.GetDisplayName() + " " + data.name + " " + data.PrefabDaUnidade.name);
+            bool requiresDedicatedInfrastructure = data.HasCapability(IA_ConstructionCapability.Aircraft)
+                || data.HasCapability(IA_ConstructionCapability.FighterAircraft)
+                || data.HasCapability(IA_ConstructionCapability.Naval)
+                || normalizedItem.Contains("aviao")
+                || normalizedItem.Contains("helicoptero")
+                || normalizedItem.Contains("caca")
+                || normalizedItem.Contains("navio")
+                || normalizedItem.Contains("submarino");
+            GameObject produced = null;
+            bool producedByInfrastructure;
+            try
+            {
+                producedByInfrastructure = TryProduceViaInfrastructure(data, orderId, out produced);
+            }
+            catch
+            {
+                IAAutoProductionRegistry.Release(orderId, Time.time);
+                throw;
+            }
+
+            if (producedByInfrastructure)
             {
                 if (produced != null)
                 {
@@ -126,10 +181,48 @@ namespace Hegemonia.AI.Sovereign
                 return true;
             }
 
-            if (!allowEmergencySpawn || data.PrefabDaUnidade == null)
+            if (!allowEmergencySpawn || requiresDedicatedInfrastructure || data.PrefabDaUnidade == null)
             {
                 IAAutoProductionRegistry.Release(orderId, Time.time);
-                reason = "infra_indisponivel";
+                reason = requiresDedicatedInfrastructure
+                    ? "infraestrutura aerea ou naval indisponivel"
+                    : "infra_indisponivel";
+                return false;
+            }
+
+            RegistroEntidadesJogo.FillFabricas(_factories);
+            bool possuiFabricaOperacional = false;
+            for (int i = 0; i < _factories.Count; i++)
+            {
+                Fabrica factory = _factories[i];
+                if (factory != null
+                    && BelongsToTeam(factory.gameObject)
+                    && factory.PossuiEnergiaParaProduzir())
+                {
+                    possuiFabricaOperacional = true;
+                    break;
+                }
+            }
+
+            if (!possuiFabricaOperacional)
+            {
+                IAAutoProductionRegistry.Release(orderId, Time.time);
+                reason = "fabrica_sem_energia_ou_indisponivel";
+                return false;
+            }
+
+            int efetivoNecessario = possuiTipoUnidade
+                ? SistemaGovernoMundial.ObterEfetivoNecessario(data.PrefabDaUnidade, tipoFallback)
+                : SistemaGovernoMundial.ObterEfetivoNecessario(data.PrefabDaUnidade);
+            SistemaGovernoMundial governoEfetivo = efetivoNecessario > 0 ? SistemaGovernoMundial.Instancia : null;
+            if (efetivoNecessario > 0
+                && (governoEfetivo == null
+                    || !(possuiTipoUnidade
+                        ? governoEfetivo.PodeProduzirUnidadeComEfetivo(_teamId, data.PrefabDaUnidade, 1, tipoFallback)
+                        : governoEfetivo.PodeProduzirUnidadeComEfetivo(_teamId, data.PrefabDaUnidade))))
+            {
+                IAAutoProductionRegistry.Release(orderId, Time.time);
+                reason = "efetivo nacional insuficiente";
                 return false;
             }
 
@@ -151,6 +244,23 @@ namespace Hegemonia.AI.Sovereign
 
             EnsureIdentity(emergencial);
             IA_BackendBridge.AttachConstructionMetadata(emergencial, data);
+            IdentidadeUnidade emergencyIdentity = emergencial.GetComponent<IdentidadeUnidade>();
+            if (emergencyIdentity != null && possuiTipoUnidade) emergencyIdentity.tipoUnidade = tipoFallback;
+            governoEfetivo = governoEfetivo != null ? governoEfetivo : SistemaGovernoMundial.Instancia;
+            if (efetivoNecessario > 0
+                && (governoEfetivo == null || !governoEfetivo.TentarMobilizarEfetivoDaUnidade(_teamId, emergencial)))
+            {
+                IdentidadeUnidade[] identities = emergencial.GetComponentsInChildren<IdentidadeUnidade>(true);
+                for (int i = 0; i < identities.Length; i++)
+                {
+                    if (identities[i] != null) identities[i].militaresConsumidos = 0;
+                }
+                Object.Destroy(emergencial);
+                IAAutoProductionRegistry.Release(orderId, Time.time);
+                reason = "efetivo nacional indisponivel no spawn";
+                return false;
+            }
+            ServicoAbastecimento.AbastecerUnidadeProduzida(emergencial);
             IAAutoProductionRegistry.Complete(orderId, Time.time);
             DiagnosticoDesempenhoJogo.RegistrarProducao(data.GetDisplayName(), "IA_Soberana_Emergencia");
             return true;
@@ -359,7 +469,11 @@ namespace Hegemonia.AI.Sovereign
             produced = null;
 
             string normalized = IA_Text.Normalize(data.GetDisplayName() + " " + data.name + " " + data.PrefabDaUnidade.name);
-            if (data.HasCapability(IA_ConstructionCapability.Naval) && !data.HasCapability(IA_ConstructionCapability.Structure))
+            bool unidadeNaval = (data.HasCapability(IA_ConstructionCapability.Naval)
+                    && !data.HasCapability(IA_ConstructionCapability.Structure))
+                || normalized.Contains("navio")
+                || normalized.Contains("submarino");
+            if (unidadeNaval)
             {
                 RegistroEntidadesJogo.FillEstaleiros(_shipyards);
                 for (int i = 0; i < _shipyards.Count; i++)
@@ -376,10 +490,15 @@ namespace Hegemonia.AI.Sovereign
                         return true;
                     }
                 }
-
+                return false;
             }
 
-            if (data.HasCapability(IA_ConstructionCapability.Aircraft) || data.HasCapability(IA_ConstructionCapability.FighterAircraft) || normalized.Contains("aviao"))
+            bool unidadeAerea = data.HasCapability(IA_ConstructionCapability.Aircraft)
+                || data.HasCapability(IA_ConstructionCapability.FighterAircraft)
+                || normalized.Contains("aviao")
+                || normalized.Contains("helicoptero")
+                || normalized.Contains("caca");
+            if (unidadeAerea)
             {
                 RegistroEntidadesJogo.FillAeroportos(_airports);
                 for (int i = 0; i < _airports.Count; i++)
@@ -390,8 +509,10 @@ namespace Hegemonia.AI.Sovereign
                         continue;
                     }
 
-                    airport.ComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId);
-                    return true;
+                    if (airport.TryComprarAviaoIAImediato(data.PrefabDaUnidade, productionOrderId, false))
+                    {
+                        return true;
+                    }
                 }
 
                 RegistroEntidadesJogo.FillHeliportos(_heliports);
@@ -403,9 +524,43 @@ namespace Hegemonia.AI.Sovereign
                         continue;
                     }
 
+                    Imovel heliportBuilding = heliport.GetComponent<Imovel>();
+                    if (heliportBuilding == null) heliportBuilding = heliport.GetComponentInParent<Imovel>();
+                    if (heliportBuilding != null && heliportBuilding.semEnergia) continue;
+
+                    int efetivoNecessario = SistemaGovernoMundial.ObterEfetivoNecessario(data.PrefabDaUnidade, TipoUnidade.Aereo);
+                    SistemaGovernoMundial governoEfetivo = efetivoNecessario > 0 ? SistemaGovernoMundial.Instancia : null;
+                    if (efetivoNecessario > 0
+                        && (governoEfetivo == null
+                            || !governoEfetivo.PodeProduzirUnidadeComEfetivo(_teamId, data.PrefabDaUnidade, 1, TipoUnidade.Aereo)))
+                    {
+                        IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+                        return false;
+                    }
+
                     produced = Object.Instantiate(data.PrefabDaUnidade, heliport.ObterPontoDePousoMundial(), heliport.transform.rotation);
+                    EnsureIdentity(produced);
+                    IdentidadeUnidade helicopterIdentity = produced.GetComponent<IdentidadeUnidade>();
+                    if (helicopterIdentity != null) helicopterIdentity.tipoUnidade = TipoUnidade.Aereo;
+                    governoEfetivo = governoEfetivo != null ? governoEfetivo : SistemaGovernoMundial.Instancia;
+                    if (efetivoNecessario > 0
+                        && (governoEfetivo == null || !governoEfetivo.TentarMobilizarEfetivoDaUnidade(_teamId, produced)))
+                    {
+                        IdentidadeUnidade[] identities = produced.GetComponentsInChildren<IdentidadeUnidade>(true);
+                        for (int identityIndex = 0; identityIndex < identities.Length; identityIndex++)
+                        {
+                            if (identities[identityIndex] != null) identities[identityIndex].militaresConsumidos = 0;
+                        }
+                        Object.Destroy(produced);
+                        produced = null;
+                        IAAutoProductionRegistry.Release(productionOrderId, Time.time);
+                        return false;
+                    }
+                    ServicoAbastecimento.AbastecerUnidadeProduzida(produced);
+                    IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
                     return produced != null;
                 }
+                return false;
             }
 
             RegistroEntidadesJogo.FillFabricas(_factories);

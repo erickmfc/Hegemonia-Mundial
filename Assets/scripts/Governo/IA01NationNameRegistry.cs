@@ -101,16 +101,22 @@ public static class IA01NationNameRegistry
         foreach (DadosPaisGoverno pais in paises.OrderBy(p => p != null ? p.teamId : int.MaxValue))
         {
             if (pais == null) continue;
+            bool moedaGerada = string.IsNullOrWhiteSpace(pais.nomeMoeda)
+                || pais.nomeMoeda.StartsWith("Moeda ", StringComparison.OrdinalIgnoreCase)
+                || (pais.teamId > 1 && string.Equals(pais.nomeMoeda, "Atlas", StringComparison.OrdinalIgnoreCase));
             string baseNome = (pais.nomePais ?? "Nacao").Split(' ')[0].Trim();
             if (string.IsNullOrWhiteSpace(baseNome)) baseNome = "Nacao";
-            string moeda = baseNome + "o";
-            if (moeda.Length > 12) moeda = baseNome.Substring(0, Math.Min(9, baseNome.Length)) + "o";
+            string moeda = moedaGerada ? baseNome + "o" : pais.nomeMoeda.Trim();
+            if (moedaGerada && moeda.Length > 12) moeda = baseNome.Substring(0, Math.Min(9, baseNome.Length)) + "o";
             string original = moeda; int sufixo = 2;
             while (usadas.Contains(moeda)) moeda = original + sufixo++;
-            if (pais.teamId > 1 || string.IsNullOrWhiteSpace(pais.nomeMoeda) || pais.nomeMoeda.StartsWith("Moeda ", StringComparison.OrdinalIgnoreCase))
-                pais.nomeMoeda = moeda;
+            pais.nomeMoeda = moeda;
             if (pais.teamId > 0) usadas.Add(pais.nomeMoeda);
-            pais.simboloMoeda = GerarSimbolo(pais.nomeMoeda);
+            bool simboloGenerico = string.IsNullOrWhiteSpace(pais.simboloMoeda)
+                || pais.simboloMoeda.Equals("IA$", StringComparison.OrdinalIgnoreCase)
+                || pais.simboloMoeda.Equals("NAC$", StringComparison.OrdinalIgnoreCase)
+                || (moedaGerada && pais.simboloMoeda.Equals("AT$", StringComparison.OrdinalIgnoreCase));
+            if (simboloGenerico) pais.simboloMoeda = GerarSimbolo(pais.nomeMoeda);
         }
     }
 

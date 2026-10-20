@@ -14,6 +14,19 @@ public class MisselNaval : MonoBehaviour
     public float aceleracaoBoost = 35f;
     public ParticleSystem sistemaFumaca;
 
+    [Header("Efeito de lancamento naval")]
+    [Tooltip("Efeito de fumaça que fica no ponto de saída do navio quando este míssil é disparado.")]
+    public GameObject efeitoFumacaLancamentoPrefab;
+    [Min(0f)] public float duracaoEfeitoFumacaLancamento = 10f;
+    [Min(0.1f)] public float escalaEfeitoFumacaLancamento = 1f;
+    public Vector3 deslocamentoEfeitoFumacaLancamento = new Vector3(0f, 1f, 0f);
+
+    [Header("Subida do míssil de cruzeiro")]
+    [Tooltip("Quando ativo, o míssil sobe em velocidade controlada até a altura configurada e só então inicia o cruzeiro horizontal. Mantém o perfil legado quando desativado.")]
+    public bool subirAteAltitudeCruzeiro = false;
+    [Min(1f)] public float altitudeCruzeiroAcimaDoLancamento = 10000f;
+    [Min(1f)] public float velocidadeSubidaCruzeiro = 80f;
+
     [Header("Fase 3: Cruzeiro e Mergulho")]
     public float velocidadeCruzeiro = 90f;
     public float velocidadeMergulho = 180f;
@@ -60,6 +73,7 @@ public class MisselNaval : MonoBehaviour
     private bool alvoEhAereo = false;
     private Vector3 ultimaPosicaoGuiagem;
     private bool possuiUltimaPosicaoGuiagem;
+    private float altitudeInicialLancamento;
     private const float VelocidadeGiroGuiadoDuranteBoost = 110f;
     private Quaternion rotacaoVisualLocal = Quaternion.identity;
     private Quaternion correcaoOrientacaoVisual = Quaternion.identity;
@@ -127,6 +141,7 @@ public class MisselNaval : MonoBehaviour
         pontoAlvo = alvo;
         alvoTransform = alvoT;
         alvoEhAereo = DetectarAlvoAereo(alvoT, alvo);
+        altitudeInicialLancamento = transform.position.y;
         ultimaPosicaoGuiagem = transform.position;
         possuiUltimaPosicaoGuiagem = true;
         lancado = true;
@@ -135,7 +150,23 @@ public class MisselNaval : MonoBehaviour
         AtualizarPrazoDeVoo(alvo);
         transform.rotation = RotacaoParaDirecao(Vector3.up);
         ReiniciarEfeitosVisuaisVoo();
+        CriarEfeitoFumacaLancamento();
         StartCoroutine(SequenciaDeVoo());
+    }
+
+    private void CriarEfeitoFumacaLancamento()
+    {
+        if (efeitoFumacaLancamentoPrefab == null) return;
+
+        Vector3 posicao = transform.position + deslocamentoEfeitoFumacaLancamento;
+        float duracao = Mathf.Max(0.1f, duracaoEfeitoFumacaLancamento);
+        Vector3 escala = Vector3.one * Mathf.Max(0.1f, escalaEfeitoFumacaLancamento);
+        PoolDeObjetosCombate.SpawnTemporario(
+            efeitoFumacaLancamentoPrefab,
+            posicao,
+            Quaternion.identity,
+            duracao,
+            escala);
     }
 
     private static Transform ResolverLancador(Transform lancadorRef)
@@ -185,7 +216,10 @@ public class MisselNaval : MonoBehaviour
         float distancia = Vector3.Distance(transform.position, destino);
         float tempoCruzeiro = distancia / Mathf.Max(velocidadeCruzeiro, 1f);
         float margemSeguranca = 12f;
-        float tempoNecessario = tempoEjecao + tempoBoostVertical + tempoCruzeiro + margemSeguranca;
+        float tempoSubida = subirAteAltitudeCruzeiro
+            ? Mathf.Max(1f, altitudeCruzeiroAcimaDoLancamento) / Mathf.Max(1f, velocidadeSubidaCruzeiro)
+            : tempoBoostVertical;
+        float tempoNecessario = tempoEjecao + tempoSubida + tempoCruzeiro + margemSeguranca;
         tempoExpirar = Time.time + Mathf.Max(tempoMaximoVida, tempoNecessario);
     }
 
@@ -205,6 +239,40 @@ public class MisselNaval : MonoBehaviour
         if (sistemaFumaca != null)
         {
             sistemaFumaca.Play();
+        }
+
+        if (subirAteAltitudeCruzeiro)
+        {
+            float alturaAlvo = altitudeInicialLancamento + Mathf.Max(1f, altitudeCruzeiroAcimaDoLancamento);
+            transform.rotation = RotacaoParaDirecao(Vector3.up);
+
+            while (rb.position.y < alturaAlvo - 0.25f)
+            {
+                float restante = alturaAlvo - rb.position.y;
+                float velocidade = Mathf.Min(
+                    Mathf.Max(1f, velocidadeSubidaCruzeiro),
+                    restante / Mathf.Max(Time.fixedDeltaTime, 0.001f));
+                rb.linearVelocity = Vector3.up * velocidade;
+                yield return new WaitForFixedUpdate();
+            }
+
+            Vector3 posicaoFinalSubida = rb.position;
+            posicaoFinalSubida.y = alturaAlvo;
+            rb.position = posicaoFinalSubida;
+            rb.linearVelocity = Vector3.zero;
+
+            Vector3 alvoDepoisDaSubida = alvoTransform != null ? alvoTransform.position : pontoAlvo;
+            Vector3 direcaoCruzeiro = alvoDepoisDaSubida - transform.position;
+            direcaoCruzeiro.y = 0f;
+            if (direcaoCruzeiro.sqrMagnitude > 0.001f)
+            {
+                transform.rotation = RotacaoParaDirecao(direcaoCruzeiro.normalized);
+            }
+
+            ultimaPosicaoGuiagem = transform.position;
+            possuiUltimaPosicaoGuiagem = true;
+            emNavegacao = true;
+            yield break;
         }
 
         tempo = 0f;

@@ -6,6 +6,8 @@ using Hegemonia.RTS;
 
 public class ControleTorreta : MonoBehaviour
 {
+    public enum ArmamentoHud { Automatico, Canhao, Missil }
+
     #region Variáveis Públicas (Inspetor)
     [Header("Radar")]
     [Tooltip("Define qual tag a torreta vai procurar (Ex: 'Inimigo', 'Aereo').")]
@@ -48,6 +50,8 @@ public class ControleTorreta : MonoBehaviour
     public Transform canosDaTorreta; 
     [Tooltip("Permite procurar automaticamente um pivô de elevação entre os filhos dos locais de tiro.")]
     public bool descobrirCanosAutomaticamente = true;
+    [Tooltip("Inverte o sentido do pitch local quando o eixo X do pivô de cano foi importado no sentido oposto ao da arma.")]
+    public bool inverterSentidoPitch;
     public Transform[] locaisDoTiro;  
     public GameObject municaoPrefab; 
     
@@ -151,9 +155,34 @@ public class ControleTorreta : MonoBehaviour
 
     public int MunicaoAtual => Mathf.Max(0, balasAtuais);
     public int MunicaoMaxima => Mathf.Max(0, tamanhoCartucho);
+    public int MisseisAtuaisHud => Mathf.Max(0, misseisAtuais);
+    public int MisseisMaximosHud => Mathf.Max(0, capacidadeMisseis);
+    public bool PossuiMunicaoCanhaoParaMissao => balasAtuais > 0 || estaRecarregando;
+    public bool PossuiCanhaoConfiguradoHud
+    {
+        get
+        {
+            if (municaoPrefab != null) return true;
+            if (municoesPorCano == null) return false;
+            for (int i = 0; i < municoesPorCano.Length; i++)
+                if (municoesPorCano[i] != null) return true;
+            return false;
+        }
+    }
+    private ArmamentoHud armamentoSelecionadoHud = ArmamentoHud.Automatico;
+    public ArmamentoHud ArmamentoSelecionadoHud => armamentoSelecionadoHud;
+
+    public bool DefinirArmamentoHud(ArmamentoHud armamento)
+    {
+        if (armamento == ArmamentoHud.Missil && misselPrefab == null) return false;
+        if (armamento == ArmamentoHud.Canhao && !PossuiCanhaoConfiguradoHud) return false;
+        armamentoSelecionadoHud = armamento;
+        return true;
+    }
     
     private int misseisAtuais;
     private bool estaRecarregandoMisseis = false;
+    public bool PossuiMissilParaMissao => misseisAtuais > 0 || estaRecarregandoMisseis;
     private float contadorRecargaMissel = 0f;
     private float cooldownMissel = 0f;
 
@@ -173,6 +202,7 @@ public class ControleTorreta : MonoBehaviour
     private int indicacaoSeguraDeBala = 0;
     
     private float rotacaoXOriginal, rotacaoYOriginal, rotacaoZOriginal, giroPitchAlvo = 0f;
+    private float offsetAzimuteCano;
     // Preserva a postura authored do prefab. Zerar X/Z ao mirar fazia algumas
     // torretas deitarem quando o alvo mudava de lado ou no momento do disparo.
     private Quaternion rotacaoInicialPecaQueGira = Quaternion.identity;
@@ -203,7 +233,6 @@ public class ControleTorreta : MonoBehaviour
     private readonly List<Transform> alvosAutorizadosNavais = new List<Transform>(8);
     public bool EhAntiAereo => souAntiAereo;
     private bool exigeGuerraDeclarada;
-    private bool exigeHostilidadeNaBuscaAutomatica;
     private bool diagnosticoLocaisDoTiroEmitido;
     private bool bloquearRotacaoAutomatica;
 
@@ -258,7 +287,6 @@ public class ControleTorreta : MonoBehaviour
         meuTime = (minhaIdentidade != null) ? minhaIdentidade.teamID : 1;
         if (minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval)
             exigeGuerraDeclarada = true;
-        exigeHostilidadeNaBuscaAutomatica = !exigeGuerraDeclarada && !EhUnidadeAereaParaEngajamento();
 
         souAntiAereo = DeterminarSouAntiAereo();
 
@@ -342,6 +370,7 @@ public class ControleTorreta : MonoBehaviour
         CriarVisualizadorAlcance();
         GarantirLocaisDeTiro();
         GarantirCanosDaTorreta();
+        CapturarOffsetAzimuteCano();
         if (canosDaTorreta != null && !rotacaoInicialCanosCapturada)
         {
             rotacaoInicialCanos = canosDaTorreta.localRotation;
@@ -356,6 +385,28 @@ public class ControleTorreta : MonoBehaviour
                     PoolDeObjetosCombate.Prewarm(municoesPorCano[_pi], 4);
     }
     #endregion
+
+    private void CapturarOffsetAzimuteCano()
+    {
+        offsetAzimuteCano = 0f;
+        if (pecaQueGira == null || locaisDoTiro == null) return;
+
+        for (int i = 0; i < locaisDoTiro.Length; i++)
+        {
+            Transform localDoTiro = locaisDoTiro[i];
+            if (localDoTiro == null) continue;
+
+            // Nem todos os modelos importam o cano apontando no eixo local +Z.
+            // Compense a orientação authored do primeiro muzzle para que a mira
+            // não vire 90/180 graus para o lado ao calcular o yaw do pivô.
+            Vector3 direcaoLocal = pecaQueGira.InverseTransformDirection(localDoTiro.forward);
+            direcaoLocal.y = 0f;
+            if (direcaoLocal.sqrMagnitude <= 0.0001f) continue;
+
+            offsetAzimuteCano = Mathf.Atan2(direcaoLocal.x, direcaoLocal.z) * Mathf.Rad2Deg;
+            return;
+        }
+    }
 
     void GarantirPivoSeguroDaMalha()
     {
@@ -425,7 +476,12 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy && !interceptarMisseis && !interceptarTorpedos)
+        bool prioridadePendenteParaAlvoAtual = !modoManualNave
+            && alvoPrioritario != null
+            && ResolverTransformAlvo(alvoPrioritario) != alvoAtual;
+        if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy
+            && !interceptarMisseis && !interceptarTorpedos
+            && !prioridadePendenteParaAlvoAtual)
         {
             return;
         }
@@ -459,6 +515,12 @@ public class ControleTorreta : MonoBehaviour
                 SetarAlvo(alvoPrioritario);
                 return;
             }
+
+            // Uma ordem explícita válida mantém a torreta comprometida com o
+            // alvo da missão. Se ele ainda estiver fora do alcance, aguarda a
+            // aproximação em vez de substituí-lo por uma aquisição automática.
+            SetarAlvo(null);
+            return;
         }
 
         if (DeveAdiarNovaBusca())
@@ -544,11 +606,6 @@ public class ControleTorreta : MonoBehaviour
                     {
                         ehInimigo = true;
                     }
-                }
-                else if (!NavioExigeGuerraDeclarada() && !exigeHostilidadeNaBuscaAutomatica
-                    && (TagSafe.Matches(hit, etiquetaAlvo) || TagSafe.Matches(hit, "Inimigo")))
-                {
-                    ehInimigo = true;
                 }
             }
 
@@ -1062,7 +1119,7 @@ public class ControleTorreta : MonoBehaviour
                 Transform referencia = (pecaQueGira.parent != null) ? pecaQueGira.parent : pecaQueGira;
                 Vector3 localDir = referencia.InverseTransformDirection(direcao);
 
-                anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg;
+                anguloY = Mathf.Atan2(localDir.x, localDir.z) * Mathf.Rad2Deg - offsetAzimuteCano;
                 if (limitarRotacao) anguloY = Mathf.Clamp(anguloY, anguloMinimo, anguloMaximo);
 
                 float distanciaPlana = new Vector2(localDir.x, localDir.z).magnitude;
@@ -1076,8 +1133,9 @@ public class ControleTorreta : MonoBehaviour
                     Quaternion rotacaoBase = Quaternion.Euler(rotacaoXOriginal, anguloY, rotacaoZOriginal);
                     pecaQueGira.localRotation = Quaternion.Lerp(pecaQueGira.localRotation, rotacaoBase, Time.deltaTime * velocidadeGiro);
 
+                    float pitchCanos = inverterSentidoPitch ? -giroPitchAlvo : giroPitchAlvo;
                     Quaternion rotacaoCanos = (rotacaoInicialCanosCapturada ? rotacaoInicialCanos : Quaternion.identity)
-                        * Quaternion.Euler(giroPitchAlvo, 0f, 0f);
+                        * Quaternion.Euler(pitchCanos, 0f, 0f);
                     canosDaTorreta.localRotation = Quaternion.Lerp(canosDaTorreta.localRotation, rotacaoCanos, Time.deltaTime * velocidadeGiro);
                 }
                 else if (canosDaTorreta == null || canosDaTorreta == pecaParaDesdobrar)
@@ -1222,10 +1280,12 @@ public class ControleTorreta : MonoBehaviour
         // So use o ponto do lancador quando ele realmente sera o proximo a
         // disparar. Depois de esgotar os misseis, a torre ainda pode usar o
         // canhao sem ficar presa ao alinhamento de um lancador vazio.
-        bool proximoDisparoEhMissel = misselPrefab != null
-            && misseisAtuais > 0
-            && !estaRecarregandoMisseis
-            && cooldownMissel <= 0f;
+        bool proximoDisparoEhMissel = armamentoSelecionadoHud == ArmamentoHud.Missil
+            ? misselPrefab != null
+            : armamentoSelecionadoHud == ArmamentoHud.Canhao
+                ? false
+                : misselPrefab != null && misseisAtuais > 0
+                    && !estaRecarregandoMisseis && cooldownMissel <= 0f;
         Transform[] saidas = proximoDisparoEhMissel && locaisDoMissel != null && locaisDoMissel.Length > 0
             ? locaisDoMissel
             : locaisDoTiro;
@@ -1273,7 +1333,9 @@ public class ControleTorreta : MonoBehaviour
         bool alvoEhTorpedo = ObterEhTorpedoComCache(alvoAtual);
 
         // DISPARO DE MÍSSIL (inclui interceptação de torpedos)
-        if (misselPrefab != null && cooldownMissel <= 0f && !estaRecarregandoMisseis && misseisAtuais > 0 && alvoAtual != null)
+        if (armamentoSelecionadoHud != ArmamentoHud.Canhao
+            && misselPrefab != null && cooldownMissel <= 0f && !estaRecarregandoMisseis
+            && misseisAtuais > 0 && alvoAtual != null)
         {
             bool podeUsarMissil = !alvoEhMissil && !alvoEhTorpedo;
             bool interceptandoAmeaça = (alvoEhMissil && usarMisselParaInterceptar) || alvoEhTorpedo;
@@ -1294,6 +1356,10 @@ public class ControleTorreta : MonoBehaviour
                 if (podeUsarMissil) return;
             }
         }
+
+        // Em escolha explícita não troque para outra arma se o míssil estiver
+        // vazio, recarregando ou se o alvo não for compatível.
+        if (armamentoSelecionadoHud == ArmamentoHud.Missil) return;
 
         // DISPARO PADRÃO
         GarantirLocaisDeTiro();

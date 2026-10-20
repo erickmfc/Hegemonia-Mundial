@@ -16,6 +16,9 @@ O alvo pode ser atribuído diretamente no perfil da IA. Se ficar em zero, IA03 u
 
 - Decisões usam `IIAUpdateModule` e o scheduler de BrainMaster; não existe `Update` próprio nem busca global feita pela IA03. Os atrasos iniciais variam 0,5 s por teamId (até 7 s para 15 países). O `IA_WorldState` reutiliza seu registro central e só usa busca global como fallback quando o registro está vazio, limitada a uma tentativa por 20 s.
 - As listas de forças vêm do `IA_WorldState` e do registro central já usado por BrainMaster. Ordens passam pela `IA_CommandQueue` existente e são ignoradas em `ShadowReadOnly`.
+- A elegibilidade ofensiva considera munição e armamento compatíveis com o domínio do alvo. Uma `TorretaAntiaerea` passiva, mas armada e configurada, qualifica contra alvo aéreo porque a ordem explícita do BrainMaster ativa a AA antes do combate; ela não qualifica contra alvo terrestre. Torpedos de lançadores navais e submarinos não qualificam a unidade contra alvos aéreos. O BrainMaster arma o modo automático do submarino e tenta disparar seu torpedo se o alvo de superfície estiver dentro de `alcanceTorpedos`; fora dele, a aquisição automática reutiliza o scan temporizado existente, filtrado para navios/submarinos em guerra formal e no alcance do torpedo. Tubos ocupados, projétil sem componente `Torpedo` ou munição esgotada não tornam o submarino elegível.
+- Ordens de ataque com alvo identificado dos diretores tático, aéreo e naval carregam a equipe observada e revalidam guerra formal/cessar-fogo no despacho. Fallbacks legados por coordenada sem identidade continuam preservados; a exceção de ataque estratégico da IA03 carrega a equipe rival explicitamente e usa o mesmo gate.
+- Uma missão `Atacar` sem condição de destruir alvo específico pode avançar até a posição do Creaty quando não há alvo visível. Esse payload identifica a equipe rival e só é despachado com guerra formal ativa e sem cessar-fogo. Missões cuja condição exige `DestruirAlvo` continuam bloqueadas sem uma transformação observada.
 - Pesos nacionais e metas de força alimentam os diretores já existentes de economia, mercado, diplomacia, produção, marinha e aviação. O BrainMaster recalcula seu plano a cada 4 s; depois desse cálculo, reaplica as metas militares do perfil IA03. IA03 não altera saldos nem cria recursos.
 - `GestorEconomiaIA03` lê saldo, comida, petróleo, energia e déficits do governo e ajusta pesos dos diretores de BrainMaster para proteger reservas e estoques essenciais.
 - Relações, notícias e propostas são lidas ou registradas em `SistemaGovernoMundial`. O adaptador IA03 envia propostas de cessar-fogo, que o serviço existente pode aceitar ou recusar.
@@ -25,6 +28,14 @@ O alvo pode ser atribuído diretamente no perfil da IA. Se ficar em zero, IA03 u
 - Creatys registram-se no ciclo de vida do componente. O registro bloqueia IDs duplicados até que reste apenas uma instância.
 - Missões pré-configuradas entram numa fila por prioridade. Sistemas de incidentes podem chamar `SolicitarMissaoEstrategica` para colocar uma missão urgente à frente da fila.
 - Na guerra total, o efetivo máximo de uma missão é configurável em `PerfilPaisSO.ContingenteMaximoPorMissaoN1` (0,5 por padrão), além do teto geral de mobilização (0,9 por padrão) e da reserva defensiva. O restante não é anexado a esse grupo de ataque.
+
+## Petróleo refinado e combustível operacional
+
+O petróleo entregue por poços/portos permanece como petróleo bruto no armazém nacional. A cadeia reutiliza `SistemaIndustrialNacional`: as receitas `refino_diesel`, `refino_combustivel_aviacao` e `refino_combustivel_naval` consomem bruto, custo e energia e registram o produto refinado na conclusão. Unidades terrestres, aéreas e navais são abastecidas com estoques nacionais separados por país e classe; petróleo bruto não substitui combustível refinado no abastecimento.
+
+`IA_EconomyDirector` prioriza o primeiro combustível militar abaixo da reserva de 1.500 unidades durante guerra ou perfil militarista. `IA03.GestorEconomiaIA03` marca prontidão operacional baixa quando falta a reserva do combustível correspondente a um domínio presente no snapshot da força, alimentando o bloqueio econômico já usado antes de N1. O mercado nacional identifica os combustíveis como itens próprios. Uma compra internacional reserva saldo/estoque na transação e entra no fluxo logístico marítimo existente; o estoque do comprador só aumenta na entrega, não na ordem de compra.
+
+Validação no Editor em 2026-10-09: recompilação Unity concluída sem erros; `FuelNationalInventoryPlayModeTests` passou 7/7, incluindo receita de refino até abastecimento, isolamento de estoque por equipe/classe, separação bruto/refinado no save, carga inicial paga de caminhão-tanque, prontidão IA03, escolha do item de mercado pela IA e compra de diesel que aguarda embarque. Esses testes cobrem contratos isolados; não afirmam uma campanha naval longa nem a chegada automática de importação sem transporte/porto/logística.
 
 ## Relatórios e escalada
 
@@ -486,3 +497,48 @@ Esta continuação alterou `Assets/scripts/IA/BrainMaster/IA_WorldState.cs`, `As
 #### Próxima etapa recomendada
 
 Configurar manualmente os 26 Creatys, então rodar o cenário existente de dois países em PlayMode, primeiro paz/N4 e depois N3/N2/N1. Integrar um adaptador mínimo ao sistema oficial que conclui batalhas com vencedor. Só então executar campanha longa e medir A/B real com e sem IA03. Operações com porta-aviões, invasão anfíbia e diplomacia presidencial continuam fora desta etapa.
+
+### Prontidão para escalada automática N2 → N1 (2026-10-09)
+
+O primeiro ponto de escalada automática após a avaliação do conflito limitado usava apenas duração, ausência de cessar-fogo pendente e agressividade do perfil. Não consultava os dados nacionais nem verificava se a regra de mobilização N1 permitia empregar força. Agora esse ponto consulta o resumo já produzido pelo `GestorEconomiaIA03`, os dados de mobilização do Governo e o snapshot de forças do `IA_BrainMaster`: dados econômicos indisponíveis, reserva abaixo da meta, estoque essencial baixo/em déficit, ausência de manpower mobilizável, fábrica ausente, falta de ativo/infraestrutura no domínio claramente prioritário do perfil ou contingente N1 calculado igual a zero mantêm o país em N2. `UltimaDecisao` registra o motivo e a verificação se repete nos ticks seguintes. A declaração formal de guerra continua chegando a N2 pelo caminho diplomático existente.
+
+Domínio prioritário é interpretado quando uma preferência do perfil é pelo menos 0,5 e estritamente superior às demais. Para terra exige unidade terrestre e quartel; para ar exige aeronave pronta e aeroporto militar; para mar exige a quantidade mínima de escoltas do perfil e base naval. Esta regra usa os contadores que já existem no `IA_ForceSnapshot`; eles confirmam presença/contagem, não condição operacional detalhada de cada instalação.
+
+O resumo econômico também propaga `deficitEnergia` para `EstoqueEssencialBaixo`, junto aos déficits de comida/petróleo e aos pisos de estoque existentes. Isso mantém a checagem de energia no mesmo sinal usado pelos pesos econômicos e pela decisão de escalada.
+
+| Validação no Editor conectado | Resultado |
+|---|---|
+| Recompilação forçada do Unity 6.2.15f1 | concluída; `failed=false`, `errors=[]`, `compilationFailed=false` |
+| `IA03AvaliadorMissaoEditModeTests` | 45/45 passaram; inclui bloqueios por reserva, fábrica, manpower, domínio prioritário e contingente, escalada quando os requisitos são atendidos e propagação de déficit de energia |
+| Filtro amplo `IA03` em EditMode | 63/63 passaram em 1,32 s |
+| `N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup` | 1/1 passou em PlayMode (41,73 s); fixture usa unidades reais da cena de validação e cobre movimento, disparos múltiplos, destruição e limpeza |
+| `CombatEndToEndPlayModeTests` | 2/2 passaram em PlayMode (2,08 s) |
+
+Este PlayMode é uma regressão de cenário isolado, não uma campanha manual N2. O teste não prova duração longa nem todas as regras da campanha. A implementação não altera a torreta, seleção de alvo, autorização, reservas, dano/autoria ou liberação já cobertas pelo teste N2.
+
+### Revalidação do estado de integração (2026-10-17)
+
+Revisão estática do código e das cenas atuais, sem abrir o Unity ou executar testes nesta rodada:
+
+- **Manpower:** `SistemaGovernoMundial.PodeMobilizarEfetivo` e `TentarMobilizarEfetivo` respeitam a reserva estratégica; IA03 usa o mesmo gate ao avaliar o efetivo N1. Há regressões EditMode e PlayMode para reserva, produção e mobilização. O achado antigo de consumo abaixo do piso não foi reproduzido por esta leitura estática.
+- **Ciclo de missão:** `OnDisable` e o caminho de `Tick` com `ativo == false` encerram a missão, liberam reservas e cancelam reposições. Há testes para expiração, falha terminal, cancelamento e limpeza. A conclusão real de uma campanha longa ainda não foi validada nesta rodada.
+- **Armas e alvo:** a capacidade ofensiva diferencia torpedos contra alvo naval e defesa antiaérea contra alvo aéreo. Uma AA configurada em postura passiva conta somente contra alvo aéreo porque a ordem explícita a ativa. Isso não substitui a validação de todos os prefabs de armamento.
+- **Ataque estratégico sem contato visível:** missões `Atacar` sem objetivo explícito `DestruirAlvo` podem usar a posição do Creaty; a ordem carrega a equipe rival e o despacho revalida guerra formal e cessar-fogo. Objetivos de destruição continuam exigindo um alvo observado. As novas regressões EditMode estão preparadas, ainda sem execução autorizada.
+- **Diplomacia:** `PodeEmitirMissaoOfensiva` exige nível N2/N1, guerra formal e ausência de cessar-fogo; `IA_BackendBridge` revalida a identidade atual do alvo e a autorização no despacho. Retaliações IA01/IA02 que já identificavam o `TeamId` do agressor agora usam ordem por coordenada com identidade e gate explícitos. O `IA_AirDirector` também preserva o `TeamId` quando a pressão vem de âncora/contato inimigo conhecido e envia essas ordens pelo mesmo gate; coordenadas de patrulha sem equipe continuam legadas e sem identidade diplomática, uma pendência delimitada. Há regressões para guerra ausente, cessar-fogo e mudança de proprietário do alvo.
+- **Rotas:** o achado anterior de que `ProximoPonto` ignorava filtros não corresponde mais ao código atual. `ProximoPontoCompativel` reutiliza o registro e revalida proprietário, alvo, nível, domínio, ativação e ID; existem regressões para avanço e destino incompatível. O relatório auxiliar antigo deve ser lido como histórico nesse ponto.
+- **Despacho modular sem fachada:** o cache de armamentos do BrainMaster agora inclui `ControleTorretaModular`. Quando a unidade não tem `ControleUnidade`, a ordem explícita ativa a torreta modular e mantém o alvo prioritário; módulos AA continuam sem receber prioridade terrestre. A regressão `BrainMasterArmaTorretaModularSemControleUnidade` passou 1/1 em EditMode nesta rodada.
+- **Defesa AA sem fachada:** o mesmo caminho de fallback agora inclui `TorretaAntiaerea` no cache e só a ativa quando a ordem identifica um alvo aéreo pela regra já existente do BrainMaster. Dois testes EditMode foram preparados para confirmar ativação contra alvo aéreo e postura passiva contra alvo terrestre; eles ainda não foram executados, pois a autorização mais recente foi limitada ao teste modular.
+
+#### Bloqueios de integração ainda confirmados
+
+- A cena canônica carregada por “Novo Jogo” (`Assets/_Recovery/cena19).unity`) contém um controlador IA01 e um IA02, mas nenhum BrainMaster, estrategista IA03 ou Creaty.
+- `Assets/Scenes/GlobalMapRTS.unity` contém dois BrainMasters, dois estrategistas IA03 e 60 Creatys identificados como `IA03-TEST-*`; não contém controladores IA01/IA02. É um piloto de duas equipes com conteúdo de teste, não a campanha canônica.
+- Não foi encontrada ponte de runtime entre `IA01BuildSlot`/`IA02BuildSlot` e `RegistroCreatysEstrategicos`. Portanto os slots de construção não alimentam automaticamente as missões IA03.
+- Não foi encontrado evento autoritativo de fim de batalha com vencedor/derrotado. O resultado de uma missão ofensiva é um sinal parcial e não deve ser apresentado como placar geral de batalhas.
+- Integrar IA03 à campanha exige definir perfil/identidade nacional e a autoridade de comando frente à IA01 ou IA02. Não houve alteração de cena nesta rodada por esse motivo.
+
+Nenhum profiling RX 580/16 GB foi feito nesta revalidação; desempenho de campanha com IA03 continua sem medida representativa. A última compilação/testes citada acima pertence à execução anterior, não a esta revisão estática.
+
+### Decisão de integração econômica (2026-10-18)
+
+Por decisão do usuário, IA03 e os sistemas econômicos/produção de IA01 e IA02 permanecem em stacks separados por enquanto. Não consolidar autoridade de produção nem redirecionar ordens econômicas entre esses sistemas sem nova solicitação. A próxima prioridade de integração é definir e validar a composição de campanha para IA03 sem substituir os controladores nacionais existentes; a cena canônica e o mapa piloto continuam com composições diferentes, e a configuração de cenas exige etapa própria e validação autorizada.

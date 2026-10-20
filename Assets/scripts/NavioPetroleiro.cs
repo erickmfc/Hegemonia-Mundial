@@ -18,8 +18,10 @@ public class NavioPetroleiro : ControleUnidade
 
     [Header("Carga")]
     public int petroleoCarregado = 0;
-    public int capacidadeMaxima = 5000;
-    public int taxaTransferencia = 1000; // Por segundo
+    [Tooltip("Carga 50x maior que a capacidade original de 5.000 unidades.")]
+    public int capacidadeMaxima = 250000;
+    [Tooltip("Transferencia escalada junto com a carga para encher o tanque no mesmo ciclo de 5 segundos.")]
+    public int taxaTransferencia = 50000; // Por segundo
 
     public enum EstadoPetroleiro
     {
@@ -53,10 +55,15 @@ public class NavioPetroleiro : ControleUnidade
     private bool possuiRotaAquatica;
     private bool fallbackAquaticoAtivo;
     private bool avisoFallbackAquaticoEmitido;
+    private TransporteMaritimoDistante transporteDistante;
+    private bool servicoLogisticoAtivo;
+    private float multiplicadorTransporteDistante = 1f;
 
     private float AplicarMultiplicadorComandoHud(float velocidadeBase)
     {
-        return Mathf.Max(0f, velocidadeBase) * MultiplicadorVelocidadeComandoHud;
+        return Mathf.Max(0f, velocidadeBase)
+            * MultiplicadorVelocidadeComandoHud
+            * multiplicadorTransporteDistante;
     }
 
     // Alvos
@@ -77,6 +84,7 @@ public class NavioPetroleiro : ControleUnidade
         {
             identidadeCache = GetComponentInParent<IdentidadeUnidade>();
         }
+        transporteDistante = new TransporteMaritimoDistante(transform);
     }
 
     protected override void Start()
@@ -131,6 +139,8 @@ public class NavioPetroleiro : ControleUnidade
 
     void Update()
     {
+        AtualizarTransporteDistante();
+
         // Máquina de Estados
         switch (estadoAtual)
         {
@@ -218,6 +228,12 @@ public class NavioPetroleiro : ControleUnidade
         // Só ativa se ambos existirem
         if (plataformaAlvo != null && pierAlvo != null)
         {
+            if (!servicoLogisticoAtivo)
+            {
+                servicoLogisticoAtivo = true;
+                transporteDistante?.IniciarCiclo();
+            }
+
             statusDebug = "Infraestrutura do time encontrada! Iniciando serviço de logística.";
             Debug.Log("[Navio Petroleiro] Plataforma e Pier do proprio time detectados! Saindo para trabalhar.");
             MudarEstado(EstadoPetroleiro.SAINDO_ESTALEIRO);
@@ -230,12 +246,76 @@ public class NavioPetroleiro : ControleUnidade
         }
     }
 
+    private void AtualizarTransporteDistante()
+    {
+        bool emTransito = estadoAtual == EstadoPetroleiro.INDO_PLATAFORMA
+            || estadoAtual == EstadoPetroleiro.INDO_PIER;
+        OrdemMovimento ordem = OrdemMovimentoAtual;
+        bool possuiOrdemGuiada = ordem != null
+            && !ordem.Terminada
+            && ordem.Dono != nameof(NavioPetroleiro);
+
+        Vector3 destino;
+        bool possuiDestino = TentarObterDestinoDeTransporte(out destino);
+        multiplicadorTransporteDistante = transporteDistante != null
+            ? transporteDistante.Atualizar(
+                servicoLogisticoAtivo,
+                !possuiOrdemGuiada,
+                emTransito,
+                possuiDestino,
+                destino)
+            : 1f;
+    }
+
+    private bool TentarObterDestinoDeTransporte(out Vector3 destino)
+    {
+        if (possuiRotaAquatica)
+        {
+            destino = destinoRotaAquatica;
+            return true;
+        }
+
+        Transform ponto = null;
+        switch (estadoAtual)
+        {
+            case EstadoPetroleiro.SAINDO_ESTALEIRO:
+                if (pontoDeSaidaEstaleiro.HasValue)
+                {
+                    destino = pontoDeSaidaEstaleiro.Value;
+                    return true;
+                }
+                break;
+            case EstadoPetroleiro.ACOPLANDO_PLATAFORMA:
+            case EstadoPetroleiro.CARREGANDO:
+                ponto = plataformaAlvo != null ? plataformaAlvo.pontoAbastecer : null;
+                break;
+            case EstadoPetroleiro.SAINDO_PLATAFORMA:
+                ponto = plataformaAlvo != null ? plataformaAlvo.pontoSaida : null;
+                break;
+            case EstadoPetroleiro.ACOPLANDO_PIER:
+            case EstadoPetroleiro.DESCARREGANDO:
+                ponto = pierAlvo != null ? pierAlvo.Atraca_petro : null;
+                break;
+            case EstadoPetroleiro.RE_DO_PIER:
+                ponto = pierAlvo != null ? pierAlvo.saida_petro : null;
+                break;
+        }
+
+        destino = ponto != null ? ponto.position : transform.position;
+        return ponto != null;
+    }
+
     // --- LÓGICA DE TRANSIÇÃO DE ESTADOS ---
 
     void MudarEstado(EstadoPetroleiro novo)
     {
         EstadoPetroleiro anterior = estadoAtual;
         estadoAtual = novo;
+        AudioRuntime.DefinirAudioNaval(
+            gameObject,
+            servicoLogisticoAtivo
+                && novo != EstadoPetroleiro.NASCENDO
+                && novo != EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
         timerEstado = 0f;
         statusDebug = "Iniciando: " + novo.ToString();
         Debug.Log($"[Navio] Mudando para: {novo}");
@@ -551,9 +631,15 @@ public class NavioPetroleiro : ControleUnidade
 
     void ExecutarOperacaoLogistica(bool carregando, EstadoPetroleiro proximo)
     {
-        timerEstado += Time.deltaTime;
-        
-        int qtdPorFrame = Mathf.Max(1, Mathf.RoundToInt(taxaTransferencia * Time.deltaTime));
+        ExecutarOperacaoLogistica(Time.deltaTime, carregando, proximo);
+    }
+
+    private void ExecutarOperacaoLogistica(float deltaTime, bool carregando, EstadoPetroleiro proximo)
+    {
+        float deltaSeguro = Mathf.Max(0f, deltaTime);
+        timerEstado += deltaSeguro;
+
+        int qtdPorFrame = Mathf.Max(1, Mathf.RoundToInt(taxaTransferencia * deltaSeguro));
         
         // Define o tempo máximo de operação (usa a variável do inspector ou um mínimo de 15s se a do inspector for muito curta, para dar tempo de carregar)
         // Na verdade, vamos respeitar o Inspector E a capacidade.

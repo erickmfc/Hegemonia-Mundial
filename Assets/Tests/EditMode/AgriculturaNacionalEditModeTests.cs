@@ -5,6 +5,39 @@ using System.Reflection;
 public sealed class AgriculturaNacionalEditModeTests
 {
     [Test]
+    public void CobrancaFixaConverteMilhoesParaDinheiroDoJogo()
+    {
+        Type tipo = Type.GetType("AgriculturaNacional, Assembly-CSharp");
+        Assert.That(tipo, Is.Not.Null);
+        MethodInfo metodo = tipo.GetMethod("CalcularCobrancaFixaSemanal", BindingFlags.Public | BindingFlags.Static);
+        Assert.That(metodo, Is.Not.Null);
+        Assert.That(Convert.ToInt64(metodo.Invoke(null, new object[] { 100 })), Is.EqualTo(100_000_000L));
+        Assert.That(Convert.ToInt64(metodo.Invoke(null, new object[] { 250 })), Is.EqualTo(250_000_000L));
+        Assert.That(Convert.ToInt64(metodo.Invoke(null, new object[] { -1 })), Is.EqualTo(100_000_000L));
+    }
+
+    [Test]
+    public void BonusFixoRespeitaValorPagoEInterrompeQuandoCobrancaFalha()
+    {
+        Type tipo = Type.GetType("AgriculturaNacional, Assembly-CSharp");
+        Assert.That(tipo, Is.Not.Null);
+        MethodInfo estimar = tipo.GetMethod("CalcularBonusInvestimentoFixo", BindingFlags.Public | BindingFlags.Static);
+        MethodInfo aplicar = tipo.GetMethod("CalcularBonusAplicadoInvestimentoFixo", BindingFlags.Public | BindingFlags.Static);
+        Assert.That(estimar, Is.Not.Null);
+        Assert.That(aplicar, Is.Not.Null);
+
+        float bonusBaixo = Convert.ToSingle(estimar.Invoke(null, new object[] { 100 }));
+        float bonusAlto = Convert.ToSingle(estimar.Invoke(null, new object[] { 1000 }));
+        Assert.That(bonusBaixo, Is.GreaterThan(0f));
+        Assert.That(bonusAlto, Is.GreaterThan(bonusBaixo));
+        Assert.That(Convert.ToSingle(aplicar.Invoke(null, new object[] { 1000, 0L, false })), Is.Zero,
+            "Não deve haver bônus antes de uma cobrança efetivamente paga.");
+        Assert.That(Convert.ToSingle(aplicar.Invoke(null, new object[] { 1000, 1_000_000_000L, true })), Is.Zero,
+            "Uma cobrança recusada não deve gerar bônus.");
+        Assert.That(Convert.ToSingle(aplicar.Invoke(null, new object[] { 1000, 1_000_000_000L, false })), Is.EqualTo(bonusAlto).Within(0.0001f));
+    }
+
+    [Test]
     public void ProducaoDiariaDiminuiComEscassezHidrica()
     {
         float normal = Calcular(100f, 1f, 1f, 1f, 1f, 1f, 1f);
