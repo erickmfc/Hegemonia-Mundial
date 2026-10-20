@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="53" result="Passed" total="53" passed="53" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 20:55:28Z" end-time="2026-10-11 20:55:29Z" duration="0,7554063">
+  <test-suite type="TestSuite" id="1508" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="275" result="Passed" start-time="2026-10-11 20:55:28Z" end-time="2026-10-11 20:55:29Z" duration="0.755406" total="53" passed="53" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1500" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="258" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.659048" total="53" passed="53" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1328" name="IA03AvaliadorMissaoEditModeTests" fullname="IA03AvaliadorMissaoEditModeTests" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="53" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.650671" total="53" passed="53" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1342" name="AlteracaoDeTeamIdNotificadaReconstruiSnapshotDoBrainMaster" fullname="IA03AvaliadorMissaoEditModeTests.AlteracaoDeTeamIdNotificadaReconstruiSnapshotDoBrainMaster" methodname="AlteracaoDeTeamIdNotificadaReconstruiSnapshotDoBrainMaster" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="792306929" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.019696" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1347" name="AvaliacaoDeConflitoLimitadoEsperaOTempoMinimoConfigurado" fullname="IA03AvaliadorMissaoEditModeTests.AvaliacaoDeConflitoLimitadoEsperaOTempoMinimoConfigurado" methodname="AvaliacaoDeConflitoLimitadoEsperaOTempoMinimoConfigurado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1898642109" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.006386" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1386" name="BrainMasterNaoSubstituiOrdemDaMissaoIA03AposConcluirMovimento" fullname="IA03AvaliadorMissaoEditModeTests.BrainMasterNaoSubstituiOrdemDaMissaoIA03AposConcluirMovimento" methodname="BrainMasterNaoSubstituiOrdemDaMissaoIA03AposConcluirMovimento" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1374714443" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.008296" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1338" name="CapturaDeTerritorioConcluiAMissao" fullname="IA03AvaliadorMissaoEditModeTests.CapturaDeTerritorioConcluiAMissao" methodname="CapturaDeTerritorioConcluiAMissao" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1635230747" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002480" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1329" name="ChegadaAoDestinoConcluiAMissao" fullname="IA03AvaliadorMissaoEditModeTests.ChegadaAoDestinoConcluiAMissao" methodname="ChegadaAoDestinoConcluiAMissao" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1410707219" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.000793" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1336" name="CicloForcadoDeDebugPercorrePazN4N3N2N1" fullname="IA03AvaliadorMissaoEditModeTests.CicloForcadoDeDebugPercorrePazN4N3N2N1" methodname="CicloForcadoDeDebugPercorrePazN4N3N2N1" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="753652761" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.004255" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1379" name="ComponenteDesativadoIgnoraTickDiretoDoScheduler" fullname="IA03AvaliadorMissaoEditModeTests.ComponenteDesativadoIgnoraTickDiretoDoScheduler" methodname="ComponenteDesativadoIgnoraTickDiretoDoScheduler" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="297043674" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002477" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1344" name="ConfirmacaoExternaEsperaOHookConfigurado" fullname="IA03AvaliadorMissaoEditModeTests.ConfirmacaoExternaEsperaOHookConfigurado" methodname="ConfirmacaoExternaEsperaOHookConfigurado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="2129598599" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002555" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1370" name="DefasagemInicialDistribuiQuinzePaisEScalonados" fullname="IA03AvaliadorMissaoEditModeTests.DefasagemInicialDistribuiQuinzePaisEScalonados" methodname="DefasagemInicialDistribuiQuinzePaisEScalonados" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="939827151" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003044" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1378" name="DesativarIA03NoProximoTickLiberaMissaoEPreservaOrdemExterna" fullname="IA03AvaliadorMissaoEditModeTests.DesativarIA03NoProximoTickLiberaMissaoEPreservaOrdemExterna" methodname="DesativarIA03NoProximoTickLiberaMissaoEPreservaOrdemExterna" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1942986923" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.247603" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1337" name="DestruicaoDoAlvoExigeConfirmacaoDoProdutorDeCombate" fullname="IA03AvaliadorMissaoEditModeTests.DestruicaoDoAlvoExigeConfirmacaoDoProdutorDeCombate" methodname="DestruicaoDoAlvoExigeConfirmacaoDoProdutorDeCombate" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1770396522" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001835" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1376" name="EncerrarMissaoLiberaCreatyEGrupoReservado" fullname="IA03AvaliadorMissaoEditModeTests.EncerrarMissaoLiberaCreatyEGrupoReservado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.017078" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1372" name="EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Sucesso&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Sucesso&quot;)" methodname="EncerrarMissaoLiberaCreatyEGrupoReservado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1763640672" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.004749" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1373" name="EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Fracasso&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Fracasso&quot;)" methodname="EncerrarMissaoLiberaCreatyEGrupoReservado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="847727319" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002454" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1374" name="EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Cancelada&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Cancelada&quot;)" methodname="EncerrarMissaoLiberaCreatyEGrupoReservado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="501374451" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002325" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1375" name="EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Expirada&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.EncerrarMissaoLiberaCreatyEGrupoReservado(&quot;Expirada&quot;)" methodname="EncerrarMissaoLiberaCreatyEGrupoReservado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1195692271" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002180" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1348" name="EscaladaAutomaticaN1ExigeEconomiaDisponivelEContingenteMobilizavel" fullname="IA03AvaliadorMissaoEditModeTests.EscaladaAutomaticaN1ExigeEconomiaDisponivelEContingenteMobilizavel" methodname="EscaladaAutomaticaN1ExigeEconomiaDisponivelEContingenteMobilizavel" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1282106477" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.006763" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1382" name="FalhaDeDisponibilidadeSemPerdaMilitarNaoContaBatalhaPerdida" fullname="IA03AvaliadorMissaoEditModeTests.FalhaDeDisponibilidadeSemPerdaMilitarNaoContaBatalhaPerdida" methodname="FalhaDeDisponibilidadeSemPerdaMilitarNaoContaBatalhaPerdida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1886246590" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003746" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1345" name="FalhasObservadasSaoDiferentesDeExpiracao" fullname="IA03AvaliadorMissaoEditModeTests.FalhasObservadasSaoDiferentesDeExpiracao" methodname="FalhasObservadasSaoDiferentesDeExpiracao" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="716079008" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002121" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1381" name="GrupoIA03NaoReservaUnidadeTerrestreSemCombustivelOperacional" fullname="IA03AvaliadorMissaoEditModeTests.GrupoIA03NaoReservaUnidadeTerrestreSemCombustivelOperacional" methodname="GrupoIA03NaoReservaUnidadeTerrestreSemCombustivelOperacional" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="395707603" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.009371" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1358" name="IA01EIA02NaoReativamAeroportoSemEnergiaAoProduzirCaca" fullname="IA03AvaliadorMissaoEditModeTests.IA01EIA02NaoReativamAeroportoSemEnergiaAoProduzirCaca" methodname="IA01EIA02NaoReativamAeroportoSemEnergiaAoProduzirCaca" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="970076215" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.014610" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1369" name="MetasMilitaresDoPerfilPodemSerReaplicadasAposAlteracaoDasMetas" fullname="IA03AvaliadorMissaoEditModeTests.MetasMilitaresDoPerfilPodemSerReaplicadasAposAlteracaoDasMetas" methodname="MetasMilitaresDoPerfilPodemSerReaplicadasAposAlteracaoDasMetas" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1389255561" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002163" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1371" name="MissaoN4NaoAceitaAtaqueInvasaoOuTipoCreatyN1" fullname="IA03AvaliadorMissaoEditModeTests.MissaoN4NaoAceitaAtaqueInvasaoOuTipoCreatyN1" methodname="MissaoN4NaoAceitaAtaqueInvasaoOuTipoCreatyN1" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1526633580" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002577" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1351" name="MissaoOfensivaN2EN1AguardaProntidaoEconomica" fullname="IA03AvaliadorMissaoEditModeTests.MissaoOfensivaN2EN1AguardaProntidaoEconomica" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.011304" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1349" name="MissaoOfensivaN2EN1AguardaProntidaoEconomica(&quot;ConflitoLimitado&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.MissaoOfensivaN2EN1AguardaProntidaoEconomica(&quot;ConflitoLimitado&quot;)" methodname="MissaoOfensivaN2EN1AguardaProntidaoEconomica" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1080959607" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.004305" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1350" name="MissaoOfensivaN2EN1AguardaProntidaoEconomica(&quot;GuerraTotal&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.MissaoOfensivaN2EN1AguardaProntidaoEconomica(&quot;GuerraTotal&quot;)" methodname="MissaoOfensivaN2EN1AguardaProntidaoEconomica" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="263134866" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001623" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1383" name="MissaoUrgenteFicaNoTopoEPreservaMissaoInterrompidaSemDuplicar" fullname="IA03AvaliadorMissaoEditModeTests.MissaoUrgenteFicaNoTopoEPreservaMissaoInterrompidaSemDuplicar" methodname="MissaoUrgenteFicaNoTopoEPreservaMissaoInterrompidaSemDuplicar" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="368924255" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.006228" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1368" name="MobilizacaoN1PreservaDefesaReservaERespeitaCapacidadeDoCreaty" fullname="IA03AvaliadorMissaoEditModeTests.MobilizacaoN1PreservaDefesaReservaERespeitaCapacidadeDoCreaty" methodname="MobilizacaoN1PreservaDefesaReservaERespeitaCapacidadeDoCreaty" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="464976765" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001688" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1357" name="PerfisIA03LegadosUsamDefaultDeReservaManpower" fullname="IA03AvaliadorMissaoEditModeTests.PerfisIA03LegadosUsamDefaultDeReservaManpower" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.008886" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1355" name="PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Valdoria.asset&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Valdoria.asset&quot;)" methodname="PerfisIA03LegadosUsamDefaultDeReservaManpower" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1124192750" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003503" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1356" name="PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Karsovia.asset&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Karsovia.asset&quot;)" methodname="PerfisIA03LegadosUsamDefaultDeReservaManpower" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="514627183" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.000735" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1339" name="PermanenciaConcluiEAbandonoDoPontoFalha" fullname="IA03AvaliadorMissaoEditModeTests.PermanenciaConcluiEAbandonoDoPontoFalha" methodname="PermanenciaConcluiEAbandonoDoPontoFalha" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="2096548885" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001631" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1340" name="PermanenciaFalhaQuandoGrupoSaiMesmoComOrdemConcluida" fullname="IA03AvaliadorMissaoEditModeTests.PermanenciaFalhaQuandoGrupoSaiMesmoComOrdemConcluida" methodname="PermanenciaFalhaQuandoGrupoSaiMesmoComOrdemConcluida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="2069522137" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003198" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1330" name="PrazoSemChegadaExpiraAMissao" fullname="IA03AvaliadorMissaoEditModeTests.PrazoSemChegadaExpiraAMissao" methodname="PrazoSemChegadaExpiraAMissao" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="566527308" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.000991" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1335" name="PrejuizoEstruturalContaApenasVidaRealmenteRemovida" fullname="IA03AvaliadorMissaoEditModeTests.PrejuizoEstruturalContaApenasVidaRealmenteRemovida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.006900" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1331" name="PrejuizoEstruturalContaApenasVidaRealmenteRemovida(25.0f,75.0f,25.0f)" fullname="IA03AvaliadorMissaoEditModeTests.PrejuizoEstruturalContaApenasVidaRealmenteRemovida(25.0f,75.0f,25.0f)" methodname="PrejuizoEstruturalContaApenasVidaRealmenteRemovida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1884476771" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001310" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1332" name="PrejuizoEstruturalContaApenasVidaRealmenteRemovida(100.0f,-90.0f,10.0f)" fullname="IA03AvaliadorMissaoEditModeTests.PrejuizoEstruturalContaApenasVidaRealmenteRemovida(100.0f,-90.0f,10.0f)" methodname="PrejuizoEstruturalContaApenasVidaRealmenteRemovida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="381232009" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.000275" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1333" name="PrejuizoEstruturalContaApenasVidaRealmenteRemovida(0.0f,0.0f,0.0f)" fullname="IA03AvaliadorMissaoEditModeTests.PrejuizoEstruturalContaApenasVidaRealmenteRemovida(0.0f,0.0f,0.0f)" methodname="PrejuizoEstruturalContaApenasVidaRealmenteRemovida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="278008015" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.000258" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1334" name="PrejuizoEstruturalContaApenasVidaRealmenteRemovida(-5.0f,45.0f,0.0f)" fullname="IA03AvaliadorMissaoEditModeTests.PrejuizoEstruturalContaApenasVidaRealmenteRemovida(-5.0f,45.0f,0.0f)" methodname="PrejuizoEstruturalContaApenasVidaRealmenteRemovida" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1994624256" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.000258" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1366" name="ProducaoAereaIABloqueiaSpawnQuandoAeroportoEstaSemEnergia" fullname="IA03AvaliadorMissaoEditModeTests.ProducaoAereaIABloqueiaSpawnQuandoAeroportoEstaSemEnergia" methodname="ProducaoAereaIABloqueiaSpawnQuandoAeroportoEstaSemEnergia" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1047236643" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.008965" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1365" name="ProducaoAereaIAFalhaQuandoAeroportoBloqueiaSpawnEmAgua" fullname="IA03AvaliadorMissaoEditModeTests.ProducaoAereaIAFalhaQuandoAeroportoBloqueiaSpawnEmAgua" methodname="ProducaoAereaIAFalhaQuandoAeroportoBloqueiaSpawnEmAgua" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="571208653" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.021512" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Spawn aéreo bloqueado em água: IA03 airport spawn rejection test ((50000.0, 0.0, 50000.0)). Corrija o ponto Preparacao/pista da base.
+]]></output>
+        </test-case>
+        <test-case id="1367" name="ProducaoDeHelicopteroIAFalhaQuandoHeliportoEstaSemEnergia" fullname="IA03AvaliadorMissaoEditModeTests.ProducaoDeHelicopteroIAFalhaQuandoHeliportoEstaSemEnergia" methodname="ProducaoDeHelicopteroIAFalhaQuandoHeliportoEstaSemEnergia" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1560665848" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.005330" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1341" name="ProximoTrechoEsperaNovaChegadaAposConfirmacaoAnterior" fullname="IA03AvaliadorMissaoEditModeTests.ProximoTrechoEsperaNovaChegadaAposConfirmacaoAnterior" methodname="ProximoTrechoEsperaNovaChegadaAposConfirmacaoAnterior" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="150867789" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.023250" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1346" name="RegraDeDominioAvaliaFavoravelDesfavoravelEmpateEInsuficiencia" fullname="IA03AvaliadorMissaoEditModeTests.RegraDeDominioAvaliaFavoravelDesfavoravelEmpateEInsuficiencia" methodname="RegraDeDominioAvaliaFavoravelDesfavoravelEmpateEInsuficiencia" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1832391011" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001433" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1360" name="RelatorioDeCincoMinutosPreservaAcumuladoresETransportaDuracao" fullname="IA03AvaliadorMissaoEditModeTests.RelatorioDeCincoMinutosPreservaAcumuladoresETransportaDuracao" methodname="RelatorioDeCincoMinutosPreservaAcumuladoresETransportaDuracao" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="2114035364" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003392" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1359" name="RelatorioIgnoraRedeliveryDoMesmoEventoDeDestruicaoInclusiveOCusto" fullname="IA03AvaliadorMissaoEditModeTests.RelatorioIgnoraRedeliveryDoMesmoEventoDeDestruicaoInclusiveOCusto" methodname="RelatorioIgnoraRedeliveryDoMesmoEventoDeDestruicaoInclusiveOCusto" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="870805824" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001205" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1354" name="ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso" fullname="IA03AvaliadorMissaoEditModeTests.ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso" methodname="ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1334001716" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.008325" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1353" name="ResumoEconomicoIA03BloqueiaProntidaoQuandoTodoOTesouroEstaReservado" fullname="IA03AvaliadorMissaoEditModeTests.ResumoEconomicoIA03BloqueiaProntidaoQuandoTodoOTesouroEstaReservado" methodname="ResumoEconomicoIA03BloqueiaProntidaoQuandoTodoOTesouroEstaReservado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1350453076" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002787" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1352" name="ResumoEconomicoIA03ReconheceDeficitDeEnergiaComoEstoqueEssencialBaixo" fullname="IA03AvaliadorMissaoEditModeTests.ResumoEconomicoIA03ReconheceDeficitDeEnergiaComoEstoqueEssencialBaixo" methodname="ResumoEconomicoIA03ReconheceDeficitDeEnergiaComoEstoqueEssencialBaixo" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="284324227" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.002289" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1377" name="RotaNaoDespachaParaCreatyDeOutroNivel" fullname="IA03AvaliadorMissaoEditModeTests.RotaNaoDespachaParaCreatyDeOutroNivel" methodname="RotaNaoDespachaParaCreatyDeOutroNivel" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="304769763" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.005146" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1343" name="SobrevivenciaNoPrazoDependeDeTodoOGrupoOriginal" fullname="IA03AvaliadorMissaoEditModeTests.SobrevivenciaNoPrazoDependeDeTodoOGrupoOriginal" methodname="SobrevivenciaNoPrazoDependeDeTodoOGrupoOriginal" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1882443064" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.001373" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1380" name="SomenteResultadoTerminalDeMissaoOfensivaContaBatalha" fullname="IA03AvaliadorMissaoEditModeTests.SomenteResultadoTerminalDeMissaoOfensivaContaBatalha" methodname="SomenteResultadoTerminalDeMissaoOfensivaContaBatalha" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="562649045" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003908" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1385" name="TermosTerritoriaisLegadosMantemCompatibilidadeDeSave" fullname="IA03AvaliadorMissaoEditModeTests.TermosTerritoriaisLegadosMantemCompatibilidadeDeSave" methodname="TermosTerritoriaisLegadosMantemCompatibilidadeDeSave" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1996611727" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003433" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1384" name="TimeoutRealExpiraMissaoELiberaFilaReservaECelulaDeGrupo" fullname="IA03AvaliadorMissaoEditModeTests.TimeoutRealExpiraMissaoELiberaFilaReservaECelulaDeGrupo" methodname="TimeoutRealExpiraMissaoELiberaFilaReservaECelulaDeGrupo" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="28194361" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.007900" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA03][TIMEOUT_PROBE][BEFORE_DEADLINE] Time.time=0,00 start=0,00 deadline=5,00 tick=4,95 remaining=0,05 result=EmAndamento orderStatus=Queued
+[IA03][TIMEOUT_PROBE][DEADLINE_EVALUATION] Time.time=0,00 deadline=5,00 previousTick=4,95 tick=5,05 elapsed=5,05 remaining=-0,05
+[IA03][TIMEOUT_PROBE][TERMINAL] tick=5,05 result=Expirada missionActive=False orderStatus=Cancelled group=0 unitsReserved=0 creatyReserved=0
+]]></output>
+        </test-case>
+        <test-suite type="ParameterizedMethod" id="1364" name="TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado" fullname="IA03AvaliadorMissaoEditModeTests.TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.030781" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1362" name="TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado(1,3)" fullname="IA03AvaliadorMissaoEditModeTests.TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado(1,3)" methodname="TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="41948831" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.020878" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1363" name="TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado(3,1)" fullname="IA03AvaliadorMissaoEditModeTests.TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado(3,1)" methodname="TorreAdquireInimigoSobRaizCompartilhadaSemMirarPropriaUnidadeOuAliado" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="1278575632" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.003378" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+        </test-suite>
+        <test-case id="1361" name="TorresEmPaisesSobUmaRaizCompartilhadaMantemAutoriaDeProjeteisEMisseis" fullname="IA03AvaliadorMissaoEditModeTests.TorresEmPaisesSobUmaRaizCompartilhadaMantemAutoriaDeProjeteisEMisseis" methodname="TorresEmPaisesSobUmaRaizCompartilhadaMantemAutoriaDeProjeteisEMisseis" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="593410704" result="Passed" start-time="2026-10-11 20:55:29Z" end-time="2026-10-11 20:55:29Z" duration="0.005779" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

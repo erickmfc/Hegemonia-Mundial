@@ -1,0 +1,50 @@
+{
+  "dateUtc": "2026-10-13T18:36:19Z",
+  "unityVersion": "6000.2.15f1",
+  "recompile": {
+    "status": "completed",
+    "failed": false,
+    "errors": []
+  },
+  "playModeTests": {
+    "filter": "ProductionGateMust",
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "results": [
+      {
+        "name": "GovernadorGameplayRTSPlayModeTests.ProductionGateMustIncludeAlreadyQueuedGroundOrders",
+        "status": "Passed",
+        "durationSeconds": 0.0811706,
+        "coverage": "central ground queue; total and vehicle category limits"
+      },
+      {
+        "name": "GovernadorGameplayRTSPlayModeTests.ProductionGateMustIncludeShipsAlreadyBuildingInShipyardSlots",
+        "status": "Passed",
+        "durationSeconds": 0.4015387,
+        "coverage": "occupied naval construction slot"
+      },
+      {
+        "name": "GovernadorGameplayRTSPlayModeTests.ProductionGateMustIncludeShipsWaitingInShipyardQueue",
+        "status": "Passed",
+        "durationSeconds": 0.2625922,
+        "coverage": "naval batch waiting queue"
+      },
+      {
+        "name": "GovernadorGameplayRTSPlayModeTests.ProductionGateMustSeeUnitRegisteredAfterCachedSnapshot",
+        "status": "Passed",
+        "durationSeconds": 0.0208916,
+        "coverage": "unit registered after previous periodic snapshot"
+      }
+    ]
+  },
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false
+  },
+  "limitations": [
+    "Controlled PlayMode fixtures; no long campaign or 15-country performance profile was run."
+  ]
+}

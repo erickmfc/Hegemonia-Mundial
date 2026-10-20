@@ -1,0 +1,24 @@
+{
+  "suite": "BrainMaster and connected production rollback regression",
+  "mode": "PlayMode",
+  "unityVersion": "6000.2.15f1",
+  "status": "completed",
+  "passed": 10,
+  "failed": 0,
+  "results": [
+    {"test":"BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder","status":"Passed","seconds":0.2138739},
+    {"test":"BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches","status":"Passed","seconds":26.203968},
+    {"test":"BrainMasterProductionRejectsMissingContextWithoutLeakingReservation","status":"Passed","seconds":0.2084876},
+    {"test":"BrainMasterProductionRejectsMissingWorldStateBeforeChargingOrQueuing","status":"Passed","seconds":0.6970711},
+    {"test":"NovaIAProductionWithoutOwnedAirportAndThrownInfrastructureFailureRefundAndRelease","status":"Passed","seconds":0.2374109},
+    {"test":"BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn","status":"Passed","seconds":0.2336494},
+    {"test":"BrainMasterProductionContinuesToNextPoweredAirport","status":"Passed","seconds":0.2054864},
+    {"test":"Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport","status":"Passed","seconds":0.1802007},
+    {"test":"FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable","status":"Passed","seconds":0.1916746},
+    {"test":"NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower","status":"Passed","seconds":0.5761212}
+  ],
+  "compile": {"failed":false,"errors":[]},
+  "editorAfterTests": {"status":"ready","playMode":"stopped","compilationFailed":false,"consoleErrors":0},
+  "diffCheck": "passed",
+  "limitation": "The before-acceptance exception path was directly reproduced and fixed. The accepted-then-throw branch is guarded by producer acceptance state and covered by normal naval production tests, but has not yet been forced as a runtime exception."
+}

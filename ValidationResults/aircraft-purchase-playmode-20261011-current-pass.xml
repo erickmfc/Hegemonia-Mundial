@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="13" result="Passed" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:45Z" duration="1,6599246">
+  <test-suite type="TestSuite" id="1163" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="129" result="Passed" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:45Z" duration="1.659925" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1159" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="129" result="Passed" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:45Z" duration="1.470498" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1005" name="AircraftPurchasePlayModeTests" fullname="AircraftPurchasePlayModeTests" classname="AircraftPurchasePlayModeTests" runstate="Runnable" testcasecount="13" result="Passed" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:45Z" duration="1.454372" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1018" name="BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn" fullname="AircraftPurchasePlayModeTests.BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn" methodname="BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="1794541774" result="Passed" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:44Z" duration="0.250252" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Spawn aéreo bloqueado em água: Test_RejectingAirport ((400.0, 0.0, 400.0)). Corrija o ponto Preparacao/pista da base.
+[Aeroporto] Spawn aéreo bloqueado em água: Test_NovaIA_RejectingAirport ((400.0, 0.0, 400.0)). Corrija o ponto Preparacao/pista da base.
+]]></output>
+        </test-case>
+        <test-case id="1017" name="BrainMasterProductionContinuesToNextPoweredAirport" fullname="AircraftPurchasePlayModeTests.BrainMasterProductionContinuesToNextPoweredAirport" methodname="BrainMasterProductionContinuesToNextPoweredAirport" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="1096272930" result="Passed" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:44Z" duration="0.056852" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+]]></output>
+        </test-case>
+        <test-case id="1006" name="Test1_LocalAirportPurchase_WithoutPower_DoesNotDebitOrSpawn_AndNotifies" fullname="AircraftPurchasePlayModeTests.Test1_LocalAirportPurchase_WithoutPower_DoesNotDebitOrSpawn_AndNotifies" methodname="Test1_LocalAirportPurchase_WithoutPower_DoesNotDebitOrSpawn_AndNotifies" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="344276157" result="Passed" start-time="2026-10-11 20:57:44Z" end-time="2026-10-11 20:57:45Z" duration="0.558437" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+]]></output>
+        </test-case>
+        <test-case id="1015" name="Test10_MenuConstruction_ZeroAviationFuelStillDeliversAircraftWithEmptyTank" fullname="AircraftPurchasePlayModeTests.Test10_MenuConstruction_ZeroAviationFuelStillDeliversAircraftWithEmptyTank" methodname="Test10_MenuConstruction_ZeroAviationFuelStillDeliversAircraftWithEmptyTank" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="666777612" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.140759" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+]]></output>
+        </test-case>
+        <test-case id="1016" name="Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport" fullname="AircraftPurchasePlayModeTests.Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport" methodname="Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="968713390" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.048992" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+governmentIsIsolated=True available=2 reserve=0 required=2 canMobilize=True
+marketDelivery=True airportCount=1 airplane=Test11_MarketDeliveryAircraft(Clone)
+]]></output>
+        </test-case>
+        <test-case id="1007" name="Test2_LocalAirportPurchase_InsufficientFunds_DoesNotDebitOrSpawn" fullname="AircraftPurchasePlayModeTests.Test2_LocalAirportPurchase_InsufficientFunds_DoesNotDebitOrSpawn" methodname="Test2_LocalAirportPurchase_InsufficientFunds_DoesNotDebitOrSpawn" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="642878807" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.032486" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+]]></output>
+        </test-case>
+        <test-case id="1008" name="Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns" fullname="AircraftPurchasePlayModeTests.Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns" methodname="Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="546827727" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.039882" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[TESTE 3 DIAGNOSTICO] semEnergiaAposRecalculo=False, semEnergiaAntesCompra=False, recursosPresentes=True, saldo=5000, governoOriginalPresente=True, manpowerOriginalT1=1, reservaOriginalT1=0, governoOriginalMobiliza2=False, governoIsoladoPresente=True, manpowerIsoladoT1=2, reservaIsoladaT1=0, governoIsoladoMobiliza2=True, efetivoPrefab=2, precheckAeroporto=True
+[TESTE 3 REGISTRO] Saldo Antes: 5000, Preco: 1500, Saldo Depois: 3500, Qtd Antes: 0, Qtd Depois: 1
+]]></output>
+        </test-case>
+        <test-case id="1009" name="Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn" fullname="AircraftPurchasePlayModeTests.Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn" methodname="Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="358439749" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.034191" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[TESTE 4 DIAGNOSTICO] governoIsolado=True, teamBase=1, manpower=2, reserva=0, efetivoNecessario=2, podeProduzir=True
+[Aeroporto] Spawn aéreo bloqueado em água: Test_Airport ((5000.0, 0.0, 5000.0)). Corrija o ponto Preparacao/pista da base.
+[TESTE 4 REGISTRO] Saldo Antes: 5000, Retorno ComprarAviao: False, Saldo Depois: 5000, Qtd Antes: 0, Qtd Depois: 0, Motivo: Spawn aereo bloqueado em agua.
+]]></output>
+        </test-case>
+        <test-case id="1010" name="Test5_MenuConstruction_AirportWithoutPower_BlocksPurchaseAndSpawn" fullname="AircraftPurchasePlayModeTests.Test5_MenuConstruction_AirportWithoutPower_BlocksPurchaseAndSpawn" methodname="Test5_MenuConstruction_AirportWithoutPower_BlocksPurchaseAndSpawn" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="940998995" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.040243" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+A base aerea de destino esta sem energia. A producao foi bloqueada.
+[TESTE 5 REGISTRO] MenuConstrucao sem energia: Saldo Antes: 5000, Saldo Depois: 5000, Qtd Antes: 0, Qtd Depois: 0
+]]></output>
+        </test-case>
+        <test-case id="1011" name="Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" fullname="AircraftPurchasePlayModeTests.Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" methodname="Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="1288769650" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.037385" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+]]></output>
+        </test-case>
+        <test-case id="1012" name="Test7_LocalAirportPurchase_InsufficientManpower_DoesNotDebitOrSpawn" fullname="AircraftPurchasePlayModeTests.Test7_LocalAirportPurchase_InsufficientManpower_DoesNotDebitOrSpawn" methodname="Test7_LocalAirportPurchase_InsufficientManpower_DoesNotDebitOrSpawn" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="1475075699" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.033400" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Produção de Test7_InsufficientManpowerAircraft aguardando efetivo disponível.
+]]></output>
+        </test-case>
+        <test-case id="1013" name="Test8_MenuConstruction_WithoutAirport_DoesNotDebitOrSpawn" fullname="AircraftPurchasePlayModeTests.Test8_MenuConstruction_WithoutAirport_DoesNotDebitOrSpawn" methodname="Test8_MenuConstruction_WithoutAirport_DoesNotDebitOrSpawn" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="1934917688" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.030816" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Bloqueado: voce precisa construir um AEROPORTO ou HELIPORTO primeiro para comprar aeronaves.
+]]></output>
+        </test-case>
+        <test-case id="1014" name="Test9_MenuConstruction_ValidPurchase_DebitsOnceAndRegistersPlayerAircraft" fullname="AircraftPurchasePlayModeTests.Test9_MenuConstruction_ValidPurchase_DebitsOnceAndRegistersPlayerAircraft" methodname="Test9_MenuConstruction_ValidPurchase_DebitsOnceAndRegistersPlayerAircraft" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="1726367975" result="Passed" start-time="2026-10-11 20:57:45Z" end-time="2026-10-11 20:57:45Z" duration="0.041029" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

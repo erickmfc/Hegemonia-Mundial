@@ -1,0 +1,100 @@
+{
+  "completedUtc": "2026-10-13T22:36:02Z",
+  "objective": "Revalidar a anotação sobre aeronave comprada por frete marítimo e fechar os dois riscos de limite e identidade da aeronave do jogador.",
+  "unity": {
+    "version": "6000.2.15f1",
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false,
+    "compilationFailed": false,
+    "consoleErrorsAtSampleUtc": 63,
+    "consoleWarningsAtSampleUtc": 4,
+    "consoleLogsAtSampleUtc": 14,
+    "latestErrorSample": [
+      "MDB_READERS_FULL: Environment maxreaders limit reached",
+      "Asset database transaction committed twice!",
+      "Assertion failed: errors == MDB_SUCCESS || errors == MDB_NOTFOUND"
+    ]
+  },
+  "annotationReview": {
+    "marketRoute": "SistemaMercadoGlobal.Comprar -> pedido logístico -> viagem do NavioCargaMercado -> SistemaLogisticaMercado.FinalizarPedido/EntregarEquipamento -> GerenciadorAeroporto.RegistrarAeronaveRecebida",
+    "conclusion": "O código atual já chama o registro local; o teste completo alcança e aprova todas as asserções de chegada, base e lista local. Não foi necessária nova alteração nesse fluxo.",
+    "assertions": [
+      "Compra rejeitada por saldo insuficiente sem débito, consumo de estoque, pedido, viagem ou spawn.",
+      "Compra válida paga produto e frete uma vez e inicia a viagem.",
+      "A carga aguarda destino quando não existe aeroporto comprador.",
+      "Save/restore retoma o pedido sem nova cobrança.",
+      "Após criar o aeroporto, a viagem termina e a aeronave recebe teamID comprador.",
+      "aeroportoOrigem e baseEstacionamentoAtual apontam para o aeroporto comprador.",
+      "Uma aeronave aparece exatamente uma vez no pátio/hangar; finalizar novamente não duplica nem paga de novo."
+    ]
+  },
+  "fixes": [
+    {
+      "issue": "Compra UH-60 bloqueava ao encontrar primeiro um aeroporto sem energia, ignorando heliporto válido.",
+      "change": "MenuConstrucao prioriza heliporto energizado para o UH-60 antes do fallback para aeroporto sem energia.",
+      "file": "Assets/scripts/Menus/MenuConstrucao.cs",
+      "regression": "CoastGuardHelicopterUsesPoweredHeliportWhenPlayerAirportsAreUnpowered",
+      "result": "Red confirmado antes da correção; passou após a correção."
+    },
+    {
+      "issue": "Botão de drone kamikaze do porta-aviões chamava ComprarAviao diretamente e ignorava o limite nacional.",
+      "change": "O botão usa TentarComprarAviaoComPagamento; o wrapper ficou protected para reutilização pelo porta-aviões.",
+      "files": [
+        "Assets/scripts/GerenciadorAeroporto.cs",
+        "Assets/scripts/GerenciadorPortaAvioes.cs"
+      ],
+      "regression": "CarrierDronePurchaseCannotBypassNationalAircraftLimit",
+      "result": "Red confirmado antes da correção; passou após a correção sem débito ou spawn acima do limite."
+    }
+  ],
+  "tests": [
+    {
+      "name": "InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "result": "Passed",
+      "count": "1/1",
+      "durationSeconds": 4.3397974,
+      "fullTrip": true
+    },
+    {
+      "name": "Test3b_LocalAirportPurchase_AtNationalAircraftLimit_IsRejectedWithoutDebitOrSpawn",
+      "result": "Passed",
+      "count": "1/1",
+      "durationSeconds": 0.5695664
+    },
+    {
+      "name": "PlayerAirportWithoutIdentityDoesNotInheritPrefabTeam",
+      "result": "Passed",
+      "count": "1/1",
+      "durationSeconds": 1.6502935
+    },
+    {
+      "name": "CoastGuardHelicopterUsesPoweredHeliportWhenPlayerAirportsAreUnpowered",
+      "result": "Passed",
+      "count": "1/1",
+      "durationSeconds": 0.6387689
+    },
+    {
+      "name": "CarrierDronePurchaseCannotBypassNationalAircraftLimit",
+      "result": "Passed",
+      "count": "1/1",
+      "durationSeconds": 0.570727
+    },
+    {
+      "name": "Test9_MenuConstruction_ValidPurchase_DebitsOnceAndRegistersPlayerAircraft",
+      "result": "Passed",
+      "count": "1/1",
+      "durationSeconds": 0.6207177
+    }
+  ],
+  "validation": {
+    "gitDiffCheck": "Passed; only CRLF to LF normalization warning for AircraftPurchasePlayModeTests.cs.",
+    "performanceProfile": "Not measured in this checkpoint.",
+    "editorMcpResponseDelay": "Unity test command responses arrived after roughly 1 to 2.5 minutes although reported test runtimes were 0.57 to 4.34 seconds; likely Editor/Asset Database tooling delay, cause unproven."
+  },
+  "pending": [
+    "Asset Database continua emitindo assertions MDB_READERS_FULL e commit duplo; causa ainda não demonstrada.",
+    "Não relacionar os erros LMDB a um defeito de gameplay sem nova evidência.",
+    "Comparação de FPS, CPU Main Thread, frame time e GC Alloc não executada."
+  ]
+}

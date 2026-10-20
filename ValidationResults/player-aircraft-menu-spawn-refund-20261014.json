@@ -1,0 +1,42 @@
+{
+  "checkpointUtc": "2026-10-14T01:56:18Z",
+  "unityVersion": "6000.2.15f1",
+  "test": {
+    "name": "Test9b_MenuConstruction_SpawnFailureRefundsMoneyAndPreservesManpower",
+    "mode": "PlayMode",
+    "status": "Passed",
+    "passed": 1,
+    "failed": 0,
+    "durationSeconds": 0.377595,
+    "entry": "MenuConstrucao.ConstruirItem",
+    "observedPath": "ConstruirItem -> ProduzirUnidadeAerea -> GerenciadorAeroporto.ComprarAviao -> ComprarAviaoImediato",
+    "expectedSpawnError": "[Aeroporto] Spawn aéreo bloqueado em água: Test_Airport ((5000.0, 0.0, 5000.0)). Corrija o ponto Preparacao/pista da base.",
+    "outputConfirmsRefund": "Falha ao entregar Jato de Teste; o valor foi devolvido.",
+    "assertionsInTest": "Saldo, total de aeronaves registradas e manpower após falha permanecem iguais aos valores anteriores."
+  },
+  "fixture": {
+    "file": "Assets/Tests/PlayMode/AircraftPurchasePlayModeTests.cs",
+    "change": "Define categoria Aeronautica somente no fixture Test9b.",
+    "reason": "A ficha gerada pelo teste tinha prefab-cubo sem controlador de voo e categoria padrão; a classificação do menu a encaminhava ao fluxo terrestre.",
+    "runtimeCodeChanged": false,
+    "realCatalogCheck": "F16B.asset e C700.asset usam categoria 2 (Aeronautica)."
+  },
+  "priorFailure": "Resultado 0/1 anterior era causado pela ficha de teste sem categoria aeronáutica; não reproduziu defeito do fluxo real.",
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false,
+    "compilationFailed": false,
+    "activeConsoleErrors": 3,
+    "activeConsoleWarnings": 6,
+    "consoleNote": "O erro de spawn em água é esperado pelo teste; o erro recorrente de TerrainData continua sendo pendência separada."
+  },
+  "tooling": {
+    "runTestsResponse": "MCP aguardou 300 s e expirou; o Editor.log e TestResults.xml registram o caso concluído e aprovado.",
+    "testStatus": "Consulta MCP expirou; não foi usada como evidência do resultado."
+  },
+  "remaining": [
+    "Este caso valida uma recusa de spawn e o reembolso do menu; não cobre todos os ramos da rota aérea.",
+    "Fase A permanece aberta para auditoria e testes curtos de produção, tesouro, combustível, filas e integrações BrainMaster/NovaIA/IA03."
+  ]
+}

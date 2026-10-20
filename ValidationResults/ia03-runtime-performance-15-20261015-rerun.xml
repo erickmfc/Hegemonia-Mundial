@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-15 19:38:39Z" end-time="2026-10-15 19:38:53Z" duration="14,5263629">
+  <test-suite type="TestSuite" id="1207" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="170" result="Passed" start-time="2026-10-15 19:38:39Z" end-time="2026-10-15 19:38:53Z" duration="14.526363" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1203" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="170" result="Passed" start-time="2026-10-15 19:38:39Z" end-time="2026-10-15 19:38:53Z" duration="14.495746" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="24648" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1122" name="IA03RuntimePerformancePlayModeTests" fullname="IA03RuntimePerformancePlayModeTests" classname="IA03RuntimePerformancePlayModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-15 19:38:39Z" end-time="2026-10-15 19:38:53Z" duration="14.475442" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1123" name="RuntimeRealComQuinzeBrainMastersRegistraFrameCpuMemoriaEGc" fullname="IA03RuntimePerformancePlayModeTests.RuntimeRealComQuinzeBrainMastersRegistraFrameCpuMemoriaEGc" methodname="RuntimeRealComQuinzeBrainMastersRegistraFrameCpuMemoriaEGc" classname="IA03RuntimePerformancePlayModeTests" runstate="Runnable" seed="1310215657" result="Passed" start-time="2026-10-15 19:38:39Z" end-time="2026-10-15 19:38:53Z" duration="14.440652" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[AuditoriaConteudo] Navio Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+[AuditoriaConteudo] UH-60 Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+[AuditoriaConteudo] Aeroporto Temporario C400: prefab sem SistemaDeDanos
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=23 erros=0 avisos=3 cena=InitTestScenec7c4dae1-49af-4e01-b156-fd270f15b946
+[IA03][Validação][Bootstrap] Awake scene=Assets/Tests/PlayMode/IA03_WarValidation.unity activeScene=Assets/Tests/PlayMode/IA03_WarValidation.unity playing=True editor=True
+[IA03][Validação][Bootstrap] OnDanoGlobalAssinado=True
+[IA03][Validação] Valdoria e Karsovia iniciam em Paz.
+[IA03][Startup][Team 1][frame=13][t=13,968] Awake.begin
+[IA03][Startup][Team 1][frame=13][t=13,968] Awake.runtime-graph.begin
+[IA03][Startup][Team 1][frame=13][t=13,970] RuntimeGraph.begin
+[IA03][Startup][Team 1][frame=13][t=13,986] Deusa.BindRuntime.begin
+[DEUSA][Team 1] Runtime vinculado | pais=Republica Boreal 1 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1][frame=13][t=14,007] Deusa.BindRuntime.end
+[IA03][Startup][Team 1][frame=13][t=14,008] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1][frame=13][t=14,008] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=13][t=14,010] GarantirPaisIA.end
+[IA03][Startup][Team 1][frame=13][t=14,010] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1][frame=13][t=14,010] RuntimeGraph.end
+[IA03][Startup][Team 1][frame=13][t=14,011] Awake.end
+[IA03][Startup][Team 3][frame=13][t=14,015] Awake.begin
+[IA03][Startup][Team 3][frame=13][t=14,015] Awake.runtime-graph.begin
+[IA03][Startup][Team 3][frame=13][t=14,015] RuntimeGraph.begin
+[IA03][Startup][Team 3][frame=13][t=14,015] Deusa.BindRuntime.begin
+[DEUSA][Team 3] Runtime vinculado | pais=Federacao do Aco 3 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 3][frame=13][t=14,016] Deusa.BindRuntime.end
+[IA03][Startup][Team 3][frame=13][t=14,016] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 3][frame=13][t=14,016] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=13][t=14,016] GarantirPaisIA.end
+[IA03][Startup][Team 3][frame=13][t=14,016] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 3][frame=13][t=14,016] RuntimeGraph.end
+[IA03][Startup][Team 3][frame=13][t=14,018] Awake.end
+[IA03][Startup][Team 1][frame=13][t=14,555] Start.begin
+[IA03][Startup][Team 1][frame=13][t=14,556] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1][frame=13][t=14,556] RegisterModules.begin
+[IA03][Startup][Team 1][frame=13][t=14,557] RegisterModules.end
+[IA03][Startup][Team 1][frame=13][t=14,557] InitializeBootstrap.begin
+[IA03][Startup][Team 1][frame=13][t=14,558] InitializeBootstrap.end
+[IA03][Startup][Team 1][frame=13][t=14,558] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1][frame=13][t=14,558] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1][frame=13][t=14,558] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1][frame=13][t=14,559] Start.end
+[IA03][Startup][Team 3][frame=13][t=14,559] Start.begin
+[IA03][Startup][Team 3][frame=13][t=14,559] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 3][frame=13][t=14,559] RegisterModules.begin
+[IA03][Startup][Team 3][frame=13][t=14,559] RegisterModules.end
+[IA03][Startup][Team 3][frame=13][t=14,559] InitializeBootstrap.begin
+[IA03][Startup][Team 3][frame=13][t=14,560] InitializeBootstrap.end
+[IA03][Startup][Team 3][frame=13][t=14,560] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 3][frame=13][t=14,560] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 3][frame=13][t=14,560] EnsureRuntimeOperational.end
+[IA03][Startup][Team 3][frame=13][t=14,560] Start.end
+[IA03][Startup][Team 1][frame=13][t=14,587] FirstUpdate.begin
+[IA03][Startup][Team 1][frame=13][t=14,588] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1][frame=13][t=14,588] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1][frame=13][t=14,588] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1][frame=13][t=14,593] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1][frame=13][t=14,594] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1][frame=13][t=14,600] FirstUpdate.end
+[IA03][Startup][Team 3][frame=13][t=14,600] FirstUpdate.begin
+[IA03][Startup][Team 3][frame=13][t=14,601] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 3][frame=13][t=14,601] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 3][frame=13][t=14,601] FirstUpdate.sync-government.end
+[IA03][Startup][Team 3][frame=13][t=14,601] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 3][frame=13][t=14,601] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 3][frame=13][t=14,601] FirstUpdate.end
+[IA03][Startup][Team 3][frame=88][t=15,563] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=88][t=15,564] GarantirPaisIA.end
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[DEUSA][Team 1] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura | observador
+[IA03][Startup][Team 1][frame=90][t=17,978] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=90][t=17,978] GarantirPaisIA.end
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | aguardando perfil nacional
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[DEUSA][Team 3] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura | observador
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=0 erros=0 avisos=0 cena=IA03_WarValidation
+[IA03][Karsovia] N0 | missão=nenhuma | grupo=0 | aguardando perfil nacional
+[IA03][Startup][Team 1001][frame=284][t=20,428] Awake.begin
+[IA03][Startup][Team 1001][frame=284][t=20,429] Awake.runtime-graph.begin
+[IA03][Startup][Team 1001][frame=284][t=20,429] RuntimeGraph.begin
+[IA03][Startup][Team 1001][frame=284][t=20,430] Deusa.BindRuntime.begin
+[DEUSA][Team 1001] Runtime vinculado | pais=Republica Boreal 1001 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Militarista | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1001][frame=284][t=20,431] Deusa.BindRuntime.end
+[IA03][Startup][Team 1001][frame=284][t=20,431] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1001][frame=284][t=20,432] GarantirPaisIA.begin
+[IA03][Startup][Team 1001][frame=284][t=20,432] GarantirPaisIA.end
+[IA03][Startup][Team 1001][frame=284][t=20,433] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1001][frame=284][t=20,433] RuntimeGraph.end
+[IA03][Startup][Team 1001][frame=284][t=20,433] Awake.end
+[IA03][Startup][Team 1002][frame=284][t=20,434] Awake.begin
+[IA03][Startup][Team 1002][frame=284][t=20,434] Awake.runtime-graph.begin
+[IA03][Startup][Team 1002][frame=284][t=20,435] RuntimeGraph.begin
+[IA03][Startup][Team 1002][frame=284][t=20,435] Deusa.BindRuntime.begin
+[DEUSA][Team 1002] Runtime vinculado | pais=Dominio Solaris 1002 | presidente=Artur Nobre | moeda=Atlas | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1002][frame=284][t=20,436] Deusa.BindRuntime.end
+[IA03][Startup][Team 1002][frame=284][t=20,436] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1002][frame=284][t=20,437] GarantirPaisIA.begin
+[IA03][Startup][Team 1002][frame=284][t=20,437] GarantirPaisIA.end
+[IA03][Startup][Team 1002][frame=284][t=20,438] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1002][frame=284][t=20,438] RuntimeGraph.end
+[IA03][Startup][Team 1002][frame=284][t=20,438] Awake.end
+[IA03][Startup][Team 1003][frame=284][t=20,439] Awake.begin
+[IA03][Startup][Team 1003][frame=284][t=20,439] Awake.runtime-graph.begin
+[IA03][Startup][Team 1003][frame=284][t=20,440] RuntimeGraph.begin
+[IA03][Startup][Team 1003][frame=284][t=20,440] Deusa.BindRuntime.begin
+[DEUSA][Team 1003] Runtime vinculado | pais=Federacao do Aco 1003 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1003][frame=284][t=20,441] Deusa.BindRuntime.end
+[IA03][Startup][Team 1003][frame=284][t=20,441] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1003][frame=284][t=20,442] GarantirPaisIA.begin
+[IA03][Startup][Team 1003][frame=284][t=20,442] GarantirPaisIA.end
+[IA03][Startup][Team 1003][frame=284][t=20,443] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1003][frame=284][t=20,443] RuntimeGraph.end
+[IA03][Startup][Team 1003][frame=284][t=20,444] Awake.end
+[IA03][Startup][Team 1004][frame=284][t=20,444] Awake.begin
+[IA03][Startup][Team 1004][frame=284][t=20,445] Awake.runtime-graph.begin
+[IA03][Startup][Team 1004][frame=284][t=20,445] RuntimeGraph.begin
+[IA03][Startup][Team 1004][frame=284][t=20,446] Deusa.BindRuntime.begin
+[DEUSA][Team 1004] Runtime vinculado | pais=Uniao Oceana 1004 | presidente=Ayla Reznik | moeda=Valer | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1004][frame=284][t=20,446] Deusa.BindRuntime.end
+[IA03][Startup][Team 1004][frame=284][t=20,447] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1004][frame=284][t=20,447] GarantirPaisIA.begin
+[IA03][Startup][Team 1004][frame=284][t=20,448] GarantirPaisIA.end
+[IA03][Startup][Team 1004][frame=284][t=20,448] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1004][frame=284][t=20,448] RuntimeGraph.end
+[IA03][Startup][Team 1004][frame=284][t=20,449] Awake.end
+[IA03][Startup][Team 1005][frame=284][t=20,449] Awake.begin
+[IA03][Startup][Team 1005][frame=284][t=20,450] Awake.runtime-graph.begin
+[IA03][Startup][Team 1005][frame=284][t=20,450] RuntimeGraph.begin
+[IA03][Startup][Team 1005][frame=284][t=20,451] Deusa.BindRuntime.begin
+[DEUSA][Team 1005] Runtime vinculado | pais=Confederacao Rubra 1005 | presidente=Dario Salvat | moeda=Rubra | modo=Normal | personalidade=Diplomatica | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1005][frame=284][t=20,451] Deusa.BindRuntime.end
+[IA03][Startup][Team 1005][frame=284][t=20,452] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1005][frame=284][t=20,452] GarantirPaisIA.begin
+[IA03][Startup][Team 1005][frame=284][t=20,453] GarantirPaisIA.end
+[IA03][Startup][Team 1005][frame=284][t=20,453] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1005][frame=284][t=20,454] RuntimeGraph.end
+[IA03][Startup][Team 1005][frame=284][t=20,454] Awake.end
+[IA03][Startup][Team 1006][frame=284][t=20,455] Awake.begin
+[IA03][Startup][Team 1006][frame=284][t=20,455] Awake.runtime-graph.begin
+[IA03][Startup][Team 1006][frame=284][t=20,455] RuntimeGraph.begin
+[IA03][Startup][Team 1006][frame=284][t=20,456] Deusa.BindRuntime.begin
+[DEUSA][Team 1006] Runtime vinculado | pais=Liga Meridian 1006 | presidente=Nadia Korvin | moeda=Aurora | modo=Normal | personalidade=Economica | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1006][frame=284][t=20,457] Deusa.BindRuntime.end
+[IA03][Startup][Team 1006][frame=284][t=20,457] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1006][frame=284][t=20,457] GarantirPaisIA.begin
+[IA03][Startup][Team 1006][frame=284][t=20,458] GarantirPaisIA.end
+[IA03][Startup][Team 1006][frame=284][t=20,458] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1006][frame=284][t=20,459] RuntimeGraph.end
+[IA03][Startup][Team 1006][frame=284][t=20,459] Awake.end
+[IA03][Startup][Team 1007][frame=284][t=20,460] Awake.begin
+[IA03][Startup][Team 1007][frame=284][t=20,460] Awake.runtime-graph.begin
+[IA03][Startup][Team 1007][frame=284][t=20,460] RuntimeGraph.begin
+[IA03][Startup][Team 1007][frame=284][t=20,461] Deusa.BindRuntime.begin
+[DEUSA][Team 1007] Runtime vinculado | pais=Pacto Aurora 1007 | presidente=Leandro Sanz | moeda=Merid | modo=Normal | personalidade=Defensiva | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1007][frame=284][t=20,462] Deusa.BindRuntime.end
+[IA03][Startup][Team 1007][frame=284][t=20,462] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1007][frame=284][t=20,462] GarantirPaisIA.begin
+[IA03][Startup][Team 1007][frame=284][t=20,463] GarantirPaisIA.end
+[IA03][Startup][Team 1007][frame=284][t=20,463] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1007][frame=284][t=20,464] RuntimeGraph.end
+[IA03][Startup][Team 1007][frame=284][t=20,464] Awake.end
+[IA03][Startup][Team 1008][frame=284][t=20,465] Awake.begin
+[IA03][Startup][Team 1008][frame=284][t=20,465] Awake.runtime-graph.begin
+[IA03][Startup][Team 1008][frame=284][t=20,466] RuntimeGraph.begin
+[IA03][Startup][Team 1008][frame=284][t=20,466] Deusa.BindRuntime.begin
+[DEUSA][Team 1008] Runtime vinculado | pais=Diretorio Atlas 1008 | presidente=Marta Valen | moeda=Dinar de Aco | modo=Normal | personalidade=Militarista | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1008][frame=284][t=20,467] Deusa.BindRuntime.end
+[IA03][Startup][Team 1008][frame=284][t=20,468] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1008][frame=284][t=20,468] GarantirPaisIA.begin
+[IA03][Startup][Team 1008][frame=284][t=20,469] GarantirPaisIA.end
+[IA03][Startup][Team 1008][frame=284][t=20,469] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1008][frame=284][t=20,469] RuntimeGraph.end
+[IA03][Startup][Team 1008][frame=284][t=20,470] Awake.end
+[IA03][Startup][Team 1009][frame=284][t=20,470] Awake.begin
+[IA03][Startup][Team 1009][frame=284][t=20,471] Awake.runtime-graph.begin
+[IA03][Startup][Team 1009][frame=284][t=20,471] RuntimeGraph.begin
+[IA03][Startup][Team 1009][frame=284][t=20,471] Deusa.BindRuntime.begin
+[DEUSA][Team 1009] Runtime vinculado | pais=Republica Boreal 1009 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1009][frame=284][t=20,472] Deusa.BindRuntime.end
+[IA03][Startup][Team 1009][frame=284][t=20,473] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1009][frame=284][t=20,473] GarantirPaisIA.begin
+[IA03][Startup][Team 1009][frame=284][t=20,473] GarantirPaisIA.end
+[IA03][Startup][Team 1009][frame=284][t=20,474] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1009][frame=284][t=20,474] RuntimeGraph.end
+[IA03][Startup][Team 1009][frame=284][t=20,475] Awake.end
+[IA03][Startup][Team 1010][frame=284][t=20,475] Awake.begin
+[IA03][Startup][Team 1010][frame=284][t=20,476] Awake.runtime-graph.begin
+[IA03][Startup][Team 1010][frame=284][t=20,476] RuntimeGraph.begin
+[IA03][Startup][Team 1010][frame=284][t=20,476] Deusa.BindRuntime.begin
+[DEUSA][Team 1010] Runtime vinculado | pais=Dominio Solaris 1010 | presidente=Artur Nobre | moeda=Atlas | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1010][frame=284][t=20,477] Deusa.BindRuntime.end
+[IA03][Startup][Team 1010][frame=284][t=20,478] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1010][frame=284][t=20,478] GarantirPaisIA.begin
+[IA03][Startup][Team 1010][frame=284][t=20,479] GarantirPaisIA.end
+[IA03][Startup][Team 1010][frame=284][t=20,479] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1010][frame=284][t=20,480] RuntimeGraph.end
+[IA03][Startup][Team 1010][frame=284][t=20,480] Awake.end
+[IA03][Startup][Team 1011][frame=284][t=20,481] Awake.begin
+[IA03][Startup][Team 1011][frame=284][t=20,481] Awake.runtime-graph.begin
+[IA03][Startup][Team 1011][frame=284][t=20,481] RuntimeGraph.begin
+[IA03][Startup][Team 1011][frame=284][t=20,482] Deusa.BindRuntime.begin
+[DEUSA][Team 1011] Runtime vinculado | pais=Federacao do Aco 1011 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1011][frame=284][t=20,483] Deusa.BindRuntime.end
+[IA03][Startup][Team 1011][frame=284][t=20,483] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1011][frame=284][t=20,483] GarantirPaisIA.begin
+[IA03][Startup][Team 1011][frame=284][t=20,484] GarantirPaisIA.end
+[IA03][Startup][Team 1011][frame=284][t=20,484] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1011][frame=284][t=20,485] RuntimeGraph.end
+[IA03][Startup][Team 1011][frame=284][t=20,485] Awake.end
+[IA03][Startup][Team 1012][frame=284][t=20,486] Awake.begin
+[IA03][Startup][Team 1012][frame=284][t=20,486] Awake.runtime-graph.begin
+[IA03][Startup][Team 1012][frame=284][t=20,487] RuntimeGraph.begin
+[IA03][Startup][Team 1012][frame=284][t=20,487] Deusa.BindRuntime.begin
+[DEUSA][Team 1012] Runtime vinculado | pais=Uniao Oceana 1012 | presidente=Ayla Reznik | moeda=Valer | modo=Normal | personalidade=Diplomatica | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1012][frame=284][t=20,488] Deusa.BindRuntime.end
+[IA03][Startup][Team 1012][frame=284][t=20,488] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1012][frame=284][t=20,489] GarantirPaisIA.begin
+[IA03][Startup][Team 1012][frame=284][t=20,489] GarantirPaisIA.end
+[IA03][Startup][Team 1012][frame=284][t=20,490] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1012][frame=284][t=20,490] RuntimeGraph.end
+[IA03][Startup][Team 1012][frame=284][t=20,491] Awake.end
+[IA03][Startup][Team 1013][frame=284][t=20,491] Awake.begin
+[IA03][Startup][Team 1013][frame=284][t=20,492] Awake.runtime-graph.begin
+[IA03][Startup][Team 1013][frame=284][t=20,492] RuntimeGraph.begin
+[IA03][Startup][Team 1013][frame=284][t=20,492] Deusa.BindRuntime.begin
+[DEUSA][Team 1013] Runtime vinculado | pais=Confederacao Rubra 1013 | presidente=Dario Salvat | moeda=Rubra | modo=Normal | personalidade=Economica | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1013][frame=284][t=20,493] Deusa.BindRuntime.end
+[IA03][Startup][Team 1013][frame=284][t=20,493] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1013][frame=284][t=20,494] GarantirPaisIA.begin
+[IA03][Startup][Team 1013][frame=284][t=20,494] GarantirPaisIA.end
+[IA03][Startup][Team 1013][frame=284][t=20,495] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1013][frame=284][t=20,495] RuntimeGraph.end
+[IA03][Startup][Team 1013][frame=284][t=20,496] Awake.end
+[IA03][Startup][Team 1014][frame=284][t=20,496] Awake.begin
+[IA03][Startup][Team 1014][frame=284][t=20,497] Awake.runtime-graph.begin
+[IA03][Startup][Team 1014][frame=284][t=20,497] RuntimeGraph.begin
+[IA03][Startup][Team 1014][frame=284][t=20,497] Deusa.BindRuntime.begin
+[DEUSA][Team 1014] Runtime vinculado | pais=Liga Meridian 1014 | presidente=Nadia Korvin | moeda=Aurora | modo=Normal | personalidade=Defensiva | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1014][frame=284][t=20,498] Deusa.BindRuntime.end
+[IA03][Startup][Team 1014][frame=284][t=20,498] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1014][frame=284][t=20,499] GarantirPaisIA.begin
+[IA03][Startup][Team 1014][frame=284][t=20,499] GarantirPaisIA.end
+[IA03][Startup][Team 1014][frame=284][t=20,500] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1014][frame=284][t=20,500] RuntimeGraph.end
+[IA03][Startup][Team 1014][frame=284][t=20,501] Awake.end
+[IA03][Startup][Team 1015][frame=284][t=20,501] Awake.begin
+[IA03][Startup][Team 1015][frame=284][t=20,502] Awake.runtime-graph.begin
+[IA03][Startup][Team 1015][frame=284][t=20,502] RuntimeGraph.begin
+[IA03][Startup][Team 1015][frame=284][t=20,502] Deusa.BindRuntime.begin
+[DEUSA][Team 1015] Runtime vinculado | pais=Pacto Aurora 1015 | presidente=Leandro Sanz | moeda=Merid | modo=Normal | personalidade=Militarista | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1015][frame=284][t=20,503] Deusa.BindRuntime.end
+[IA03][Startup][Team 1015][frame=284][t=20,504] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1015][frame=284][t=20,504] GarantirPaisIA.begin
+[IA03][Startup][Team 1015][frame=284][t=20,505] GarantirPaisIA.end
+[IA03][Startup][Team 1015][frame=284][t=20,505] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1015][frame=284][t=20,505] RuntimeGraph.end
+[IA03][Startup][Team 1015][frame=284][t=20,506] Awake.end
+[IA03][Startup][Team 1001][frame=284][t=20,506] Start.begin
+[IA03][Startup][Team 1001][frame=284][t=20,506] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1001][frame=284][t=20,507] RegisterModules.begin
+[IA03][Startup][Team 1001][frame=284][t=20,507] RegisterModules.end
+[IA03][Startup][Team 1001][frame=284][t=20,507] InitializeBootstrap.begin
+[IA03][Startup][Team 1001][frame=284][t=20,508] InitializeBootstrap.end
+[IA03][Startup][Team 1001][frame=284][t=20,508] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1001][frame=284][t=20,508] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1001][frame=284][t=20,508] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1001][frame=284][t=20,508] Start.end
+[IA03][Startup][Team 1002][frame=284][t=20,508] Start.begin
+[IA03][Startup][Team 1002][frame=284][t=20,509] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1002][frame=284][t=20,509] RegisterModules.begin
+[IA03][Startup][Team 1002][frame=284][t=20,509] RegisterModules.end
+[IA03][Startup][Team 1002][frame=284][t=20,509] InitializeBootstrap.begin
+[IA03][Startup][Team 1002][frame=284][t=20,509] InitializeBootstrap.end
+[IA03][Startup][Team 1002][frame=284][t=20,509] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1002][frame=284][t=20,509] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1002][frame=284][t=20,510] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1002][frame=284][t=20,510] Start.end
+[IA03][Startup][Team 1003][frame=284][t=20,510] Start.begin
+[IA03][Startup][Team 1003][frame=284][t=20,510] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1003][frame=284][t=20,510] RegisterModules.begin
+[IA03][Startup][Team 1003][frame=284][t=20,510] RegisterModules.end
+[IA03][Startup][Team 1003][frame=284][t=20,510] InitializeBootstrap.begin
+[IA03][Startup][Team 1003][frame=284][t=20,511] InitializeBootstrap.end
+[IA03][Startup][Team 1003][frame=284][t=20,511] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1003][frame=284][t=20,511] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1003][frame=284][t=20,511] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1003][frame=284][t=20,511] Start.end
+[IA03][Startup][Team 1004][frame=284][t=20,511] Start.begin
+[IA03][Startup][Team 1004][frame=284][t=20,512] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1004][frame=284][t=20,512] RegisterModules.begin
+[IA03][Startup][Team 1004][frame=284][t=20,512] RegisterModules.end
+[IA03][Startup][Team 1004][frame=284][t=20,512] InitializeBootstrap.begin
+[IA03][Startup][Team 1004][frame=284][t=20,512] InitializeBootstrap.end
+[IA03][Startup][Team 1004][frame=284][t=20,512] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1004][frame=284][t=20,513] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1004][frame=284][t=20,513] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1004][frame=284][t=20,513] Start.end
+[IA03][Startup][Team 1005][frame=284][t=20,513] Start.begin
+[IA03][Startup][Team 1005][frame=284][t=20,513] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1005][frame=284][t=20,513] RegisterModules.begin
+[IA03][Startup][Team 1005][frame=284][t=20,514] RegisterModules.end
+[IA03][Startup][Team 1005][frame=284][t=20,514] InitializeBootstrap.begin
+[IA03][Startup][Team 1005][frame=284][t=20,514] InitializeBootstrap.end
+[IA03][Startup][Team 1005][frame=284][t=20,514] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1005][frame=284][t=20,514] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1005][frame=284][t=20,514] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1005][frame=284][t=20,514] Start.end
+[IA03][Startup][Team 1006][frame=284][t=20,515] Start.begin
+[IA03][Startup][Team 1006][frame=284][t=20,515] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1006][frame=284][t=20,515] RegisterModules.begin
+[IA03][Startup][Team 1006][frame=284][t=20,515] RegisterModules.end
+[IA03][Startup][Team 1006][frame=284][t=20,515] InitializeBootstrap.begin
+[IA03][Startup][Team 1006][frame=284][t=20,515] InitializeBootstrap.end
+[IA03][Startup][Team 1006][frame=284][t=20,515] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1006][frame=284][t=20,516] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1006][frame=284][t=20,516] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1006][frame=284][t=20,516] Start.end
+[IA03][Startup][Team 1007][frame=284][t=20,516] Start.begin
+[IA03][Startup][Team 1007][frame=284][t=20,516] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1007][frame=284][t=20,516] RegisterModules.begin
+[IA03][Startup][Team 1007][frame=284][t=20,516] RegisterModules.end
+[IA03][Startup][Team 1007][frame=284][t=20,517] InitializeBootstrap.begin
+[IA03][Startup][Team 1007][frame=284][t=20,517] InitializeBootstrap.end
+[IA03][Startup][Team 1007][frame=284][t=20,517] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1007][frame=284][t=20,517] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1007][frame=284][t=20,517] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1007][frame=284][t=20,517] Start.end
+[IA03][Startup][Team 1008][frame=284][t=20,517] Start.begin
+[IA03][Startup][Team 1008][frame=284][t=20,518] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1008][frame=284][t=20,518] RegisterModules.begin
+[IA03][Startup][Team 1008][frame=284][t=20,518] RegisterModules.end
+[IA03][Startup][Team 1008][frame=284][t=20,518] InitializeBootstrap.begin
+[IA03][Startup][Team 1008][frame=284][t=20,518] InitializeBootstrap.end
+[IA03][Startup][Team 1008][frame=284][t=20,518] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1008][frame=284][t=20,519] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1008][frame=284][t=20,519] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1008][frame=284][t=20,519] Start.end
+[IA03][Startup][Team 1009][frame=284][t=20,519] Start.begin
+[IA03][Startup][Team 1009][frame=284][t=20,519] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1009][frame=284][t=20,519] RegisterModules.begin
+[IA03][Startup][Team 1009][frame=284][t=20,520] RegisterModules.end
+[IA03][Startup][Team 1009][frame=284][t=20,520] InitializeBootstrap.begin
+[IA03][Startup][Team 1009][frame=284][t=20,520] InitializeBootstrap.end
+[IA03][Startup][Team 1009][frame=284][t=20,520] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1009][frame=284][t=20,520] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1009][frame=284][t=20,520] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1009][frame=284][t=20,521] Start.end
+[IA03][Startup][Team 1010][frame=284][t=20,521] Start.begin
+[IA03][Startup][Team 1010][frame=284][t=20,521] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1010][frame=284][t=20,521] RegisterModules.begin
+[IA03][Startup][Team 1010][frame=284][t=20,521] RegisterModules.end
+[IA03][Startup][Team 1010][frame=284][t=20,521] InitializeBootstrap.begin
+[IA03][Startup][Team 1010][frame=284][t=20,521] InitializeBootstrap.end
+[IA03][Startup][Team 1010][frame=284][t=20,522] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1010][frame=284][t=20,522] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1010][frame=284][t=20,522] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1010][frame=284][t=20,522] Start.end
+[IA03][Startup][Team 1011][frame=284][t=20,522] Start.begin
+[IA03][Startup][Team 1011][frame=284][t=20,522] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1011][frame=284][t=20,522] RegisterModules.begin
+[IA03][Startup][Team 1011][frame=284][t=20,523] RegisterModules.end
+[IA03][Startup][Team 1011][frame=284][t=20,523] InitializeBootstrap.begin
+[IA03][Startup][Team 1011][frame=284][t=20,523] InitializeBootstrap.end
+[IA03][Startup][Team 1011][frame=284][t=20,523] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1011][frame=284][t=20,523] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1011][frame=284][t=20,523] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1011][frame=284][t=20,524] Start.end
+[IA03][Startup][Team 1012][frame=284][t=20,524] Start.begin
+[IA03][Startup][Team 1012][frame=284][t=20,524] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1012][frame=284][t=20,524] RegisterModules.begin
+[IA03][Startup][Team 1012][frame=284][t=20,524] RegisterModules.end
+[IA03][Startup][Team 1012][frame=284][t=20,524] InitializeBootstrap.begin
+[IA03][Startup][Team 1012][frame=284][t=20,525] InitializeBootstrap.end
+[IA03][Startup][Team 1012][frame=284][t=20,525] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1012][frame=284][t=20,525] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1012][frame=284][t=20,525] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1012][frame=284][t=20,525] Start.end
+[IA03][Startup][Team 1013][frame=284][t=20,525] Start.begin
+[IA03][Startup][Team 1013][frame=284][t=20,525] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1013][frame=284][t=20,526] RegisterModules.begin
+[IA03][Startup][Team 1013][frame=284][t=20,526] RegisterModules.end
+[IA03][Startup][Team 1013][frame=284][t=20,526] InitializeBootstrap.begin
+[IA03][Startup][Team 1013][frame=284][t=20,526] InitializeBootstrap.end
+[IA03][Startup][Team 1013][frame=284][t=20,526] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1013][frame=284][t=20,526] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1013][frame=284][t=20,526] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1013][frame=284][t=20,527] Start.end
+[IA03][Startup][Team 1014][frame=284][t=20,527] Start.begin
+[IA03][Startup][Team 1014][frame=284][t=20,527] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1014][frame=284][t=20,527] RegisterModules.begin
+[IA03][Startup][Team 1014][frame=284][t=20,527] RegisterModules.end
+[IA03][Startup][Team 1014][frame=284][t=20,527] InitializeBootstrap.begin
+[IA03][Startup][Team 1014][frame=284][t=20,527] InitializeBootstrap.end
+[IA03][Startup][Team 1014][frame=284][t=20,528] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1014][frame=284][t=20,528] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1014][frame=284][t=20,528] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1014][frame=284][t=20,528] Start.end
+[IA03][Startup][Team 1015][frame=284][t=20,528] Start.begin
+[IA03][Startup][Team 1015][frame=284][t=20,528] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1015][frame=284][t=20,529] RegisterModules.begin
+[IA03][Startup][Team 1015][frame=284][t=20,529] RegisterModules.end
+[IA03][Startup][Team 1015][frame=284][t=20,529] InitializeBootstrap.begin
+[IA03][Startup][Team 1015][frame=284][t=20,529] InitializeBootstrap.end
+[IA03][Startup][Team 1015][frame=284][t=20,529] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1015][frame=284][t=20,529] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1015][frame=284][t=20,529] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1015][frame=284][t=20,530] Start.end
+[IA03][Startup][Team 1001][frame=285][t=20,551] FirstUpdate.begin
+[IA03][Startup][Team 1001][frame=285][t=20,551] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1001][frame=285][t=20,551] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1001][frame=285][t=20,551] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1001][frame=285][t=20,552] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1001][frame=285][t=20,552] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1001][frame=285][t=20,552] FirstUpdate.end
+[IA03][Startup][Team 1002][frame=285][t=20,552] FirstUpdate.begin
+[IA03][Startup][Team 1002][frame=285][t=20,552] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1002][frame=285][t=20,552] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1002][frame=285][t=20,553] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1002][frame=285][t=20,553] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1002][frame=285][t=20,553] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1002][frame=285][t=20,553] FirstUpdate.end
+[IA03][Startup][Team 1003][frame=285][t=20,553] FirstUpdate.begin
+[IA03][Startup][Team 1003][frame=285][t=20,553] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1003][frame=285][t=20,553] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1003][frame=285][t=20,554] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1003][frame=285][t=20,554] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1003][frame=285][t=20,554] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1003][frame=285][t=20,554] FirstUpdate.end
+[IA03][Startup][Team 1004][frame=285][t=20,554] FirstUpdate.begin
+[IA03][Startup][Team 1004][frame=285][t=20,554] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1004][frame=285][t=20,554] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1004][frame=285][t=20,555] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1004][frame=285][t=20,555] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1004][frame=285][t=20,555] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1004][frame=285][t=20,555] FirstUpdate.end
+[IA03][Startup][Team 1005][frame=285][t=20,555] FirstUpdate.begin
+[IA03][Startup][Team 1005][frame=285][t=20,555] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1005][frame=285][t=20,555] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1005][frame=285][t=20,556] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1005][frame=285][t=20,556] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1005][frame=285][t=20,556] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1005][frame=285][t=20,556] FirstUpdate.end
+[IA03][Startup][Team 1006][frame=285][t=20,556] FirstUpdate.begin
+[IA03][Startup][Team 1006][frame=285][t=20,556] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1006][frame=285][t=20,556] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1006][frame=285][t=20,557] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1006][frame=285][t=20,557] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1006][frame=285][t=20,557] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1006][frame=285][t=20,557] FirstUpdate.end
+[IA03][Startup][Team 1007][frame=285][t=20,557] FirstUpdate.begin
+[IA03][Startup][Team 1007][frame=285][t=20,557] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1007][frame=285][t=20,557] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1007][frame=285][t=20,558] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1007][frame=285][t=20,558] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1007][frame=285][t=20,558] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1007][frame=285][t=20,558] FirstUpdate.end
+[IA03][Startup][Team 1008][frame=285][t=20,558] FirstUpdate.begin
+[IA03][Startup][Team 1008][frame=285][t=20,558] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1008][frame=285][t=20,558] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1008][frame=285][t=20,559] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1008][frame=285][t=20,559] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1008][frame=285][t=20,559] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1008][frame=285][t=20,559] FirstUpdate.end
+[IA03][Startup][Team 1009][frame=285][t=20,559] FirstUpdate.begin
+[IA03][Startup][Team 1009][frame=285][t=20,559] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1009][frame=285][t=20,560] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1009][frame=285][t=20,560] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1009][frame=285][t=20,560] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1009][frame=285][t=20,560] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1009][frame=285][t=20,560] FirstUpdate.end
+[IA03][Startup][Team 1010][frame=285][t=20,560] FirstUpdate.begin
+[IA03][Startup][Team 1010][frame=285][t=20,560] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1010][frame=285][t=20,561] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1010][frame=285][t=20,561] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1010][frame=285][t=20,561] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1010][frame=285][t=20,561] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1010][frame=285][t=20,561] FirstUpdate.end
+[IA03][Startup][Team 1011][frame=285][t=20,561] FirstUpdate.begin
+[IA03][Startup][Team 1011][frame=285][t=20,562] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1011][frame=285][t=20,562] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1011][frame=285][t=20,562] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1011][frame=285][t=20,562] FirstUpdate.end
+[IA03][Startup][Team 1012][frame=285][t=20,562] FirstUpdate.begin
+[IA03][Startup][Team 1012][frame=285][t=20,562] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1012][frame=285][t=20,563] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1012][frame=285][t=20,563] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1012][frame=285][t=20,563] FirstUpdate.end
+[IA03][Startup][Team 1013][frame=285][t=20,563] FirstUpdate.begin
+[IA03][Startup][Team 1013][frame=285][t=20,563] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1013][frame=285][t=20,563] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1013][frame=285][t=20,563] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1013][frame=285][t=20,564] FirstUpdate.end
+[IA03][Startup][Team 1014][frame=285][t=20,564] FirstUpdate.begin
+[IA03][Startup][Team 1014][frame=285][t=20,564] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1014][frame=285][t=20,564] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1014][frame=285][t=20,564] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1014][frame=285][t=20,564] FirstUpdate.end
+[IA03][Startup][Team 1015][frame=285][t=20,564] FirstUpdate.begin
+[IA03][Startup][Team 1015][frame=285][t=20,565] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1015][frame=285][t=20,565] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1015][frame=285][t=20,565] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1015][frame=285][t=20,565] FirstUpdate.end
+[IA03][Startup][Team 1006][frame=293][t=20,676] GarantirPaisIA.begin
+[IA03][Startup][Team 1006][frame=293][t=20,677] GarantirPaisIA.end
+[IA03][Startup][Team 1010][frame=293][t=20,677] GarantirPaisIA.begin
+[IA03][Startup][Team 1010][frame=293][t=20,677] GarantirPaisIA.end
+[IA03][Startup][Team 1002][frame=294][t=20,686] GarantirPaisIA.begin
+[IA03][Startup][Team 1002][frame=294][t=20,686] GarantirPaisIA.end
+[IA03][Startup][Team 1013][frame=294][t=20,686] GarantirPaisIA.begin
+[IA03][Startup][Team 1013][frame=294][t=20,687] GarantirPaisIA.end
+[IA03][Startup][Team 1009][frame=299][t=20,734] GarantirPaisIA.begin
+[IA03][Startup][Team 1009][frame=299][t=20,735] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1005][frame=301][t=20,903] GarantirPaisIA.begin
+[IA03][Startup][Team 1005][frame=301][t=20,904] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 3:1013
+[IA03][Startup][Team 1001][frame=304][t=22,722] GarantirPaisIA.begin
+[IA03][Startup][Team 1001][frame=304][t=22,723] GarantirPaisIA.end
+[IA03][Startup][Team 1009][frame=304][t=22,723] GarantirPaisIA.begin
+[IA03][Startup][Team 1009][frame=304][t=22,723] GarantirPaisIA.end
+[IA03][Startup][Team 1012][frame=304][t=22,724] GarantirPaisIA.begin
+[IA03][Startup][Team 1012][frame=304][t=22,724] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1004][frame=307][t=22,948] GarantirPaisIA.begin
+[IA03][Startup][Team 1004][frame=307][t=22,948] GarantirPaisIA.end
+[IA03][Startup][Team 1012][frame=307][t=22,949] GarantirPaisIA.begin
+[IA03][Startup][Team 1012][frame=307][t=22,949] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1008][frame=308][t=23,111] GarantirPaisIA.begin
+[IA03][Startup][Team 1008][frame=308][t=23,112] GarantirPaisIA.end
+[IA03][Startup][Team 1003][frame=310][t=23,128] GarantirPaisIA.begin
+[IA03][Startup][Team 1003][frame=310][t=23,129] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1011][frame=314][t=23,617] GarantirPaisIA.begin
+[IA03][Startup][Team 1011][frame=314][t=23,617] GarantirPaisIA.end
+[IA03][Startup][Team 1015][frame=314][t=23,617] GarantirPaisIA.begin
+[IA03][Startup][Team 1015][frame=314][t=23,618] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1010][frame=322][t=24,550] GarantirPaisIA.begin
+[IA03][Startup][Team 1010][frame=322][t=24,550] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1007][frame=328][t=24,802] GarantirPaisIA.begin
+[IA03][Startup][Team 1007][frame=328][t=24,803] GarantirPaisIA.end
+[IA03][Startup][Team 1009][frame=329][t=24,812] GarantirPaisIA.begin
+[IA03][Startup][Team 1009][frame=329][t=24,812] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[IA03][Startup][Team 1014][frame=338][t=25,301] GarantirPaisIA.begin
+[IA03][Startup][Team 1014][frame=338][t=25,301] GarantirPaisIA.end
+[IA03][Startup][Team 1015][frame=341][t=25,324] GarantirPaisIA.begin
+[IA03][Startup][Team 1015][frame=341][t=25,325] GarantirPaisIA.end
+[IA03PERF][RUNTIME] label=baseline_scene_brains; brains=2; warmupFrames=90; measuredFrames=180; meanFrameMs=5,397; p95FrameMs=6,739; peakFrameMs=44,296; mainThreadMs=5,366; gcThreadBytes=0; monoDeltaBytes=56762368; unityDeltaBytes=-515690
+[IA03PERF][RUNTIME] label=scene_plus_15_ia03; brains=17; warmupFrames=90; measuredFrames=180; meanFrameMs=9,081; p95FrameMs=10,096; peakFrameMs=118,687; mainThreadMs=9,039; gcThreadBytes=0; monoDeltaBytes=95576064; unityDeltaBytes=-1423248
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

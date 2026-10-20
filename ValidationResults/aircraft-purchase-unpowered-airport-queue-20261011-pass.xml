@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 16:09:38Z" end-time="2026-10-11 16:09:39Z" duration="0,9525912">
+  <test-suite type="TestSuite" id="1150" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="117" result="Passed" start-time="2026-10-11 16:09:38Z" end-time="2026-10-11 16:09:39Z" duration="0.952591" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1146" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="117" result="Passed" start-time="2026-10-11 16:09:38Z" end-time="2026-10-11 16:09:39Z" duration="0.602867" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1004" name="AircraftPurchasePlayModeTests" fullname="AircraftPurchasePlayModeTests" classname="AircraftPurchasePlayModeTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-10-11 16:09:38Z" end-time="2026-10-11 16:09:39Z" duration="0.549188" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1010" name="Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" fullname="AircraftPurchasePlayModeTests.Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" methodname="Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="514232441" result="Passed" start-time="2026-10-11 16:09:38Z" end-time="2026-10-11 16:09:39Z" duration="0.356688" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[ENERGIA] Aeroporto Test_Airport está sem energia! Operações e compras bloqueadas.
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

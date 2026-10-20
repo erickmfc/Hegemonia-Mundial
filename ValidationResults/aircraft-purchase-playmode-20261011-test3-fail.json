@@ -1,0 +1,52 @@
+{
+  "suite": "AircraftPurchasePlayModeTests",
+  "testMode": "PlayMode",
+  "result": "CompletedWithFailure",
+  "total": 6,
+  "passed": 5,
+  "failed": 1,
+  "skipped": 0,
+  "durationSeconds": 5.36,
+  "unityVersion": "6000.2.15f1",
+  "editorPid": 19652,
+  "failure": {
+    "name": "Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns",
+    "durationSeconds": 1.5361422,
+    "message": "ComprarAviao deve retornar sucesso; esperado True, recebido False.",
+    "outcome": "Saldo permaneceu 5000 e quantidade no aeroporto permaneceu 0.",
+    "rootCause": "Não confirmada; estado de energia pode ter sido recalculado durante yield. O fixture também usa Cube sem IdentidadeUnidade Aérea e sem país/manpower isolados."
+  },
+  "cases": [
+    {
+      "name": "Test1_LocalAirportPurchase_WithoutPower_DoesNotDebitOrSpawn_AndNotifies",
+      "status": "Passed",
+      "durationSeconds": 1.0657945
+    },
+    {
+      "name": "Test2_LocalAirportPurchase_InsufficientFunds_DoesNotDebitOrSpawn",
+      "status": "Passed",
+      "durationSeconds": 1.8580457,
+      "caveat": "Pode estar mascarado pelo gate de energia da fixture."
+    },
+    {
+      "name": "Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns",
+      "status": "Failed",
+      "durationSeconds": 1.5361422
+    },
+    {
+      "name": "Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn",
+      "status": "Passed",
+      "durationSeconds": 0.0403441
+    },
+    {
+      "name": "Test5_MenuConstruction_AirportWithoutPower_BlocksPurchaseAndSpawn",
+      "status": "Passed",
+      "durationSeconds": 0.0366132
+    },
+    {
+      "name": "Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport",
+      "status": "Passed",
+      "durationSeconds": 0.0508547
+    }
+  ]
+}

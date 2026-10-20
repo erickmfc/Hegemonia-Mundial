@@ -1,0 +1,27 @@
+{
+  "status": "completed",
+  "duration": 0.2606504,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "FuelNationalInventoryPlayModeTests.BrainMasterProductionRejectsMissingWorldStateBeforeChargingOrQueuing",
+      "Status": "Passed",
+      "Duration": 0.2127456,
+      "Message": null,
+      "StackTrace": null
+    }
+  ],
+  "evidence": {
+    "source": "Unity Test Framework XML",
+    "timestampUtc": "2026-10-13T17:07:53Z",
+    "testResultsXml": "C:\\Users\\Mathe\\AppData\\LocalLow\\DefaultCompany\\Hegemonia Global\\TestResults.xml",
+    "unityVersion": "6000.2.15f1",
+    "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main"
+  }
+}

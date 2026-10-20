@@ -1,0 +1,20 @@
+{
+  "status": "completed",
+  "duration": 14.47,
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "IA03CombatAuthorizationPlayModeTests.N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup",
+      "Status": "Failed",
+      "Duration": 13.289426,
+      "Message": "System.ArgumentException : Object of type 'System.Int64' cannot be converted to type 'System.Int32'.",
+      "StackTrace": "  at System.RuntimeType.CheckValue (System.Object value, System.Reflection.Binder binder, System.Globalization.CultureInfo culture, System.Reflection.BindingFlags invokeAttr) [0x00071] in <3272951baa974b2ab5e8de68d60bfc1e>:0 \r\n  at System.Reflection.RuntimeFieldInfo.SetValue (System.Object obj, System.Object val, System.Reflection.BindingFlags invokeAttr, System.Reflection.Binder binder, System.Globalization.CultureInfo culture) [0x0007d] in <3272951baa974b2ab5e8de68d60bfc1e>:0 \r\n  at System.Reflection.FieldInfo.SetValue (System.Object obj, System.Object value) [0x00009] in <3272951baa974b2ab5e8de68d60bfc1e>:0 \r\n  at IA03CombatAuthorizationPlayModeTests.SetMember (System.Object target, System.String name, System.Object value) [0x0001e] in C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main\\Assets\\Tests\\PlayMode\\IA03CombatAuthorizationPlayModeTests.cs:3760 \r\n  at IA03CombatAuthorizationPlayModeTests+<N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup>d__48.MoveNext () [0x01318] in C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main\\Assets\\Tests\\PlayMode\\IA03CombatAuthorizationPlayModeTests.cs:644 \r\n  at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\\Library\\PackageCache\\com.unity.test-framework@40e262928427\\UnityEngine.TestRunner\\NUnitExtensions\\Attributes\\TestEnumerator.cs:44 "
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "status": "completed",
+  "duration": 0.14,
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "ReformaAircraftPlayModeTests.AircraftRegistrationTreatsCarrierPatioFallbackAsSuccessful",
+      "Status": "Failed",
+      "Duration": 0.0883651,
+      "Message": "Unhandled log message: '[Exception] NullReferenceException: Object reference not set to an instance of an object'. Use UnityEngine.TestTools.LogAssert.Expect",
+      "StackTrace": "ControleAviao.AbaixarRodas (System.Boolean forcar) (at Assets/scripts/ControleAviao.cs:3129)\r\nControleAviao.DefinirEstado (ControleAviao+EstadoAviao novoEstado) (at Assets/scripts/ControleAviao.cs:44)\r\nGerenciadorPortaAvioes+<EstacionarAeronaveNoConves>d__157.MoveNext () (at Assets/scripts/GerenciadorPortaAvioes.cs:2988)\r\nUnityEngine.SetupCoroutine.InvokeMoveNext (System.Collections.IEnumerator enumerator, System.IntPtr returnValueAddress) (at <f27f375161264267910e5cbe7a0862ec>:0)\r\nUnityEngine.MonoBehaviour:StartCoroutine(IEnumerator)\r\nGerenciadorPortaAvioes:GuardarNoHangarAutomatico(ControleAviao) (at Assets/scripts/GerenciadorPortaAvioes.cs:2965)\r\nGerenciadorAeroporto:RegistrarAeronaveRecebida(ControleAviao) (at Assets/scripts/GerenciadorAeroporto.cs:1748)\r\nSystem.Reflection.MethodBase:Invoke(Object, Object[])\r\n<AircraftRegistrationTreatsCarrierPatioFallbackAsSuccessful>d__21:MoveNext() (at Assets/Tests/PlayMode/ReformaAircraftPlayModeTests.cs:63)\r\nUnityEngine.SetupCoroutine:InvokeMoveNext(IEnumerator, IntPtr)\r\n\r\n"
+    }
+  ]
+}

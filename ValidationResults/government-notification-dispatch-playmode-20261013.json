@@ -1,0 +1,47 @@
+{
+  "unityVersion": "6000.2.15f1",
+  "change": {
+    "file": "Assets/scripts/Governo/SistemaGovernoMundial.cs",
+    "directEventInvocationsReplaced": 31,
+    "publicNotifier": "NotificarGovernoAtualizado delegates to NotificarGovernoAtualizadoSeguro",
+    "exceptionPolicy": "Invoke listeners individually; catch per listener; log at most one warning per listener method per government instance.",
+    "remainingDirectInvocations": 0
+  },
+  "tests": [
+    {
+      "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+      "status": "passed",
+      "durationSeconds": 0.3187646,
+      "coverage": ["treasury debit/refund", "manpower mobilization", "stock mutation"]
+    },
+    {
+      "test": "IA03ProductionManpowerPlayModeTests.FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable",
+      "status": "passed",
+      "durationSeconds": 0.263724
+    },
+    {
+      "test": "FuelNationalInventoryPlayModeTests.BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches",
+      "status": "passed",
+      "durationSeconds": 3.4295603
+    },
+    {
+      "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "status": "passed",
+      "durationSeconds": 1.9618116
+    },
+    {
+      "test": "IA03ProductionManpowerPlayModeTests.NovaIAProductionWithoutOwnedAirportAndThrownInfrastructureFailureRefundAndRelease",
+      "status": "passed",
+      "durationSeconds": 0.3827417
+    }
+  ],
+  "validation": {
+    "recompile": "completed; failed=false; errors=[]",
+    "editor": "ready",
+    "playMode": "stopped",
+    "consoleErrors": 0,
+    "gitDiffCheckTargetScript": "passed",
+    "sampledUtc": "2026-10-13T21:05:45Z"
+  },
+  "performanceLimit": "Delegate.GetInvocationList allocates for notifications with listeners; no campaign GC/frame-time profile was run."
+}

@@ -1,0 +1,62 @@
+{
+  "status": "completed",
+  "duration": 5.85,
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "NavalCommandPlayModeTests.GroundUnitRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling",
+      "Status": "Passed",
+      "Duration": 1.921105,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "NavalCommandPlayModeTests.SubmarineAcceptsWaterOrderAndFollowsIt",
+      "Status": "Passed",
+      "Duration": 2.2637353,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "NavalCommandPlayModeTests.SubmarineRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling",
+      "Status": "Passed",
+      "Duration": 0.0248216,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "NavalCommandPlayModeTests.SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted",
+      "Status": "Passed",
+      "Duration": 1.0482559,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "NavalCommandPlayModeTests.SurfaceShipRejectsAnOrderOutsideTheWater",
+      "Status": "Passed",
+      "Duration": 0.4705913,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "NavalCommandPlayModeTests.SurfaceShipRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling",
+      "Status": "Passed",
+      "Duration": 0.0248726,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "NavalCommandPlayModeTests.WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand",
+      "Status": "Passed",
+      "Duration": 0.0418087,
+      "Message": null,
+      "StackTrace": null
+    }
+  ]
+}

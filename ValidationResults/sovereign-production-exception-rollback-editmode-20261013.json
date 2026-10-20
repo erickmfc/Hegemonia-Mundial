@@ -1,0 +1,41 @@
+{
+  "dateUtc": "2026-10-13T18:52:19Z",
+  "unityVersion": "6000.2.15f1",
+  "reproduction": {
+    "test": "AISovereignTerritoryTests.SovereignProductionInfrastructureExceptionRefundsTreasuryAndReleasesReservation",
+    "status": "Failed before fix as expected",
+    "exception": "System.NullReferenceException",
+    "treasuryRefunded": true,
+    "reservationLeaked": "ia-prod-987655-1-fighter",
+    "spawnedUnit": false
+  },
+  "fix": "AISovereignBackend.TryProduceResolved releases the order reservation on infrastructure exception and rethrows so IA_NationalTreasury performs its existing refund.",
+  "recompile": {
+    "status": "completed",
+    "failed": false,
+    "errors": []
+  },
+  "postFixTests": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "results": [
+      {
+        "name": "AISovereignTerritoryTests.SovereignProductionInfrastructureExceptionRefundsTreasuryAndReleasesReservation",
+        "status": "Passed",
+        "durationSeconds": 0.2721847
+      },
+      {
+        "name": "AISovereignTerritoryTests.SovereignEmergencyProduction_RequiresPoweredFactory",
+        "status": "Passed",
+        "durationSeconds": 0.1076797
+      }
+    ]
+  },
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "playMode": "stopped"
+  },
+  "limitation": "The injected failure occurs before physical production; exceptions after a spawn or construction starts require reconciliation to establish whether refund is safe."
+}

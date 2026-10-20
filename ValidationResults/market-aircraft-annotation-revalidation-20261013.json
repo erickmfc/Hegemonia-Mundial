@@ -1,0 +1,32 @@
+{
+  "suite": "Revalidacao de rota aerea de mercado, identidade do aeroporto e limite por snapshot",
+  "mode": "PlayMode",
+  "unityVersion": "6000.2.15f1",
+  "completedUtc": "2026-10-13T21:13:22Z",
+  "status": "completed",
+  "summary": { "total": 4, "passed": 4, "failed": 0, "skipped": 0, "inconclusive": 0 },
+  "results": [
+    { "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport", "status": "Passed", "seconds": 1.9242107 },
+    { "test": "GovernadorGameplayRTSPlayModeTests.ProductionGateMustSeeUnitRegisteredAfterCachedSnapshot", "status": "Passed", "seconds": 0.1687658 },
+    { "test": "AircraftPurchasePlayModeTests.MarketDeliveryRejectsAirportWithoutOwnerIdentity", "status": "Passed", "seconds": 0.214887 },
+    { "test": "AircraftPurchasePlayModeTests.PlayerAirportWithoutIdentityDoesNotInheritPrefabTeam", "status": "Passed", "seconds": 0.2474935 }
+  ],
+  "editorAfterTests": {
+    "status": "ready",
+    "compiling": false,
+    "domainReloadInProgress": false,
+    "playMode": "stopped",
+    "compilationFailed": false,
+    "activeConsoleErrors": 0,
+    "activeConsoleWarnings": 4,
+    "retainedHistoricalErrorEntries": 9
+  },
+  "codeChanges": [],
+  "findings": [
+    "SistemaLogisticaMercado.EntregarEquipamento calls RegistrarAeronaveRecebida after finding the buyer airport; end-to-end route passed purchase, maritime journey, pending airport destination, save/restore, delivery, team and local registration assertions.",
+    "The cached 1.25-second aircraft-count gate was previously reproduced and fixed; the focused regression passed again.",
+    "Unidentified market airports are rejected, and a legacy player airport without identity does not inherit the prefab team.",
+    "Outstanding risk: unspawned orders are not yet shown to be reserved against the aircraft cap when multiple requests are queued together.",
+    "The Console retains historical CS error entries, but current compilationFailed=false and activeConsoleErrors=0."
+  ]
+}

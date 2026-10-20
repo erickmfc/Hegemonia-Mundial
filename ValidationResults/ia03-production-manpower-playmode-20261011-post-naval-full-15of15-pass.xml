@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="15" result="Passed" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 21:25:30Z" end-time="2026-10-11 21:25:33Z" duration="2,7805612">
+  <test-suite type="TestSuite" id="1165" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="131" result="Passed" start-time="2026-10-11 21:25:30Z" end-time="2026-10-11 21:25:33Z" duration="2.780561" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1161" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="131" result="Passed" start-time="2026-10-11 21:25:30Z" end-time="2026-10-11 21:25:33Z" duration="2.469840" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1082" name="IA03ProductionManpowerPlayModeTests" fullname="IA03ProductionManpowerPlayModeTests" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-11 21:25:30Z" end-time="2026-10-11 21:25:33Z" duration="2.449645" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1093" name="BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits" fullname="IA03ProductionManpowerPlayModeTests.BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits" methodname="BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="2050402735" result="Passed" start-time="2026-10-11 21:25:30Z" end-time="2026-10-11 21:25:30Z" duration="0.290885" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1096" name="C700CatalogPrefabUsesAerialClassificationAndTwoPersonDefault" fullname="IA03ProductionManpowerPlayModeTests.C700CatalogPrefabUsesAerialClassificationAndTwoPersonDefault" methodname="C700CatalogPrefabUsesAerialClassificationAndTwoPersonDefault" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1617401136" result="Passed" start-time="2026-10-11 21:25:30Z" end-time="2026-10-11 21:25:31Z" duration="0.033989" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1097" name="DestroyingMobilizedUnitAddsItsCrewToNationalCasualties" fullname="IA03ProductionManpowerPlayModeTests.DestroyingMobilizedUnitAddsItsCrewToNationalCasualties" methodname="DestroyingMobilizedUnitAddsItsCrewToNationalCasualties" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="938580633" result="Passed" start-time="2026-10-11 21:25:31Z" end-time="2026-10-11 21:25:31Z" duration="0.286226" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1090" name="FactoryDoesNotSpawnIdentitylessRefuellerWithoutVehicleCrew" fullname="IA03ProductionManpowerPlayModeTests.FactoryDoesNotSpawnIdentitylessRefuellerWithoutVehicleCrew" methodname="FactoryDoesNotSpawnIdentitylessRefuellerWithoutVehicleCrew" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="324847348" result="Passed" start-time="2026-10-11 21:25:31Z" end-time="2026-10-11 21:25:31Z" duration="0.238848" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1089" name="FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable" fullname="IA03ProductionManpowerPlayModeTests.FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable" methodname="FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1425346017" result="Passed" start-time="2026-10-11 21:25:31Z" end-time="2026-10-11 21:25:31Z" duration="0.074621" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1092" name="LegacyMilitaryPrefabsUseNationalCrewDefaultsAndMobilizeThem" fullname="IA03ProductionManpowerPlayModeTests.LegacyMilitaryPrefabsUseNationalCrewDefaultsAndMobilizeThem" methodname="LegacyMilitaryPrefabsUseNationalCrewDefaultsAndMobilizeThem" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1922156191" result="Passed" start-time="2026-10-11 21:25:31Z" end-time="2026-10-11 21:25:31Z" duration="0.029501" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1084" name="MilitaryFactoryRequiresFullPowerBeforeSpawningAUnit" fullname="IA03ProductionManpowerPlayModeTests.MilitaryFactoryRequiresFullPowerBeforeSpawningAUnit" methodname="MilitaryFactoryRequiresFullPowerBeforeSpawningAUnit" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="883431901" result="Passed" start-time="2026-10-11 21:25:31Z" end-time="2026-10-11 21:25:31Z" duration="0.007803" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1085" name="NationalPowerGridUpdatesFactoryGateForFullPartialAndMissingSupply" fullname="IA03ProductionManpowerPlayModeTests.NationalPowerGridUpdatesFactoryGateForFullPartialAndMissingSupply" methodname="NationalPowerGridUpdatesFactoryGateForFullPartialAndMissingSupply" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="714557963" result="Passed" start-time="2026-10-11 21:25:31Z" end-time="2026-10-11 21:25:32Z" duration="1.242578" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1086" name="NavalYardPausesWithoutPowerAndScalesProgressWithPartialPower" fullname="IA03ProductionManpowerPlayModeTests.NavalYardPausesWithoutPowerAndScalesProgressWithPartialPower" methodname="NavalYardPausesWithoutPowerAndScalesProgressWithPartialPower" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1275012092" result="Passed" start-time="2026-10-11 21:25:32Z" end-time="2026-10-11 21:25:32Z" duration="0.023459" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1087" name="NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower" fullname="IA03ProductionManpowerPlayModeTests.NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower" methodname="NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="770028971" result="Passed" start-time="2026-10-11 21:25:32Z" end-time="2026-10-11 21:25:32Z" duration="0.056224" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Estaleiro] Iniciando construção de Naval order energy gate marker no TestSlot. Aguardando conclusão...
+]]></output>
+        </test-case>
+        <test-case id="1095" name="NovaIAProductionWithoutOwnedAirportRefundsTreasuryAndReleasesReservation" fullname="IA03ProductionManpowerPlayModeTests.NovaIAProductionWithoutOwnedAirportRefundsTreasuryAndReleasesReservation" methodname="NovaIAProductionWithoutOwnedAirportRefundsTreasuryAndReleasesReservation" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="867466756" result="Passed" start-time="2026-10-11 21:25:32Z" end-time="2026-10-11 21:25:33Z" duration="0.035210" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1094" name="NpcTreasuryAppliesSignedNationalCashflowWithoutMinimumGrant" fullname="IA03ProductionManpowerPlayModeTests.NpcTreasuryAppliesSignedNationalCashflowWithoutMinimumGrant" methodname="NpcTreasuryAppliesSignedNationalCashflowWithoutMinimumGrant" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="970266596" result="Passed" start-time="2026-10-11 21:25:33Z" end-time="2026-10-11 21:25:33Z" duration="0.021552" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1091" name="PlayerProductionRejectsBatchThatExceedsAvailableManpower" fullname="IA03ProductionManpowerPlayModeTests.PlayerProductionRejectsBatchThatExceedsAvailableManpower" methodname="PlayerProductionRejectsBatchThatExceedsAvailableManpower" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1584241684" result="Passed" start-time="2026-10-11 21:25:33Z" end-time="2026-10-11 21:25:33Z" duration="0.029994" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Produção] Pedido de player test vehicle recusado: efetivo insuficiente para 2 unidade(s).
+[Produção] Pedido de player test vehicle aguardando fábrica terrestre com ponto de produção válido.
+]]></output>
+        </test-case>
+        <test-case id="1088" name="ProductionManagerWaitsForFactoryOrShipyardInsteadOfSpawningAtFallback" fullname="IA03ProductionManpowerPlayModeTests.ProductionManagerWaitsForFactoryOrShipyardInsteadOfSpawningAtFallback" methodname="ProductionManagerWaitsForFactoryOrShipyardInsteadOfSpawningAtFallback" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="419032102" result="Passed" start-time="2026-10-11 21:25:33Z" end-time="2026-10-11 21:25:33Z" duration="0.018833" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Produção] Pedido de Production infrastructure gate marker aguardando fábrica terrestre com ponto de produção válido.
+[Produção] Pedido naval de Production infrastructure gate marker aguardando um estaleiro operacional.
+[Produção] Pedido de Production infrastructure gate marker aguardando estaleiro com ponto de produção válido.
+]]></output>
+        </test-case>
+        <test-case id="1083" name="RuntimeFactoryDoesNotInstallAutomaticIndustrialStockGenerator" fullname="IA03ProductionManpowerPlayModeTests.RuntimeFactoryDoesNotInstallAutomaticIndustrialStockGenerator" methodname="RuntimeFactoryDoesNotInstallAutomaticIndustrialStockGenerator" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1072780699" result="Passed" start-time="2026-10-11 21:25:33Z" end-time="2026-10-11 21:25:33Z" duration="0.018446" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

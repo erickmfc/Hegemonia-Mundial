@@ -1,0 +1,35 @@
+{
+  "suite": "Isolamento de listeners em recursos do jogador e regressao de compra aerea",
+  "mode": "PlayMode",
+  "unityVersion": "6000.2.15f1",
+  "completedUtc": "2026-10-13T21:29:32Z",
+  "status": "tests_passed_editor_asset_database_error_flood",
+  "summary": { "focusedTests": 3, "passed": 3, "failed": 0, "inconclusive": 0 },
+  "results": [
+    { "test": "FuelNationalInventoryPlayModeTests.PlayerResourceListenerExceptionDoesNotInterruptSpend", "status": "Passed", "seconds": 0.6256819, "checks": ["spend 1000 to 950", "ledger count increments", "later callback invoked", "add 25 despite same listener failure", "warning logged only once"] },
+    { "test": "AircraftPurchasePlayModeTests.Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns", "status": "Passed", "seconds": 1.794235 },
+    { "test": "AircraftPurchasePlayModeTests.Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn", "status": "Passed", "seconds": 0.3287741 }
+  ],
+  "runtimeProbe": { "method": "GerenciadorRecursos.NotificarAtualizacao", "throwingListenerEscaped": false, "laterListenerInvocations": 1, "warning": "one controlled listener warning" },
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "domainReloadInProgress": false,
+    "playMode": "stopped",
+    "compilationFailed": false,
+    "activeConsoleErrorsAt2026-10-13T21:29:32Z": 220,
+    "repeatingMessages": [
+      "Cannot open transaction. Error -30790(MDB_READERS_FULL: Environment maxreaders limit reached)",
+      "Asset database transaction committed twice!",
+      "Assertion failed on expression: errors == MDB_SUCCESS || errors == MDB_NOTFOUND"
+    ],
+    "testRunnerStatus": "completed",
+    "editorProcessesObserved": "one Unity Editor and three Unity MCP relay processes targeting this project; causal relation not established"
+  },
+  "codeChanges": [
+    "GerenciadorRecursos.NotificarAtualizacao dispatches each event listener separately, catches listener exceptions and warns once per listener method.",
+    "The test verifies player spend and credit transactions and restores ledger TransactionCount and LastTransaction in finally."
+  ],
+  "verificationLimit": "The test passed before adding the final ledger-state restoration lines. A new compile/test was not run afterward because native Asset Database MDB_READERS_FULL assertions were continuously increasing; the Editor reports no C# compilation failure.",
+  "performanceRisk": "GetInvocationList allocates an array for notifications with listeners; campaign GC/frame-time profiling is still pending."
+}

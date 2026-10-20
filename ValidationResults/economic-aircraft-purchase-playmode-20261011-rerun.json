@@ -1,0 +1,118 @@
+{
+  "status": "completed",
+  "duration": 1.63,
+  "summary": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "AircraftPurchasePlayModeTests.BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn",
+      "Status": "Passed",
+      "Duration": 0.2503423,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.BrainMasterProductionContinuesToNextPoweredAirport",
+      "Status": "Passed",
+      "Duration": 0.0738385,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.MarketDeliveryUsesPlayerAirportFallbackWhenLegacyAirportHasNoIdentity",
+      "Status": "Passed",
+      "Duration": 0.3383324,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.PlayerAirportWithoutIdentityDoesNotInheritPrefabTeam",
+      "Status": "Passed",
+      "Duration": 0.0900925,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test1_LocalAirportPurchase_WithoutPower_DoesNotDebitOrSpawn_AndNotifies",
+      "Status": "Passed",
+      "Duration": 0.2500587,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test10_MenuConstruction_ZeroAviationFuelStillDeliversAircraftWithEmptyTank",
+      "Status": "Passed",
+      "Duration": 0.07658,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+      "Status": "Passed",
+      "Duration": 0.0369128,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test2_LocalAirportPurchase_InsufficientFunds_DoesNotDebitOrSpawn",
+      "Status": "Passed",
+      "Duration": 0.0342825,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns",
+      "Status": "Passed",
+      "Duration": 0.0429701,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn",
+      "Status": "Passed",
+      "Duration": 0.0322951,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test5_MenuConstruction_AirportWithoutPower_BlocksPurchaseAndSpawn",
+      "Status": "Passed",
+      "Duration": 0.0919837,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport",
+      "Status": "Passed",
+      "Duration": 0.0346178,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test7_LocalAirportPurchase_InsufficientManpower_DoesNotDebitOrSpawn",
+      "Status": "Passed",
+      "Duration": 0.0395824,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test8_MenuConstruction_WithoutAirport_DoesNotDebitOrSpawn",
+      "Status": "Passed",
+      "Duration": 0.0301786,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "AircraftPurchasePlayModeTests.Test9_MenuConstruction_ValidPurchase_DebitsOnceAndRegistersPlayerAircraft",
+      "Status": "Passed",
+      "Duration": 0.1239001,
+      "Message": null,
+      "StackTrace": null
+    }
+  ]
+}

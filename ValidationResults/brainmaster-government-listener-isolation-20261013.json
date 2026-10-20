@@ -1,0 +1,56 @@
+{
+  "unityVersion": "6000.2.15f1",
+  "issue": "OnGovernoAtualizado listener exception escaped after treasury debit and interrupted BrainMaster production rollback.",
+  "beforeFix": {
+    "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+    "status": "failed",
+    "reproduction": "Throwing OnGovernoAtualizado listener invoked by SistemaGovernoMundial.TentarPagar after pais.saldo was debited.",
+    "stack": [
+      "SistemaGovernoMundial.TentarPagar",
+      "IA_BrainMaster.TrySpend",
+      "CommandService.ExecuteProduce"
+    ]
+  },
+  "fix": {
+    "files": [
+      "Assets/scripts/Governo/SistemaGovernoMundial.cs",
+      "Assets/Tests/PlayMode/FuelNationalInventoryPlayModeTests.cs"
+    ],
+    "behavior": "TentarPagar and AdicionarSaldo dispatch OnGovernoAtualizado listeners individually and continue after a listener exception."
+  },
+  "afterFix": [
+    {
+      "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+      "status": "passed",
+      "durationSeconds": 0.2861251,
+      "checks": [
+        "listener exception does not escape",
+        "failed production refunds treasury",
+        "production reservation is released",
+        "later event listener receives debit and refund notifications"
+      ]
+    },
+    {
+      "test": "FuelNationalInventoryPlayModeTests.BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches",
+      "status": "passed",
+      "durationSeconds": 3.3532828
+    },
+    {
+      "test": "IA03ProductionManpowerPlayModeTests.NovaIAProductionWithoutOwnedAirportAndThrownInfrastructureFailureRefundAndRelease",
+      "status": "passed",
+      "durationSeconds": 0.302255
+    }
+  ],
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "compilationFailed": false,
+    "playMode": "stopped",
+    "consoleErrors": 0,
+    "sampledUtc": "2026-10-13T20:48:14Z"
+  },
+  "limits": [
+    "Other direct OnGovernoAtualizado invocations were not changed.",
+    "Listener dispatch allocation/performance was not profiled in a long campaign."
+  ]
+}

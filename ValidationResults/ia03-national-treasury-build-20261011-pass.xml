@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 14:12:49Z" end-time="2026-10-11 14:12:50Z" duration="1,111869">
+  <test-suite type="TestSuite" id="1331" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="266" result="Passed" start-time="2026-10-11 14:12:49Z" end-time="2026-10-11 14:12:50Z" duration="1.111869" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1322" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="250" result="Passed" start-time="2026-10-11 14:12:49Z" end-time="2026-10-11 14:12:50Z" duration="0.878055" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1027" name="AISovereignTerritoryTests" fullname="AISovereignTerritoryTests" classname="AISovereignTerritoryTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-11 14:12:49Z" end-time="2026-10-11 14:12:50Z" duration="0.873586" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1032" name="NationalTreasuryBuild_ChargesSuccessAndRefundsRejectedBuild" fullname="AISovereignTerritoryTests.NationalTreasuryBuild_ChargesSuccessAndRefundsRejectedBuild" methodname="NationalTreasuryBuild_ChargesSuccessAndRefundsRejectedBuild" classname="AISovereignTerritoryTests" runstate="Runnable" seed="821738232" result="Passed" start-time="2026-10-11 14:12:49Z" end-time="2026-10-11 14:12:50Z" duration="0.663325" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

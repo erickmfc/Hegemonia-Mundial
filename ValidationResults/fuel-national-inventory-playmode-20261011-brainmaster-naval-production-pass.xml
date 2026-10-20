@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 21:23:28Z" end-time="2026-10-11 21:23:31Z" duration="2,8486651">
+  <test-suite type="TestSuite" id="1165" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="131" result="Passed" start-time="2026-10-11 21:23:28Z" end-time="2026-10-11 21:23:31Z" duration="2.848665" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1161" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="131" result="Passed" start-time="2026-10-11 21:23:28Z" end-time="2026-10-11 21:23:31Z" duration="2.602906" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1041" name="FuelNationalInventoryPlayModeTests" fullname="FuelNationalInventoryPlayModeTests" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2026-10-11 21:23:28Z" end-time="2026-10-11 21:23:31Z" duration="2.587595" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1052" name="BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches" fullname="FuelNationalInventoryPlayModeTests.BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches" methodname="BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="799273503" result="Passed" start-time="2026-10-11 21:23:28Z" end-time="2026-10-11 21:23:31Z" duration="2.455027" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[SistemaIndustrial] Perfil geológico gerado para team 2941927: Ferro=Medio Cobre=Abundante Bauxita=Baixo Titânio=Alto Urânio=Escasso Mod=1,22
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+[IA_BackendBridge] Catalogo carregado: 129 itens disponíveis para a IA.
+[Estaleiro] Nenhum slot de construção configurado no Inspector! Criando 3 slots básicos automaticamente.
+[Estaleiro] Iniciando construção de Nav Guard costeira no Atracagem_Grande. Aguardando conclusão...
+[Estaleiro] Construção finalizada no Atracagem_Grande! Nascendo no ponto de atracagem.
+[Estaleiro] Navio liberado: Nav Guard costeira(Clone) | atracagem=Atracagem_Grande | spawn=(-20.00, 0.00, 35.00) | saida=(0.00, 0.00, 105.00)
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

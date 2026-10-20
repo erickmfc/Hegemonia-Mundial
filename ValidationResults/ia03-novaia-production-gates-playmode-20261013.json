@@ -1,0 +1,54 @@
+{
+  "dateUtc": "2026-10-13T18:57:08Z",
+  "unityVersion": "6000.2.15f1",
+  "recompile": {
+    "status": "completed",
+    "failed": false,
+    "errors": []
+  },
+  "tests": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "results": [
+      {
+        "name": "IA03ProductionManpowerPlayModeTests.NovaIAProductionWithoutOwnedAirportAndThrownInfrastructureFailureRefundAndRelease",
+        "status": "Passed",
+        "durationSeconds": 0.1011532,
+        "coverage": "NovaIA treasury refund, infrastructure rejection, reservation release"
+      },
+      {
+        "name": "IA03ProductionManpowerPlayModeTests.BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits",
+        "status": "Passed",
+        "durationSeconds": 0.0842264,
+        "coverage": "BrainMaster credits reflect national treasury budget"
+      },
+      {
+        "name": "IAProductionDirectorN2ReplacementPlayModeTests.N2TankLossQueuesAndProducesOneReplacementThroughNationalEconomy",
+        "status": "Passed",
+        "durationSeconds": 4.2335451,
+        "coverage": "N2 loss, one replacement order, treasury charge, powered factory, national fuel and WorldState update"
+      },
+      {
+        "name": "IA03ProductionManpowerPlayModeTests.PlayerProductionRejectsBatchThatExceedsAvailableManpower",
+        "status": "Passed",
+        "durationSeconds": 0.0961068,
+        "coverage": "player batch is rejected when manpower would be exceeded"
+      },
+      {
+        "name": "IA03ProductionManpowerPlayModeTests.NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower",
+        "status": "Passed",
+        "durationSeconds": 0.2115322,
+        "coverage": "unpowered naval order is rejected before queue; partial power remains supported"
+      }
+    ]
+  },
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "playMode": "stopped"
+  },
+  "limitations": [
+    "Targeted fixtures do not prove long campaigns, 15-country performance, or partial physical production followed by exception."
+  ]
+}

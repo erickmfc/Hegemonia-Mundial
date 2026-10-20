@@ -1,0 +1,20 @@
+{
+  "test": "FuelNationalInventoryPlayModeTests.ProducedUnitWithNoNationalFuelKeepsItsConfiguredInitialTankFill",
+  "status": "failed",
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "durationSeconds": 0.14,
+  "assertion": {
+    "message": "Expected: 100.0f +/- 0.00999999978f; But was: 0.0f",
+    "sourceLine": "Assets/Tests/PlayMode/FuelNationalInventoryPlayModeTests.cs:591"
+  },
+  "interpretation": "The production service left the tank empty with zero national diesel, while this test expected a free 100-unit initial fill. That expectation contradicted the user's requirement that production not invent fuel unavailable in the national stock. The test and service fallback were aligned to require an empty, inoperable unit until refueling.",
+  "relationToIa03StarvationRegression": "Separate PlayMode case; does not validate the new IA03 mission-interruption test.",
+  "source": "Temp/pipeline_test_status.json",
+  "capturedAtLocal": "2026-10-11T20:45:01-03:00"
+}

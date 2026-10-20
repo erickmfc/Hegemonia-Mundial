@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="3" result="Passed" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 22:00:48Z" end-time="2026-10-11 22:00:49Z" duration="0,4309166">
+  <test-suite type="TestSuite" id="1347" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="276" result="Passed" start-time="2026-10-11 22:00:48Z" end-time="2026-10-11 22:00:49Z" duration="0.430917" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1337" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="259" result="Passed" start-time="2026-10-11 22:00:48Z" end-time="2026-10-11 22:00:49Z" duration="0.421517" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1321" name="SistemaLogisticaMercadoSaveEditModeTests" fullname="SistemaLogisticaMercadoSaveEditModeTests" classname="SistemaLogisticaMercadoSaveEditModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-11 22:00:48Z" end-time="2026-10-11 22:00:49Z" duration="0.420062" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1324" name="LogisticsOnlySaveSchedulesWorldRestoration" fullname="SistemaLogisticaMercadoSaveEditModeTests.LogisticsOnlySaveSchedulesWorldRestoration" methodname="LogisticsOnlySaveSchedulesWorldRestoration" classname="SistemaLogisticaMercadoSaveEditModeTests" runstate="Runnable" seed="631660457" result="Passed" start-time="2026-10-11 22:00:48Z" end-time="2026-10-11 22:00:49Z" duration="0.136493" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1322" name="SaveRoundTripRequeuesActiveOrderAndPreservesRepetition" fullname="SistemaLogisticaMercadoSaveEditModeTests.SaveRoundTripRequeuesActiveOrderAndPreservesRepetition" methodname="SaveRoundTripRequeuesActiveOrderAndPreservesRepetition" classname="SistemaLogisticaMercadoSaveEditModeTests" runstate="Runnable" seed="1489262108" result="Passed" start-time="2026-10-11 22:00:49Z" end-time="2026-10-11 22:00:49Z" duration="0.155278" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1323" name="SaveRoundTripRequeuesAwaitingDestinationOrderExactlyOnce" fullname="SistemaLogisticaMercadoSaveEditModeTests.SaveRoundTripRequeuesAwaitingDestinationOrderExactlyOnce" methodname="SaveRoundTripRequeuesAwaitingDestinationOrderExactlyOnce" classname="SistemaLogisticaMercadoSaveEditModeTests" runstate="Runnable" seed="80330966" result="Passed" start-time="2026-10-11 22:00:49Z" end-time="2026-10-11 22:00:49Z" duration="0.126028" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

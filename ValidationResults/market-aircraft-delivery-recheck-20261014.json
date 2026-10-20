@@ -1,0 +1,55 @@
+{
+  "completedUtc": "2026-10-14T02:09:00Z",
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false,
+    "compilationFailed": false
+  },
+  "currentRun": {
+    "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+    "status": "Passed",
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "durationSeconds": 2.3880627,
+    "coverage": [
+      "purchase and insufficient-funds rejection",
+      "maritime freight",
+      "pending destination",
+      "save/restore",
+      "delivery after buyer airport appears",
+      "buyer team, airport origin and parking base",
+      "single local registration",
+      "repeated finalization is idempotent"
+    ],
+    "testResultsXml": "C:\\Users\\Mathe\\AppData\\LocalLow\\DefaultCompany\\Hegemonia Global\\TestResults.xml"
+  },
+  "directTest11Attempt": {
+    "test": "AircraftPurchasePlayModeTests.Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+    "status": "Not executed",
+    "reason": "Unity MCP run_tests returned a network error; the current TestResults.xml and test_status still identify the full-route integration test."
+  },
+  "sourceReview": {
+    "deliveryCallsLocalRegistration": true,
+    "source": "Assets/scripts/Governo/SistemaLogisticaMercado.cs:693-697",
+    "airportMethod": "Assets/scripts/GerenciadorAeroporto.cs:1826",
+    "codeChanges": []
+  },
+  "priorRegressionEvidence": {
+    "file": "ValidationResults/market-aircraft-annotation-revalidation-20261013.json",
+    "passed": 4,
+    "failed": 0,
+    "covers": [
+      "refresh 1.25-second aircraft snapshot before limit gate",
+      "reject market airport without owner identity",
+      "legacy player airport uses team 1 instead of prefab team"
+    ]
+  },
+  "remaining": [
+    "No multi-aircraft batch partial-failure test in this checkpoint.",
+    "Asset Database/LMDB errors are an independent unresolved Editor issue; no causal link to this delivery was shown."
+  ]
+}

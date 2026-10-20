@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-18 21:20:09Z" end-time="2026-10-18 21:20:33Z" duration="24,0519892">
+  <test-suite type="TestSuite" id="1264" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="216" result="Failed" site="Child" start-time="2026-10-18 21:20:09Z" end-time="2026-10-18 21:20:33Z" duration="24.051989" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1260" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="216" result="Failed" site="Child" start-time="2026-10-18 21:20:09Z" end-time="2026-10-18 21:20:33Z" duration="24.027046" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="49148" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1086" name="GlobalMapRequestedAcceptancePlayModeTests" fullname="GlobalMapRequestedAcceptancePlayModeTests" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" testcasecount="3" result="Failed" site="Child" start-time="2026-10-18 21:20:09Z" end-time="2026-10-18 21:20:33Z" duration="24.012200" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1089" name="ProductionTabCanBuyFoodCapacityAndMiniMapFitsBothTargetResolutions" fullname="GlobalMapRequestedAcceptancePlayModeTests.ProductionTabCanBuyFoodCapacityAndMiniMapFitsBothTargetResolutions" methodname="ProductionTabCanBuyFoodCapacityAndMiniMapFitsBothTargetResolutions" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" seed="176898447" result="Failed" start-time="2026-10-18 21:20:09Z" end-time="2026-10-18 21:20:33Z" duration="23.982171" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A produção agrícola precisa entrar no estoque nacional de comida.
+  Expected: greater than 100
+  But was:  100
+]]></message>
+            <stack-trace><![CDATA[at GlobalMapRequestedAcceptancePlayModeTests+<ProductionTabCanBuyFoodCapacityAndMiniMapFitsBothTargetResolutions>d__7.MoveNext () [0x0094c] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\GlobalMapRequestedAcceptancePlayModeTests.cs:325
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+Failed to create agent because there is no valid NavMesh
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); estoques de combustíveis iniciais aplicados aos times 1,2.
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metade=256250.
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[GlobalMap Food Acceptance] foodBefore=100; foodAfter=100; agriTotalBefore=0; agriTotalAfter=0; capacity=5000; industrialSystem=True; governmentSame=True; playerSame=True; agriFood=100; agriTotal=0; cropStocks=comida_milho=0->3,comida_batata=0->3,comida_feijao=0->3,comida_trigo=0->3,comida_arroz=0->3,comida_cana=0->3,comida_soja=0->3,comida_cafe=0->3,comida_cacau=0->3,comida_mandioca=0->3,comida_aveia=0->3,comida_cevada=0->3,comida_tomate=0->3,comida_frutas=0->2,comida_hortalicas=0->2
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity nem componente coletado pelo save em runtime
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

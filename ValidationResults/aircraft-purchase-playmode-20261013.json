@@ -1,0 +1,38 @@
+{
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "testedAtUtc": "2026-10-13T18:04:33.9717139Z",
+  "testFilter": "AircraftPurchasePlayModeTests",
+  "mode": "PlayMode",
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "correctedFixture": "Test6 uses isolated player government with 2 enlistables; runtime code unchanged.",
+  "focusedTest": {
+    "name": "Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport",
+    "status": "passed",
+    "cases": 1
+  },
+  "coveredCases": [
+    "BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn",
+    "BrainMasterProductionContinuesToNextPoweredAirport",
+    "MarketDeliveryRejectsAirportWithoutOwnerIdentity",
+    "PlayerAirportWithoutIdentityDoesNotInheritPrefabTeam",
+    "Test1_LocalAirportPurchase_WithoutPower_DoesNotDebitOrSpawn_AndNotifies",
+    "Test2_LocalAirportPurchase_InsufficientFunds_DoesNotDebitOrSpawn",
+    "Test3_LocalAirportPurchase_ValidConditions_DebitsExactlyOnceAndSpawns",
+    "Test4_LocalAirportPurchase_SpawnFailure_DoesNotDebitOrSpawn",
+    "Test5_MenuConstruction_AirportWithoutPower_BlocksPurchaseAndSpawn",
+    "Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport",
+    "Test7_LocalAirportPurchase_InsufficientManpower_DoesNotDebitOrSpawn",
+    "Test8_MenuConstruction_WithoutAirport_DoesNotDebitOrSpawn",
+    "Test8b_MenuConstruction_LegacyAircraftWithoutManpowerBlocksBeforeSpawn",
+    "Test9_MenuConstruction_ValidPurchase_DebitsOnceAndRegistersPlayerAircraft",
+    "Test10_MenuConstruction_ZeroAviationFuelStillDeliversAircraftWithEmptyTank",
+    "Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport"
+  ]
+}

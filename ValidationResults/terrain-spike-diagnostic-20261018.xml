@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-18 23:29:27Z" end-time="2026-10-18 23:30:11Z" duration="43,7143969">
+  <test-suite type="TestSuite" id="1266" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="217" result="Passed" start-time="2026-10-18 23:29:27Z" end-time="2026-10-18 23:30:11Z" duration="43.714397" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1262" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="217" result="Passed" start-time="2026-10-18 23:29:27Z" end-time="2026-10-18 23:30:11Z" duration="43.689786" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="42364" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1092" name="GlobalWorldRuntimeSmokeTests" fullname="GlobalWorldRuntimeSmokeTests" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-18 23:29:27Z" end-time="2026-10-18 23:30:11Z" duration="43.667483" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1093" name="ExistingOceanRulesAndTerrainStreamingRunTogether" fullname="GlobalWorldRuntimeSmokeTests.ExistingOceanRulesAndTerrainStreamingRunTogether" methodname="ExistingOceanRulesAndTerrainStreamingRunTogether" classname="GlobalWorldRuntimeSmokeTests" runstate="Runnable" seed="1301778158" result="Passed" start-time="2026-10-18 23:29:27Z" end-time="2026-10-18 23:30:11Z" duration="43.638445" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+Failed to create agent because there is no valid NavMesh
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); comida inicial de 1 IA(s) definida para 10000; estoques de combustíveis iniciais aplicados aos times 1,2.
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metade=256250.
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[GlobalMapSmoke] terrainLandProbe=(212000.00, 0.00, 84000.00) forestProbe=(-114000.00, 0.00, 98000.00) forestWeight=0,988
+[IA_BackendBridge] Catalogo carregado: 101 itens disponíveis para a IA.
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity nem componente coletado pelo save em runtime
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+[DEUSA][Team 2] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura | observador
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | aguardando perfil nacional
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=101 erros=0 avisos=47 cena=GlobalMapRTS avisosConsoleSuprimidos=43
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:3
+[DEUSA][Team 2] estagio -> OrganizacaoEconomica | motivo=deficit de comida | politica=OrganizacaoEconomica | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=Agricultura Nacional | observador
+[DEUSA][Team 2] resumo | observador=apenas DEUSA | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[Aeroporto Militar] Aeroporto militar(Clone): vagas=11, hangar=Preparacao, decolagem=6, pouso=6.
+[Aeroporto Militar] Vaga 1: Parada pos=(-136829.8, 6.5, -59616.7) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 2: Parada (1) pos=(-136836.4, 6.5, -59668.6) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 3: Parada (2) pos=(-136825.6, 6.5, -59696.2) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 4: Parada (3) pos=(-136824.7, 6.5, -59718.7) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 5: Parada (4) pos=(-136824.7, 6.5, -59767.9) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 6: Parada_grande pos=(-136840.1, 6.5, -59400.9) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 7: H pos=(-136822.9, 5.6, -59446.0) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 8: j pos=(-136821.4, 5.6, -59479.9) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 9: k pos=(-136820.5, 6.5, -59517.1) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 10: l pos=(-136820.5, 5.8, -59536.9) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Vaga 11: q pos=(-136820.5, 6.1, -59566.3) dir=(0.03, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 1: decolagem pos=(-136910.8, 5.6, -59727.6) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 2: alinhamento pos=(-136910.2, 5.6, -59709.6) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 3: aceleracao pos=(-136909.4, 10.1, -59668.8) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 4: aceleracao (1) pos=(-136909.9, 5.6, -59507.1) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 5: voo pos=(-136900.9, 34.1, -59320.2) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Decolagem 6: voo (1) pos=(-136917.7, 154.1, -58938.9) dir=(0.00, 0.00, 1.00)
+[Aeroporto Militar] Pouso 1: Alinhando pos=(-136980.6, 40.1, -58673.2) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 2: Reduzindo pos=(-136992.3, 27.2, -59251.9) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 3: Descendo pos=(-136985.4, 8.9, -59470.3) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 4: pouso pos=(-136989.6, 7.1, -59592.4) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 5: diminuida pos=(-136989.6, 7.1, -59736.6) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Pouso 6: freiada pos=(-136988.8, 8.3, -59767.5) dir=(0.00, 0.00, -1.00)
+[Aeroporto Militar] Aeroporto militar(Clone): nenhum Create de patrulha no prefab; o diretor da IA poderá criá-los em runtime.
+[DEUSA][Team 2] estagio -> ProjecaoRegional | motivo=projecao aerea ativa | politica=ProjecaoRegional | eco=0,35 mil=0,55 def=0,55 atk=0,10 | alvo=Monitorar fronteira | build=Agricultura Nacional | observador
+Failed to create agent because it is not close enough to the NavMesh
+Failed to create agent because it is not close enough to the NavMesh
+[GlobalMapStreamingProfile] frames=1648 CPU-main-peak=560,17ms markers=BuildDesiredSet=2,19ms;ApplyVisibleTiles=19,45ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=65,97ms;GenerateHeightRows=12,75ms;ApplyHeightRows=1,66ms;SyncHeightmap=5,10ms;GenerateAlphamapRows=398,27ms;ApplyAlphamapRows=16,29ms;GenerateVegetationRow=14,96ms;BuildVegetationInstances=3,40ms;ApplyVegetationInstances=1,56ms;CreateTerrainObject=4,43ms;ConfigureTerrainObject=3,87ms;PrepareNavMeshUpdate=89,91ms;ScheduleNavMeshUpdate=80,25ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms
+[GlobalMapStreamingOutlier] rank=1 frame=1163 delta=561,06ms mainThread=560,17ms gcAlloc=50382B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=1/1/1 mono=901 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=8,01ms;ApplyHeightRows=0,47ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=0,00ms;ApplyAlphamapRows=0,00ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=2 frame=100 delta=423,79ms mainThread=423,68ms gcAlloc=205970B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=0/0/0 mono=914 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=0,00ms;ApplyHeightRows=0,00ms;SyncHeightmap=3,86ms;GenerateAlphamapRows=398,27ms;ApplyAlphamapRows=16,29ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=3 frame=1518 delta=418,13ms mainThread=418,15ms gcAlloc=229876B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=1/1/1 mono=921 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=0,00ms;ApplyHeightRows=0,00ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=0,00ms;ApplyAlphamapRows=0,00ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=4 frame=535 delta=314,87ms mainThread=314,77ms gcAlloc=122050B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=0/0/0 mono=962 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=0,00ms;ApplyHeightRows=0,00ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=8,36ms;ApplyAlphamapRows=1,83ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=5 frame=1294 delta=199,69ms mainThread=199,39ms gcAlloc=1527869B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=1/1/1 mono=917 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=19,45ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=0,00ms;ApplyHeightRows=0,00ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=0,00ms;ApplyAlphamapRows=0,00ms;GenerateVegetationRow=0,14ms;BuildVegetationInstances=0,42ms;ApplyVegetationInstances=1,56ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=89,91ms;ScheduleNavMeshUpdate=80,25ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=6 frame=101 delta=183,77ms mainThread=183,76ms gcAlloc=952376B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=0/0/0 mono=914 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=0,00ms;ApplyHeightRows=0,00ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=5,65ms;ApplyAlphamapRows=1,98ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=7 frame=1517 delta=133,72ms mainThread=133,83ms gcAlloc=57492B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=1/1/1 mono=920 MBMB markers=[BuildDesiredSet=0,00ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=0,00ms;GenerateHeightRows=0,00ms;ApplyHeightRows=0,00ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=0,00ms;ApplyAlphamapRows=0,00ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=0,00ms;ConfigureTerrainObject=0,00ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapStreamingOutlier] rank=8 frame=35 delta=90,47ms mainThread=89,99ms gcAlloc=1109512B gcCollect=0,00ms waitTargetFps=0,00ms renderWait=0,00ms gcCounts=0/0/0 mono=908 MBMB markers=[BuildDesiredSet=2,19ms;ApplyVisibleTiles=0,00ms;RemoveStaleTiles=0,00ms;InitializeTerrainData=65,97ms;GenerateHeightRows=4,62ms;ApplyHeightRows=1,61ms;SyncHeightmap=0,00ms;GenerateAlphamapRows=0,00ms;ApplyAlphamapRows=0,00ms;GenerateVegetationRow=0,00ms;BuildVegetationInstances=0,00ms;ApplyVegetationInstances=0,00ms;CreateTerrainObject=4,43ms;ConfigureTerrainObject=3,87ms;PrepareNavMeshUpdate=0,00ms;ScheduleNavMeshUpdate=0,00ms;SwapNavMeshData=0,00ms;ValidateNavMesh=0,00ms]
+[GlobalMapNavMeshDiagnostic] completed=True waited=2,73s waitFrames=355 buildMs=2234 surface=True surfaceEnabled=True dataAssigned=True runtimeData=True
+[GlobalMapPerfSmoke] loadedTiles=9/9 trees=59143 treeDistanceMax=125m terrainGeneration=1184ms localNavMesh=2234ms streamFrames(p95/max)=15,45/561,06ms FPS(avg)=290,9 frameMs(avg/p95)=3,44/2,87 CPU-main-peak=148,06 ms Unity/Mono/GPU-memory=2661 MB/926 MB/2255 MB GameObjects=7969
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

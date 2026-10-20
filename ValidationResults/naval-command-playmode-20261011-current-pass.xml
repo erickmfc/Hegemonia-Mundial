@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="7" result="Passed" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 20:58:32Z" end-time="2026-10-11 20:58:37Z" duration="5,090564">
+  <test-suite type="TestSuite" id="1163" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="129" result="Passed" start-time="2026-10-11 20:58:32Z" end-time="2026-10-11 20:58:37Z" duration="5.090564" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1159" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="129" result="Passed" start-time="2026-10-11 20:58:33Z" end-time="2026-10-11 20:58:37Z" duration="4.897827" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1119" name="NavalCommandPlayModeTests" fullname="NavalCommandPlayModeTests" classname="NavalCommandPlayModeTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-11 20:58:33Z" end-time="2026-10-11 20:58:37Z" duration="4.881806" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1124" name="GroundUnitRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" fullname="NavalCommandPlayModeTests.GroundUnitRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" methodname="GroundUnitRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="704325742" result="Passed" start-time="2026-10-11 20:58:33Z" end-time="2026-10-11 20:58:34Z" duration="1.677424" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[ControleUnidade] Ordem terrestre recusada para TanqueAutonomiaTerrestre: combustível insuficiente para concluir a rota NavMesh.
+]]></output>
+        </test-case>
+        <test-case id="1121" name="SubmarineAcceptsWaterOrderAndFollowsIt" fullname="NavalCommandPlayModeTests.SubmarineAcceptsWaterOrderAndFollowsIt" methodname="SubmarineAcceptsWaterOrderAndFollowsIt" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="1526107768" result="Passed" start-time="2026-10-11 20:58:34Z" end-time="2026-10-11 20:58:37Z" duration="2.192446" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1123" name="SubmarineRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" fullname="NavalCommandPlayModeTests.SubmarineRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" methodname="SubmarineRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="1675777724" result="Passed" start-time="2026-10-11 20:58:37Z" end-time="2026-10-11 20:58:37Z" duration="0.020112" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[SubmarinoAutonomiaCombustivel] Ordem recusada: autonomia de combustível insuficiente para a rota aquática.
+]]></output>
+        </test-case>
+        <test-case id="1120" name="SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted" fullname="NavalCommandPlayModeTests.SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted" methodname="SurfaceShipAcceptsWaterOrderMovesAndCanBeRetargeted" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="1166537636" result="Passed" start-time="2026-10-11 20:58:37Z" end-time="2026-10-11 20:58:37Z" duration="0.882012" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+]]></output>
+        </test-case>
+        <test-case id="1125" name="SurfaceShipRejectsAnOrderOutsideTheWater" fullname="NavalCommandPlayModeTests.SurfaceShipRejectsAnOrderOutsideTheWater" methodname="SurfaceShipRejectsAnOrderOutsideTheWater" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="402385492" result="Passed" start-time="2026-10-11 20:58:37Z" end-time="2026-10-11 20:58:37Z" duration="0.026210" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[ControleNavioRealista] Destino recusado para NavioDestinoEmTerra: ponto fora da água (450, 0).
+]]></output>
+        </test-case>
+        <test-case id="1122" name="SurfaceShipRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" fullname="NavalCommandPlayModeTests.SurfaceShipRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" methodname="SurfaceShipRejectsRouteBeyondOnboardFuelAndAcceptsItAfterRefueling" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="525942354" result="Passed" start-time="2026-10-11 20:58:37Z" end-time="2026-10-11 20:58:37Z" duration="0.021510" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+[ControleNavioRealista] Destino recusado para NavioAutonomiaCombustivel: autonomia de combustível insuficiente para a rota aquática.
+]]></output>
+        </test-case>
+        <test-case id="1126" name="WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand" fullname="NavalCommandPlayModeTests.WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand" methodname="WaterRouteDetoursAroundAnIslandInsteadOfCrossingLand" classname="NavalCommandPlayModeTests" runstate="Runnable" seed="680148630" result="Passed" start-time="2026-10-11 20:58:37Z" end-time="2026-10-11 20:58:37Z" duration="0.034255" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

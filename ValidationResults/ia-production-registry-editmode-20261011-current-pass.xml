@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="7" result="Passed" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0,2135389">
+  <test-suite type="TestSuite" id="1509" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="275" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.213539" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1500" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="258" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.116027" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1390" name="IAAutoProductionRegistryEditModeTests" fullname="IAAutoProductionRegistryEditModeTests" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.114530" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1393" name="CancellationReleasesReservation" fullname="IAAutoProductionRegistryEditModeTests.CancellationReleasesReservation" methodname="CancellationReleasesReservation" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="522277588" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.005283" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1394" name="CompletionDoesNotRemainInDemandOrDuplicateCount" fullname="IAAutoProductionRegistryEditModeTests.CompletionDoesNotRemainInDemandOrDuplicateCount" methodname="CompletionDoesNotRemainInDemandOrDuplicateCount" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="1917567267" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.000862" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1397" name="RealDemandStillAllowsAutomaticProduction" fullname="IAAutoProductionRegistryEditModeTests.RealDemandStillAllowsAutomaticProduction" methodname="RealDemandStillAllowsAutomaticProduction" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="622457643" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.000272" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1391" name="RepeatedPlannerCyclesCreateOnlyOneEquivalentOrder" fullname="IAAutoProductionRegistryEditModeTests.RepeatedPlannerCyclesCreateOnlyOneEquivalentOrder" methodname="RepeatedPlannerCyclesCreateOnlyOneEquivalentOrder" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="715964589" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.001543" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1392" name="ReservationCountsTowardsNetDemand" fullname="IAAutoProductionRegistryEditModeTests.ReservationCountsTowardsNetDemand" methodname="ReservationCountsTowardsNetDemand" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="44557010" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.000550" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1395" name="SaveLoadDoesNotRecreateCompletedReservations" fullname="IAAutoProductionRegistryEditModeTests.SaveLoadDoesNotRecreateCompletedReservations" methodname="SaveLoadDoesNotRecreateCompletedReservations" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="1539438777" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.003658" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1396" name="TeamsHaveIndependentCounters" fullname="IAAutoProductionRegistryEditModeTests.TeamsHaveIndependentCounters" methodname="TeamsHaveIndependentCounters" classname="IAAutoProductionRegistryEditModeTests" runstate="Runnable" seed="149005054" result="Passed" start-time="2026-10-11 20:55:48Z" end-time="2026-10-11 20:55:48Z" duration="0.000374" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

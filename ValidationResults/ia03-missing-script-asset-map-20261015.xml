@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-15 20:01:49Z" end-time="2026-10-15 20:02:04Z" duration="14,5664687">
+  <test-suite type="TestSuite" id="1209" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="172" result="Passed" start-time="2026-10-15 20:01:49Z" end-time="2026-10-15 20:02:04Z" duration="14.566469" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1205" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="172" result="Passed" start-time="2026-10-15 20:01:49Z" end-time="2026-10-15 20:02:04Z" duration="14.529391" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="12684" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1122" name="IA03RuntimePerformancePlayModeTests" fullname="IA03RuntimePerformancePlayModeTests" classname="IA03RuntimePerformancePlayModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-15 20:01:49Z" end-time="2026-10-15 20:02:04Z" duration="14.505433" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1125" name="DiagnosticoLocalizaScriptsAusentesNaCenaDeValidacao" fullname="IA03RuntimePerformancePlayModeTests.DiagnosticoLocalizaScriptsAusentesNaCenaDeValidacao" methodname="DiagnosticoLocalizaScriptsAusentesNaCenaDeValidacao" classname="IA03RuntimePerformancePlayModeTests" runstate="Runnable" seed="1102590762" result="Passed" start-time="2026-10-15 20:01:49Z" end-time="2026-10-15 20:02:04Z" duration="14.467868" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA03][Validação][Bootstrap] Awake scene=Assets/Tests/PlayMode/IA03_WarValidation.unity activeScene=Assets/Tests/PlayMode/IA03_WarValidation.unity playing=True editor=True
+[IA03][Validação][Bootstrap] OnDanoGlobalAssinado=True
+[IA03][Validação] Valdoria e Karsovia iniciam em Paz.
+[IA03][Startup][Team 1][frame=14][t=34,508] Awake.begin
+[IA03][Startup][Team 1][frame=14][t=34,509] Awake.runtime-graph.begin
+[IA03][Startup][Team 1][frame=14][t=34,510] RuntimeGraph.begin
+[IA03][Startup][Team 1][frame=14][t=34,528] Deusa.BindRuntime.begin
+[DEUSA][Team 1] Runtime vinculado | pais=Republica Boreal 1 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1][frame=14][t=34,790] Deusa.BindRuntime.end
+[IA03][Startup][Team 1][frame=14][t=34,790] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1][frame=14][t=34,791] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=14][t=34,792] GarantirPaisIA.end
+[IA03][Startup][Team 1][frame=14][t=34,793] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1][frame=14][t=34,793] RuntimeGraph.end
+[IA03][Startup][Team 1][frame=14][t=34,794] Awake.end
+[IA03][Startup][Team 3][frame=14][t=34,797] Awake.begin
+[IA03][Startup][Team 3][frame=14][t=34,798] Awake.runtime-graph.begin
+[IA03][Startup][Team 3][frame=14][t=34,798] RuntimeGraph.begin
+[IA03][Startup][Team 3][frame=14][t=34,798] Deusa.BindRuntime.begin
+[DEUSA][Team 3] Runtime vinculado | pais=Federacao do Aco 3 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 3][frame=14][t=34,799] Deusa.BindRuntime.end
+[IA03][Startup][Team 3][frame=14][t=34,799] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 3][frame=14][t=34,799] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=14][t=34,799] GarantirPaisIA.end
+[IA03][Startup][Team 3][frame=14][t=34,799] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 3][frame=14][t=34,800] RuntimeGraph.end
+[IA03][Startup][Team 3][frame=14][t=34,801] Awake.end
+[IA03][Startup][Team 1][frame=14][t=35,740] Start.begin
+[IA03][Startup][Team 1][frame=14][t=35,741] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1][frame=14][t=35,741] RegisterModules.begin
+[IA03][Startup][Team 1][frame=14][t=35,743] RegisterModules.end
+[IA03][Startup][Team 1][frame=14][t=35,743] InitializeBootstrap.begin
+[IA03][Startup][Team 1][frame=14][t=35,743] InitializeBootstrap.end
+[IA03][Startup][Team 1][frame=14][t=35,743] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1][frame=14][t=35,744] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1][frame=14][t=35,744] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1][frame=14][t=35,744] Start.end
+[IA03][Startup][Team 3][frame=14][t=35,744] Start.begin
+[IA03][Startup][Team 3][frame=14][t=35,744] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 3][frame=14][t=35,744] RegisterModules.begin
+[IA03][Startup][Team 3][frame=14][t=35,745] RegisterModules.end
+[IA03][Startup][Team 3][frame=14][t=35,745] InitializeBootstrap.begin
+[IA03][Startup][Team 3][frame=14][t=35,745] InitializeBootstrap.end
+[IA03][Startup][Team 3][frame=14][t=35,745] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 3][frame=14][t=35,745] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 3][frame=14][t=35,745] EnsureRuntimeOperational.end
+[IA03][Startup][Team 3][frame=14][t=35,746] Start.end
+[IA03][Startup][Team 1][frame=14][t=35,981] FirstUpdate.begin
+[IA03][Startup][Team 1][frame=14][t=35,981] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1][frame=14][t=35,982] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1][frame=14][t=35,982] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1][frame=14][t=35,988] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1][frame=14][t=35,990] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1][frame=14][t=35,996] FirstUpdate.end
+[IA03][Startup][Team 3][frame=14][t=35,997] FirstUpdate.begin
+[IA03][Startup][Team 3][frame=14][t=35,997] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 3][frame=14][t=35,997] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 3][frame=14][t=35,997] FirstUpdate.sync-government.end
+[IA03][Startup][Team 3][frame=14][t=35,997] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 3][frame=14][t=35,997] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 3][frame=14][t=35,998] FirstUpdate.end
+[DEUSA][Team 1] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura | observador
+[IA03][Startup][Team 1][frame=62][t=37,003] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=62][t=37,003] GarantirPaisIA.end
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | aguardando perfil nacional
+[IA03][Startup][Team 3][frame=65][t=37,037] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=65][t=37,038] GarantirPaisIA.end
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=0 erros=0 avisos=0 cena=IA03_WarValidation
+[IA03][Startup][Team 1][frame=67][t=47,408] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=67][t=47,409] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 133 itens disponíveis para a IA.
+[DEUSA][Team 3] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura | observador
+[IA03][Karsovia] N0 | missão=nenhuma | grupo=0 | aguardando perfil nacional
+[IA03MISSING_SCRIPT_SUMMARY] scene=Assets/Tests/PlayMode/IA03_WarValidation.unity | count=0
+[IA03MISSING_SCRIPT_ASSET_SUMMARY] scanned=135 | affected=0
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

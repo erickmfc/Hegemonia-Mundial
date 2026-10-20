@@ -1,0 +1,33 @@
+{
+  "suite": "Reproducao de listener defeituoso durante gasto de recursos do jogador",
+  "mode": "PlayMode",
+  "unityVersion": "6000.2.15f1",
+  "completedUtc": "2026-10-13T21:15:28Z",
+  "status": "reproduction_confirmed",
+  "summary": { "total": 1, "passed": 0, "failed": 1, "skipped": 0, "inconclusive": 0 },
+  "result": {
+    "test": "FuelNationalInventoryPlayModeTests.PlayerResourceListenerExceptionDoesNotInterruptSpend",
+    "status": "FailedAsExpectedForReproduction",
+    "seconds": 0.328578,
+    "exception": "InvalidOperationException: Falha controlada do listener de recursos do jogador.",
+    "stack": [
+      "GerenciadorRecursos.NotificarAtualizacao — Assets/scripts/GerenciadorRecursos.cs:285",
+      "RTSResourceLedgerService.TrySpendPlayer — Assets/scripts/RTS/RTSResourceLedger.cs:118",
+      "GerenciadorRecursos.TentarGastar — Assets/scripts/GerenciadorRecursos.cs:207"
+    ],
+    "observedBalanceAfterException": 950,
+    "balanceBeforeSpend": 1000,
+    "laterListenerInvocations": 0
+  },
+  "editorAfterTest": {
+    "status": "ready",
+    "compiling": false,
+    "playMode": "stopped",
+    "compilationFailed": false,
+    "activeConsoleErrors": 0,
+    "activeConsoleWarnings": 3
+  },
+  "runtimeChanges": [],
+  "finding": "The resource mutation occurs before the direct multicast event invocation. The throwing callback escapes after debit, prevents later callbacks, and stops TrySpendPlayer before RecordTransaction runs.",
+  "next": "Isolate OnRecursosAtualizados subscribers in GerenciadorRecursos.NotificarAtualizacao; test spend, add/refund and adjacent purchase/rollback paths before further changes."
+}

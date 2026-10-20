@@ -1,0 +1,43 @@
+{
+  "dateUtc": "2026-10-13T18:43:31Z",
+  "unityVersion": "6000.2.15f1",
+  "issue": "ExecuteProduce reservava a ordem antes de acessar context.Brain; contexto nulo lançava NullReferenceException e podia deixar a reserva ativa.",
+  "preFixReproduction": {
+    "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionRejectsMissingContextWithoutLeakingReservation",
+    "status": "Failed as expected",
+    "exception": "System.NullReferenceException",
+    "method": "Hegemonia.AI.BrainMaster.CommandService.ExecuteProduce"
+  },
+  "fix": "Rejeitar context/Brain nulo antes de reservar. Se ProductionOrderId já existir, liberar a reserva antes de retornar.",
+  "recompile": {
+    "status": "completed",
+    "failed": false,
+    "errors": []
+  },
+  "postFixTests": {
+    "filter": "BrainMasterProductionRejectsMissing",
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "results": [
+      {
+        "name": "FuelNationalInventoryPlayModeTests.BrainMasterProductionRejectsMissingContextWithoutLeakingReservation",
+        "status": "Passed",
+        "durationSeconds": 0.1334362
+      },
+      {
+        "name": "FuelNationalInventoryPlayModeTests.BrainMasterProductionRejectsMissingWorldStateBeforeChargingOrQueuing",
+        "status": "Passed",
+        "durationSeconds": 0.5471009
+      }
+    ]
+  },
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false
+  },
+  "limitations": [
+    "Generic exceptions thrown inside a producer after charging remain unaudited; a safe fix must reconcile possible partial production before refunding."
+  ]
+}

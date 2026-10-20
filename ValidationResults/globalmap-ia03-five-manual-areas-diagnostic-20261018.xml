@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-18 20:46:23Z" end-time="2026-10-18 20:46:47Z" duration="24,2426909">
+  <test-suite type="TestSuite" id="1260" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="213" result="Failed" site="Child" start-time="2026-10-18 20:46:23Z" end-time="2026-10-18 20:46:47Z" duration="24.242691" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1256" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="213" result="Failed" site="Child" start-time="2026-10-18 20:46:23Z" end-time="2026-10-18 20:46:47Z" duration="24.217856" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="46948" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1082" name="GlobalMapRequestedAcceptancePlayModeTests" fullname="GlobalMapRequestedAcceptancePlayModeTests" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" testcasecount="3" result="Failed" site="Child" start-time="2026-10-18 20:46:23Z" end-time="2026-10-18 20:46:47Z" duration="24.202932" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1083" name="GlobalMapKeepsValdoriaIdentityAndAllFiveManualConstructionAreasResolve" fullname="GlobalMapRequestedAcceptancePlayModeTests.GlobalMapKeepsValdoriaIdentityAndAllFiveManualConstructionAreasResolve" methodname="GlobalMapKeepsValdoriaIdentityAndAllFiveManualConstructionAreasResolve" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" seed="55663410" result="Failed" start-time="2026-10-18 20:46:23Z" end-time="2026-10-18 20:46:47Z" duration="24.173974" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  PLataforma deve resolver ponto valido dentro da area. Motivo: nenhum local válido dentro da área manual; a construção foi mantida dentro da área configurada | último bloqueio: plataforma muito perto da costa | min=300m | bootstrap= | coast=centro=(-137354.0, 270.6, -58331.0), mais-proximo-da-costa=-972m, maior-distancia-offshore=-1559m, superficie-centro-e-raio-300=Chao/Open:17
+  Expected string length 5 but was 7. Strings differ at index 0.
+  Expected: "Found"
+  But was:  "Blocked"
+  -----------^
+]]></message>
+            <stack-trace><![CDATA[at GlobalMapRequestedAcceptancePlayModeTests+<GlobalMapKeepsValdoriaIdentityAndAllFiveManualConstructionAreasResolve>d__5.MoveNext () [0x00830] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\GlobalMapRequestedAcceptancePlayModeTests.cs:149
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[Failed to create agent because there is no valid NavMesh
+Failed to create agent because there is no valid NavMesh
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); estoques de combustíveis iniciais aplicados aos times 1,2.
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metade=256250.
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[IA_BackendBridge] Catalogo carregado: 101 itens disponíveis para a IA.
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

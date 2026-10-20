@@ -1,0 +1,27 @@
+{
+  "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+  "mode": "PlayMode",
+  "status": "FailedAsExpectedForReproduction",
+  "durationSeconds": 0.3134479,
+  "unityVersion": "6000.2.15f1",
+  "reproduction": "Attached a throwing OnGovernoAtualizado listener and invoked AdicionarEstoque(teamId, RecursoMercado.Comida, 7).",
+  "exception": "System.InvalidOperationException: Falha controlada do listener durante alteracao de estoque.",
+  "stack": [
+    "SistemaGovernoMundial.AlterarEstoque (SistemaGovernoMundial.cs:2767)",
+    "SistemaGovernoMundial.AdicionarEstoque (SistemaGovernoMundial.cs:1455)",
+    "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder (FuelNationalInventoryPlayModeTests.cs:1328)"
+  ],
+  "assertionsBeforeFailure": [
+    "country food stock equals its starting amount plus 7, confirming mutation precedes the exception"
+  ],
+  "followingListenerInvocations": 0,
+  "productionCodeChanged": false,
+  "editorAfterRun": {
+    "status": "ready",
+    "compiling": false,
+    "compilationFailed": false,
+    "playMode": "stopped",
+    "consoleErrors": 0,
+    "sampledUtc": "2026-10-13T21:00:03Z"
+  }
+}

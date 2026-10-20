@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 14:50:42Z" end-time="2026-10-11 14:51:12Z" duration="30,6800297">
+  <test-suite type="TestSuite" id="1149" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="116" result="Failed" site="Child" start-time="2026-10-11 14:50:42Z" end-time="2026-10-11 14:51:12Z" duration="30.680030" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1145" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="116" result="Failed" site="Child" start-time="2026-10-11 14:50:42Z" end-time="2026-10-11 14:51:12Z" duration="30.382009" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1058" name="IA03CombatAuthorizationPlayModeTests" fullname="IA03CombatAuthorizationPlayModeTests" classname="IA03CombatAuthorizationPlayModeTests" runstate="Runnable" testcasecount="6" result="Failed" site="Child" start-time="2026-10-11 14:50:42Z" end-time="2026-10-11 14:51:12Z" duration="30.328766" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1062" name="N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup" fullname="IA03CombatAuthorizationPlayModeTests.N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup" methodname="N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup" classname="IA03CombatAuthorizationPlayModeTests" runstate="Runnable" seed="1438181606" result="Failed" start-time="2026-10-11 14:50:42Z" end-time="2026-10-11 14:51:12Z" duration="30.046005" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A IA03 não iniciou a missão de ataque pela fila real. decisão=Nível 2: missão ofensiva adiada até a prontidão melhorar — manpower mobilizável abaixo da reserva estratégica do perfil | próximoTick=3,957531 | fila=System.Collections.Generic.List`1[Hegemonia.AI.IA03.MissaoEstrategicaSO]
+  Expected: same as <Missao_AtaqueLimitado (Hegemonia.AI.IA03.MissaoEstrategicaSO)>
+  But was:  null
+]]></message>
+            <stack-trace><![CDATA[at IA03CombatAuthorizationPlayModeTests+<N2_AttackMission_MaintainsTurretAimThroughChassisMovementMultipleShotsAndCleanup>d__48.MoveNext () [0x0116f] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\IA03CombatAuthorizationPlayModeTests.cs:613
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[IA03][N2_TURRET_ALIGNMENT][SCENE_LOAD_BEGIN] active=Assets/InitTestScene41934de9-6a0b-4414-aa91-c409ff0ce24c.unity sceneCount=1 validationAlreadyLoaded=False callbackSubscribed=True isolationArmed=False
+[IA03][Validação][Bootstrap] Awake scene=Assets/Tests/PlayMode/IA03_WarValidation.unity activeScene=Assets/Tests/PlayMode/IA03_WarValidation.unity playing=True editor=True
+[IA03][Validação][Bootstrap] OnDanoGlobalAssinado=True
+[IA03][Validação] Valdoria e Karsovia iniciam em Paz.
+[IA03][Startup][Team 1][frame=13][t=68,884] Awake.begin
+[IA03][Startup][Team 1][frame=13][t=68,885] Awake.runtime-graph.begin
+[IA03][Startup][Team 1][frame=13][t=68,887] RuntimeGraph.begin
+[IA03][Startup][Team 1][frame=13][t=68,904] Deusa.BindRuntime.begin
+[DEUSA][Team 1] Runtime vinculado | pais=Republica Boreal 1 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1][frame=13][t=69,031] Deusa.BindRuntime.end
+[IA03][Startup][Team 1][frame=13][t=69,032] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1][frame=13][t=69,032] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=13][t=69,033] GarantirPaisIA.end
+[IA03][Startup][Team 1][frame=13][t=69,034] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1][frame=13][t=69,034] RuntimeGraph.end
+[IA03][Startup][Team 1][frame=13][t=69,034] Awake.end
+[IA03][Startup][Team 3][frame=13][t=69,192] Awake.begin
+[IA03][Startup][Team 3][frame=13][t=69,193] Awake.runtime-graph.begin
+[IA03][Startup][Team 3][frame=13][t=69,193] RuntimeGraph.begin
+[IA03][Startup][Team 3][frame=13][t=69,193] Deusa.BindRuntime.begin
+[DEUSA][Team 3] Runtime vinculado | pais=Federacao do Aco 3 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 3][frame=13][t=69,194] Deusa.BindRuntime.end
+[IA03][Startup][Team 3][frame=13][t=69,194] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 3][frame=13][t=69,194] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=13][t=69,194] GarantirPaisIA.end
+[IA03][Startup][Team 3][frame=13][t=69,194] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 3][frame=13][t=69,195] RuntimeGraph.end
+[IA03][Startup][Team 3][frame=13][t=69,195] Awake.end
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][Karsovia] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][AB][ISOLAMENTO] cena=IA03_WarValidation componentesSalvos=12 componentesDesativados=12 frame=13
+[IA03][N2_TURRET_ALIGNMENT][SCENE_LOAD_END] active=Assets/Tests/PlayMode/IA03_WarValidation.unity sceneCount=1 validationLoaded=True isolationArmed=True
+[AuditoriaConteudo] Navio Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+[IA03][Startup][Team 1][frame=14][t=74,393] Start.begin
+[IA03][Startup][Team 1][frame=14][t=74,394] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 1][frame=14][t=74,394] RegisterModules.begin
+[IA03][Startup][Team 1][frame=14][t=74,396] RegisterModules.end
+[IA03][Startup][Team 1][frame=14][t=74,396] InitializeBootstrap.begin
+[IA03][Startup][Team 1][frame=14][t=74,396] InitializeBootstrap.end
+[IA03][Startup][Team 1][frame=14][t=74,396] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 1][frame=14][t=74,397] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 1][frame=14][t=74,397] EnsureRuntimeOperational.end
+[IA03][Startup][Team 1][frame=14][t=74,397] Start.end
+[IA03][Startup][Team 1][frame=15][t=74,458] FirstUpdate.begin
+[IA03][Startup][Team 1][frame=15][t=74,459] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 1][frame=15][t=74,459] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 1][frame=15][t=74,459] FirstUpdate.sync-government.end
+[IA03][Startup][Team 1][frame=15][t=74,467] FirstUpdate.scheduler-tick.begin
+[IA03][Startup][Team 1][frame=15][t=74,470] FirstUpdate.scheduler-tick.end
+[IA03][Startup][Team 1][frame=15][t=74,479] FirstUpdate.end
+[AuditoriaConteudo] UH-60 Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+[AuditoriaConteudo] Aeroporto Temporario C400: prefab sem SistemaDeDanos
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=21 erros=0 avisos=3 cena=IA03_WarValidation
+[DEUSA][Team 1] estagio -> GuerraTotal | motivo=guerra declarada | politica=GuerraTotal | eco=0,35 mil=0,55 def=0,75 atk=0,90 | alvo=Radar | build=HQ/Prefeitura | observador
+[IA03][Startup][Team 1][frame=20][t=75,044] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=20][t=75,045] GarantirPaisIA.end
+[IA_BackendBridge] Catalogo carregado: 21 itens disponíveis para a IA.
+[IA03][N2_TURRET_ALIGNMENT][BRAIN_GROUP] brain=PaisA_Valdoria_Team1 brainEnabled=True brainActive=True teamId=1 worldTeam=1 ownUnits=2 ownCombatUnits=2 lastScan=2,748577 identities=team=1 total=2 active=2 enabled=2 samples=[Valdoria_Tank_01#-2496300 active=True enabled=True tipo=Veiculo | Valdoria_Tank_02#-2496924 active=True enabled=True tipo=Veiculo] registry=count=4 version=5
+[IA03][Republica Boreal 1] N2 | missão=nenhuma | grupo=0 | Nível 2: regressão de alinhamento N2
+[IA03][Republica Boreal 1] N2 | missão=nenhuma | grupo=0 | missão enfileirada: regressão PlayMode de alinhamento sustentado da torreta
+[IA03][Valdoria] N2 | missão=nenhuma | grupo=0 | Nível 2: missão ofensiva adiada até a prontidão melhorar — manpower mobilizável abaixo da reserva estratégica do perfil
+[DEUSA][Team 1] resumo | observador=apenas DEUSA | proximaPrioridade=ConstruirHQ (100) Garantir prefeitura/HQ operacional. | proximaConstrucao=HQ/Prefeitura | alvo=Radar
+[IA03][Republica Boreal 1] N2 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][Startup][Team 3][frame=1478][t=97,092] Start.begin
+[IA03][Startup][Team 3][frame=1478][t=97,092] EnsureRuntimeOperational.begin
+[IA03][Startup][Team 3][frame=1478][t=97,093] RegisterModules.begin
+[IA03][Startup][Team 3][frame=1478][t=97,093] RegisterModules.end
+[IA03][Startup][Team 3][frame=1478][t=97,093] InitializeBootstrap.begin
+[IA03][Startup][Team 3][frame=1478][t=97,093] InitializeBootstrap.end
+[IA03][Startup][Team 3][frame=1478][t=97,094] ApplyIntegrationPolicy.begin
+[IA03][Startup][Team 3][frame=1478][t=97,094] ApplyIntegrationPolicy.end
+[IA03][Startup][Team 3][frame=1478][t=97,094] EnsureRuntimeOperational.end
+[IA03][Startup][Team 3][frame=1478][t=97,094] Start.end
+[IA03][Startup][Team 3][frame=1479][t=97,292] FirstUpdate.begin
+[IA03][Startup][Team 3][frame=1479][t=97,292] FirstUpdate.coordinator-ready
+[IA03][Startup][Team 3][frame=1479][t=97,292] FirstUpdate.sync-government.begin
+[IA03][Startup][Team 3][frame=1479][t=97,292] FirstUpdate.sync-government.end
+[IA03][Startup][Team 3][frame=1479][t=97,293] FirstUpdate.end
+[IA03][BRAINMASTER_PRIORITY_TEST][SCENE_RESTORED] Assets/InitTestScene41934de9-6a0b-4414-aa91-c409ff0ce24c.unity
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,60 @@
+{
+  "completedUtc": "2026-10-13T21:59:09Z",
+  "unityVersion": "6000.2.15f1",
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "domainReloadInProgress": false,
+    "playMode": "stopped",
+    "compilationFailed": false
+  },
+  "consoleSampleUtc": "2026-10-13T22:00:43Z",
+  "console": {
+    "activeErrors": 165,
+    "activeWarnings": 4,
+    "historicalErrorEntries": 271,
+    "knownErrorFamily": "Console tail contains seeded historical AssetDatabase/LMDB reader and transaction assertions, plus expected rejected-spawn errors from regression tests; compilationFailed remains false",
+    "cSharpCompilationFailure": false
+  },
+  "playModeTests": [
+    {
+      "test": "AircraftPurchasePlayModeTests.BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn",
+      "status": "Passed",
+      "durationSeconds": 0.370169,
+      "coverage": "real IAAutoProductionRegistry reservations; rejected first airport keeps order Reserved; accepted fallback delivers exactly one aircraft and ends Delivered for BrainMaster and NovaIA"
+    },
+    {
+      "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "status": "Passed",
+      "durationSeconds": 2.1661145,
+      "coverage": "purchase, insufficient funds, maritime journey, pending destination, save/restore, aircraft delivery, buyer team, airportOrigem, baseEstacionamentoAtual, single local registration"
+    },
+    {
+      "test": "AircraftPurchasePlayModeTests.Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+      "status": "Passed",
+      "durationSeconds": 0.5488914,
+      "coverage": "direct market delivery, buyer ownership, airportOrigem and one local airport registration"
+    }
+  ],
+  "preFixReproduction": {
+    "test": "BrainMasterAndNovaIAContinueWhenFirstPoweredAirportRejectsSpawn",
+    "status": "FailedAsExpected",
+    "observation": "with a real reservation and a rejected first airport, final BrainMaster order state was Released despite the aircraft being created at the second airport"
+  },
+  "marketAnnotation": {
+    "currentSourceCallsRegistrarAeronaveRecebida": true,
+    "endToEndTestPassed": true,
+    "gameplayChangeNeeded": false
+  },
+  "gitDiffCheck": "passed",
+  "filesChangedForFallbackReservationLifecycle": [
+    "Assets/scripts/GerenciadorAeroporto.cs",
+    "Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs",
+    "Assets/scripts/IA/NovaIA/IA_MasterController.cs",
+    "Assets/scripts/IA/Sovereign/AISovereignBackend.cs",
+    "Assets/scripts/IA01/IA01MilitaryDirector.cs",
+    "Assets/scripts/IA02/IA02MilitaryDirector.cs",
+    "Assets/Tests/PlayMode/AircraftPurchasePlayModeTests.cs"
+  ],
+  "performanceProfiling": "not measured"
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 23:48:41Z" end-time="2026-10-11 23:48:41Z" duration="0,1637758">
+  <test-suite type="TestSuite" id="1515" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="277" result="Passed" start-time="2026-10-11 23:48:41Z" end-time="2026-10-11 23:48:41Z" duration="0.163776" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1507" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-10-11 23:48:41Z" end-time="2026-10-11 23:48:41Z" duration="0.141392" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="36652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1333" name="IA03AvaliadorMissaoEditModeTests" fullname="IA03AvaliadorMissaoEditModeTests" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="54" result="Passed" start-time="2026-10-11 23:48:41Z" end-time="2026-10-11 23:48:41Z" duration="0.137284" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1390" name="MissaoSemCombustivelInterrompeELiberaReservaParaReavaliarDepoisDoReabastecimento" fullname="IA03AvaliadorMissaoEditModeTests.MissaoSemCombustivelInterrompeELiberaReservaParaReavaliarDepoisDoReabastecimento" methodname="MissaoSemCombustivelInterrompeELiberaReservaParaReavaliarDepoisDoReabastecimento" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="504367830" result="Passed" start-time="2026-10-11 23:48:41Z" end-time="2026-10-11 23:48:41Z" duration="0.089544" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

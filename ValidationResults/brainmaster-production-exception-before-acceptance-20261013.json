@@ -1,0 +1,17 @@
+{
+  "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+  "mode": "PlayMode",
+  "status": "Failed",
+  "durationSeconds": 0.2127905,
+  "unityVersion": "6000.2.15f1",
+  "reproduction": "Injected null into ProductionService._shipyardBuffer before any shipyard producer could accept the order.",
+  "exception": "System.NullReferenceException",
+  "stack": [
+    "ProductionService.ProduceNaval (IA_BackendBridge.cs:1945)",
+    "ProductionService.TryProduceSingle (IA_BackendBridge.cs:1885)",
+    "ProductionService.TryProduce (IA_BackendBridge.cs:1853)",
+    "CommandService.ExecuteProduce (IA_BackendBridge.cs:2484)"
+  ],
+  "finding": "ExecuteProduce lets the producer exception escape. The try/finally records metrics but does not release the reservation or refund the national treasury. ProcessCommandQueue calls Execute without a local exception boundary.",
+  "editorAfterTest": "ready; compilationFailed=false; playMode=stopped; consoleErrors=0"
+}

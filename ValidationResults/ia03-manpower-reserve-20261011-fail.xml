@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 14:35:25Z" end-time="2026-10-11 14:35:25Z" duration="0,5886876">
+  <test-suite type="TestSuite" id="1336" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="269" result="Failed" site="Child" start-time="2026-10-11 14:35:25Z" end-time="2026-10-11 14:35:25Z" duration="0.588688" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1326" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="253" result="Failed" site="Child" start-time="2026-10-11 14:35:25Z" end-time="2026-10-11 14:35:25Z" duration="0.331432" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1156" name="IA03AvaliadorMissaoEditModeTests" fullname="IA03AvaliadorMissaoEditModeTests" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="53" result="Failed" site="Child" start-time="2026-10-11 14:35:25Z" end-time="2026-10-11 14:35:25Z" duration="0.327070" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1182" name="ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso" fullname="IA03AvaliadorMissaoEditModeTests.ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso" methodname="ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="451494679" result="Failed" start-time="2026-10-11 14:35:25Z" end-time="2026-10-11 14:35:25Z" duration="0.274013" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  Expected: 100
+  But was:  101
+]]></message>
+            <stack-trace><![CDATA[at IA03AvaliadorMissaoEditModeTests.ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso () [0x0019c] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\EditMode\IA03AvaliadorMissaoEditModeTests.cs:743
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

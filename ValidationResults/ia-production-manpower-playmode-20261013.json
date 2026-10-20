@@ -1,0 +1,36 @@
+{
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "testedAtUtc": "2026-10-13T18:12:12.0526203Z",
+  "testFilter": "IA03ProductionManpowerPlayModeTests",
+  "mode": "PlayMode",
+  "summary": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "keyChecks": {
+    "brainMasterNationalTreasuryBudget": "passed",
+    "novaIATreasuryRefundAndReservationReleaseWithoutAirport": "passed",
+    "npcSignedNationalCashflowNoMinimumGrant": "passed",
+    "nationalPowerGridFactoryGate": "passed",
+    "navalYardPowerAndPartialPower": "passed",
+    "factoryManpowerAndLegacyCrew": "passed",
+    "playerProductionBatchManpowerLimit": "passed",
+    "nationalFuelAndMobilizedUnitCasualties": "passed"
+  },
+  "staticUnverifiedRisk": "BrainMaster CommandService.ExecuteProduce exception rollback remains unverified: cost and reservation may remain if ProductionService.TryProduce throws.",
+  "exceptionRollbackTest": {
+    "name": "NovaIAProductionWithoutOwnedAirportAndThrownInfrastructureFailureRefundAndRelease",
+    "focusedRun": "passed 1/1",
+    "classRun": "passed 15/15",
+    "injectedException": "NullReferenceException after reservation, injected by nulling the airport buffer",
+    "verified": [
+      "treasury returned to starting balance",
+      "no active NovaIA order remains",
+      "exception propagated after rollback"
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "checkpointUtc": "2026-10-14T01:31:01Z",
+  "unityVersion": "6000.2.15f1",
+  "issue": {
+    "orderStateBeforeRetry": "Delivered",
+    "beforeFix": {
+      "status": "reproduced",
+      "firstExecution": { "balance": 8500, "aircraftRegistered": 1 },
+      "retry": { "accepted": true, "balance": 7000, "aircraftRegistered": 2 },
+      "test": "AircraftPurchasePlayModeTests.BrainMasterRejectsRetryAfterAircraftOrderWasDelivered"
+    }
+  },
+  "fix": {
+    "registryMethod": "IAAutoProductionRegistry.CanDispatchCommand",
+    "checks": [
+      "order exists and belongs to the BrainMaster team",
+      "order unit type matches the requested item",
+      "order is not expired",
+      "order is Reserved or Queued without a physical producer"
+    ],
+    "commandValidationLocation": "CommandService.ExecuteProduce before release, treasury debit, and producer call",
+    "legacyEmptyOrderIdBehaviorPreserved": true
+  },
+  "tests": [
+    {
+      "name": "BrainMasterRejectsRetryAfterAircraftOrderWasDelivered",
+      "before": { "status": "failed", "passed": 0, "failed": 1, "observed": "accepted=True; balance=7000/8500; aircraft=2/1" },
+      "after": { "status": "passed", "passed": 1, "failed": 0, "durationSeconds": 0.5990871 },
+      "coverage": "Activates a real BrainMaster component and uses its runtime graph, authority, backend, queue, confirmation service, and WorldState; invokes ProcessCommandQueue for first dispatch and replay after an injected 8.01-second timeout without extra debit or aircraft"
+    },
+    {
+      "name": "BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 9.283
+    }
+  ],
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false,
+    "compilationFailed": false,
+    "activeConsoleErrors": 1,
+    "activeConsoleWarnings": 4,
+    "consoleSampleUtc": "2026-10-14T01:31:01.6104912Z",
+    "remainingConsoleError": "One active Console error: Unknown error loading Assets/TerrainData_b52c8447-f6d6-40a1-bfb3-fbcc6d30b5f8.asset; the same asset error was present at the baseline sample",
+    "causalRelationToRetryFix": "not demonstrated"
+  },
+  "queueTimeoutSimulation": {
+    "queueEnqueueAndFirstDequeueAt": 10.0,
+    "confirmationTimeoutTickAt": 18.01,
+    "elapsedSeconds": 8.01,
+    "stateSequence": ["Queued", "Running", "AwaitingConfirmation", "Queued", "Running", "Failed"],
+    "sameProductionOrderIdReused": true,
+    "worldStateUpdateWithheldToTriggerTimeout": true,
+    "secondDebitOrAircraft": false,
+    "usesInjectedTimestamps": true,
+    "invokesPrivateBrainMasterProcessCommandQueueMethod": true,
+    "invokesBrainMasterUpdateAndScheduler": false,
+    "confirmationTickCalledSeparatelyWithInjectedTime": true
+  },
+  "remaining": [
+    "BrainMaster.Update, its scheduler, and a full campaign are not exercised by this isolated component-method regression.",
+    "No campaign FPS, frame-time, or GC profiling.",
+    "TerrainData/AssetDatabase Editor error remains a separate investigation."
+  ]
+}

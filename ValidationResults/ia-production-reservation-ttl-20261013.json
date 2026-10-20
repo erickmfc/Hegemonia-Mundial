@@ -1,0 +1,85 @@
+{
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "timestampUtc": "2026-10-13T17:55:57Z",
+  "summary": {
+    "editModePassed": 7,
+    "editModeFailed": 0,
+    "playModePassed": 2,
+    "playModeFailed": 0
+  },
+  "changes": [
+    "Assets/scripts/IA/IAAutoProductionRegistry.cs",
+    "Assets/Tests/EditMode/IAAutoProductionRegistryEditModeTests.cs",
+    "Assets/Tests/PlayMode/FuelNationalInventoryPlayModeTests.cs"
+  ],
+  "tests": [
+    {
+      "name": "IAAutoProductionRegistryEditModeTests.ExpiresAfterItsTtl",
+      "status": "passed",
+      "cases": 2,
+      "casesDetail": [
+        "SchedulerQueuedOrderWithoutProducerExpiresAfterItsTtl",
+        "UnacceptedReservationExpiresAfterItsTtl"
+      ]
+    },
+    {
+      "name": "IAAutoProductionRegistryEditModeTests.SchedulerQueuedOrderCanTransferToPhysicalProducerOwnership",
+      "status": "passed",
+      "cases": 2,
+      "producerInstanceIds": [11, -11]
+    },
+    {
+      "name": "IAAutoProductionRegistryEditModeTests.ProducerOwnedOrderDoesNotExpireAfterItsReservationTtl",
+      "status": "passed",
+      "cases": 3,
+      "statesAndProducerIds": [
+        "Queued:11",
+        "Constructing:11",
+        "Constructing:-11"
+      ]
+    },
+    {
+      "name": "FuelNationalInventoryPlayModeTests.BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches",
+      "status": "passed",
+      "durationSeconds": 2.0262558,
+      "verification": "A paid shipyard construction waiting for manpower remains registered past TTL, then launches when crew returns and consumes national naval fuel."
+    },
+    {
+      "name": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "status": "passed",
+      "durationSeconds": 2.4122101,
+      "verification": "Current-assembly end-to-end purchase, maritime freight, pending destination, save/restore, and single aircraft registration at the buyer airport."
+    }
+  ],
+  "initialFailureAndResolution": {
+    "failedTest": "BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches",
+    "failure": "After the intermediate change treated producerInstanceId <= 0 as unowned, the physical shipyard order disappeared during Cleanup(Time.time + 181).",
+    "resolution": "ProducerInstanceId == 0 is now the sole no-owner sentinel. Nonzero negative Unity instance IDs are treated as valid producer ownership. Scheduler Queued -> producer Queued handoff is also supported."
+  },
+  "compilation": {
+    "status": "completed",
+    "failed": false,
+    "errors": []
+  },
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped"
+  },
+  "console": {
+    "currentErrors": 0,
+    "currentWarnings": 5,
+    "warningNotes": [
+      "Asset catalog refresh in the PlayMode fixture reports missing script references.",
+      "The test shipyard and airport fixtures intentionally have no authored slots/parking.",
+      "The existing content audit reports missing weapon or damage-system setup for several catalog items."
+    ],
+    "historicalErrorsRetainedInBuffer": 7
+  },
+  "marketAirportReview": {
+    "result": "not reproduced",
+    "evidence": "The end-to-end market purchase/freight/save-restore test passed against the current assembly. SistemaLogisticaMercado calls RegistrarAeronaveRecebida; the aircraft is registered at the buyer airport with buyer team and return-base references.",
+    "marketGameplayFilesChanged": false
+  },
+  "remainingScope": "This validation closes the production-reservation TTL defect only. The broader Phase A integration, economy, performance, and multi-country audit remains open."
+}

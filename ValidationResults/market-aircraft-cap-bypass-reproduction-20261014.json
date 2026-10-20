@@ -1,0 +1,43 @@
+{
+  "completedUtc": "2026-10-14T02:18:00Z",
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "hypothesis": "Market aircraft delivery for team 1 bypasses the national aircraft cap.",
+  "reproduction": {
+    "test": "AgriculturaMercadoIntegrationPlayModeTests.MarketAircraftDeliveryRespectsPlayersNationalAircraftLimit",
+    "status": "Failed as expected; defect reproduced",
+    "testDurationSeconds": 0.1661937,
+    "assertion": "A entrega de mercado para o jogador precisa respeitar o limite nacional de aeronaves.",
+    "expected": false,
+    "actual": true,
+    "precondition": "Normal national production gate returned false with one player aircraft at the configured aircraft limit.",
+    "setup": [
+      "buyer team 1",
+      "identified buyer airport",
+      "one existing player aircraft",
+      "available manpower",
+      "market aircraft prefab with flight controller"
+    ]
+  },
+  "source": {
+    "delivery": "Assets/scripts/Governo/SistemaLogisticaMercado.cs:611-700",
+    "finalization": "Assets/scripts/Governo/SistemaLogisticaMercado.cs:546-592",
+    "nationalGate": "Assets/scripts/GovernadorGameplayRTS.cs:93-112",
+    "currentGap": "EntregarEquipamento does not invoke the national production gate before instantiating/registering aircraft."
+  },
+  "changes": {
+    "gameplay": [],
+    "regressionTest": "Assets/Tests/PlayMode/AgriculturaMercadoIntegrationPlayModeTests.cs",
+    "reports": [
+      "Docs/AuditoriaRotaProducaoMilitar.md",
+      "C:\\Users\\Mathe\\Downloads\\Auditoria_IA03_Etapa2_2026-10-04.txt"
+    ]
+  },
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false,
+    "compilationFailed": false
+  },
+  "openDecision": "For a paid order whose buyer reaches the cap before arrival, choose between keeping the shipment pending until capacity is free or cancelling/refunding through an explicit logistics path."
+}

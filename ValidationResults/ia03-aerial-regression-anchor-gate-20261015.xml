@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="3" result="Passed" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-15 19:50:04Z" end-time="2026-10-15 19:50:19Z" duration="14,6221705">
+  <test-suite type="TestSuite" id="1207" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="170" result="Passed" start-time="2026-10-15 19:50:04Z" end-time="2026-10-15 19:50:19Z" duration="14.622171" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1203" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="170" result="Passed" start-time="2026-10-15 19:50:04Z" end-time="2026-10-15 19:50:19Z" duration="14.579149" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19148" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1089" name="IA03AerialCombatIntegrationPlayModeTests" fullname="IA03AerialCombatIntegrationPlayModeTests" classname="IA03AerialCombatIntegrationPlayModeTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-15 19:50:04Z" end-time="2026-10-15 19:50:19Z" duration="14.552273" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1090" name="CacaRealNaoDisparaAutomaticamenteEmPazNeutra" fullname="IA03AerialCombatIntegrationPlayModeTests.CacaRealNaoDisparaAutomaticamenteEmPazNeutra" methodname="CacaRealNaoDisparaAutomaticamenteEmPazNeutra" classname="IA03AerialCombatIntegrationPlayModeTests" runstate="Runnable" seed="748503164" result="Passed" start-time="2026-10-15 19:50:04Z" end-time="2026-10-15 19:50:10Z" duration="5.440969" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA03][Validação][Bootstrap] Awake scene=Assets/Tests/PlayMode/IA03_WarValidation.unity activeScene=Assets/Tests/PlayMode/IA03_WarValidation.unity playing=True editor=True
+[IA03][Validação][Bootstrap] OnDanoGlobalAssinado=True
+[IA03][Validação] Valdoria e Karsovia iniciam em Paz.
+[IA03][Startup][Team 1][frame=13][t=14,535] Awake.begin
+[IA03][Startup][Team 1][frame=13][t=14,535] Awake.runtime-graph.begin
+[IA03][Startup][Team 1][frame=13][t=14,538] RuntimeGraph.begin
+[IA03][Startup][Team 1][frame=13][t=14,562] Deusa.BindRuntime.begin
+[DEUSA][Team 1] Runtime vinculado | pais=Republica Boreal 1 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1][frame=13][t=14,592] Deusa.BindRuntime.end
+[IA03][Startup][Team 1][frame=13][t=14,592] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1][frame=13][t=14,593] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=13][t=14,595] GarantirPaisIA.end
+[IA03][Startup][Team 1][frame=13][t=14,595] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1][frame=13][t=14,595] RuntimeGraph.end
+[IA03][Startup][Team 1][frame=13][t=14,596] Awake.end
+[IA03][Startup][Team 3][frame=13][t=14,601] Awake.begin
+[IA03][Startup][Team 3][frame=13][t=14,601] Awake.runtime-graph.begin
+[IA03][Startup][Team 3][frame=13][t=14,601] RuntimeGraph.begin
+[IA03][Startup][Team 3][frame=13][t=14,602] Deusa.BindRuntime.begin
+[DEUSA][Team 3] Runtime vinculado | pais=Federacao do Aco 3 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 3][frame=13][t=14,602] Deusa.BindRuntime.end
+[IA03][Startup][Team 3][frame=13][t=14,602] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 3][frame=13][t=14,603] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=13][t=14,603] GarantirPaisIA.end
+[IA03][Startup][Team 3][frame=13][t=14,603] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 3][frame=13][t=14,603] RuntimeGraph.end
+[IA03][Startup][Team 3][frame=13][t=14,606] Awake.end
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][Karsovia] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][AEREO][PAZ_AUTO] fighter=IA03_Aerial_Integration_F16 target=IA03_Aerial_Integration_Target_Team3 relation=Neutro/semGuerra missionState=EmMissao explicitTarget=False targetDetected=True ammo=8->8 warAtObservation=False frame=545
+[IA03][AEREO][HOSTILIDADE_AUTO] target=IA03_Aerial_Integration_Target_Team3 postureTeam1=Inimigo ammo=8->7 frame=683
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=0 erros=0 avisos=0 cena=IA03_WarValidation
+[Diplomacia] Agressor identificado como inimigo: vitima=3 agressor=1
+[IA03][Validação][PrimeiroDano] início=Paz agressor=IA03_Aerial_Integration_F16 equipe=1 vítima=IA03_Aerial_Integration_Target_Team3 equipeVítima=3 dano=350 guerraDepois=True frame=747 t=4,14
+[IA03][AEREO][IMPACTO] hp=1000->650 aggressorTeam=1 frame=747
+]]></output>
+        </test-case>
+        <test-case id="1092" name="LancadorNavalCoordenadoBloqueiaPazEDestruiAlvoComMissilReal" fullname="IA03AerialCombatIntegrationPlayModeTests.LancadorNavalCoordenadoBloqueiaPazEDestruiAlvoComMissilReal" methodname="LancadorNavalCoordenadoBloqueiaPazEDestruiAlvoComMissilReal" classname="IA03AerialCombatIntegrationPlayModeTests" runstate="Runnable" seed="1004260484" result="Passed" start-time="2026-10-15 19:50:10Z" end-time="2026-10-15 19:50:16Z" duration="6.933569" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA03][Validação][Bootstrap] Awake scene=Assets/Tests/PlayMode/IA03_WarValidation.unity activeScene=Assets/Tests/PlayMode/IA03_WarValidation.unity playing=True editor=True
+[IA03][Validação][Bootstrap] OnDanoGlobalAssinado=True
+[IA03][Validação] Valdoria e Karsovia iniciam em Paz.
+[IA03][Startup][Team 1][frame=752][t=19,776] Awake.begin
+[IA03][Startup][Team 1][frame=752][t=19,776] Awake.runtime-graph.begin
+[IA03][Startup][Team 1][frame=752][t=19,776] RuntimeGraph.begin
+[IA03][Startup][Team 1][frame=752][t=19,776] Deusa.BindRuntime.begin
+[DEUSA][Team 1] Runtime vinculado | pais=Republica Boreal 1 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1][frame=752][t=19,777] Deusa.BindRuntime.end
+[IA03][Startup][Team 1][frame=752][t=19,777] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1][frame=752][t=19,778] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=752][t=19,778] GarantirPaisIA.end
+[IA03][Startup][Team 1][frame=752][t=19,778] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1][frame=752][t=19,778] RuntimeGraph.end
+[IA03][Startup][Team 1][frame=752][t=19,778] Awake.end
+[IA03][Startup][Team 3][frame=752][t=19,779] Awake.begin
+[IA03][Startup][Team 3][frame=752][t=19,779] Awake.runtime-graph.begin
+[IA03][Startup][Team 3][frame=752][t=19,779] RuntimeGraph.begin
+[IA03][Startup][Team 3][frame=752][t=19,779] Deusa.BindRuntime.begin
+[DEUSA][Team 3] Runtime vinculado | pais=Federacao do Aco 3 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 3][frame=752][t=19,780] Deusa.BindRuntime.end
+[IA03][Startup][Team 3][frame=752][t=19,780] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 3][frame=752][t=19,780] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=752][t=19,780] GarantirPaisIA.end
+[IA03][Startup][Team 3][frame=752][t=19,780] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 3][frame=752][t=19,781] RuntimeGraph.end
+[IA03][Startup][Team 3][frame=752][t=19,781] Awake.end
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][Karsovia] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[AutoMissil] IA03_Naval_Integration_Attacker_Team1: 'prefabTorpedo' configurado com 'missel_sub'.
+[AutoMissil] IA03_Naval_Integration_Attacker_Team1: 'prefabMissel' configurado com 'N-02 Tridente'.
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=0 erros=0 avisos=0 cena=IA03_WarValidation
+[IA03][Validação][PrimeiroDano] início=Paz agressor=IA03_Naval_Integration_Attacker_Team1 equipe=1 vítima=IA03_Naval_Integration_Target_Team3 equipeVítima=3 dano=500 guerraDepois=True frame=1851 t=10,78
+[IA03][NAVAL][INTEGRACAO_REAL] peaceAllowed=False peaceReason=alvo sem guerra declarada com a unidade warAllowed=True missile=N-02 Tridente ammo=1->0 hp=400->-100 destroyed=True aggressorTeam=1
+]]></output>
+        </test-case>
+        <test-case id="1091" name="OrdemAereaExplicitaEmPazMantemPrioridadeEAplicaDano" fullname="IA03AerialCombatIntegrationPlayModeTests.OrdemAereaExplicitaEmPazMantemPrioridadeEAplicaDano" methodname="OrdemAereaExplicitaEmPazMantemPrioridadeEAplicaDano" classname="IA03AerialCombatIntegrationPlayModeTests" runstate="Runnable" seed="1709146189" result="Passed" start-time="2026-10-15 19:50:16Z" end-time="2026-10-15 19:50:19Z" duration="2.128715" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA03][Validação][Bootstrap] Awake scene=Assets/Tests/PlayMode/IA03_WarValidation.unity activeScene=Assets/Tests/PlayMode/IA03_WarValidation.unity playing=True editor=True
+[IA03][Validação][Bootstrap] OnDanoGlobalAssinado=True
+[IA03][Validação] Valdoria e Karsovia iniciam em Paz.
+[IA03][Startup][Team 1][frame=1856][t=26,704] Awake.begin
+[IA03][Startup][Team 1][frame=1856][t=26,704] Awake.runtime-graph.begin
+[IA03][Startup][Team 1][frame=1856][t=26,704] RuntimeGraph.begin
+[IA03][Startup][Team 1][frame=1856][t=26,705] Deusa.BindRuntime.begin
+[DEUSA][Team 1] Runtime vinculado | pais=Republica Boreal 1 | presidente=Helena Voss | moeda=Solari | modo=Normal | personalidade=Aerea | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 1][frame=1856][t=26,705] Deusa.BindRuntime.end
+[IA03][Startup][Team 1][frame=1856][t=26,705] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 1][frame=1856][t=26,705] GarantirPaisIA.begin
+[IA03][Startup][Team 1][frame=1856][t=26,706] GarantirPaisIA.end
+[IA03][Startup][Team 1][frame=1856][t=26,706] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 1][frame=1856][t=26,706] RuntimeGraph.end
+[IA03][Startup][Team 1][frame=1856][t=26,706] Awake.end
+[IA03][Startup][Team 3][frame=1856][t=26,707] Awake.begin
+[IA03][Startup][Team 3][frame=1856][t=26,707] Awake.runtime-graph.begin
+[IA03][Startup][Team 3][frame=1856][t=26,707] RuntimeGraph.begin
+[IA03][Startup][Team 3][frame=1856][t=26,707] Deusa.BindRuntime.begin
+[DEUSA][Team 3] Runtime vinculado | pais=Federacao do Aco 3 | presidente=Caio Mercer | moeda=Boreal | modo=Normal | personalidade=Naval | observador=True | escopo=apenas DEUSA
+[IA03][Startup][Team 3][frame=1856][t=26,707] Deusa.BindRuntime.end
+[IA03][Startup][Team 3][frame=1856][t=26,708] SyncNationStateWithGovernment.begin
+[IA03][Startup][Team 3][frame=1856][t=26,708] GarantirPaisIA.begin
+[IA03][Startup][Team 3][frame=1856][t=26,708] GarantirPaisIA.end
+[IA03][Startup][Team 3][frame=1856][t=26,708] SyncNationStateWithGovernment.end
+[IA03][Startup][Team 3][frame=1856][t=26,708] RuntimeGraph.end
+[IA03][Startup][Team 3][frame=1856][t=26,709] Awake.end
+[IA03][Valdoria] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[IA03][Karsovia] N0 | missão=nenhuma | grupo=0 | missão cancelada: IA03 desativada
+[Diplomacia] Agressor identificado como inimigo: vitima=3 agressor=1
+[IA03][Validação][PrimeiroDano] início=Paz agressor=IA03_Aerial_Integration_F16 equipe=1 vítima=IA03_Aerial_Integration_Target_Team3 equipeVítima=3 dano=350 guerraDepois=True frame=2170 t=12,44
+[IA03][AEREO][ATTACK_EXPLICITO] accepted=True priorityTarget=IA03_Aerial_Integration_Target_Team3 ammo=8->7 hp=1000->650 aggressorTeam=1 warAfterImpact=True
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

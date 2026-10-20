@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="2" result="Passed" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 14:41:29Z" end-time="2026-10-11 14:41:30Z" duration="0,7143113">
+  <test-suite type="TestSuite" id="1336" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="269" result="Passed" start-time="2026-10-11 14:41:29Z" end-time="2026-10-11 14:41:30Z" duration="0.714311" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1327" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="253" result="Passed" start-time="2026-10-11 14:41:30Z" end-time="2026-10-11 14:41:30Z" duration="0.594918" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1157" name="IA03AvaliadorMissaoEditModeTests" fullname="IA03AvaliadorMissaoEditModeTests" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="53" result="Passed" start-time="2026-10-11 14:41:30Z" end-time="2026-10-11 14:41:30Z" duration="0.591443" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="ParameterizedMethod" id="1186" name="PerfisIA03LegadosUsamDefaultDeReservaManpower" fullname="IA03AvaliadorMissaoEditModeTests.PerfisIA03LegadosUsamDefaultDeReservaManpower" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-11 14:41:30Z" end-time="2026-10-11 14:41:30Z" duration="0.587356" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-case id="1184" name="PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Valdoria.asset&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Valdoria.asset&quot;)" methodname="PerfisIA03LegadosUsamDefaultDeReservaManpower" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="106014511" result="Passed" start-time="2026-10-11 14:41:30Z" end-time="2026-10-11 14:41:30Z" duration="0.484932" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+          </test-case>
+          <test-case id="1185" name="PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Karsovia.asset&quot;)" fullname="IA03AvaliadorMissaoEditModeTests.PerfisIA03LegadosUsamDefaultDeReservaManpower(&quot;Assets/Tests/IA03/PerfilPais_Karsovia.asset&quot;)" methodname="PerfisIA03LegadosUsamDefaultDeReservaManpower" classname="IA03AvaliadorMissaoEditModeTests" runstate="Runnable" seed="2077948139" result="Passed" start-time="2026-10-11 14:41:30Z" end-time="2026-10-11 14:41:30Z" duration="0.002810" asserts="0">
+            <properties>
+              <property name="retryIteration" value="0" />
+              <property name="repeatIteration" value="0" />
+            </properties>
+            <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+          </test-case>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

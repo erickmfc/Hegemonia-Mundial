@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 21:55:16Z" end-time="2026-10-11 21:55:21Z" duration="5,0410494">
+  <test-suite type="TestSuite" id="1167" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="133" result="Passed" start-time="2026-10-11 21:55:16Z" end-time="2026-10-11 21:55:21Z" duration="5.041049" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1163" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="133" result="Passed" start-time="2026-10-11 21:55:16Z" end-time="2026-10-11 21:55:21Z" duration="4.643947" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1107" name="IAProductionDirectorN2ReplacementPlayModeTests" fullname="IAProductionDirectorN2ReplacementPlayModeTests" classname="IAProductionDirectorN2ReplacementPlayModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-11 21:55:16Z" end-time="2026-10-11 21:55:21Z" duration="4.616500" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1109" name="N2TankLossQueuesAndProducesOneReplacementThroughNationalEconomy" fullname="IAProductionDirectorN2ReplacementPlayModeTests.N2TankLossQueuesAndProducesOneReplacementThroughNationalEconomy" methodname="N2TankLossQueuesAndProducesOneReplacementThroughNationalEconomy" classname="IAProductionDirectorN2ReplacementPlayModeTests" runstate="Runnable" seed="79855714" result="Passed" start-time="2026-10-11 21:55:16Z" end-time="2026-10-11 21:55:21Z" duration="4.363782" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[SistemaIndustrial] Perfil geológico gerado para team 2941938: Ferro=Alto Cobre=Abundante Bauxita=Medio Titânio=Baixo Urânio=Escasso Mod=1,25
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+The referenced script (Unknown) on this Behaviour is missing!
+[IA_BackendBridge] Catalogo carregado: 129 itens disponíveis para a IA.
+Failed to create agent because there is no valid NavMesh
+Failed to create agent because there is no valid NavMesh
+There are no audio listeners in the scene. Please ensure there is always one audio listener in the scene
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,152 @@
+{
+  "date": "2026-10-18",
+  "objective": "Prevent produced military units from receiving free operational fuel when national refined-fuel stock cannot pay for the initial tank load.",
+  "rootCause": {
+    "status": "confirmed_by_source_inspection",
+    "file": "Assets/scripts/ServicoAbastecimento.cs",
+    "method": "AbastecerUnidadeProduzida",
+    "evidence": "After national stock withdrawal failed, a fallback called CombustivelUnidade.PreencherSemCusto when the prefab had preencherAoIniciar enabled.",
+    "runtimeReproduction": "pending"
+  },
+  "changes": [
+    {
+      "file": "Assets/scripts/ServicoAbastecimento.cs",
+      "change": "Removed the free-fill fallback. The existing paid-load preparation still disables start fill and empties the tank before attempting national-stock withdrawal."
+    },
+    {
+      "file": "Assets/Tests/PlayMode/FuelNationalInventoryPlayModeTests.cs",
+      "change": "Renamed the no-stock test and changed its contract to assert zero fuel, PodeOperar=false, unchanged national stock, and no refill after Start."
+    },
+    {
+      "file": "Docs/AuditoriaRotaProducaoMilitar.md",
+      "change": "Recorded the source-level cause and the incomplete runtime validation state."
+    }
+  ],
+  "staticProductionAudit": {
+    "callsToCentralProductionFuelService": 19,
+    "callingScripts": 13,
+    "coverage": [
+      "factory",
+      "shipyard",
+      "airport",
+      "market",
+      "player construction",
+      "BrainMaster",
+      "NovaIA",
+      "IA01/IA02",
+      "sovereign AI"
+    ],
+    "remainingPreencherSemCustoReferences": [
+      "generic CombustivelUnidade initial configuration",
+      "two existing commercial-aviation paths"
+    ],
+    "c700AirportPath": "C700 Awake can apply prefab initial fill; GerenciadorAeroporto calls the central production-fuel service afterward, which disables initial fill and zeroes the tank before national-stock payment.",
+    "runtimeCoverage": "pending"
+  },
+  "fuelChainAudit": {
+    "unitFuelStock": "RecursosPorTime maps vehicle, aircraft, and naval classes to diesel, aviation fuel, and naval fuel, then consumes from the owning team's SistemaIndustrialNacional/Armazem inventory.",
+    "unusedFuel": "Any amount not accepted by the unit is returned to the same team and product stock.",
+    "crudeOil": "AdicionarPetroleoBruto stores crude in the national industrial warehouse; the legacy conversion flag does not convert crude directly.",
+    "refining": "Existing central recipes produce diesel, aviation fuel, and naval fuel from crude; none were changed.",
+    "parallelInventoryAdded": false,
+    "historicalPlayModeEvidence": {
+      "file": "ValidationResults/fuel-national-inventory-playmode-20261011-full-11of11-pass.xml",
+      "startedUtc": "2026-10-11T21:24:32Z",
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "currentAfterSourceFix": false
+    }
+  },
+  "validation": {
+    "testFilter": "ProducedUnitWithNoNationalFuelStaysEmptyAndInoperable",
+    "testMode": "PlayMode",
+    "runnerResponse": {
+      "status": "completed",
+      "total": 0,
+      "passed": 0,
+      "failed": 0,
+      "interpretation": "No matching test was executed; this is not a pass or a failure."
+    },
+    "testDiscovery": {
+      "listedNewName": false,
+      "listedOldName": true,
+      "oldName": "FuelNationalInventoryPlayModeTests.ProducedUnitWithNoNationalFuelUsesConfiguredInitialTankFill"
+    },
+    "compilation": {
+      "afterTestEditBeforeProductionEdit": "Unity recompile returned completed with failed=false and compilationFailed=false.",
+      "afterProductionEdit": "Editor.log later recorded successful Tundra builds and copied Assembly-CSharp.dll at line 80631; the file timestamp is 2026-10-18 08:41:21 local, after ServicoAbastecimento.cs at 08:23:38. EditMode and PlayMode test assemblies also have successful Tundra builds later in the same log. Current compilationFailed flag was not queryable.",
+      "fuelPlayModeTestAssembly": "Hegemonia.PlayMode.Tests.dll was written at 08:21:56 local, after FuelNationalInventoryPlayModeTests.cs at 08:21:29. This confirms assembly inclusion, not test execution."
+    },
+    "currentTestResultsXml": {
+      "modifiedLocal": "2026-10-18T00:08:46-03:00",
+      "startedUtc": "2026-10-18T03:08:46Z",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "test": "IA03AvaliadorMissaoEditModeTests.BrainMasterArmaTorretaModularSemControleUnidade",
+      "relevance": "unrelated to the fuel regression"
+    },
+    "editor": {
+      "beforeTestAndSourceEdits": "ready; Play Mode stopped; compilationFailed=false",
+      "afterProductionEdit": "editor_status request did not return. Editor.log recorded main-thread operation timeouts after 5000, 30000, and 60000 ms; a later editor_status request also timed out after 60000 ms.",
+      "lastObservedFreePhysicalMemoryGb": 0.98,
+      "editorProcessRespondingAtOsLevel": true,
+      "targetEditorPid": 5892,
+      "targetAssemblyStillPredatesSource": false,
+      "testResultsXmlStillUnchanged": true
+    },
+    "latestStatusProbe": {
+      "observedUtc": "2026-10-18T11:42:01Z",
+      "editorStatus": "timed out after 60000 ms",
+      "testStatus": "timed out after 60000 ms; state is unknown",
+      "userReported": "Will stop Play Mode manually",
+      "editModeConfirmed": false,
+      "testsStartedThisTurn": false
+    },
+    "latestCompilationRecheck": {
+      "observedUtc": "2026-10-18T11:44:21Z",
+      "assemblyCSharpBuiltAfterFuelChange": true,
+      "editModeAndPlayModeAssembliesBuilt": true,
+      "historicalEditModeCompileErrors": "Two errors in IA03AvaliadorMissaoEditModeTests.cs were followed by successful Tundra builds; no current compilationFailed flag was available.",
+      "runtimeTestsExecuted": false
+    },
+    "latestRuntimeAndDiscoveryCheck": {
+      "observedUtc": "2026-10-18T11:45:42Z",
+      "editorStatus": "ready",
+      "compiling": false,
+      "domainReloadInProgress": false,
+      "playMode": "stopped",
+      "testStatus": {
+        "status": "completed",
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "test": "IA03AvaliadorMissaoEditModeTests.TrocaDeGovernoEEquipeLiberaReservaNaInstanciaEChaveOriginais",
+        "relevance": "unrelated IA03/manpower regression; not fuel validation"
+      },
+      "fuelRegressionDiscovered": "FuelNationalInventoryPlayModeTests.ProducedUnitWithNoNationalFuelStaysEmptyAndInoperable",
+      "freeMemoryGb": 0.66,
+      "fuelTestStarted": false,
+      "reasonHeld": "User had said they would free RAM and notify; free memory remained at 0.66 GB."
+    },
+    "currentEditorRecheck": {
+      "observedUtc": "2026-10-18T11:46:36Z",
+      "editorStatus": "ready",
+      "compiling": false,
+      "domainReloadInProgress": false,
+      "playMode": "stopped",
+      "freeMemoryGb": 0.71,
+      "fuelRegressionStarted": false,
+      "reasonHeld": "The target is PlayMode and available RAM remained low; user had said they would free RAM and notify."
+    }
+  },
+  "scope": {
+    "pricesOrRecipesChanged": false,
+    "manpowerChanged": false,
+    "energyChanged": false,
+    "sceneOrPrefabChanged": false,
+    "balanceValuesInvented": false
+  },
+  "next": "Wait for the existing Unity Editor and test discovery to respond, then run this single PlayMode regression, the FuelNationalInventoryPlayModeTests class, and the relevant IA03 fuel-readiness regression."
+}

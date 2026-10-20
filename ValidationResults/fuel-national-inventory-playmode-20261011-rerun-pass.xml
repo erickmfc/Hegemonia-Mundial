@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="10" result="Passed" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 16:24:37Z" end-time="2026-10-11 16:24:40Z" duration="2,7889542">
+  <test-suite type="TestSuite" id="1150" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="117" result="Passed" start-time="2026-10-11 16:24:37Z" end-time="2026-10-11 16:24:40Z" duration="2.788954" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1146" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="117" result="Passed" start-time="2026-10-11 16:24:37Z" end-time="2026-10-11 16:24:40Z" duration="2.387294" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1032" name="FuelNationalInventoryPlayModeTests" fullname="FuelNationalInventoryPlayModeTests" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" testcasecount="10" result="Passed" start-time="2026-10-11 16:24:37Z" end-time="2026-10-11 16:24:40Z" duration="2.360055" total="10" passed="10" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1040" name="BrainMasterMarketDemandSelectsEachMissingMilitaryFuelByProductId" fullname="FuelNationalInventoryPlayModeTests.BrainMasterMarketDemandSelectsEachMissingMilitaryFuelByProductId" methodname="BrainMasterMarketDemandSelectsEachMissingMilitaryFuelByProductId" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="2076943311" result="Passed" start-time="2026-10-11 16:24:37Z" end-time="2026-10-11 16:24:38Z" duration="0.436053" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1037" name="ExistingIndustrialRefiningPipelineProducesDieselThatCanRefuelAUnit" fullname="FuelNationalInventoryPlayModeTests.ExistingIndustrialRefiningPipelineProducesDieselThatCanRefuelAUnit" methodname="ExistingIndustrialRefiningPipelineProducesDieselThatCanRefuelAUnit" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="253529877" result="Passed" start-time="2026-10-11 16:24:38Z" end-time="2026-10-11 16:24:39Z" duration="0.705806" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1039" name="IA03MarksMissingFuelForAnActiveForceDomainAsLowReadiness" fullname="FuelNationalInventoryPlayModeTests.IA03MarksMissingFuelForAnActiveForceDomainAsLowReadiness" methodname="IA03MarksMissingFuelForAnActiveForceDomainAsLowReadiness" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="1995123748" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.254753" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1038" name="MilitaryMarketImportsRefinedDieselIntoTheBuyerCountry" fullname="FuelNationalInventoryPlayModeTests.MilitaryMarketImportsRefinedDieselIntoTheBuyerCountry" methodname="MilitaryMarketImportsRefinedDieselIntoTheBuyerCountry" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="2017201131" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.047260" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1035" name="OffshorePlatformAndTankerDeliveryUpdatesOwnedNationalCrudeStock" fullname="FuelNationalInventoryPlayModeTests.OffshorePlatformAndTankerDeliveryUpdatesOwnedNationalCrudeStock" methodname="OffshorePlatformAndTankerDeliveryUpdatesOwnedNationalCrudeStock" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="530305799" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.037535" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Navio] Carregamento concluído. Cheio: True, Tempo: False
+[Navio] Mudando para: SAINDO_PLATAFORMA
+[Navio] Mudando para: RE_DO_PIER
+]]></output>
+        </test-case>
+        <test-case id="1036" name="OffshoreTankerNavigatesShortPlatformToPierRouteAndDeliversCrude" fullname="FuelNationalInventoryPlayModeTests.OffshoreTankerNavigatesShortPlatformToPierRouteAndDeliversCrude" methodname="OffshoreTankerNavigatesShortPlatformToPierRouteAndDeliversCrude" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="848821952" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.524272" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Navio] Mudando para: INDO_PLATAFORMA
+[Navio Petroleiro] Rota aquatica direta ativa para a logistica.
+[Navio] Mudando para: ACOPLANDO_PLATAFORMA
+[Navio] Mudando para: CARREGANDO
+[Navio] Carregamento concluído. Cheio: True, Tempo: False
+[Navio] Mudando para: SAINDO_PLATAFORMA
+[Navio] Mudando para: INDO_PIER
+[Navio Petroleiro] Rota aquatica direta ativa para a logistica.
+[Navio] Mudando para: ACOPLANDO_PIER
+[Navio] Mudando para: DESCARREGANDO
+[Navio] Mudando para: RE_DO_PIER
+]]></output>
+        </test-case>
+        <test-case id="1034" name="PierDeliveryAddsOnlyCrudeOilAndIndustrialSaveRestoresBothStocks" fullname="FuelNationalInventoryPlayModeTests.PierDeliveryAddsOnlyCrudeOilAndIndustrialSaveRestoresBothStocks" methodname="PierDeliveryAddsOnlyCrudeOilAndIndustrialSaveRestoresBothStocks" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="455034009" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.030330" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1041" name="ProducedTankerPaysInitialTankAndCargoOnceAndLaterConfigurationCannotRefillForFree" fullname="FuelNationalInventoryPlayModeTests.ProducedTankerPaysInitialTankAndCargoOnceAndLaterConfigurationCannotRefillForFree" methodname="ProducedTankerPaysInitialTankAndCargoOnceAndLaterConfigurationCannotRefillForFree" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="1687638559" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.038007" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1033" name="RefuelingUsesOnlyTheOwningTeamAndTheRefinedFuelForItsDomain" fullname="FuelNationalInventoryPlayModeTests.RefuelingUsesOnlyTheOwningTeamAndTheRefinedFuelForItsDomain" methodname="RefuelingUsesOnlyTheOwningTeamAndTheRefinedFuelForItsDomain" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="1337372670" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:39Z" duration="0.034303" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1042" name="RestoringSavedFuelDoesNotRefillTheTankOnStartOrLateConfiguration" fullname="FuelNationalInventoryPlayModeTests.RestoringSavedFuelDoesNotRefillTheTankOnStartOrLateConfiguration" methodname="RestoringSavedFuelDoesNotRefillTheTankOnStartOrLateConfiguration" classname="FuelNationalInventoryPlayModeTests" runstate="Runnable" seed="643038775" result="Passed" start-time="2026-10-11 16:24:39Z" end-time="2026-10-11 16:24:40Z" duration="0.044431" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

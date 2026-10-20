@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 22:20:15Z" end-time="2026-10-11 22:20:18Z" duration="2,6441433">
+  <test-suite type="TestSuite" id="1167" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="133" result="Failed" site="Child" start-time="2026-10-11 22:20:15Z" end-time="2026-10-11 22:20:18Z" duration="2.644143" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1163" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="133" result="Failed" site="Child" start-time="2026-10-11 22:20:16Z" end-time="2026-10-11 22:20:18Z" duration="2.302961" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="6168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1001" name="AgriculturaMercadoIntegrationPlayModeTests" fullname="AgriculturaMercadoIntegrationPlayModeTests" classname="AgriculturaMercadoIntegrationPlayModeTests" runstate="Runnable" testcasecount="3" result="Failed" site="Child" start-time="2026-10-11 22:20:16Z" end-time="2026-10-11 22:20:18Z" duration="2.272727" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1003" name="InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport" fullname="AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport" methodname="InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport" classname="AgriculturaMercadoIntegrationPlayModeTests" runstate="Runnable" seed="1077129265" result="Failed" start-time="2026-10-11 22:20:16Z" end-time="2026-10-11 22:20:18Z" duration="1.766553" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  Recarregar o pedido não pode cobrar o comprador novamente.
+  Expected: 8425
+  But was:  6975
+]]></message>
+            <stack-trace><![CDATA[at AgriculturaMercadoIntegrationPlayModeTests+<InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport>d__52.MoveNext () [0x01330] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\AgriculturaMercadoIntegrationPlayModeTests.cs:623
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[SistemaIndustrial] Perfil geológico gerado para team 876543: Ferro=Medio Cobre=Abundante Bauxita=Baixo Titânio=Alto Urânio=MuitoEscasso Mod=1,25
+[SistemaIndustrial] Perfil geológico gerado para team 876544: Ferro=Medio Cobre=Baixo Bauxita=Abundante Titânio=Abundante Urânio=Escasso Mod=1,25
+[MarketSaveTrace] imediatamente apos CarregarJogo: team=876543; saldo=17; entradas=1; mesma referencia do DTO=True
+[MarketSaveTrace] DTO carregado: saldo=8425; runtime=team=876543; saldo=17; entradas=1; mesma referencia do DTO=False
+[MarketSaveTrace] apos AoCarregarCena: team=876543; saldo=17; entradas=1; mesma referencia do DTO=False
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[SistemaIndustrial] Perfil geológico gerado para team 876543: Ferro=Medio Cobre=Abundante Bauxita=Baixo Titânio=Alto Urânio=MuitoEscasso Mod=1,25
+[SistemaIndustrial] Perfil geológico gerado para team 876544: Ferro=Medio Cobre=Baixo Bauxita=Abundante Titânio=Abundante Urânio=Escasso Mod=1,25
+[MarketSaveTrace] mudanca durante restauracao frame=3; team=876543; saldo=6975; entradas=1; mesma referencia do DTO=True
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-18 22:02:10Z" end-time="2026-10-18 22:02:11Z" duration="1,0056848">
+  <test-suite type="TestSuite" id="1264" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="216" result="Passed" start-time="2026-10-18 22:02:10Z" end-time="2026-10-18 22:02:11Z" duration="1.005685" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1260" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="216" result="Passed" start-time="2026-10-18 22:02:10Z" end-time="2026-10-18 22:02:11Z" duration="0.972281" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="33936" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <output><![CDATA[[AuditoriaConteudo] UH-60 Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+[AuditoriaConteudo] Aeroporto Temporario C400: prefab sem SistemaDeDanos
+]]></output>
+      <test-suite type="TestFixture" id="1254" name="TacticalDisplayPlayModeTests" fullname="TacticalDisplayPlayModeTests" classname="TacticalDisplayPlayModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-10-18 22:02:10Z" end-time="2026-10-18 22:02:11Z" duration="0.956915" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <output><![CDATA[[AuditoriaConteudo] Gate de conteudo aprovado: fichas=23 erros=0 avisos=3 cena=InitTestScene0a0fd274-47b8-40e9-af4d-2e8a1e4971fe
+]]></output>
+        <test-case id="1255" name="DisplayIsolatesContactsHidesRadarAffiliationAndCleansItsOwnState" fullname="TacticalDisplayPlayModeTests.DisplayIsolatesContactsHidesRadarAffiliationAndCleansItsOwnState" methodname="DisplayIsolatesContactsHidesRadarAffiliationAndCleansItsOwnState" classname="TacticalDisplayPlayModeTests" runstate="Runnable" seed="680725874" result="Passed" start-time="2026-10-18 22:02:10Z" end-time="2026-10-18 22:02:11Z" duration="0.926895" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

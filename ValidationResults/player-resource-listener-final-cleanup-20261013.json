@@ -1,0 +1,35 @@
+{
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "testedAtUtc": "2026-10-13T21:39:00Z",
+  "testMode": "PlayMode",
+  "test": "FuelNationalInventoryPlayModeTests.PlayerResourceListenerExceptionDoesNotInterruptSpend",
+  "status": "Passed",
+  "durationSeconds": 0.3754653,
+  "assertedBehavior": [
+    "Spend 1000 to 950 with throwing resource listener",
+    "Later listener still receives debit and credit notifications",
+    "Resource ledger records both transactions",
+    "Credit of 25 produces balance 975",
+    "finally restores original resource and ledger state"
+  ],
+  "editorAfterTest": {
+    "status": "ready",
+    "compiling": false,
+    "domainReloadInProgress": false,
+    "playMode": "stopped",
+    "compilationFailed": false,
+    "consoleErrorsAtLatestSample": 51,
+    "retainedConsoleErrors": 265
+  },
+  "assetDatabase": {
+    "editorLogMatchesAtLatestSample": 573,
+    "messages": [
+      "MDB_READERS_FULL",
+      "Asset database transaction committed twice!",
+      "errors == MDB_SUCCESS || errors == MDB_NOTFOUND"
+    ],
+    "causeProven": false
+  },
+  "diffCheck": "passed"
+}

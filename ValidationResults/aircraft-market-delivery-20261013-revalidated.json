@@ -1,0 +1,49 @@
+{
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "runs": [
+    {
+      "test": "AircraftPurchasePlayModeTests.Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+      "status": "passed",
+      "durationSeconds": 0.1527205,
+      "filterApplied": "testname: Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+      "timingNote": "This successful run preceded the fresh compilation described below. A repeat after recompilation was aborted by the Unity Test Runner before producing a new result."
+    },
+    {
+      "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "status": "passed",
+      "durationSeconds": 1.9068428,
+      "filterApplied": "testname: InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "timestampUtc": "2026-10-13T17:16:40Z",
+      "verification": "Freshly compiled PlayMode assembly; confirms rejected purchase without funds, maritime freight, pending destination, save/restore, delivery, single airport registration, buyer team and return-base references."
+    },
+    {
+      "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "status": "passed",
+      "durationSeconds": 2.3158859,
+      "filterApplied": "testname: InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "timestampUtc": "2026-10-13T17:28:53Z",
+      "verification": "Fresh exact-filter rerun after the annotation review; the new TestResults.xml confirms 1/1 passed, including buyer-airport patio/hangar registration, aeroportoOrigem, baseEstacionamentoAtual and buyer team. Editor returned ready/stopped; textual test_status remained stale."
+    }
+  ],
+  "freshCompilation": {
+    "status": "completed",
+    "failed": false,
+    "errors": [],
+    "fix": "Replaced inaccessible Clickable.Invoke(EventBase) in a PlayMode test with the existing UI Toolkit SimulateSingleClick reflection pattern."
+  },
+  "abortedRepeat": {
+    "test": "AircraftPurchasePlayModeTests.Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+    "status": "aborted",
+    "log": "Too many instant steps in test execution mode; Playmode tests were aborted because the player was stopped.",
+    "note": "Editor returned to ready/stopped. The Unity CLI status endpoint stayed stale at running and was cancelled after log and Editor status confirmed the run had terminated."
+  },
+  "runnerMismatchAfterAbort": {
+    "requestFilter": "Test11_MarketLogisticsDeliveryRegistersAircraftAtBuyerAirport",
+    "latestStatus": "completed",
+    "reportedTest": "MenuComandoMapaMPlayModeTests.CliqueDaTelaDoMapaMEncaminhaPontoProjetadoAOrdemDeMover",
+    "reportedSummary": "1 passed",
+    "note": "The reported test did not match the request, so it is not treated as evidence for Test11. The fresh-compiled full-route test remains the current authoritative market-delivery runtime evidence."
+  },
+  "testResultsXml": "C:\\Users\\Mathe\\AppData\\LocalLow\\DefaultCompany\\Hegemonia Global\\TestResults.xml"
+}

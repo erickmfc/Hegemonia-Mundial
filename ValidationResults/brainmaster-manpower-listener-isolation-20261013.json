@@ -1,0 +1,43 @@
+{
+  "unityVersion": "6000.2.15f1",
+  "reproductionBeforeFix": {
+    "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+    "status": "failed",
+    "exception": "InvalidOperationException from a controlled OnGovernoAtualizado listener",
+    "location": "SistemaGovernoMundial.TentarMobilizarEfetivo after population state mutation"
+  },
+  "fix": {
+    "file": "Assets/scripts/Governo/SistemaGovernoMundial.cs",
+    "method": "TentarMobilizarEfetivo",
+    "change": "Dispatch government update listeners individually through NotificarGovernoAtualizadoSeguro."
+  },
+  "tests": [
+    {
+      "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+      "status": "passed",
+      "durationSeconds": 0.2969543
+    },
+    {
+      "test": "IA03ProductionManpowerPlayModeTests.FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable",
+      "status": "passed",
+      "durationSeconds": 0.247466
+    },
+    {
+      "test": "FuelNationalInventoryPlayModeTests.BrainMasterNavalProductionUsesTreasuryCrewAndNationalFuelUntilShipLaunches",
+      "status": "passed",
+      "durationSeconds": 12.9589943
+    }
+  ],
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "compilationFailed": false,
+    "playMode": "stopped",
+    "consoleErrors": 0,
+    "sampledUtc": "2026-10-13T20:57:34Z"
+  },
+  "limits": [
+    "Other direct OnGovernoAtualizado emitters remain unclassified and unchanged.",
+    "No long-campaign performance profile was run."
+  ]
+}

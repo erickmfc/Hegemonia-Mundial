@@ -1,0 +1,16 @@
+{
+  "objective": "Run the focused IA03 empty-fuel mission regression after the correction.",
+  "test": "MissaoSemCombustivelInterrompeELiberaReservaParaReavaliarDepoisDoReabastecimento",
+  "command": "unity command run_tests editor MissaoSemCombustivelInterrompeELiberaReservaParaReavaliarDepoisDoReabastecimento testName false true 900",
+  "status": "not_started",
+  "resultWrittenByAttempt": false,
+  "runnerError": "Pipeline command 'run_tests' timed out after 30000ms",
+  "editorStatus": "Pipeline status endpoint reported the existing Editor as ready, but main-thread commands timed out.",
+  "priorTestStatusFile": {
+    "status": "cancelled",
+    "message": "Test run cancelled.",
+    "note": "This is the stale status from the earlier interrupted run; it is not the result of the focused regression."
+  },
+  "interpretation": "No pass/fail verdict is available. The test did not produce a terminal XML or JSON result.",
+  "resourceConstraint": "0.82 GiB free physical memory was observed. No second Unity Editor was launched."
+}

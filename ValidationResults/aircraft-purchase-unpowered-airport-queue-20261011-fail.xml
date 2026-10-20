@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 15:53:16Z" end-time="2026-10-11 15:53:17Z" duration="1,0904572">
+  <test-suite type="TestSuite" id="1150" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="117" result="Failed" site="Child" start-time="2026-10-11 15:53:16Z" end-time="2026-10-11 15:53:17Z" duration="1.090457" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1146" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="117" result="Failed" site="Child" start-time="2026-10-11 15:53:16Z" end-time="2026-10-11 15:53:17Z" duration="0.590098" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1004" name="AircraftPurchasePlayModeTests" fullname="AircraftPurchasePlayModeTests" classname="AircraftPurchasePlayModeTests" runstate="Runnable" testcasecount="6" result="Failed" site="Child" start-time="2026-10-11 15:53:16Z" end-time="2026-10-11 15:53:17Z" duration="0.556151" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1010" name="Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" fullname="AircraftPurchasePlayModeTests.Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" methodname="Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport" classname="AircraftPurchasePlayModeTests" runstate="Runnable" seed="962472817" result="Failed" start-time="2026-10-11 15:53:17Z" end-time="2026-10-11 15:53:17Z" duration="0.303106" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A fila deve ignorar o primeiro aeroporto desligado e entregar no seguinte operacional.
+  Expected: True
+  But was:  False
+]]></message>
+            <stack-trace><![CDATA[at AircraftPurchasePlayModeTests+<Test6_ProductionQueue_SkipsUnpoweredAirportAndUsesPoweredAirport>d__29.MoveNext () [0x0015b] in C:\Users\Mathe\Desktop\Hegemonia-Mundial-main\Hegemonia-Mundial-main\Assets\Tests\PlayMode\AircraftPurchasePlayModeTests.cs:434
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+[ENERGIA] Aeroporto Test_Airport está sem energia! Operações e compras bloqueadas.
+[Aeroporto] Test_Airport está sem energia. Compra de aeronaves bloqueada.
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

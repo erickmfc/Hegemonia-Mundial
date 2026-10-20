@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-15 19:33:24Z" end-time="2026-10-15 19:33:28Z" duration="3,5000187">
+  <test-suite type="TestSuite" id="1205" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="169" result="Passed" start-time="2026-10-15 19:33:24Z" end-time="2026-10-15 19:33:28Z" duration="3.500019" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1201" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="169" result="Passed" start-time="2026-10-15 19:33:24Z" end-time="2026-10-15 19:33:28Z" duration="3.360904" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="30968" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1001" name="AgriculturaMercadoIntegrationPlayModeTests" fullname="AgriculturaMercadoIntegrationPlayModeTests" classname="AgriculturaMercadoIntegrationPlayModeTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-10-15 19:33:24Z" end-time="2026-10-15 19:33:28Z" duration="3.221170" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1005" name="InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport" fullname="AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport" methodname="InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport" classname="AgriculturaMercadoIntegrationPlayModeTests" runstate="Runnable" seed="583620418" result="Passed" start-time="2026-10-15 19:33:25Z" end-time="2026-10-15 19:33:28Z" duration="3.037254" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[SistemaIndustrial] Perfil geológico gerado para team 876543: Ferro=Medio Cobre=Abundante Bauxita=Baixo Titânio=Alto Urânio=MuitoEscasso Mod=1,25
+[SistemaIndustrial] Perfil geológico gerado para team 876544: Ferro=Medio Cobre=Baixo Bauxita=Abundante Titânio=Abundante Urânio=Escasso Mod=1,25
+[Aeroporto] Nenhuma vaga real configurada; novas aeronaves aguardarão no hangar.
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

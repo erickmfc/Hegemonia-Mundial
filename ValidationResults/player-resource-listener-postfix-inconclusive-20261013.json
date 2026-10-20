@@ -1,0 +1,38 @@
+{
+  "suite": "Validacao apos isolamento de listeners em GerenciadorRecursos",
+  "mode": "PlayMode",
+  "unityVersion": "6000.2.15f1",
+  "completedUtc": "2026-10-13T21:19:04Z",
+  "status": "inconclusive_stale_source_symbols",
+  "summary": { "total": 1, "passed": 0, "failed": 1, "skipped": 0, "inconclusive": 1 },
+  "result": {
+    "test": "FuelNationalInventoryPlayModeTests.PlayerResourceListenerExceptionDoesNotInterruptSpend",
+    "runnerStatus": "Failed",
+    "seconds": 0.331979,
+    "message": "A falha em OnRecursosAtualizados escapou; listenerPosterior=0",
+    "exception": "InvalidOperationException: Falha controlada do listener de recursos do jogador.",
+    "stackLocations": [
+      "GerenciadorRecursos.NotificarAtualizacao — Assets/scripts/GerenciadorRecursos.cs:285",
+      "RTSResourceLedgerService.TrySpendPlayer — Assets/scripts/RTS/RTSResourceLedger.cs:118",
+      "FuelNationalInventoryPlayModeTests.PlayerResourceListenerExceptionDoesNotInterruptSpend — Assets/Tests/PlayMode/FuelNationalInventoryPlayModeTests.cs:126"
+    ]
+  },
+  "sourceLineComparison": {
+    "GerenciadorRecursos.cs:285": "blank line in current source; dispatcher begins at 286",
+    "FuelNationalInventoryPlayModeTests.cs:126": "catch block in current source; failing assertion is now at 132",
+    "assessment": "PDB or loaded assemblies appear stale; this run does not validate the edited dispatcher. A forced Unity recompile and a fresh test run are required."
+  },
+  "workspaceChanges": [
+    "GerenciadorRecursos.NotificarAtualizacao now snapshots and invokes each Action separately, catches listener exceptions, and warns once per listener method.",
+    "The PlayMode test now checks spend and AddPlayer credit plus TransactionCount."
+  ],
+  "editorAfterTest": {
+    "status": "ready",
+    "compiling": false,
+    "playMode": "stopped",
+    "compilationFailed": false,
+    "activeConsoleErrors": 1,
+    "activeConsoleErrorSource": "the failed controlled PlayMode assertion"
+  },
+  "next": "Force script recompile, verify the loaded method/source mapping, then rerun the same focused test."
+}

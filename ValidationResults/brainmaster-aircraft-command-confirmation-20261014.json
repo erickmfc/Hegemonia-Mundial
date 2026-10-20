@@ -1,0 +1,51 @@
+{
+  "checkpointUtc": "2026-10-14T00:45:00Z",
+  "unityVersion": "6000.2.15f1",
+  "issue": {
+    "catalogItemKey": "Boeing E-3 Sentry",
+    "spawnedPrefabName": "Boeing_E3_Reconhecimento(Clone)",
+    "beforeFix": "The command remained AwaitingConfirmation because the fixed-wing airport spawn had no IA_ConstructionMetadata and confirmation matched only ItemKey.",
+    "timeoutSeconds": 8,
+    "duplicateExecutionOrChargeReproduced": false
+  },
+  "fix": {
+    "payloadField": "IA_ProduceOrderData.PrefabName",
+    "resolution": "IA_CommandConfirmationService resolves the prefab through the existing IA_BackendBridge catalog before capturing the baseline.",
+    "matching": "CountMatching accepts the normalized prefab name as an additional key.",
+    "globalSceneSearchAdded": false
+  },
+  "tests": [
+    {
+      "name": "AircraftCommandConfirmationMatchesCatalogNameToSpawnedPrefabName",
+      "before": { "status": "failed", "passed": 0, "failed": 1, "observedStatus": "AwaitingConfirmation" },
+      "after": { "status": "passed", "passed": 1, "failed": 0, "durationSeconds": 0.0693 },
+      "coverage": "catalog name to prefab name, WorldState confirmation, and no requeue after the timeout"
+    },
+    {
+      "name": "PendingDuplicateAndCooldownAreRejectedUntilTheCooldownExpires",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 0.0467
+    }
+  ],
+  "editor": {
+    "status": "ready",
+    "playMode": "stopped",
+    "compiling": false,
+    "compilationFailed": false,
+    "activeConsoleErrors": 3,
+    "observedConsoleEntries": [
+      "MCP Pipeline main-thread operation timeouts while the Editor was loading",
+      "Unknown error loading Assets/TerrainData_b52c8447-f6d6-40a1-bfb3-fbcc6d30b5f8.asset"
+    ],
+    "sceneLoadSeconds": 128,
+    "sceneIntegrationSeconds": 80,
+    "scene": "Assets/_Recovery/cena19).unity"
+  },
+  "remaining": [
+    "No end-to-end re-execution or duplicate-charge test after the 8-second confirmation timeout.",
+    "No campaign FPS or GC profiling.",
+    "Editor TerrainData and Pipeline delay cause remain separate and unproven."
+  ]
+}

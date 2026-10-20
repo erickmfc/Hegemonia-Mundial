@@ -1,0 +1,59 @@
+{
+  "projectPath": "C:\\Users\\Mathe\\Desktop\\Hegemonia-Mundial-main\\Hegemonia-Mundial-main",
+  "unityVersion": "6000.2.15f1",
+  "date": "2026-10-13",
+  "capacitySnapshotRegression": {
+    "test": "GovernadorGameplayRTSPlayModeTests.ProductionGateMustSeeUnitRegisteredAfterCachedSnapshot",
+    "beforeFix": {
+      "status": "failed",
+      "expected": "production rejected at aerial limit 1",
+      "actual": "production allowed",
+      "cause": "AvaliarProducao reused the cached count before the next 1.25 second refresh"
+    },
+    "fix": {
+      "file": "Assets/scripts/GovernadorGameplayRTS.cs",
+      "details": [
+        "AvaliarProducao forces a refresh from RegistroEntidadesJogo before evaluating field-capacity limits",
+        "ContarInstanciasDoMesmoItem reuses the just-filled unit buffer"
+      ]
+    },
+    "afterFix": {
+      "status": "passed",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 0.08189
+    }
+  },
+  "compile": {
+    "status": "completed",
+    "failed": false,
+    "errors": []
+  },
+  "relatedCurrentTests": [
+    {
+      "test": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+      "status": "passed",
+      "total": 1,
+      "passed": 1,
+      "durationSeconds": 2.35
+    },
+    {
+      "test": "AgriculturaMercadoIntegrationPlayModeTests.MarketDoesNotAssignAirportWithoutTeamIdentityToPlayer",
+      "status": "passed",
+      "total": 1,
+      "passed": 1
+    },
+    {
+      "test": "AircraftPurchasePlayModeTests.PlayerAirportWithoutIdentityDoesNotInheritPrefabTeam",
+      "status": "passed",
+      "total": 1,
+      "passed": 1
+    }
+  ],
+  "remainingRisk": "The gate counts registered units in field but has no reservation for pending queued production. A separate controlled test is still needed for multiple queued orders before unit spawn.",
+  "runtimeState": {
+    "editor": "ready",
+    "playMode": "stopped"
+  }
+}

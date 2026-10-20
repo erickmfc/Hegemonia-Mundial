@@ -1,0 +1,31 @@
+{
+  "dateUtc": "2026-10-13T18:45:55Z",
+  "unityVersion": "6000.2.15f1",
+  "playModeTests": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "results": [
+      {
+        "name": "AgriculturaMercadoIntegrationPlayModeTests.C700MarketDeliveryWithoutParkingDoesNotSpawnOrMobilizeAircraft",
+        "status": "Passed",
+        "durationSeconds": 0.1763245,
+        "coverage": "delivery is rejected without an airport slot; no aircraft clone or crew mobilization"
+      },
+      {
+        "name": "AgriculturaMercadoIntegrationPlayModeTests.InternationalAircraftPurchaseRejectsInsufficientFundsThenShipsAndRegistersAtBuyerAirport",
+        "status": "Passed",
+        "durationSeconds": 2.2169924,
+        "coverage": "insufficient-funds rejection, purchase, sea freight, pending destination, save/restore, delivery and buyer-airport registration"
+      }
+    ]
+  },
+  "editor": {
+    "status": "ready",
+    "compiling": false,
+    "playMode": "stopped"
+  },
+  "notes": [
+    "No gameplay source changed in this revalidation."
+  ]
+}

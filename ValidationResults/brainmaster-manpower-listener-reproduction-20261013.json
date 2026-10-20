@@ -1,0 +1,28 @@
+{
+  "test": "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder",
+  "mode": "PlayMode",
+  "status": "FailedAsExpectedForReproduction",
+  "durationSeconds": 0.7682759,
+  "unityVersion": "6000.2.15f1",
+  "reproduction": "Attached a throwing OnGovernoAtualizado listener and invoked TentarMobilizarEfetivo(teamId, 5).",
+  "exception": "System.InvalidOperationException: Falha controlada do listener de efetivo.",
+  "stack": [
+    "SistemaGovernoMundial.TentarMobilizarEfetivo (SistemaGovernoMundial.cs:1158)",
+    "FuelNationalInventoryPlayModeTests.BrainMasterProductionExceptionBeforeProducerAcceptanceRefundsAndReleasesOrder (FuelNationalInventoryPlayModeTests.cs:1290)"
+  ],
+  "sourceOrder": "alistaveis/populacaoCivil/populacaoMilitarAtiva are mutated immediately before OnGovernoAtualizado is invoked.",
+  "scope": "Production code unchanged for this new finding; only a controlled test subcase was added.",
+  "editorAfterRun": {
+    "status": "ready",
+    "compiling": false,
+    "compilationFailed": false,
+    "playMode": "stopped",
+    "consoleErrors": 0,
+    "sampledUtc": "2026-10-13T20:53:26Z"
+  },
+  "pipelineInterruption": {
+    "port": 7800,
+    "status": "temporarily_unavailable_during_domain_reload_then_recovered",
+    "domainReloadDurationSeconds": 45.233
+  }
+}

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="12" result="Passed" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-11 16:21:17Z" end-time="2026-10-11 16:21:22Z" duration="4,4058707">
+  <test-suite type="TestSuite" id="1150" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="117" result="Passed" start-time="2026-10-11 16:21:17Z" end-time="2026-10-11 16:21:22Z" duration="4.405871" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1146" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Desktop/Hegemonia-Mundial-main/Hegemonia-Mundial-main/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="117" result="Passed" start-time="2026-10-11 16:21:18Z" end-time="2026-10-11 16:21:22Z" duration="4.023784" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="19652" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1072" name="IA03ProductionManpowerPlayModeTests" fullname="IA03ProductionManpowerPlayModeTests" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" testcasecount="12" result="Passed" start-time="2026-10-11 16:21:18Z" end-time="2026-10-11 16:21:22Z" duration="3.995458" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1083" name="BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits" fullname="IA03ProductionManpowerPlayModeTests.BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits" methodname="BrainProductionBudgetUsesNationalTreasuryInsteadOfMintingCredits" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="854225994" result="Passed" start-time="2026-10-11 16:21:18Z" end-time="2026-10-11 16:21:18Z" duration="0.742848" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1084" name="C700CatalogPrefabUsesAerialClassificationAndTwoPersonDefault" fullname="IA03ProductionManpowerPlayModeTests.C700CatalogPrefabUsesAerialClassificationAndTwoPersonDefault" methodname="C700CatalogPrefabUsesAerialClassificationAndTwoPersonDefault" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="361834491" result="Passed" start-time="2026-10-11 16:21:18Z" end-time="2026-10-11 16:21:18Z" duration="0.022542" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1080" name="FactoryDoesNotSpawnIdentitylessRefuellerWithoutVehicleCrew" fullname="IA03ProductionManpowerPlayModeTests.FactoryDoesNotSpawnIdentitylessRefuellerWithoutVehicleCrew" methodname="FactoryDoesNotSpawnIdentitylessRefuellerWithoutVehicleCrew" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1130727811" result="Passed" start-time="2026-10-11 16:21:18Z" end-time="2026-10-11 16:21:19Z" duration="0.638447" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1079" name="FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable" fullname="IA03ProductionManpowerPlayModeTests.FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable" methodname="FactoryRejectsProductionWithoutManpowerAndMobilizesLegacyVehicleCrewWhenAvailable" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="917780079" result="Passed" start-time="2026-10-11 16:21:19Z" end-time="2026-10-11 16:21:19Z" duration="0.295927" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1082" name="LegacyMilitaryPrefabsUseNationalCrewDefaultsAndMobilizeThem" fullname="IA03ProductionManpowerPlayModeTests.LegacyMilitaryPrefabsUseNationalCrewDefaultsAndMobilizeThem" methodname="LegacyMilitaryPrefabsUseNationalCrewDefaultsAndMobilizeThem" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1868312141" result="Passed" start-time="2026-10-11 16:21:19Z" end-time="2026-10-11 16:21:20Z" duration="0.188634" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1074" name="MilitaryFactoryRequiresFullPowerBeforeSpawningAUnit" fullname="IA03ProductionManpowerPlayModeTests.MilitaryFactoryRequiresFullPowerBeforeSpawningAUnit" methodname="MilitaryFactoryRequiresFullPowerBeforeSpawningAUnit" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="2064520665" result="Passed" start-time="2026-10-11 16:21:20Z" end-time="2026-10-11 16:21:20Z" duration="0.006773" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1075" name="NationalPowerGridUpdatesFactoryGateForFullPartialAndMissingSupply" fullname="IA03ProductionManpowerPlayModeTests.NationalPowerGridUpdatesFactoryGateForFullPartialAndMissingSupply" methodname="NationalPowerGridUpdatesFactoryGateForFullPartialAndMissingSupply" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="2126756448" result="Passed" start-time="2026-10-11 16:21:20Z" end-time="2026-10-11 16:21:21Z" duration="1.530435" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+        </test-case>
+        <test-case id="1076" name="NavalYardPausesWithoutPowerAndScalesProgressWithPartialPower" fullname="IA03ProductionManpowerPlayModeTests.NavalYardPausesWithoutPowerAndScalesProgressWithPartialPower" methodname="NavalYardPausesWithoutPowerAndScalesProgressWithPartialPower" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="353211418" result="Passed" start-time="2026-10-11 16:21:21Z" end-time="2026-10-11 16:21:21Z" duration="0.164519" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Estaleiro] Nenhum slot de construção configurado no Inspector! Criando 3 slots básicos automaticamente.
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_0: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_0: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_0: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Power-gated naval yard test: OnTransformChildrenChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_1: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_1: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_1: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Power-gated naval yard test: OnTransformChildrenChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_2: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_2: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_2: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Power-gated naval yard test: OnTransformChildrenChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (PontoDeSaida_Auto: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (PontoDeSaida_Auto: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (PontoDeSaida_Auto: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Power-gated naval yard test: OnTransformChildrenChanged)
+]]></output>
+        </test-case>
+        <test-case id="1077" name="NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower" fullname="IA03ProductionManpowerPlayModeTests.NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower" methodname="NavalYardRejectsUnpoweredOrderBeforeQueueAndAcceptsPartialPower" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1148934819" result="Passed" start-time="2026-10-11 16:21:21Z" end-time="2026-10-11 16:21:21Z" duration="0.142048" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Estaleiro] Nenhum slot de construção configurado no Inspector! Criando 3 slots básicos automaticamente.
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_0: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_0: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_0: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Naval order energy gate test: OnTransformChildrenChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_1: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_1: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_1: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Naval order energy gate test: OnTransformChildrenChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_2: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_2: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Ponto_Auto_Estaleiro_2: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Naval order energy gate test: OnTransformChildrenChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (PontoDeSaida_Auto: OnDidAddComponent)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (PontoDeSaida_Auto: OnBeforeTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (PontoDeSaida_Auto: OnTransformParentChanged)
+SendMessage cannot be called during Awake, CheckConsistency, or OnValidate (Naval order energy gate test: OnTransformChildrenChanged)
+[Estaleiro] Iniciando construção de Naval order energy gate marker no TestSlot. Aguardando conclusão...
+]]></output>
+        </test-case>
+        <test-case id="1081" name="PlayerProductionRejectsBatchThatExceedsAvailableManpower" fullname="IA03ProductionManpowerPlayModeTests.PlayerProductionRejectsBatchThatExceedsAvailableManpower" methodname="PlayerProductionRejectsBatchThatExceedsAvailableManpower" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1634764272" result="Passed" start-time="2026-10-11 16:21:21Z" end-time="2026-10-11 16:21:21Z" duration="0.029696" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Produção] Pedido de player test vehicle recusado: efetivo insuficiente para 2 unidade(s).
+[Produção] Pedido de player test vehicle aguardando fábrica terrestre com ponto de produção válido.
+]]></output>
+        </test-case>
+        <test-case id="1078" name="ProductionManagerWaitsForFactoryOrShipyardInsteadOfSpawningAtFallback" fullname="IA03ProductionManpowerPlayModeTests.ProductionManagerWaitsForFactoryOrShipyardInsteadOfSpawningAtFallback" methodname="ProductionManagerWaitsForFactoryOrShipyardInsteadOfSpawningAtFallback" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1366236997" result="Passed" start-time="2026-10-11 16:21:21Z" end-time="2026-10-11 16:21:22Z" duration="0.016622" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[Produção] Pedido de Production infrastructure gate marker aguardando fábrica terrestre com ponto de produção válido.
+[Produção] Pedido naval de Production infrastructure gate marker aguardando um estaleiro operacional.
+[Produção] Pedido de Production infrastructure gate marker aguardando estaleiro com ponto de produção válido.
+]]></output>
+        </test-case>
+        <test-case id="1073" name="RuntimeFactoryDoesNotInstallAutomaticIndustrialStockGenerator" fullname="IA03ProductionManpowerPlayModeTests.RuntimeFactoryDoesNotInstallAutomaticIndustrialStockGenerator" methodname="RuntimeFactoryDoesNotInstallAutomaticIndustrialStockGenerator" classname="IA03ProductionManpowerPlayModeTests" runstate="Runnable" seed="1282424175" result="Passed" start-time="2026-10-11 16:21:22Z" end-time="2026-10-11 16:21:22Z" duration="0.022126" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
