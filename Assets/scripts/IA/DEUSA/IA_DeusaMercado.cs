@@ -56,10 +56,12 @@ namespace Hegemonia.AI.DEUSA
             }
             else if (comida != null && comida.PodeVenderExcedente)
             {
+                int excedenteSeguro = Mathf.Max(0, pais.comida - comida.ReservaMinima * 2);
+                int loteComida = Mathf.Clamp(excedenteSeguro / 10, 100, 1000);
                 executou = governoBridge.TentarVenderRecurso(
                     pais.teamId,
                     RecursoMercado.Comida,
-                    100,
+                    loteComida,
                     config != null && config.permitirComercioComJogador,
                     config == null || config.permitirComercioComOutrasIAs,
                     out mensagem);

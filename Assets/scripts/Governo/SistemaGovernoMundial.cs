@@ -9,6 +9,8 @@ public class SistemaGovernoMundial : MonoBehaviour
     public const string MoedaMestreNome = "Dolar Hegemonico (DH)";
     public const long SaldoInicialNacionalPorIAEmPartidaNova = 10000000000L;
     public const int ComidaInicialNacionalPorIAEmPartidaNova = 10000;
+    public const int ComidaInicialValdoriaPorIAEmPartidaNova = 50000;
+    public const int CapacidadeAgricolaInicialValdoria = 100000;
     public const int EfetivoMinimoInfantaria = 1;
     public const int EfetivoMinimoVeiculo = 1;
     public const int EfetivoMinimoNaval = 4;
@@ -1488,9 +1490,45 @@ public class SistemaGovernoMundial : MonoBehaviour
                 continue;
             }
 
-            if (pais.comida != ComidaInicialNacionalPorIAEmPartidaNova)
+            int comidaInicial = brain.TeamId == 2
+                ? ComidaInicialValdoriaPorIAEmPartidaNova
+                : ComidaInicialNacionalPorIAEmPartidaNova;
+            if (brain.TeamId == 2)
             {
-                pais.comida = ComidaInicialNacionalPorIAEmPartidaNova;
+                if (pais.capacidadeArmazenamentoAgricola < CapacidadeAgricolaInicialValdoria)
+                {
+                    pais.capacidadeArmazenamentoAgricola = CapacidadeAgricolaInicialValdoria;
+                    estoqueAlterado = true;
+                }
+
+                SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+                pais.comida = 0;
+                pais.estoqueAgricolaTotal = 0;
+                if (industrial != null)
+                {
+                    int totalCulturas = AgriculturaNacional.QuantidadeCulturas;
+                    for (int cultura = 0; cultura < totalCulturas; cultura++)
+                    {
+                        string idCultura = AgriculturaNacional.ObterIdCultura(cultura);
+                        int estoqueAtual = ObterEstoque(brain.TeamId, idCultura);
+                        if (estoqueAtual > 0) RemoverEstoque(brain.TeamId, idCultura, estoqueAtual);
+                    }
+
+                    int porCultura = comidaInicial / totalCulturas;
+                    int restante = comidaInicial % totalCulturas;
+                    for (int cultura = 0; cultura < totalCulturas; cultura++)
+                    {
+                        int quantidade = porCultura + (cultura < restante ? 1 : 0);
+                        if (quantidade > 0) AdicionarEstoque(brain.TeamId, AgriculturaNacional.ObterIdCultura(cultura), quantidade);
+                    }
+                    pais.estoqueAgricolaTotal = comidaInicial;
+                }
+                estoqueAlterado = true;
+            }
+
+            if (pais.comida != comidaInicial)
+            {
+                pais.comida = comidaInicial;
                 estoqueAlterado = true;
             }
         }

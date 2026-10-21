@@ -4,6 +4,23 @@ using System.Reflection;
 
 public sealed class AgriculturaNacionalEditModeTests
 {
+    [TestCase(100000000L, 1f, 1000000L)]
+    [TestCase(10000000000L, 1f, 100000000L)]
+    [TestCase(100L, 50f, 50L)]
+    public void FoodBudgetUsesPercentageOfAvailableNationalCash(long saldo, float percentual, long esperado)
+    {
+        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(saldo, percentual), Is.EqualTo(esperado));
+    }
+
+    [Test]
+    public void FoodBudgetClampsInvalidPercentageAndNeverReturnsNegativeCash()
+    {
+        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, -5f), Is.Zero);
+        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, 250f), Is.EqualTo(100000000L));
+        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(-1L, 1f), Is.Zero);
+        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, float.NaN), Is.Zero);
+    }
+
     [Test]
     public void CobrancaFixaConverteMilhoesParaDinheiroDoJogo()
     {

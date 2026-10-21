@@ -409,6 +409,229 @@ public class SistemaMercadoGlobal : MonoBehaviour
         return true;
     }
 
+    public bool ComprarCestaAlimentar(int compradorTeamId, long orcamentoMaximo, float[] participacoes,
+        int capacidadeLivre, out long valorGasto, out string mensagem)
+    {
+        valorGasto = 0L;
+        mensagem = string.Empty;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null || governo.ObterPais(compradorTeamId) == null || orcamentoMaximo <= 0L || capacidadeLivre <= 0)
+        {
+            mensagem = "Orcamento, pais comprador ou capacidade alimentar indisponivel.";
+            return false;
+        }
+
+        SistemaLogisticaMercado.GarantirInstancia();
+        int capacidadeRestante = Mathf.Max(0, capacidadeLivre - ObterComidaPendente(compradorTeamId));
+        if (capacidadeRestante <= 0)
+        {
+            mensagem = "A capacidade livre ja esta reservada por cargas de alimentos em transito.";
+            return false;
+        }
+
+        int quantidadeCulturas = AgriculturaNacional.QuantidadeCulturas;
+        double somaParticipacoes = 0d;
+        for (int i = 0; i < quantidadeCulturas; i++)
+        {
+            float peso = participacoes != null && i < participacoes.Length ? participacoes[i] : 1f;
+            if (!float.IsNaN(peso) && !float.IsInfinity(peso) && peso > 0f)
+                somaParticipacoes += peso;
+        }
+        if (somaParticipacoes <= 0d) somaParticipacoes = quantidadeCulturas;
+
+        int culturasCompradas = 0;
+        long valorTotalMercadorias = 0L;
+        int quantidadeTotal = 0;
+        List<string> origens = new List<string>();
+        for (int i = 0; i < quantidadeCulturas && capacidadeRestante > 0; i++)
+        {
+            float pesoConfigurado = participacoes != null && i < participacoes.Length ? participacoes[i] : 1f;
+            double peso = !float.IsNaN(pesoConfigurado) && !float.IsInfinity(pesoConfigurado)
+                ? Math.Max(0d, pesoConfigurado) : 0d;
+            if (peso <= 0d) continue;
+
+            DadosItemMercado item = ObterItem(AgriculturaNacional.ObterIdCultura(i));
+            if (item == null || !item.podeComprar || item.precoAtual <= 0) continue;
+
+            long orcamentoCultura = (long)Math.Floor(orcamentoMaximo * peso / somaParticipacoes);
+            if (orcamentoCultura <= 0L) continue;
+
+            int limiteSolicitado = Mathf.Min(capacidadeRestante, int.MaxValue / Mathf.Max(1, item.precoAtual));
+            DadosPaisGoverno fornecedor = EncontrarFornecedorAlimentar(compradorTeamId, item, out int estoqueFornecedor);
+            if (fornecedor != null)
+                limiteSolicitado = Mathf.Min(limiteSolicitado, Mathf.Min(Mathf.Max(0, item.estoqueGlobal), estoqueFornecedor));
+
+            int quantidade = QuantidadeMaximaPorSaldo(item, true, orcamentoCultura, limiteSolicitado);
+            if (quantidade <= 0) continue;
+
+            bool comprou;
+            string detalhe;
+            long custo = CalcularTotalMercado(item, true, quantidade);
+            if (fornecedor != null)
+            {
+                comprou = Comprar(compradorTeamId, fornecedor.teamId, item.id, quantidade, out detalhe);
+                if (!comprou) continue;
+                origens.Add(fornecedor.nomePais);
+            }
+            else
+            {
+                comprou = ExecutarAbastecimentoAlimentarAutomatico(compradorTeamId, item, quantidade, out detalhe);
+                if (!comprou) continue;
+                origens.Add("Mercado automatico");
+            }
+
+            valorGasto += custo;
+            valorTotalMercadorias += (long)quantidade * Mathf.Max(1, item.precoAtual);
+            quantidadeTotal += quantidade;
+            culturasCompradas++;
+            capacidadeRestante -= quantidade;
+        }
+
+        if (quantidadeTotal > 0)
+        {
+            governo.ReconciliarEstoqueComidaCulturas(compradorTeamId);
+            mensagem = "Cesta de alimentos iniciada: " + quantidadeTotal.ToString("N0") + " t em "
+                + culturasCompradas + " culturas; total reservado " + valorGasto.ToString("N0")
+                + " (itens " + valorTotalMercadorias.ToString("N0") + ", frete incluido). Origens: "
+                + string.Join(", ", origens.Distinct().ToArray()) + ".";
+            return true;
+        }
+
+        mensagem = capacidadeRestante <= 0
+            ? "Nao ha espaco livre no armazenamento nacional de alimentos."
+            : "Nenhuma cultura configurada coube no orcamento ou tinha uma oferta utilizavel.";
+        return false;
+    }
+
+    public bool ComprarAlimentoComFallback(int compradorTeamId, string itemId, int quantidade,
+        out string mensagem)
+    {
+        mensagem = string.Empty;
+        DadosItemMercado item = ObterItem(itemId);
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno comprador = governo != null ? governo.ObterPais(compradorTeamId) : null;
+        bool alimento = item != null && (item.recurso == RecursoMercado.Comida
+            || item.RecursoIdEfetivo.StartsWith("comida_", StringComparison.OrdinalIgnoreCase));
+        if (!alimento || comprador == null || quantidade <= 0 || !item.podeComprar)
+        {
+            mensagem = "Ordem de compra de alimentos invalida.";
+            return false;
+        }
+
+        SistemaLogisticaMercado.GarantirInstancia();
+        DadosPaisGoverno fornecedor = EncontrarFornecedorAlimentar(compradorTeamId, item, out int estoqueFornecedor);
+        if (fornecedor == null)
+            return ExecutarAbastecimentoAlimentarAutomatico(compradorTeamId, item, quantidade, out mensagem);
+
+        int quantidadeDisponivel = Mathf.Min(quantidade, Mathf.Min(estoqueFornecedor, item.estoqueGlobal));
+        quantidadeDisponivel = QuantidadeMaximaTransacionavel(item, true, quantidadeDisponivel);
+        if (quantidadeDisponivel <= 0)
+        {
+            mensagem = "A oferta do fornecedor nao cobre uma compra valida.";
+            return false;
+        }
+        return Comprar(compradorTeamId, fornecedor.teamId, item.id, quantidadeDisponivel, out mensagem);
+    }
+
+    private DadosPaisGoverno EncontrarFornecedorAlimentar(int compradorTeamId, DadosItemMercado item, out int estoqueDisponivel)
+    {
+        estoqueDisponivel = 0;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        SistemaLogisticaMercado logistica = SistemaLogisticaMercado.Instancia;
+        if (governo == null || item == null || logistica == null || item.estoqueGlobal <= 0) return null;
+
+        DadosPaisGoverno melhor = null;
+        float melhorPontuacao = float.MinValue;
+        for (int i = 0; i < governo.Paises.Count; i++)
+        {
+            DadosPaisGoverno pais = governo.Paises[i];
+            if (pais == null || pais.teamId == compradorTeamId) continue;
+            if (!PodeNegociarComAliado(compradorTeamId, pais.teamId, out RelacaoPaisGoverno relacao)) continue;
+            if (ComercioBloqueadoPorGuerra(compradorTeamId, pais.teamId, governo.ObterPais(compradorTeamId), pais)
+                || governo.RecursoEmbargado(compradorTeamId, pais.teamId, RecursoMercado.Comida)
+                || governo.RecursoEmbargado(pais.teamId, compradorTeamId, RecursoMercado.Comida)
+                || !logistica.PossuiRotaDeCarga(pais.teamId, compradorTeamId)) continue;
+
+            int estoque = Mathf.Min(Mathf.Max(0, item.estoqueGlobal), Mathf.Max(0, governo.ObterEstoque(pais.teamId, item.RecursoIdEfetivo)));
+            if (estoque <= 0) continue;
+            float pontuacao = (relacao != null ? relacao.valor : 0) * 2f
+                + (relacao != null ? relacao.valorBaseHistorico : 0f) * 0.5f
+                + Mathf.Clamp(pais.producao, 0f, 100f) + pais.saldo / 10000f;
+            if (pontuacao <= melhorPontuacao) continue;
+            melhor = pais;
+            melhorPontuacao = pontuacao;
+            estoqueDisponivel = estoque;
+        }
+        return melhor;
+    }
+
+    private int ObterComidaPendente(int compradorTeamId)
+    {
+        SistemaLogisticaMercado logistica = SistemaLogisticaMercado.Instancia;
+        if (logistica == null || logistica.pedidos == null) return 0;
+        long total = 0L;
+        for (int i = 0; i < logistica.pedidos.Count; i++)
+        {
+            PedidoMercadoLogistico pedido = logistica.pedidos[i];
+            if (pedido == null || pedido.compradorTeamId != compradorTeamId
+                || string.Equals(pedido.status, "ENTREGUE", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(pedido.status, "RECUPERADO", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(pedido.status, "CANCELADO", StringComparison.OrdinalIgnoreCase)) continue;
+            DadosItemMercado item = ObterItem(pedido.itemId);
+            if (item != null && (item.recurso == RecursoMercado.Comida
+                || item.RecursoIdEfetivo.StartsWith("comida_", StringComparison.OrdinalIgnoreCase)))
+                total = Math.Min(int.MaxValue, total + Math.Max(0, pedido.quantidade));
+        }
+        return (int)total;
+    }
+
+    private bool ExecutarAbastecimentoAlimentarAutomatico(int compradorTeamId, DadosItemMercado item,
+        int quantidade, out string mensagem)
+    {
+        mensagem = string.Empty;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno comprador = governo != null ? governo.ObterPais(compradorTeamId) : null;
+        if (governo == null || comprador == null || item == null || quantidade <= 0 || !item.podeComprar)
+        {
+            mensagem = "Abastecimento automatico indisponivel.";
+            return false;
+        }
+
+        long subtotalLong = (long)quantidade * Mathf.Max(1, item.precoAtual);
+        int frete = CalcularFreteMercado(item, true, quantidade);
+        long totalLong = subtotalLong + frete;
+        if (subtotalLong > int.MaxValue || totalLong > int.MaxValue)
+        {
+            mensagem = "A cesta excede o limite financeiro de uma operacao.";
+            return false;
+        }
+        if (!governo.TentarPagar(compradorTeamId, totalLong))
+        {
+            mensagem = "Saldo insuficiente para o abastecimento automatico.";
+            return false;
+        }
+
+        governo.AdicionarEstoque(compradorTeamId, item.RecursoIdEfetivo, quantidade);
+        item.demanda = Mathf.Clamp(item.demanda + quantidade / 120f, 0f, 160f);
+        TransacaoMercado transacao = new TransacaoMercado
+        {
+            id = Guid.NewGuid().ToString("N"),
+            compradorTeamId = compradorTeamId,
+            vendedorTeamId = 0,
+            itemId = item.id,
+            quantidade = quantidade,
+            precoUnitario = Mathf.Max(1, item.precoAtual),
+            total = (int)subtotalLong,
+            frete = frete,
+            compraDoJogador = compradorTeamId == governo.teamJogador,
+            status = "ENTREGUE",
+            mensagem = "Mercado automatico abasteceu " + quantidade.ToString("N0") + " t de " + item.NomeFormatado + "."
+        };
+        RegistrarTransacao(transacao);
+        mensagem = transacao.mensagem;
+        return true;
+    }
+
     public bool Vender(int vendedorTeamId, int compradorTeamId, string itemId, int quantidade, out string mensagem)
     {
         mensagem = string.Empty;
@@ -522,8 +745,9 @@ public class SistemaMercadoGlobal : MonoBehaviour
             mensagem = "Comercio bloqueado por guerra.";
             return false;
         }
-        if (governo.RecursoEmbargado(compradorTeamId, vendedorTeamId, item.recurso)
-            || governo.RecursoEmbargado(vendedorTeamId, compradorTeamId, item.recurso))
+        RecursoMercado recursoPolitico = ResolverRecursoPolitico(item);
+        if (governo.RecursoEmbargado(compradorTeamId, vendedorTeamId, recursoPolitico)
+            || governo.RecursoEmbargado(vendedorTeamId, compradorTeamId, recursoPolitico))
         {
             mensagem = "Comercio bloqueado por embargo de " + item.recurso + ".";
             return false;
@@ -654,8 +878,9 @@ public class SistemaMercadoGlobal : MonoBehaviour
             mensagem = "Comercio bloqueado por guerra.";
             return false;
         }
-        if (governo.RecursoEmbargado(vendedorTeamId, compradorTeamId, item.recurso)
-            || governo.RecursoEmbargado(compradorTeamId, vendedorTeamId, item.recurso))
+        RecursoMercado recursoPolitico = ResolverRecursoPolitico(item);
+        if (governo.RecursoEmbargado(vendedorTeamId, compradorTeamId, recursoPolitico)
+            || governo.RecursoEmbargado(compradorTeamId, vendedorTeamId, recursoPolitico))
         {
             mensagem = "Venda bloqueada por embargo de " + item.recurso + ".";
             return false;
@@ -1475,6 +1700,15 @@ public class SistemaMercadoGlobal : MonoBehaviour
         }
 
         return string.IsNullOrEmpty(item.recursoId) ? item.id : item.recursoId;
+    }
+
+    private static RecursoMercado ResolverRecursoPolitico(DadosItemMercado item)
+    {
+        if (item == null) return RecursoMercado.Nenhum;
+        if (item.recurso != RecursoMercado.Nenhum) return item.recurso;
+        return ObterRecursoIdEfetivo(item).StartsWith("comida_", StringComparison.OrdinalIgnoreCase)
+            ? RecursoMercado.Comida
+            : RecursoMercado.Nenhum;
     }
 
     private static bool DeveEntregarSemNavio(DadosItemMercado item, bool compra)

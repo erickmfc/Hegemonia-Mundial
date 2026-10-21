@@ -1076,6 +1076,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AdicionarTextoAcao(secao,
             "Armazenado: " + estoque.ToString("N0") + "/" + capacidade.ToString("N0")
             + " t | espaço livre: " + capacidadeLivre.ToString("N0") + " t | saldo: " + Moeda(saldoDisponivel));
+        AdicionarControleCompraAlimentar(secao);
 
         if (governo == null || pais == null)
         {
@@ -1109,6 +1110,118 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     : "Compra imediata estimada com frete: " + Moeda(estimativa);
             }
         }
+    }
+
+    private void AdicionarControleCompraAlimentar(VisualElement pai)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(TeamJogador) : null;
+        AgriculturaNacional agricultura = governo != null ? governo.GetComponent<AgriculturaNacional>() : null;
+        if (pai == null || pais == null || agricultura == null) return;
+
+        if (pais.participacaoCompraAlimentar == null
+            || pais.participacaoCompraAlimentar.Length != AgriculturaNacional.QuantidadeCulturas)
+            pais.participacaoCompraAlimentar = Enumerable.Repeat(1f, AgriculturaNacional.QuantidadeCulturas).ToArray();
+
+        VisualElement controle = new VisualElement();
+        controle.AddToClassList("card");
+        controle.AddToClassList("gov-culture-control");
+        Label titulo = new Label("ORCAMENTO DIARIO DE ALIMENTOS");
+        titulo.AddToClassList("gov-card-title");
+        controle.Add(titulo);
+        Label explicacao = new Label("A compra usa agora a porcentagem do caixa disponivel. Com pais e rota ativos, a verba e reservada e o cargueiro entrega; sem fornecedor/rota, o Mercado automatico entrega na hora.");
+        explicacao.AddToClassList("gov-action-section-copy");
+        controle.Add(explicacao);
+
+        SliderInt percentualCaixa = new SliderInt("Caixa por dia (%)", 0, 100)
+        {
+            value = Mathf.RoundToInt(Mathf.Clamp(pais.compraAlimentarPercentualCaixaDiario, 0f, 100f))
+        };
+        percentualCaixa.AddToClassList("gov-share-slider");
+        Label resumoOrcamento = new Label();
+        resumoOrcamento.AddToClassList("gov-share-value");
+        Action atualizarResumo = () =>
+        {
+            long caixa = governo.ObterSaldoDisponivelParaOperacao(TeamJogador);
+            long verba = AgriculturaNacional.CalcularOrcamentoCompraAlimentar(caixa, percentualCaixa.value);
+            resumoOrcamento.text = percentualCaixa.value + "% do caixa = " + Moeda(verba) + " por dia";
+        };
+        percentualCaixa.RegisterValueChangedCallback(evt =>
+        {
+            pais.compraAlimentarPercentualCaixaDiario = evt.newValue;
+            atualizarResumo();
+        });
+        atualizarResumo();
+        controle.Add(percentualCaixa);
+        controle.Add(resumoOrcamento);
+
+        List<string> culturas = new List<string>();
+        for (int i = 0; i < AgriculturaNacional.QuantidadeCulturas; i++)
+            culturas.Add(AgriculturaNacional.ObterNomeCultura(AgriculturaNacional.ObterIdCultura(i)));
+        int indiceInicial = 0;
+        for (int i = 1; i < pais.participacaoCompraAlimentar.Length; i++)
+            if (pais.participacaoCompraAlimentar[i] > pais.participacaoCompraAlimentar[indiceInicial]) indiceInicial = i;
+        DropdownField cultura = new DropdownField("Alimento", culturas, indiceInicial);
+        cultura.AddToClassList("gov-culture-select");
+        SliderInt percentualCultura = new SliderInt("Participacao da verba (%)", 0, 100);
+        percentualCultura.AddToClassList("gov-share-slider");
+        Label resumoCultura = new Label();
+        resumoCultura.AddToClassList("gov-share-value");
+        Action atualizarParticipacao = () =>
+        {
+            float soma = pais.participacaoCompraAlimentar.Sum(x => Mathf.Max(0f, x));
+            int indice = Mathf.Clamp(culturas.IndexOf(cultura.value), 0, culturas.Count - 1);
+            float peso = Mathf.Max(0f, pais.participacaoCompraAlimentar[indice]);
+            int percentual = soma > 0f ? Mathf.RoundToInt(peso / soma * 100f) : 0;
+            percentualCultura.SetValueWithoutNotify(percentual);
+            resumoCultura.text = percentual + "% da verba nesta cultura";
+        };
+        cultura.RegisterValueChangedCallback(_ => atualizarParticipacao());
+        percentualCultura.RegisterValueChangedCallback(evt => resumoCultura.text = evt.newValue + "% da verba nesta cultura");
+        atualizarParticipacao();
+        controle.Add(cultura);
+        controle.Add(percentualCultura);
+
+        VisualElement botoes = new VisualElement();
+        botoes.AddToClassList("gov-inline-actions");
+        Button aplicarMix = new Button(() =>
+        {
+            int indice = Mathf.Max(0, culturas.IndexOf(cultura.value));
+            bool ok = agricultura.DefinirParticipacaoCompraAlimentar(TeamJogador, indice, percentualCultura.value);
+            MostrarMensagem(ok ? "Mix alimentar salvo para " + culturas[indice] + "." : "Nao foi possivel salvar o mix alimentar.");
+            MostrarPagina(abaAtual);
+        }) { text = "APLICAR MIX" };
+        aplicarMix.AddToClassList("gov-mini-button");
+        botoes.Add(aplicarMix);
+
+        Button comprarAgora = new Button(() =>
+        {
+            agricultura.DefinirPercentualCompraAlimentar(TeamJogador, percentualCaixa.value);
+            bool ok = agricultura.ExecutarCompraAlimentarPercentualCaixa(TeamJogador, out string mensagem, out _);
+            MostrarMensagem(ok ? mensagem : "Compra nao executada: " + mensagem);
+            if (pais.compraAlimentarDiariaAtiva && GerenciadorTempo.Instancia != null)
+                pais.ultimoDiaCompraAlimentarProcessado = Mathf.Max(1, GerenciadorTempo.Instancia.totalDias);
+            AtualizarRecursos();
+            MostrarPagina(abaAtual);
+        }) { text = "COMPRAR HOJE" };
+        comprarAgora.AddToClassList("gov-mini-button");
+        comprarAgora.AddToClassList("buy");
+        botoes.Add(comprarAgora);
+
+        Button automatizar = new Button(() =>
+        {
+            agricultura.DefinirPercentualCompraAlimentar(TeamJogador, percentualCaixa.value);
+            bool ativa = !pais.compraAlimentarDiariaAtiva;
+            bool ok = agricultura.DefinirCompraAlimentarDiaria(TeamJogador, ativa, out string mensagem);
+            MostrarMensagem(ok ? mensagem : "Rotina diaria atualizada com aviso: " + mensagem);
+            AtualizarRecursos();
+            MostrarPagina(abaAtual);
+        }) { text = pais.compraAlimentarDiariaAtiva ? "PAUSAR ROTINA" : "ATIVAR + COMPRAR HOJE" };
+        automatizar.AddToClassList("gov-mini-button");
+        automatizar.AddToClassList(pais.compraAlimentarDiariaAtiva ? "warning" : "buy");
+        botoes.Add(automatizar);
+        controle.Add(botoes);
+        pai.Add(controle);
     }
 
     private void AdicionarAcoesInvestimentoAgricola()
@@ -1374,15 +1487,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
 
         SistemaGastosMilitares.GarantirInstancia();
-        DadosPaisGoverno fornecedor = mercado.EncontrarMelhorFornecedor(TeamJogador, item, quantidade);
-        if (fornecedor == null)
-        {
-            MostrarMensagem("Nenhum fornecedor amigo possui alimentos e rota comercial ativa. Veja Mercado > Comprar para conferir as ofertas.");
-            return;
-        }
-
-        string mensagem;
-        bool comprou = mercado.Comprar(TeamJogador, fornecedor.teamId, item.id, quantidade, out mensagem);
+        bool comprou = mercado.ComprarAlimentoComFallback(TeamJogador, item.id, quantidade, out string mensagem);
         MostrarMensagem(comprou ? "Compra de alimentos iniciada: " + mensagem : "Compra recusada: " + mensagem);
         AtualizarRecursos();
         MostrarPagina(abaAtual);
@@ -1493,6 +1598,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 comprar
                     ? "Escolha a quantidade em cada card. O valor total e calculado antes da confirmacao."
                     : "Venda recursos do estoque nacional para compradores internacionais disponiveis.");
+            if (comprar) AdicionarControleCompraAlimentar(conteudo);
 
             VisualElement filtros = new VisualElement();
             filtros.AddToClassList("gov-market-filters");

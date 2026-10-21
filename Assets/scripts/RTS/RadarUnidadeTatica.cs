@@ -199,34 +199,13 @@ namespace Hegemonia.RTS
             bool contatoHostil = false;
             float expiraContatoHostilConhecido = 0f;
             RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
-            if (unidades != null)
+            if (visibilidade != null)
             {
-                for (int i = 0; i < unidades.Count; i++)
-                {
-                    IdentidadeUnidade alvo = unidades[i];
-                    if (alvo == null || alvo == identidade || !alvo.gameObject.activeInHierarchy
-                        || alvo.teamID <= 0 || !RTSVisibilityService.TeamsAtWar(identidade.teamID, alvo.teamID))
-                        continue;
-
-                    if (visibilidade != null && visibilidade.IsVisibleToTeam(identidade.teamID, alvo))
-                    {
-                        contatoHostil = true;
-                        break;
-                    }
-
-                    // A IA também mantém o radar ligado ao agir sobre um
-                    // contato recente compartilhado por aliados ou detectado
-                    // antes de o alvo sair do alcance.
-                    if (visibilidade != null
-                        && visibilidade.TryGetContactForTeam(identidade.teamID, alvo, out RTSVisibilityContact contatoConhecido)
-                        && contatoConhecido != null
-                        && contatoConhecido.lastKnownExpiresAt > Time.unscaledTime)
-                    {
-                        expiraContatoHostilConhecido = Mathf.Max(
-                            expiraContatoHostilConhecido,
-                            contatoConhecido.lastKnownExpiresAt);
-                    }
-                }
+                visibilidade.GetForeignContactState(
+                    identidade.teamID,
+                    Time.unscaledTime,
+                    out contatoHostil,
+                    out expiraContatoHostilConhecido);
             }
 
             if (patrulhando || contatoHostil)

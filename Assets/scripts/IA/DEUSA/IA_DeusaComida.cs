@@ -19,7 +19,9 @@ namespace Hegemonia.AI.DEUSA
             }
 
             float deficit = economia != null ? economia.deficitComida : 0f;
-            ReservaMinima = emGuerra ? 650 : 320;
+            ReservaMinima = pais.teamId == 2
+                ? (emGuerra ? 10000 : 5000)
+                : (emGuerra ? 650 : 320);
             EmCrise = pais.comida < ReservaMinima || deficit > 0.5f;
             PrecisaFazenda = EmCrise || politica.PriorizarComida;
             PrecisaComprar = pais.comida < Mathf.RoundToInt(ReservaMinima * 0.75f);

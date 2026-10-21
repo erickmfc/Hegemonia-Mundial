@@ -538,16 +538,17 @@ namespace Hegemonia.AI.BrainMaster
                 ? target.GetComponentInParent<IdentidadeUnidade>()
                 : null;
             bool coordinateAttackAgainstKnownEnemy = target == null && targetTeamId > 0;
+            int resolvedTargetTeamId = targetIdentity != null
+                ? targetIdentity.teamID
+                : Mathf.Max(0, targetTeamId);
 
             IA_AttackOrderData payload = new IA_AttackOrderData
             {
                 Units = availableUnits,
                 Target = target,
                 TargetPosition = targetPosition,
-                RequiresDeclaredWar = target != null || coordinateAttackAgainstKnownEnemy,
-                TargetTeamId = targetIdentity != null
-                    ? targetIdentity.teamID
-                    : (coordinateAttackAgainstKnownEnemy ? targetTeamId : 0),
+                RequiresDeclaredWar = target != null || resolvedTargetTeamId > 0,
+                TargetTeamId = resolvedTargetTeamId,
                 AllowCoordinateAttackAgainstKnownEnemy = coordinateAttackAgainstKnownEnemy
             };
 
@@ -763,27 +764,93 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            Transform target = FindBestBombingTarget(baseCenter);
-            if (target != null)
+            int targetCount = _context.WorldState.FillEnemyStrategicTargets(_strategicTargetsBuffer, baseCenter, 6);
+            int validTargetCount = 0;
+            for (int i = 0; i < targetCount && validTargetCount < 3; i++)
             {
-                QueueAttack("strategic_bombing", _activeBombersBuffer, target, target.position, 95, 8.0f);
+                IA_StrategicTargetData candidate = _strategicTargetsBuffer[i];
+                if (candidate == null || candidate.Transform == null || ResolveTargetTeamId(candidate.Transform) <= 0)
+                {
+                    continue;
+                }
+
+                if (validTargetCount != i)
+                {
+                    _strategicTargetsBuffer[validTargetCount] = candidate;
+                }
+
+                validTargetCount++;
+            }
+
+            if (validTargetCount > 0)
+            {
+                _airRaidA.Clear();
+                _airRaidB.Clear();
+                _airRaidC.Clear();
+                int groups = Mathf.Min(validTargetCount, _activeBombersBuffer.Count);
+                for (int i = 0; i < _activeBombersBuffer.Count; i++)
+                {
+                    int bucket = i % groups;
+                    if (bucket == 0) _airRaidA.Add(_activeBombersBuffer[i]);
+                    else if (bucket == 1) _airRaidB.Add(_activeBombersBuffer[i]);
+                    else _airRaidC.Add(_activeBombersBuffer[i]);
+                }
+
+                QueueStrategicBomberGroup(0, _airRaidA);
+                if (groups > 1) QueueStrategicBomberGroup(1, _airRaidB);
+                if (groups > 2) QueueStrategicBomberGroup(2, _airRaidC);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
+                return;
+            }
+
+            if (pressureTarget != Vector3.zero && pressureTargetTeamId > 0)
+            {
+                QueueAttack(
+                    "strategic_bombing_fallback_" + pressureTargetTeamId,
+                    _activeBombersBuffer,
+                    null,
+                    pressureTarget + Vector3.up * 20f,
+                    75,
+                    10.0f,
+                    pressureTargetTeamId);
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
             }
-            else
+        }
+
+        private void QueueStrategicBomberGroup(int targetIndex, List<GameObject> units)
+        {
+            if (units == null || units.Count == 0 || targetIndex < 0 || targetIndex >= _strategicTargetsBuffer.Count)
             {
-                if (pressureTarget != Vector3.zero)
-                {
-                    QueueAttack(
-                        "strategic_bombing_fallback",
-                        _activeBombersBuffer,
-                        null,
-                        pressureTarget + Vector3.up * 20f,
-                        75,
-                        10.0f,
-                        pressureTargetTeamId);
-                    DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
-                }
+                return;
             }
+
+            IA_StrategicTargetData target = _strategicTargetsBuffer[targetIndex];
+            if (target == null || target.Transform == null)
+            {
+                return;
+            }
+
+            int targetTeamId = ResolveTargetTeamId(target.Transform);
+            if (targetTeamId <= 0)
+            {
+                return;
+            }
+
+            int positionX = Mathf.RoundToInt(target.Position.x / 100f);
+            int positionZ = Mathf.RoundToInt(target.Position.z / 100f);
+            string key = "strategic_bombing_" + targetTeamId + "_" + target.Kind + "_" + positionX + "_" + positionZ;
+            QueueAttack(key, units, target.Transform, target.Position, 95, 8.0f, targetTeamId);
+        }
+
+        private static int ResolveTargetTeamId(Transform target)
+        {
+            if (target == null)
+            {
+                return 0;
+            }
+
+            IdentidadeUnidade identity = target.GetComponentInParent<IdentidadeUnidade>();
+            return identity != null ? Mathf.Max(0, identity.teamID) : 0;
         }
 
         private Transform FindBestBombingTarget(Vector3 baseCenter)

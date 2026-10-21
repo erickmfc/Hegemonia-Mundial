@@ -351,7 +351,17 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             Assert.That(Read(Call(government, "ObterPais", 3), "saldo"), Is.EqualTo(oldBalances[3]),
                 "A IA inativa Team 3 não deve receber grant.");
             Assert.That(Read(Call(government, "ObterPais", 2), "comida"),
-                Is.EqualTo(10000), "A Valdoria ativa deve iniciar a partida nova com 10 mil de comida nacional.");
+                Is.EqualTo(50000), "A Valdoria ativa deve iniciar a partida nova com 50 mil de comida nacional.");
+            Assert.That(Read(Call(government, "ObterPais", 2), "estoqueAgricolaTotal"), Is.EqualTo(50000),
+                "O estoque inicial da Valdoria deve permanecer conciliado com o armazem por cultura.");
+            Assert.That(Read(Call(government, "ObterPais", 2), "capacidadeArmazenamentoAgricola"), Is.GreaterThanOrEqualTo(100000),
+                "A capacidade agricola da Valdoria precisa permitir producao depois do estoque inicial.");
+            int totalCulturasValdoria = 0;
+            for (int cultura = 0; cultura < AgriculturaNacional.QuantidadeCulturas; cultura++)
+                totalCulturasValdoria += Convert.ToInt32(Call(government, "ObterEstoque", 2,
+                    AgriculturaNacional.ObterIdCultura(cultura)));
+            Assert.That(totalCulturasValdoria, Is.EqualTo(50000),
+                "O estoque inicial da Valdoria deve estar efetivamente dividido entre culturas vendaveis.");
             Assert.That(Read(Call(government, "ObterPais", 1), "comida"), Is.EqualTo(oldFoodStocks[1]),
                 "O estoque inicial da IA não deve alterar a comida do jogador Team 1.");
             Assert.That(Read(Call(government, "ObterPais", 3), "comida"), Is.EqualTo(oldFoodStocks[3]),

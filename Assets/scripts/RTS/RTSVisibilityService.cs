@@ -79,8 +79,10 @@ namespace Hegemonia.RTS
         // Organizar as unidades por celula evita comparar cada unidade com
         // todas as outras quando a partida ja acumulou muitos spawns.
         private const float DirectVisionCellSize = 120f;
+        private const float RadarCellSize = 360f;
         private readonly List<IdentidadeUnidade> unitsBuffer = new List<IdentidadeUnidade>(512);
         private readonly Dictionary<long, List<IdentidadeUnidade>> unitsByCell = new Dictionary<long, List<IdentidadeUnidade>>(128);
+        private readonly Dictionary<long, List<IdentidadeUnidade>> unitsByRadarCell = new Dictionary<long, List<IdentidadeUnidade>>(64);
         private readonly List<RadarUnidadeTatica> radarUnitsBuffer = new List<RadarUnidadeTatica>(256);
         private readonly List<int> nearbyAlliedTeamsBuffer = new List<int>(8);
         private readonly List<int> teamsDetectingEmissionBuffer = new List<int>(8);
@@ -215,6 +217,33 @@ namespace Hegemonia.RTS
                 && TryGetContact(observerTeamId, targetInstanceId, out contact);
         }
 
+        public void GetForeignContactState(int observerTeamId, float now, out bool hasVisibleContact, out float latestKnownExpiry)
+        {
+            hasVisibleContact = false;
+            latestKnownExpiry = 0f;
+            if (observerTeamId <= 0
+                || !contactsByTeam.TryGetValue(observerTeamId, out Dictionary<int, RTSVisibilityContact> contacts)
+                || contacts == null)
+            {
+                return;
+            }
+
+            foreach (RTSVisibilityContact contact in contacts.Values)
+            {
+                if (contact == null
+                    || contact.targetTeamId <= 0
+                    || contact.targetTeamId == observerTeamId
+                    || contact.lastKnownExpiresAt < now
+                    )
+                {
+                    continue;
+                }
+
+                latestKnownExpiry = Mathf.Max(latestKnownExpiry, contact.lastKnownExpiresAt);
+                hasVisibleContact |= contact.currentlyVisible && contact.expiresAt >= now;
+            }
+        }
+
         public void ReportContact(int observerTeamId, IdentidadeUnidade target, RTSDetectionSource source, float duration = -1f)
         {
             if (observerTeamId <= 0 || target == null || target.teamID <= 0 || target.teamID == observerTeamId)
@@ -311,8 +340,7 @@ namespace Hegemonia.RTS
                 {
                     IdentidadeUnidade observador = unitsBuffer[i];
                     if (observador == null || !observador.gameObject.activeInHierarchy || observador.teamID <= 0
-                        || observador.teamID == equipeOrigem
-                        || (equipeOrigem > 0 && !TeamsAtWar(observador.teamID, equipeOrigem))) continue;
+                        || observador.teamID == equipeOrigem) continue;
 
                     Vector3 delta = posicao - observador.transform.position;
                     RadarUnidadeTatica radar = observador.GetComponent<RadarUnidadeTatica>();
@@ -408,6 +436,14 @@ namespace Hegemonia.RTS
                 }
             }
 
+            foreach (List<IdentidadeUnidade> cell in unitsByRadarCell.Values)
+            {
+                if (cell != null)
+                {
+                    cell.Clear();
+                }
+            }
+
             for (int i = 0; i < count; i++)
             {
                 IdentidadeUnidade unit = unitsBuffer[i];
@@ -426,6 +462,17 @@ namespace Hegemonia.RTS
                 }
 
                 cell.Add(unit);
+
+                int radarCellX = Mathf.FloorToInt(unit.transform.position.x / RadarCellSize);
+                int radarCellZ = Mathf.FloorToInt(unit.transform.position.z / RadarCellSize);
+                long radarKey = ComposeCellKey(radarCellX, radarCellZ);
+                if (!unitsByRadarCell.TryGetValue(radarKey, out List<IdentidadeUnidade> radarCell) || radarCell == null)
+                {
+                    radarCell = new List<IdentidadeUnidade>(12);
+                    unitsByRadarCell[radarKey] = radarCell;
+                }
+
+                radarCell.Add(unit);
             }
 
             for (int i = 0; i < count; i++)
@@ -457,8 +504,9 @@ namespace Hegemonia.RTS
                                 continue;
                             }
 
-                            if (TeamsAtWar(observer.teamID, target.teamID)
-                                && (observerPosition - target.transform.position).sqrMagnitude <= rangeSqr)
+                            // Sensor visibility is physical. Diplomacy is checked later by
+                            // weapon orders and territory validation, not by contact creation.
+                            if ((observerPosition - target.transform.position).sqrMagnitude <= rangeSqr)
                             {
                                 ReportContactToAllies(observer.teamID, target, RTSDetectionSource.DirectVision, memoryDuration);
                             }
@@ -531,21 +579,42 @@ namespace Hegemonia.RTS
                 float alcanceSqr = emissor.AlcanceRadar * emissor.AlcanceRadar;
                 RegistrarEmissaoDetectavel(observador, emissor.AlcanceRadar, memoriaRadar);
                 ColetarAliadosComUnidadesProximas(observador.teamID, origem);
-                for (int j = 0; j < count; j++)
+                int minCellX = Mathf.FloorToInt((origem.x - emissor.AlcanceRadar) / RadarCellSize);
+                int maxCellX = Mathf.FloorToInt((origem.x + emissor.AlcanceRadar) / RadarCellSize);
+                int minCellZ = Mathf.FloorToInt((origem.z - emissor.AlcanceRadar) / RadarCellSize);
+                int maxCellZ = Mathf.FloorToInt((origem.z + emissor.AlcanceRadar) / RadarCellSize);
+                for (int cellX = minCellX; cellX <= maxCellX; cellX++)
                 {
-                    IdentidadeUnidade alvo = unitsBuffer[j];
-                    if (alvo == null || alvo == observador || !alvo.gameObject.activeInHierarchy
-                        || alvo.teamID <= 0 || !TeamsAtWar(observador.teamID, alvo.teamID))
-                        continue;
-
-                    Vector3 delta = alvo.transform.position - origem;
-                    delta.y = 0f;
-                    if (delta.sqrMagnitude <= alcanceSqr && RadarTemLinhaDeVisao(origem, observador, alvo))
+                    for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
                     {
-                        ReportContactParaAliadosProximos(observador.teamID, alvo, memoriaRadar,
-                            emissor.AtivacaoAutomaticaHelicopteroEmVoo
-                                ? RTSDetectionSource.AirRecon
-                                : RTSDetectionSource.Radar);
+                        if (!unitsByRadarCell.TryGetValue(ComposeCellKey(cellX, cellZ), out List<IdentidadeUnidade> cell)
+                            || cell == null)
+                        {
+                            continue;
+                        }
+
+                        for (int j = 0; j < cell.Count; j++)
+                        {
+                            IdentidadeUnidade alvo = cell[j];
+                            if (alvo == null || alvo == observador || !alvo.gameObject.activeInHierarchy
+                                || alvo.teamID <= 0 || alvo.teamID == observador.teamID)
+                            {
+                                continue;
+                            }
+
+                            Vector3 delta = alvo.transform.position - origem;
+                            delta.y = 0f;
+                            if (delta.sqrMagnitude > alcanceSqr
+                                || !RadarTemLinhaDeVisao(origem, observador, alvo))
+                            {
+                                continue;
+                            }
+
+                            ReportContactParaAliadosProximos(observador.teamID, alvo, memoriaRadar,
+                                emissor.AtivacaoAutomaticaHelicopteroEmVoo
+                                    ? RTSDetectionSource.AirRecon
+                                    : RTSDetectionSource.Radar);
+                        }
                     }
                 }
             }
@@ -561,21 +630,41 @@ namespace Hegemonia.RTS
             float alcanceSqr = alcanceInterceptacao * alcanceInterceptacao;
             Vector3 origem = emissor.transform.position;
             teamsDetectingEmissionBuffer.Clear();
-            int count = Mathf.Min(unitsBuffer.Count, maxUnitsPerScan);
-            for (int i = 0; i < count; i++)
+            int minCellX = Mathf.FloorToInt((origem.x - alcanceInterceptacao) / RadarCellSize);
+            int maxCellX = Mathf.FloorToInt((origem.x + alcanceInterceptacao) / RadarCellSize);
+            int minCellZ = Mathf.FloorToInt((origem.z - alcanceInterceptacao) / RadarCellSize);
+            int maxCellZ = Mathf.FloorToInt((origem.z + alcanceInterceptacao) / RadarCellSize);
+            for (int cellX = minCellX; cellX <= maxCellX; cellX++)
             {
-                IdentidadeUnidade unidadeInimiga = unitsBuffer[i];
-                if (unidadeInimiga == null || unidadeInimiga == emissor
-                    || !unidadeInimiga.gameObject.activeInHierarchy
-                    || !TeamsAtWar(emissor.teamID, unidadeInimiga.teamID))
-                    continue;
+                for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++)
+                {
+                    if (!unitsByRadarCell.TryGetValue(ComposeCellKey(cellX, cellZ), out List<IdentidadeUnidade> cell)
+                        || cell == null)
+                    {
+                        continue;
+                    }
 
-                Vector3 delta = unidadeInimiga.transform.position - origem;
-                delta.y = 0f;
-                if (delta.sqrMagnitude > alcanceSqr || teamsDetectingEmissionBuffer.Contains(unidadeInimiga.teamID))
-                    continue;
+                    for (int i = 0; i < cell.Count; i++)
+                    {
+                        IdentidadeUnidade unidadeInimiga = cell[i];
+                        if (unidadeInimiga == null || unidadeInimiga == emissor
+                            || !unidadeInimiga.gameObject.activeInHierarchy
+                            || unidadeInimiga.teamID <= 0 || unidadeInimiga.teamID == emissor.teamID)
+                        {
+                            continue;
+                        }
 
-                teamsDetectingEmissionBuffer.Add(unidadeInimiga.teamID);
+                        Vector3 delta = unidadeInimiga.transform.position - origem;
+                        delta.y = 0f;
+                        if (delta.sqrMagnitude > alcanceSqr
+                            || teamsDetectingEmissionBuffer.Contains(unidadeInimiga.teamID))
+                        {
+                            continue;
+                        }
+
+                        teamsDetectingEmissionBuffer.Add(unidadeInimiga.teamID);
+                    }
+                }
             }
 
             for (int i = 0; i < teamsDetectingEmissionBuffer.Count; i++)

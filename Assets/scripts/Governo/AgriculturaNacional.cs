@@ -241,6 +241,147 @@ public sealed class AgriculturaNacional : MonoBehaviour
         return true;
     }
 
+    public static long CalcularOrcamentoCompraAlimentar(long saldoDisponivel, float percentualCaixa)
+    {
+        if (saldoDisponivel <= 0 || float.IsNaN(percentualCaixa) || float.IsInfinity(percentualCaixa))
+            return 0L;
+
+        double percentual = Math.Max(0d, Math.Min(100d, percentualCaixa));
+        return (long)Math.Floor(saldoDisponivel * percentual / 100d);
+    }
+
+    public bool DefinirPercentualCompraAlimentar(int teamId, float percentual)
+    {
+        if (governo == null) governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        if (pais == null || float.IsNaN(percentual) || float.IsInfinity(percentual)) return false;
+
+        pais.compraAlimentarPercentualCaixaDiario = Mathf.Clamp(percentual, 0f, 100f);
+        governo.NotificarGovernoAtualizado();
+        return true;
+    }
+
+    public bool DefinirParticipacaoCompraAlimentar(int teamId, int indice, int percentual)
+    {
+        if (governo == null) governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        if (pais == null || indice < 0 || indice >= Culturas.Length) return false;
+
+        GarantirDadosCompraAlimentar(pais);
+        float desejado = Mathf.Clamp(percentual, 0, 100) / 100f;
+        float restanteAnterior = 0f;
+        for (int i = 0; i < Culturas.Length; i++)
+            if (i != indice) restanteAnterior += Mathf.Max(0f, pais.participacaoCompraAlimentar[i]);
+
+        float restanteNovo = 1f - desejado;
+        pais.participacaoCompraAlimentar[indice] = desejado;
+        for (int i = 0; i < Culturas.Length; i++)
+        {
+            if (i == indice) continue;
+            pais.participacaoCompraAlimentar[i] = restanteAnterior > 0f
+                ? Mathf.Max(0f, pais.participacaoCompraAlimentar[i]) / restanteAnterior * restanteNovo
+                : restanteNovo / (Culturas.Length - 1);
+        }
+
+        governo.NotificarGovernoAtualizado();
+        return true;
+    }
+
+    public bool DefinirCompraAlimentarDiaria(int teamId, bool ativa, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (governo == null) governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        if (pais == null)
+        {
+            mensagem = "Governo nacional indisponivel.";
+            return false;
+        }
+
+        GarantirDadosCompraAlimentar(pais);
+        pais.compraAlimentarDiariaAtiva = ativa;
+        if (!ativa)
+        {
+            mensagem = "Compra diaria de alimentos pausada.";
+            governo.NotificarGovernoAtualizado();
+            return true;
+        }
+
+        int diaAtual = GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+        if (pais.ultimoDiaCompraAlimentarProcessado == diaAtual)
+        {
+            mensagem = "Compra diaria ativada; o orçamento de hoje ja foi processado.";
+            governo.NotificarGovernoAtualizado();
+            return true;
+        }
+
+        long valorGasto;
+        bool comprou = ExecutarCompraAlimentarPercentualCaixa(teamId, out mensagem, out valorGasto);
+        // A tentativa de hoje e registrada mesmo quando o caixa/estoque impede
+        // a compra, para que o evento de data nao possa cobrar duas vezes.
+        pais.ultimoDiaCompraAlimentarProcessado = diaAtual;
+        if (!comprou && string.IsNullOrEmpty(mensagem)) mensagem = "Nenhum alimento foi comprado hoje.";
+        governo.NotificarGovernoAtualizado();
+        return comprou;
+    }
+
+    public bool ExecutarCompraAlimentarPercentualCaixa(int teamId, out string mensagem, out long valorGasto)
+    {
+        mensagem = string.Empty;
+        valorGasto = 0L;
+        if (governo == null) governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+        SistemaMercadoGlobal mercado = SistemaMercadoGlobal.Instancia;
+        if (governo == null || pais == null || mercado == null)
+        {
+            mensagem = "Governo ou mercado nacional indisponivel.";
+            return false;
+        }
+
+        GarantirDadosCompraAlimentar(pais);
+        governo.ReconciliarEstoqueComidaCulturas(teamId);
+        long saldo = governo.ObterSaldoDisponivelParaOperacao(teamId);
+        long orcamento = CalcularOrcamentoCompraAlimentar(saldo, pais.compraAlimentarPercentualCaixaDiario);
+        int capacidadeLivre = ObterCapacidadeLivreComida(pais);
+        if (orcamento <= 0L)
+        {
+            mensagem = "Orcamento de alimentos igual a zero; ajuste o percentual ou o saldo nacional.";
+            return false;
+        }
+        if (capacidadeLivre <= 0)
+        {
+            mensagem = "Armazem de alimentos cheio; libere espaco antes de comprar.";
+            return false;
+        }
+
+        bool comprou = mercado.ComprarCestaAlimentar(teamId, orcamento, pais.participacaoCompraAlimentar,
+            capacidadeLivre, out valorGasto, out mensagem);
+        if (comprou && pais.compraAlimentarDiariaAtiva && GerenciadorTempo.Instancia != null)
+            pais.ultimoDiaCompraAlimentarProcessado = Mathf.Max(1, GerenciadorTempo.Instancia.totalDias);
+        return comprou;
+    }
+
+    private static void GarantirDadosCompraAlimentar(DadosPaisGoverno pais)
+    {
+        if (pais == null) return;
+        if (float.IsNaN(pais.compraAlimentarPercentualCaixaDiario)
+            || float.IsInfinity(pais.compraAlimentarPercentualCaixaDiario))
+            pais.compraAlimentarPercentualCaixaDiario = 1f;
+        pais.compraAlimentarPercentualCaixaDiario = Mathf.Clamp(pais.compraAlimentarPercentualCaixaDiario, 0f, 100f);
+        if (pais.participacaoCompraAlimentar == null || pais.participacaoCompraAlimentar.Length != Culturas.Length)
+            Array.Resize(ref pais.participacaoCompraAlimentar, Culturas.Length);
+        float soma = 0f;
+        for (int i = 0; i < Culturas.Length; i++)
+        {
+            float valor = pais.participacaoCompraAlimentar[i];
+            if (float.IsNaN(valor) || float.IsInfinity(valor) || valor < 0f)
+                pais.participacaoCompraAlimentar[i] = 0f;
+            soma += pais.participacaoCompraAlimentar[i];
+        }
+        if (soma <= 0f)
+            for (int i = 0; i < Culturas.Length; i++) pais.participacaoCompraAlimentar[i] = 1f;
+    }
+
     private static void GarantirDadosCulturas(DadosPaisGoverno pais)
     {
         if (pais.mixCulturaAgricola == null || pais.mixCulturaAgricola.Length != Culturas.Length)
@@ -338,9 +479,10 @@ public sealed class AgriculturaNacional : MonoBehaviour
             GarantirCapacidadeArmazenamento(pais, pais.teamId == governo.teamJogador);
             GarantirDadosArea(pais);
             governo.ReconciliarEstoqueComidaCulturas(pais.teamId);
+            if ((dia - 1) % 7 == 0) ProcessarCobrancaSemanal(pais);
+            ProcessarCompraAlimentarDiaria(pais, dia);
             int comidaPendenteDoDia = SistemaPopulacao.IniciarConsumoComidaDiario(pais);
             float producaoIndustrialSolicitada = ObterProducaoIndustrialDiaria(pais);
-            if ((dia - 1) % 7 == 0) ProcessarCobrancaSemanal(pais);
             Produzir(pais);
             int producaoIndustrialCreditada = CreditarProducaoIndustrialDiaria(pais, producaoIndustrialSolicitada);
             float producaoComidaCreditada = pais.producaoAgricolaDiaria + producaoIndustrialCreditada;
@@ -350,6 +492,17 @@ public sealed class AgriculturaNacional : MonoBehaviour
             SistemaPopulacao.FinalizarConsumoComidaDiario(
                 pais, comidaPendenteDoDia, producaoComidaCreditada, economia);
         }
+    }
+
+    private void ProcessarCompraAlimentarDiaria(DadosPaisGoverno pais, int dia)
+    {
+        if (pais == null || !pais.compraAlimentarDiariaAtiva || pais.ultimoDiaCompraAlimentarProcessado >= dia)
+            return;
+
+        // Registrar antes da chamada impede reentrancia se a compra notificar
+        // listeners que consultam novamente o calendario durante a liquidacao.
+        pais.ultimoDiaCompraAlimentarProcessado = dia;
+        ExecutarCompraAlimentarPercentualCaixa(pais.teamId, out _, out _);
     }
 
     private void ProcessarCobrancaSemanal(DadosPaisGoverno pais)

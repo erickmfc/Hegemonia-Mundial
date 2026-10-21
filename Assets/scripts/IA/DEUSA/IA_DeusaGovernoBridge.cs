@@ -157,7 +157,9 @@ namespace Hegemonia.AI.DEUSA
             DadosPaisGoverno comprador = governo.Paises
                 .Where(p => p != null && p.teamId != vendedorTeamId)
                 .Where(p => (permitirJogador || p.teamId != governo.teamJogador) && (permitirOutrasIAs || p.teamId == governo.teamJogador))
-                .OrderByDescending(p => ScoreContraparte(governo, vendedorTeamId, p.teamId, recurso))
+                .OrderByDescending(p => (recurso == RecursoMercado.Comida && permitirJogador
+                    && p.teamId == governo.teamJogador ? 1000000f : 0f)
+                    + ScoreContraparte(governo, vendedorTeamId, p.teamId, recurso))
                 .FirstOrDefault();
 
             if (comprador == null)
@@ -168,6 +170,35 @@ namespace Hegemonia.AI.DEUSA
 
             if (comprador.teamId == governo.teamJogador)
             {
+                if (recurso == RecursoMercado.Comida && vendedorTeamId == 2)
+                {
+                    DadosItemMercado alimento = null;
+                    int estoqueAlimento = 0;
+                    for (int i = 0; i < AgriculturaNacional.QuantidadeCulturas; i++)
+                    {
+                        string idCultura = AgriculturaNacional.ObterIdCultura(i);
+                        int estoque = governo.ObterEstoque(vendedorTeamId, idCultura);
+                        DadosItemMercado cultura = mercado.ObterItem(idCultura);
+                        if (cultura == null || estoque <= estoqueAlimento) continue;
+                        alimento = cultura;
+                        estoqueAlimento = estoque;
+                    }
+
+                    if (alimento == null)
+                    {
+                        alimento = item;
+                        estoqueAlimento = governo.ObterEstoque(vendedorTeamId, item.RecursoIdEfetivo);
+                    }
+                    quantidade = Mathf.Min(quantidade, Mathf.Max(0, estoqueAlimento));
+                    if (quantidade <= 0)
+                    {
+                        mensagem = "Valdoria nao possui excedente alimentar disponivel para venda.";
+                        return false;
+                    }
+
+                    return mercado.Vender(vendedorTeamId, comprador.teamId, alimento.id, quantidade, out mensagem);
+                }
+
                 PropostaInternacional proposta = new PropostaInternacional
                 {
                     origemTeamId = vendedorTeamId,

@@ -17,6 +17,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly int _teamId;
         private readonly Dictionary<string, DadosConstrucao> _catalogByKey = new Dictionary<string, DadosConstrucao>();
         private readonly List<DadosConstrucao> _catalog = new List<DadosConstrucao>();
+        private readonly HashSet<GameObject> _catalogPrefabs = new HashSet<GameObject>();
 
 #if UNITY_EDITOR
         // A descoberta por AssetDatabase e feita uma vez por sessao de Play.
@@ -57,6 +58,7 @@ namespace Hegemonia.AI.BrainMaster
             RecordDetailedCatalogMetric("ia_backend_catalog_refresh_count", 1f);
             _catalog.Clear();
             _catalogByKey.Clear();
+            _catalogPrefabs.Clear();
 
             if (MenuConstrucao.catalogoGlobal != null)
             {
@@ -255,6 +257,12 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             id.teamID = _teamId;
+            SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno country = government != null ? government.ObterPais(_teamId) : null;
+            if (country != null && !string.IsNullOrWhiteSpace(country.nomePais))
+            {
+                id.nomeDoPais = country.nomePais;
+            }
 
             IA_IdentityRegistryHook hook = obj.GetComponent<IA_IdentityRegistryHook>();
             if (hook == null)
@@ -288,6 +296,11 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             if (_catalog.Contains(item))
+            {
+                return;
+            }
+
+            if (!_catalogPrefabs.Add(prefab))
             {
                 return;
             }

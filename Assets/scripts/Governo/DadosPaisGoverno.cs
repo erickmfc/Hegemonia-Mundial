@@ -271,6 +271,10 @@ public class DadosPaisGoverno
     public int[] niveisInvestimentoAgricola = new int[12];
     public float[] mixCulturaAgricola = { 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
     public float[] saldoFracionarioCulturas = new float[15];
+    [Range(0f, 100f)] public float compraAlimentarPercentualCaixaDiario = 1f;
+    public bool compraAlimentarDiariaAtiva;
+    public int ultimoDiaCompraAlimentarProcessado = -1;
+    public float[] participacaoCompraAlimentar = { 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
     [Min(0)] public int producaoAgrotoxicosDiaria;
     [Min(0)] public int estercoDisponivel;
     public int petroleo = 500;

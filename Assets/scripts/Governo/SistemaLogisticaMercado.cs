@@ -82,8 +82,10 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     private readonly List<PedidoMercadoLogistico> entregasPendentes = new List<PedidoMercadoLogistico>(8);
     private readonly Dictionary<string, List<PedidoMercadoLogistico>> gruposBuffer = new Dictionary<string, List<PedidoMercadoLogistico>>(StringComparer.Ordinal);
     private readonly List<string> chavesGruposBuffer = new List<string>(16);
+    private readonly Dictionary<int, PierMarinha> cachePiersPorTeam = new Dictionary<int, PierMarinha>();
     private float proximoProcessamento;
     private float proximoLogSemPorto;
+    private float proximaAtualizacaoCachePiers = -1f;
     private int ultimoDiaRepeticao = -1;
 
     public static void GarantirInstancia()
@@ -180,6 +182,31 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
         transacao.status = pedido.status;
         transacao.mensagem = pedido.mensagem;
         return true;
+    }
+
+    public bool PossuiRotaDeCarga(int vendedorTeamId, int compradorTeamId)
+    {
+        if (vendedorTeamId <= 0 || compradorTeamId <= 0 || vendedorTeamId == compradorTeamId)
+            return false;
+        AtualizarCachePiersSeNecessario();
+        if (!cachePiersPorTeam.ContainsKey(vendedorTeamId) || !cachePiersPorTeam.ContainsKey(compradorTeamId))
+            return false;
+
+        return EncontrarNavioDisponivel(compradorTeamId) != null || ObterPrefabCarga() != null;
+    }
+
+    private void AtualizarCachePiersSeNecessario()
+    {
+        if (Time.unscaledTime < proximaAtualizacaoCachePiers) return;
+        proximaAtualizacaoCachePiers = Time.unscaledTime + 1f;
+        cachePiersPorTeam.Clear();
+        PierMarinha[] encontrados = FindObjectsByType<PierMarinha>(FindObjectsSortMode.None);
+        for (int i = 0; i < encontrados.Length; i++)
+        {
+            PierMarinha pier = encontrados[i];
+            if (pier != null && pier.OwnerTeamId > 0 && !cachePiersPorTeam.ContainsKey(pier.OwnerTeamId))
+                cachePiersPorTeam.Add(pier.OwnerTeamId, pier);
+        }
     }
 
     public SistemaLogisticaMercadoSaveData CriarSaveData()

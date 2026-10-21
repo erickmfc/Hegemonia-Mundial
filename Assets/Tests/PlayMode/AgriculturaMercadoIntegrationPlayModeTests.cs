@@ -41,6 +41,19 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
     private int oldDay;
     private long buyerBalance;
     private long sellerBalance;
+    private int buyerFoodStock;
+    private int sellerFoodStock;
+    private int buyerAgriculturalStock;
+    private int sellerAgriculturalStock;
+    private int buyerAgriculturalCapacity;
+    private int sellerAgriculturalCapacity;
+    private float buyerFoodBudgetPercent;
+    private bool buyerDailyFoodPurchaseEnabled;
+    private int buyerLastFoodPurchaseDay;
+    private float[] buyerFoodMixSnapshot;
+    private object playerFoodWarehouse;
+    private object playerFoodWarehouseStock;
+    private object playerFoodWarehouseCapacity;
     private int historyCount;
     private int orderCount;
     private int pendingDeliveryCount;
@@ -107,6 +120,17 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         oldDay = (int)Read(tempo, "totalDias");
         buyerBalance = (long)Read(comprador, "saldo");
         sellerBalance = (long)Read(vendedor, "saldo");
+        buyerFoodStock = (int)Read(comprador, "comida");
+        sellerFoodStock = (int)Read(vendedor, "comida");
+        buyerAgriculturalStock = (int)Read(comprador, "estoqueAgricolaTotal");
+        sellerAgriculturalStock = (int)Read(vendedor, "estoqueAgricolaTotal");
+        buyerAgriculturalCapacity = (int)Read(comprador, "capacidadeArmazenamentoAgricola");
+        sellerAgriculturalCapacity = (int)Read(vendedor, "capacidadeArmazenamentoAgricola");
+        buyerFoodBudgetPercent = Convert.ToSingle(Read(comprador, "compraAlimentarPercentualCaixaDiario"));
+        buyerDailyFoodPurchaseEnabled = Convert.ToBoolean(Read(comprador, "compraAlimentarDiariaAtiva"));
+        buyerLastFoodPurchaseDay = Convert.ToInt32(Read(comprador, "ultimoDiaCompraAlimentarProcessado"));
+        float[] currentFoodMix = Read(comprador, "participacaoCompraAlimentar") as float[];
+        buyerFoodMixSnapshot = currentFoodMix != null ? (float[])currentFoodMix.Clone() : Array.Empty<float>();
         relationValue = (int)Read(relacao, "valor");
         relationTrade = (bool)Read(relacao, "tratadoComercial");
         relationWar = (bool)Read(relacao, "guerraDeclarada");
@@ -126,6 +150,21 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
             }
         }
 
+        IList countriesForStockSnapshot = Read(governo, "paises") as IList;
+        if (countriesForStockSnapshot != null)
+        {
+            foreach (object country in countriesForStockSnapshot)
+            {
+                int teamId = (int)Read(country, "teamId");
+                for (int i = 0; i < StockIds.Length; i++)
+                {
+                    string key = teamId + ":" + StockIds[i];
+                    if (!stockSnapshot.ContainsKey(key))
+                        stockSnapshot[key] = (int)Call(governo, "ObterEstoque", teamId, StockIds[i]);
+                }
+            }
+        }
+
         IList items = (IList)Read(mercado, "itens");
         for (int i = 0; i < items.Count; i++)
         {
@@ -138,6 +177,13 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         if (resourcesManager != null)
         {
             cashOnResourcesManager = Read(resourcesManager, "dinheiro");
+        }
+        Component warehouseManager = GetStatic(TypeOf("GerenciadorArmazens"), "Instancia") as Component;
+        playerFoodWarehouse = warehouseManager != null ? Read(warehouseManager, "armazemRecursos") : null;
+        if (playerFoodWarehouse != null)
+        {
+            playerFoodWarehouseStock = Read(playerFoodWarehouse, "alimentos");
+            playerFoodWarehouseCapacity = Read(playerFoodWarehouse, "alimentosMaximo");
         }
 
         Set(relacao, "valor", 75);
@@ -222,6 +268,24 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
                 else if (delta < 0) Call(governo, "RemoverEstoque", team, parts[1], -delta);
             }
 
+            Set(comprador, "comida", buyerFoodStock);
+            Set(vendedor, "comida", sellerFoodStock);
+            Set(comprador, "estoqueAgricolaTotal", buyerAgriculturalStock);
+            Set(vendedor, "estoqueAgricolaTotal", sellerAgriculturalStock);
+            Set(comprador, "capacidadeArmazenamentoAgricola", buyerAgriculturalCapacity);
+            Set(vendedor, "capacidadeArmazenamentoAgricola", sellerAgriculturalCapacity);
+            Set(comprador, "compraAlimentarPercentualCaixaDiario", buyerFoodBudgetPercent);
+            Set(comprador, "compraAlimentarDiariaAtiva", buyerDailyFoodPurchaseEnabled);
+            Set(comprador, "ultimoDiaCompraAlimentarProcessado", buyerLastFoodPurchaseDay);
+            float[] foodMixToRestore = Read(comprador, "participacaoCompraAlimentar") as float[];
+            if (foodMixToRestore != null && buyerFoodMixSnapshot != null)
+            {
+                if (foodMixToRestore.Length != buyerFoodMixSnapshot.Length)
+                    foodMixToRestore = (float[])buyerFoodMixSnapshot.Clone();
+                else
+                    Array.Copy(buyerFoodMixSnapshot, foodMixToRestore, buyerFoodMixSnapshot.Length);
+                Set(comprador, "participacaoCompraAlimentar", foodMixToRestore);
+            }
             Set(comprador, "saldo", buyerBalance);
             Set(vendedor, "saldo", sellerBalance);
             if (relacao != null)
@@ -261,6 +325,11 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
 
         if (tempo != null) Set(tempo, "totalDias", oldDay);
         if (resourcesManager != null) Set(resourcesManager, "dinheiro", cashOnResourcesManager);
+        if (playerFoodWarehouse != null)
+        {
+            Set(playerFoodWarehouse, "alimentos", playerFoodWarehouseStock);
+            Set(playerFoodWarehouse, "alimentosMaximo", playerFoodWarehouseCapacity);
+        }
         if (researchList != null)
             while (researchList.Count > researchCount) researchList.RemoveAt(researchList.Count - 1);
         for (int i = 0; i < objects.Count; i++)
@@ -299,6 +368,231 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         temporaryTradeRelation = null;
         if (governo is Behaviour governmentBehaviour)
             governmentBehaviour.enabled = originalGovernmentEnabled;
+    }
+
+    [UnityTest]
+    public IEnumerator DailyCashFoodBasketDebitsOnceAndUsesImmediateSupplyWithoutAQualifiedCountrySupplier()
+    {
+        Component agriculture = ((Component)governo).GetComponent(TypeOf("AgriculturaNacional"));
+        Assert.That(agriculture, Is.Not.Null);
+        Assert.That(playerFoodWarehouse, Is.Not.Null, "O armazenamento alimentar real do Team 1 precisa estar inicializado.");
+
+        foreach (KeyValuePair<string, int> stock in stockSnapshot)
+        {
+            string[] parts = stock.Key.Split(':');
+            if (!parts[1].StartsWith("comida_", StringComparison.OrdinalIgnoreCase)) continue;
+            int teamId = int.Parse(parts[0]);
+            int atual = (int)Call(governo, "ObterEstoque", teamId, parts[1]);
+            if (atual > 0) Call(governo, "RemoverEstoque", teamId, parts[1], atual);
+        }
+
+        Call(governo, "RemoverEstoque", BuyerTeam, Enum.Parse(TypeOf("RecursoMercado"), "Comida"),
+            Math.Max(0, (int)Call(governo, "ObterEstoque", BuyerTeam, Enum.Parse(TypeOf("RecursoMercado"), "Comida"))));
+        Set(comprador, "comida", 0);
+        Set(comprador, "estoqueAgricolaTotal", 0);
+        Set(comprador, "capacidadeArmazenamentoAgricola", 100000);
+        Set(playerFoodWarehouse, "alimentos", 0);
+        Set(playerFoodWarehouse, "alimentosMaximo", 100000);
+        Set(comprador, "saldo", 100000000L);
+        if (resourcesManager != null) Set(resourcesManager, "dinheiro", 100000000L);
+
+        int diaAtual = Math.Max(1, oldDay);
+        Set(tempo, "totalDias", diaAtual);
+        bool mixConfigurado = (bool)Call(agriculture, "DefinirParticipacaoCompraAlimentar", BuyerTeam, 0, 100);
+        Assert.That(mixConfigurado, Is.True);
+        bool percentualConfigurado = (bool)Call(agriculture, "DefinirPercentualCompraAlimentar", BuyerTeam, 1f);
+        Assert.That(percentualConfigurado, Is.True);
+        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, 1f), Is.EqualTo(1000000L));
+
+        long saldoInicial = Convert.ToInt64(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam));
+        int estoqueMilhoAntes = (int)Call(governo, "ObterEstoque", BuyerTeam, "comida_milho");
+        int historicoAntes = ((IList)Read(mercado, "historico")).Count;
+        int pedidosAntes = ((IList)Read(logistica, "pedidos")).Count;
+        bool ativou = (bool)CallWithOut(agriculture, "DefinirCompraAlimentarDiaria", BuyerTeam, true, out string mensagemAtivacao);
+        Assert.That(ativou, Is.True, mensagemAtivacao);
+
+        long saldoAposCompraHoje = Convert.ToInt64(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam));
+        long gastoHoje = saldoInicial - saldoAposCompraHoje;
+        Assert.That(gastoHoje, Is.GreaterThan(0L), "A ativacao deve comprar imediatamente com o percentual do caixa.");
+        Assert.That(gastoHoje, Is.LessThanOrEqualTo(1000000L), "Itens e frete nao podem ultrapassar 1% do caixa.");
+        Assert.That(Call(governo, "ObterEstoque", BuyerTeam, "comida_milho"), Is.GreaterThan(estoqueMilhoAntes));
+        IList historico = (IList)Read(mercado, "historico");
+        Assert.That(historico.Count, Is.EqualTo(historicoAntes + 1));
+        object transacao = historico[0];
+        Assert.That(Read(transacao, "vendedorTeamId"), Is.EqualTo(0), "Sem estoque de nenhum pais, a cesta usa o Mercado automatico.");
+        Assert.That(Read(transacao, "status").ToString(), Is.EqualTo("ENTREGUE"));
+        Assert.That(((IList)Read(logistica, "pedidos")).Count, Is.EqualTo(pedidosAntes),
+            "Abastecimento virtual deve ser instantaneo e nao pode deixar um pedido maritimo sem origem.");
+
+        MethodInfo processarCompra = agriculture.GetType().GetMethod("ProcessarCompraAlimentarDiaria", Members);
+        Assert.That(processarCompra, Is.Not.Null);
+        processarCompra.Invoke(agriculture, new[] { comprador, (object)diaAtual });
+        Assert.That(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam), Is.EqualTo(saldoAposCompraHoje),
+            "O mesmo dia nao pode debitar a compra diaria duas vezes.");
+
+        processarCompra.Invoke(agriculture, new[] { comprador, (object)(diaAtual + 1) });
+        long saldoAposProximoDia = Convert.ToInt64(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam));
+        Assert.That(saldoAposProximoDia, Is.LessThan(saldoAposCompraHoje),
+            "Na proxima virada, a rotina precisa recalcular 1% sobre o saldo atualizado.");
+        Assert.That(saldoAposCompraHoje - saldoAposProximoDia, Is.LessThanOrEqualTo(
+            AgriculturaNacional.CalcularOrcamentoCompraAlimentar(saldoAposCompraHoje, 1f)));
+    }
+
+    [UnityTest]
+    public IEnumerator DailyCashFoodBasketUsesAnAlliedSupplierAndArrivesByCargoShip()
+    {
+        Component agriculture = ((Component)governo).GetComponent(TypeOf("AgriculturaNacional"));
+        Assert.That(agriculture, Is.Not.Null);
+
+        IList countries = Read(governo, "paises") as IList;
+        Assert.That(countries, Is.Not.Null);
+        foreach (object country in countries)
+        {
+            int teamId = (int)Read(country, "teamId");
+            foreach (string foodId in StockIds.Where(value => value.StartsWith("comida_", StringComparison.OrdinalIgnoreCase)))
+            {
+                int stock = (int)Call(governo, "ObterEstoque", teamId, foodId);
+                if (stock > 0) Call(governo, "RemoverEstoque", teamId, foodId, stock);
+            }
+            Call(governo, "ReconciliarEstoqueComidaCulturas", teamId);
+        }
+
+        Set(comprador, "saldo", 100000000L);
+        Set(vendedor, "saldo", 100000000L);
+        Set(comprador, "comida", 0);
+        Set(comprador, "estoqueAgricolaTotal", 0);
+        Set(comprador, "capacidadeArmazenamentoAgricola", 100000);
+        if (resourcesManager != null) Set(resourcesManager, "dinheiro", 100000000L);
+        if (playerFoodWarehouse != null)
+        {
+            Set(playerFoodWarehouse, "alimentos", 0);
+            Set(playerFoodWarehouse, "alimentosMaximo", 100000);
+        }
+
+        const string foodId = "comida_milho";
+        const int supplierStock = 5000;
+        AddStock(SellerTeam, foodId, supplierStock);
+        Call(governo, "ReconciliarEstoqueComidaCulturas", SellerTeam);
+        object corn = Call(mercado, "ObterItem", foodId);
+        Assert.That(corn, Is.Not.Null);
+        Set(corn, "estoqueGlobal", supplierStock);
+
+        Set(relacao, "valor", 75);
+        Set(relacao, "tratadoComercial", true);
+        Set(relacao, "guerraDeclarada", false);
+        Set(relacao, "sancaoAtiva", false);
+
+        GameObject sellerPierObject = new GameObject("FoodBasket_SellerPier");
+        sellerPierObject.transform.position = Vector3.zero;
+        objects.Add(sellerPierObject);
+        Component sellerPier = sellerPierObject.AddComponent(TypeOf("PierMarinha"));
+        SetProperty(sellerPier, "OwnerTeamId", SellerTeam);
+
+        GameObject buyerPierObject = new GameObject("FoodBasket_BuyerPier");
+        buyerPierObject.transform.position = new Vector3(60f, 0f, 0f);
+        objects.Add(buyerPierObject);
+        Component buyerPier = buyerPierObject.AddComponent(TypeOf("PierMarinha"));
+        SetProperty(buyerPier, "OwnerTeamId", BuyerTeam);
+
+        Set(logistica, "intervaloProcessamento", 0.25f);
+        Set(logistica, "tempoEmbarque", 0.1f);
+        Set(logistica, "tempoDesembarque", 0.1f);
+        GameObject cargoObject = new GameObject("FoodBasket_MarketCargo");
+        cargoObject.transform.position = sellerPierObject.transform.position;
+        objects.Add(cargoObject);
+        Component cargo = cargoObject.AddComponent(TypeOf("NavioCargaMercado"));
+        Set(cargo, "velocidadeCruzeiro", 500f);
+        Call(cargo, "Inicializar", BuyerTeam, false);
+
+        bool mixConfigurado = (bool)Call(agriculture, "DefinirParticipacaoCompraAlimentar", BuyerTeam, 0, 100);
+        Assert.That(mixConfigurado, Is.True);
+        bool percentualConfigurado = (bool)Call(agriculture, "DefinirPercentualCompraAlimentar", BuyerTeam, 1f);
+        Assert.That(percentualConfigurado, Is.True);
+
+        // O sistema mantém um cache curto dos piers; aguarde sua renovação para
+        // garantir que o teste valide a rota recém-configurada, não um cache velho.
+        yield return new WaitForSecondsRealtime(1.1f);
+
+        long saldoAntes = Convert.ToInt64(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam));
+        int foodBefore = (int)Call(governo, "ObterEstoque", BuyerTeam, foodId);
+        int ordersBefore = ((IList)Read(logistica, "pedidos")).Count;
+        int historyBefore = ((IList)Read(mercado, "historico")).Count;
+        MethodInfo executeBasket = agriculture.GetType().GetMethod("ExecutarCompraAlimentarPercentualCaixa", Members);
+        Assert.That(executeBasket, Is.Not.Null);
+        object[] arguments = { BuyerTeam, null, 0L };
+        bool purchased = (bool)executeBasket.Invoke(agriculture, arguments);
+        string purchaseMessage = (string)arguments[1];
+        long reportedSpend = Convert.ToInt64(arguments[2]);
+
+        Assert.That(purchased, Is.True, purchaseMessage);
+        long balanceAfterPurchase = Convert.ToInt64(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam));
+        long actualSpend = saldoAntes - balanceAfterPurchase;
+        Assert.That(actualSpend, Is.GreaterThan(0L));
+        Assert.That(actualSpend, Is.LessThanOrEqualTo(1000000L), "A compra deve respeitar 1% do caixa de 100 milhões.");
+        Assert.That(reportedSpend, Is.EqualTo(actualSpend), "O valor informado pela cesta deve refletir o débito real, incluindo frete.");
+        Assert.That(Call(governo, "ObterEstoque", BuyerTeam, foodId), Is.EqualTo(foodBefore),
+            "Com fornecedor e rota disponíveis, a comida só entra no estoque após a viagem.");
+
+        IList orders = (IList)Read(logistica, "pedidos");
+        Assert.That(orders.Count, Is.EqualTo(ordersBefore + 1));
+        object order = orders[orders.Count - 1];
+        Assert.That(Read(order, "vendedorTeamId"), Is.EqualTo(SellerTeam));
+        Assert.That(Read(order, "compradorTeamId"), Is.EqualTo(BuyerTeam));
+        Assert.That(Read(order, "itemId").ToString(), Is.EqualTo(foodId));
+        Assert.That(Read(order, "status").ToString(), Is.EqualTo("AGUARDANDO EMBARQUE"));
+
+        IList history = (IList)Read(mercado, "historico");
+        Assert.That(history.Count, Is.EqualTo(historyBefore + 1));
+        object transaction = history[0];
+        Assert.That(Read(transaction, "vendedorTeamId"), Is.EqualTo(SellerTeam));
+        Assert.That(Read(transaction, "status").ToString(), Is.EqualTo("AGUARDANDO EMBARQUE"));
+
+        float deliveryDeadline = Time.realtimeSinceStartup + 15f;
+        while (!string.Equals(Read(order, "status").ToString(), "ENTREGUE", StringComparison.OrdinalIgnoreCase)
+            && Time.realtimeSinceStartup < deliveryDeadline)
+            yield return null;
+
+        Assert.That(Read(order, "status").ToString(), Is.EqualTo("ENTREGUE"),
+            "A compra de alimentos de um fornecedor real precisa completar embarque, viagem e desembarque.");
+        Assert.That(Vector3.Distance(cargoObject.transform.position, buyerPierObject.transform.position), Is.LessThan(8f));
+        Assert.That(Call(governo, "ObterEstoque", BuyerTeam, foodId), Is.EqualTo(foodBefore + (int)Read(order, "quantidade")));
+    }
+
+    [UnityTest]
+    public IEnumerator ValdoriaFoodSurplusIsSoldToTeamOneThroughTheMarketWithoutADiplomaticProposal()
+    {
+        foreach (string id in StockIds.Where(value => value.StartsWith("comida_", StringComparison.OrdinalIgnoreCase)))
+        {
+            int atual = (int)Call(governo, "ObterEstoque", SellerTeam, id);
+            if (atual > 0) Call(governo, "RemoverEstoque", SellerTeam, id, atual);
+        }
+        Call(governo, "AdicionarEstoque", SellerTeam, "comida_milho", 500);
+        Call(governo, "ReconciliarEstoqueComidaCulturas", SellerTeam);
+        Set(comprador, "saldo", 100000000L);
+        if (resourcesManager != null) Set(resourcesManager, "dinheiro", 100000000L);
+        Set(relacao, "valor", 75);
+        Set(relacao, "tratadoComercial", true);
+        Set(relacao, "guerraDeclarada", false);
+        Set(relacao, "sancaoAtiva", false);
+
+        Type bridgeType = TypeOf("Hegemonia.AI.DEUSA.IA_DeusaGovernoBridge");
+        object bridge = Activator.CreateInstance(bridgeType);
+        int propostasAntes = ((IEnumerable)Call(governo, "ObterPropostasPendentesPara", BuyerTeam)).Cast<object>().Count();
+        int pedidosAntes = ((IList)Read(logistica, "pedidos")).Count;
+        int transacoesAntes = ((IList)Read(mercado, "historico")).Count;
+        bool vendeu = (bool)CallWithOut(bridge, "TentarVenderRecurso", SellerTeam,
+            Enum.Parse(TypeOf("RecursoMercado"), "Comida"), 100, true, false, out string mensagem);
+
+        Assert.That(vendeu, Is.True, mensagem);
+        Assert.That(((IEnumerable)Call(governo, "ObterPropostasPendentesPara", BuyerTeam)).Cast<object>().Count(),
+            Is.EqualTo(propostasAntes), "A venda alimentar automatica da Valdoria nao deve ficar esperando aceite diplomático.");
+        Assert.That(((IList)Read(logistica, "pedidos")).Count, Is.EqualTo(pedidosAntes + 1),
+            "A venda da IA03 deve entrar na logistica real de cargueiros.");
+        Assert.That(((IList)Read(mercado, "historico")).Count, Is.EqualTo(transacoesAntes + 1));
+        object transacao = ((IList)Read(mercado, "historico"))[0];
+        Assert.That(Read(transacao, "vendedorTeamId"), Is.EqualTo(SellerTeam));
+        Assert.That(Read(transacao, "compradorTeamId"), Is.EqualTo(BuyerTeam));
+        Assert.That(Read(transacao, "itemId").ToString(), Does.StartWith("comida_"));
     }
 
     [UnityTest]

@@ -1605,7 +1605,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (_identidadeCacheada != null && idAviao != null)
         {
             idAviao.teamID = _identidadeCacheada.teamID;
-            idAviao.nomeDoPais = _identidadeCacheada.nomeDoPais;
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = governo != null ? governo.ObterPais(idAviao.teamID) : null;
+            idAviao.nomeDoPais = pais != null && !string.IsNullOrWhiteSpace(pais.nomePais)
+                ? pais.nomePais
+                : _identidadeCacheada.nomeDoPais;
             idAviao.tipoUnidade = TipoUnidade.Aereo;
 
             // Se pertencer à IA (Time 2 ou maior), empurra o avião pra mente dela
@@ -1620,7 +1624,11 @@ public class GerenciadorAeroporto : MonoBehaviour
             // validação de efetivo usa time 1 nesse caso; mantenha o mesmo
             // proprietário no avião em vez de herdar o teamID serializado no prefab.
             idAviao.teamID = 1;
-            idAviao.nomeDoPais = "Hegemonia";
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = governo != null ? governo.ObterPais(idAviao.teamID) : null;
+            idAviao.nomeDoPais = pais != null && !string.IsNullOrWhiteSpace(pais.nomePais)
+                ? pais.nomePais
+                : "Hegemonia";
             idAviao.tipoUnidade = TipoUnidade.Aereo;
         }
 
