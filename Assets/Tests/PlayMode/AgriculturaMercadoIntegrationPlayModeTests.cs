@@ -402,7 +402,7 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         Assert.That(mixConfigurado, Is.True);
         bool percentualConfigurado = (bool)Call(agriculture, "DefinirPercentualCompraAlimentar", BuyerTeam, 1f);
         Assert.That(percentualConfigurado, Is.True);
-        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, 1f), Is.EqualTo(1000000L));
+        Assert.That(CalcularOrcamentoCompraAlimentar(100000000L, 1f), Is.EqualTo(1000000L));
 
         long saldoInicial = Convert.ToInt64(Call(governo, "ObterSaldoDisponivelParaOperacao", BuyerTeam));
         int estoqueMilhoAntes = (int)Call(governo, "ObterEstoque", BuyerTeam, "comida_milho");
@@ -435,7 +435,8 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         Assert.That(saldoAposProximoDia, Is.LessThan(saldoAposCompraHoje),
             "Na proxima virada, a rotina precisa recalcular 1% sobre o saldo atualizado.");
         Assert.That(saldoAposCompraHoje - saldoAposProximoDia, Is.LessThanOrEqualTo(
-            AgriculturaNacional.CalcularOrcamentoCompraAlimentar(saldoAposCompraHoje, 1f)));
+            CalcularOrcamentoCompraAlimentar(saldoAposCompraHoje, 1f)));
+        yield return null;
     }
 
     [UnityTest]
@@ -449,10 +450,10 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         foreach (object country in countries)
         {
             int teamId = (int)Read(country, "teamId");
-            foreach (string foodId in StockIds.Where(value => value.StartsWith("comida_", StringComparison.OrdinalIgnoreCase)))
+            foreach (string stockFoodId in StockIds.Where(value => value.StartsWith("comida_", StringComparison.OrdinalIgnoreCase)))
             {
-                int stock = (int)Call(governo, "ObterEstoque", teamId, foodId);
-                if (stock > 0) Call(governo, "RemoverEstoque", teamId, foodId, stock);
+                int stock = (int)Call(governo, "ObterEstoque", teamId, stockFoodId);
+                if (stock > 0) Call(governo, "RemoverEstoque", teamId, stockFoodId, stock);
             }
             Call(governo, "ReconciliarEstoqueComidaCulturas", teamId);
         }
@@ -593,6 +594,7 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
         Assert.That(Read(transacao, "vendedorTeamId"), Is.EqualTo(SellerTeam));
         Assert.That(Read(transacao, "compradorTeamId"), Is.EqualTo(BuyerTeam));
         Assert.That(Read(transacao, "itemId").ToString(), Does.StartWith("comida_"));
+        yield return null;
     }
 
     [UnityTest]
@@ -1878,6 +1880,13 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
     private static Type TypeOf(string name) => AppDomain.CurrentDomain.GetAssemblies()
         .Select(assembly => assembly.GetType(name, false)).First(type => type != null);
 
+    private static long CalcularOrcamentoCompraAlimentar(long saldo, float percentual)
+    {
+        Type agricultura = TypeOf("AgriculturaNacional");
+        MethodInfo metodo = agricultura.GetMethod("CalcularOrcamentoCompraAlimentar", Members);
+        return Convert.ToInt64(metodo.Invoke(null, new object[] { saldo, percentual }));
+    }
+
     private static object GetStatic(Type type, string property) => type.GetProperty(property, Members).GetValue(null, null);
     private static object Read(object target, string field) => target.GetType().GetField(field, Members).GetValue(target);
     private static void Set(object target, string field, object value) => target.GetType().GetField(field, Members).SetValue(target, value);
@@ -1896,17 +1905,46 @@ public sealed class AgriculturaMercadoIntegrationPlayModeTests
 
     private static object CallWithOut(object target, string method, int a, int b, string c, int d, out string message)
     {
-        object[] args = { a, b, c, d, null };
-        object result = target.GetType().GetMethod(method, Members).Invoke(target, args);
-        message = (string)args[4];
-        return result;
+        return InvokeWithOutString(target, method, new object[] { a, b, c, d }, out message);
     }
 
     private static object CallWithOut(object target, string method, int a, string b, int c, out string message)
     {
-        object[] args = { a, b, c, null };
-        object result = target.GetType().GetMethod(method, Members).Invoke(target, args);
-        message = (string)args[3];
+        return InvokeWithOutString(target, method, new object[] { a, b, c }, out message);
+    }
+
+    private static object CallWithOut(object target, string method, int a, bool b, out string message)
+    {
+        return InvokeWithOutString(target, method, new object[] { a, b }, out message);
+    }
+
+    private static object CallWithOut(object target, string method, int a, object b, int c, bool d, bool e, out string message)
+    {
+        return InvokeWithOutString(target, method, new object[] { a, b, c, d, e }, out message);
+    }
+
+    private static object InvokeWithOutString(object target, string method, object[] input, out string message)
+    {
+        MethodInfo match = target.GetType().GetMethods(Members).First(candidate =>
+        {
+            if (candidate.Name != method) return false;
+            ParameterInfo[] parameters = candidate.GetParameters();
+            if (parameters.Length != input.Length + 1 || !parameters[input.Length].IsOut) return false;
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (input[i] == null)
+                {
+                    if (parameters[i].ParameterType.IsValueType
+                        && Nullable.GetUnderlyingType(parameters[i].ParameterType) == null) return false;
+                }
+                else if (!parameters[i].ParameterType.IsInstanceOfType(input[i])) return false;
+            }
+            return true;
+        });
+        object[] args = new object[input.Length + 1];
+        Array.Copy(input, args, input.Length);
+        object result = match.Invoke(target, args);
+        message = (string)args[input.Length];
         return result;
     }
 }

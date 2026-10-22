@@ -9,16 +9,16 @@ public sealed class AgriculturaNacionalEditModeTests
     [TestCase(100L, 50f, 50L)]
     public void FoodBudgetUsesPercentageOfAvailableNationalCash(long saldo, float percentual, long esperado)
     {
-        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(saldo, percentual), Is.EqualTo(esperado));
+        Assert.That(CalcularOrcamentoCompraAlimentar(saldo, percentual), Is.EqualTo(esperado));
     }
 
     [Test]
     public void FoodBudgetClampsInvalidPercentageAndNeverReturnsNegativeCash()
     {
-        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, -5f), Is.Zero);
-        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, 250f), Is.EqualTo(100000000L));
-        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(-1L, 1f), Is.Zero);
-        Assert.That(AgriculturaNacional.CalcularOrcamentoCompraAlimentar(100000000L, float.NaN), Is.Zero);
+        Assert.That(CalcularOrcamentoCompraAlimentar(100000000L, -5f), Is.Zero);
+        Assert.That(CalcularOrcamentoCompraAlimentar(100000000L, 250f), Is.EqualTo(100000000L));
+        Assert.That(CalcularOrcamentoCompraAlimentar(-1L, 1f), Is.Zero);
+        Assert.That(CalcularOrcamentoCompraAlimentar(100000000L, float.NaN), Is.Zero);
     }
 
     [Test]
@@ -103,6 +103,15 @@ public sealed class AgriculturaNacionalEditModeTests
         MethodInfo metodo = tipo.GetMethod("CalcularProducaoDiaria", BindingFlags.Public | BindingFlags.Static);
         Assert.That(metodo, Is.Not.Null);
         return (float)metodo.Invoke(null, new object[] { args[0], args[1], args[2], args[3], args[4], args[5], args[6] });
+    }
+
+    private static long CalcularOrcamentoCompraAlimentar(long saldo, float percentual)
+    {
+        Type tipo = Type.GetType("AgriculturaNacional, Assembly-CSharp");
+        Assert.That(tipo, Is.Not.Null, "O sistema de agricultura deve compilar no Assembly-CSharp.");
+        MethodInfo metodo = tipo.GetMethod("CalcularOrcamentoCompraAlimentar", BindingFlags.Public | BindingFlags.Static);
+        Assert.That(metodo, Is.Not.Null);
+        return Convert.ToInt64(metodo.Invoke(null, new object[] { saldo, percentual }));
     }
 
     private static float InvocarFloat(string nome, params object[] args)

@@ -356,10 +356,14 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
                 "O estoque inicial da Valdoria deve permanecer conciliado com o armazem por cultura.");
             Assert.That(Read(Call(government, "ObterPais", 2), "capacidadeArmazenamentoAgricola"), Is.GreaterThanOrEqualTo(100000),
                 "A capacidade agricola da Valdoria precisa permitir producao depois do estoque inicial.");
+            Type agricultureType = ResolveType("AgriculturaNacional");
+            int cultureCount = Convert.ToInt32(ReadStatic(agricultureType, "QuantidadeCulturas"));
+            MethodInfo getCultureId = agricultureType.GetMethod("ObterIdCultura", Members);
+            Assert.That(getCultureId, Is.Not.Null);
             int totalCulturasValdoria = 0;
-            for (int cultura = 0; cultura < AgriculturaNacional.QuantidadeCulturas; cultura++)
+            for (int cultura = 0; cultura < cultureCount; cultura++)
                 totalCulturasValdoria += Convert.ToInt32(Call(government, "ObterEstoque", 2,
-                    AgriculturaNacional.ObterIdCultura(cultura)));
+                    getCultureId.Invoke(null, new object[] { cultura })));
             Assert.That(totalCulturasValdoria, Is.EqualTo(50000),
                 "O estoque inicial da Valdoria deve estar efetivamente dividido entre culturas vendaveis.");
             Assert.That(Read(Call(government, "ObterPais", 1), "comida"), Is.EqualTo(oldFoodStocks[1]),
