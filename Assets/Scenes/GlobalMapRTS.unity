@@ -5432,8 +5432,8 @@ MonoBehaviour:
   tileRadius: 1
   refreshInterval: 0.5
   tilesCreatedPerFrame: 1
-  terrainRowsPerFrame: 16
-  vegetationRowsPerFrame: 4
+  terrainRowsPerFrame: 2
+  vegetationRowsPerFrame: 1
   showDiagnostics: 1
 --- !u!4 &1451157271
 Transform:
@@ -5820,6 +5820,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 25f3ab81f77f52e4fb040151fc9a9475, type: 2}
   - {fileID: 11400000, guid: e1b725f02b9ca3a4dbd933147d1b64fe, type: 2}
   - {fileID: 11400000, guid: 8898c68352fc439b98739a7b67d1a754, type: 2}
+  - {fileID: 11400000, guid: 21be33ba98b56b8409bfed0741fd1082, type: 2}
+  - {fileID: 11400000, guid: c568086df55d283488b2d98b7b05f0f3, type: 2}
+  - {fileID: 11400000, guid: 086cd0b0d6f7b1d46b6cb34b4f2a23f2, type: 2}
+  - {fileID: 11400000, guid: 3885dab8c83b4d6394327603fb15555e, type: 2}
 --- !u!1 &1498349612
 GameObject:
   m_ObjectHideFlags: 0
@@ -11964,7 +11968,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
-  ItemFilters: 
+  ItemFilters: aeroporto militar, aeroporto comercial
   ManualRole: 14
   AllowInactiveObject: 0
   ForceExactPlacement: 0

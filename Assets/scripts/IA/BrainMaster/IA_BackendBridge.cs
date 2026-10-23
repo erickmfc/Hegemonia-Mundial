@@ -71,7 +71,7 @@ namespace Hegemonia.AI.BrainMaster
             // O catálogo serializado da interface pode ser parcial em cenas
             // sem MenuConstrucao (ou em builds). Inclui fichas de Resources
             // para que instalações como o estaleiro existam em runtime.
-            if (_resourceCatalogSource == null)
+            if (_resourceCatalogSource == null || _resourceCatalogSource.Length == 0)
             {
                 _resourceCatalogSource = Resources.LoadAll<DadosConstrucao>("Construcoes");
             }
@@ -256,18 +256,68 @@ namespace Hegemonia.AI.BrainMaster
                 id = obj.AddComponent<IdentidadeUnidade>();
             }
 
-            id.teamID = _teamId;
+            EnsureIdentityClassification(obj);
+
             SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
             DadosPaisGoverno country = government != null ? government.ObterPais(_teamId) : null;
-            if (country != null && !string.IsNullOrWhiteSpace(country.nomePais))
+            IdentidadeUnidade[] identities = obj.GetComponentsInChildren<IdentidadeUnidade>(true);
+            for (int i = 0; i < identities.Length; i++)
             {
-                id.nomeDoPais = country.nomePais;
+                IdentidadeUnidade identity = identities[i];
+                if (identity == null)
+                {
+                    continue;
+                }
+
+                identity.teamID = _teamId;
+                if (country != null && !string.IsNullOrWhiteSpace(country.nomePais))
+                {
+                    identity.nomeDoPais = country.nomePais;
+                }
+
+                IA_WorldState.NotifyEntityChanged(identity);
             }
+
+            // A identidade costuma registrar-se no OnEnable, antes de esta
+            // rotina corrigir time e tipo. Avise também caches que dependem da
+            // versão do registro (por exemplo, a lista de alvos aéreos do Ares).
+            RegistroEntidadesJogo.NotificarAlteracao();
 
             IA_IdentityRegistryHook hook = obj.GetComponent<IA_IdentityRegistryHook>();
             if (hook == null)
             {
                 hook = obj.AddComponent<IA_IdentityRegistryHook>();
+            }
+        }
+
+        public static void EnsureIdentityClassification(GameObject obj)
+        {
+            if (obj == null)
+            {
+                return;
+            }
+
+            IdentidadeUnidade identity = obj.GetComponent<IdentidadeUnidade>();
+            IA_ConstructionMetadata metadata = obj.GetComponent<IA_ConstructionMetadata>();
+            if (identity == null || metadata == null)
+            {
+                return;
+            }
+
+            // Capacidades da ficha são a classificação autoritativa do objeto
+            // recém-criado. Vários prefabs legados ainda têm tipoUnidade=0,
+            // embora sejam estruturas, aeronaves ou navios.
+            if (metadata.IsStructure)
+            {
+                identity.tipoUnidade = TipoUnidade.Estrutura;
+            }
+            else if (metadata.IsAirDomain || metadata.IsAircraft || metadata.IsHelicopter)
+            {
+                identity.tipoUnidade = TipoUnidade.Aereo;
+            }
+            else if (metadata.IsNavalDomain || metadata.IsNavalTransport || metadata.IsOilTanker)
+            {
+                identity.tipoUnidade = TipoUnidade.Naval;
             }
         }
 
@@ -302,10 +352,21 @@ namespace Hegemonia.AI.BrainMaster
 
             if (!_catalogPrefabs.Add(prefab))
             {
+                // Um prefab pode aparecer numa lista serializada e também em
+                // Resources com fichas diferentes. Não exponha a ficha duas
+                // vezes, mas mantenha os IDs e aliases da ficha omitida
+                // resolvíveis para que o catálogo parcial da cena não apague
+                // opções carregadas de Resources.
+                IndexCatalogItemKeys(item, prefab);
                 return;
             }
 
             _catalog.Add(item);
+            IndexCatalogItemKeys(item, prefab);
+        }
+
+        private void IndexCatalogItemKeys(DadosConstrucao item, GameObject prefab)
+        {
             AddKey(item.GetStableId(), item);
             AddKey(IA_Text.Normalize(item.GetDisplayName()), item);
             AddKey(IA_Text.Normalize(item.NomeItem), item);
@@ -1150,6 +1211,7 @@ namespace Hegemonia.AI.BrainMaster
 
             IA_BackendBridge.AttachConstructionMetadata(created, data);
             _bridge.EnsureIdentity(created);
+            AtivarDefesasAereas(created);
             Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
             if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
             PierMarinha createdPier = created.GetComponent<PierMarinha>();
@@ -1173,6 +1235,23 @@ namespace Hegemonia.AI.BrainMaster
                 RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             }
             return true;
+        }
+
+        private static void AtivarDefesasAereas(GameObject instance)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            TorretaAntiaerea[] defenses = instance.GetComponentsInChildren<TorretaAntiaerea>(true);
+            for (int i = 0; i < defenses.Length; i++)
+            {
+                if (defenses[i] != null)
+                {
+                    defenses[i].DefinirModoAtivo(true);
+                }
+            }
         }
 
         public bool ValidateTerritoryProbe(string itemKey, Vector3 position, out string reason)
@@ -1249,6 +1328,11 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool RequiresDryLand(DadosConstrucao data, IA_ZoneType zone)
         {
+            if (IsAirport(data, zone))
+            {
+                return true;
+            }
+
             if (zone == IA_ZoneType.Air || zone == IA_ZoneType.Core || zone == IA_ZoneType.Economy || zone == IA_ZoneType.Military)
             {
                 return true;
@@ -1725,7 +1809,7 @@ namespace Hegemonia.AI.BrainMaster
                         }
                     }
 
-                    if (!IsPhysicallyDryLandPoint(samplePosition, rejectCoast, superficieClassificada, classificacao))
+                    if (!IsPhysicallyDryLandPoint(samplePosition, rejectCoast, airport, superficieClassificada, classificacao))
                     {
                         return false;
                     }
@@ -1738,6 +1822,7 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsPhysicallyDryLandPoint(
             Vector3 position,
             bool rejectCoast,
+            bool requirePhysicalWaterCheck,
             bool superficieClassificada,
             ClassificacaoSuperficieMapa classificacaoMarcada)
         {
@@ -1755,12 +1840,20 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (classificacaoMarcada == ClassificacaoSuperficieMapa.Chao)
                 {
-                    return true;
+                    if (!requirePhysicalWaterCheck)
+                    {
+                        return true;
+                    }
                 }
             }
 
             float seaLevel = NavalPlacementResolver.ResolveSeaLevel();
             Vector3 probe = new Vector3(position.x, seaLevel, position.z);
+            if (requirePhysicalWaterCheck)
+            {
+                return !NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(probe, seaLevel);
+            }
+
             return !NavalPlacementResolver.IsWaterAtPosition(probe, seaLevel);
         }
 
@@ -2232,7 +2325,12 @@ namespace Hegemonia.AI.BrainMaster
                 IA_BackendBridge.AttachConstructionMetadata(unit, data);
                 _bridge.EnsureIdentity(unit);
                 IdentidadeUnidade aircraftIdentity = unit.GetComponent<IdentidadeUnidade>();
-                if (aircraftIdentity != null) aircraftIdentity.tipoUnidade = TipoUnidade.Aereo;
+                if (aircraftIdentity != null)
+                {
+                    aircraftIdentity.tipoUnidade = TipoUnidade.Aereo;
+                    IA_WorldState.NotifyEntityChanged(aircraftIdentity);
+                    RegistroEntidadesJogo.NotificarAlteracao();
+                }
                 governoEfetivo = governoEfetivo != null ? governoEfetivo : SistemaGovernoMundial.Instancia;
                 if (efetivoNecessario > 0
                     && (governoEfetivo == null || !governoEfetivo.TentarMobilizarEfetivoDaUnidade(_teamId, unit)))
@@ -2761,7 +2859,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             IA_BattleGovernorDecision decision = context != null ? context.BattleDecision : null;
-            if (decision != null && !decision.AllowBuild && !IsEmergencyDefensiveBuild(data, itemKey))
+            if (decision != null && !decision.AllowBuild && !IsCriticalInfrastructureBuild(data, itemKey))
             {
                 reason = "governador de performance suspendeu build nao essencial";
                 return true;
@@ -2879,6 +2977,11 @@ namespace Hegemonia.AI.BrainMaster
                 + (data != null ? data.NomeItem : string.Empty) + " "
                 + (data != null && data.PrefabDaUnidade != null ? data.PrefabDaUnidade.name : string.Empty));
 
+            if (IsCriticalInfrastructureBuild(data, itemKey))
+            {
+                return false;
+            }
+
             return normalized.Contains("quartel general")
                    || normalized.Contains("quartel_general")
                    || normalized == "hq"
@@ -2893,7 +2996,7 @@ namespace Hegemonia.AI.BrainMaster
                    || normalized.Contains("pier");
         }
 
-        private static bool IsEmergencyDefensiveBuild(DadosConstrucao data, string itemKey)
+        private static bool IsCriticalInfrastructureBuild(DadosConstrucao data, string itemKey)
         {
             string normalized = IA_Text.Normalize(
                 (itemKey ?? string.Empty) + " "
@@ -2902,7 +3005,16 @@ namespace Hegemonia.AI.BrainMaster
 
             return normalized.Contains("torreta")
                    || normalized.Contains("sentinela")
-                   || normalized.Contains("ciws");
+                   || normalized.Contains("ciws")
+                   || normalized.Contains("radar")
+                   || normalized.Contains("estaleiro")
+                   || normalized.Contains("shipyard")
+                   || normalized.Contains("pier")
+                   || normalized.Contains("plataforma")
+                   || normalized.Contains("offshore")
+                   || normalized.Contains("aeroporto")
+                   || normalized.Contains("airport")
+                   || normalized.Contains("antia");
         }
 
         private static bool IsEssentialRuntimeProduction(DadosConstrucao data)
@@ -3027,12 +3139,26 @@ namespace Hegemonia.AI.BrainMaster
             // A caller can issue a deliberate explicit Attack while the
             // diplomatic state is still neutral; this sets the priority and
             // the resulting hostile impact declares war. Autonomous directors
-            // opt into the formal-war gate through RequiresDeclaredWar.
-            // An identified team is an explicit hostile target even when an
-            // older producer omitted RequiresDeclaredWar. Validate its live
-            // identity and diplomatic state before checking unit availability
-            // so the order cannot bypass the war gate through another origin.
+            // opt into the formal-war gate through RequiresDeclaredWar. The
+            // air and naval directors have narrow exceptions for visible
+            // hostile interceptions, validated against the tactical rules.
+            // Validate target identity before checking unit availability so
+            // no order can bypass either gate through another origin.
+            if (payload.AllowHostileAirInterception
+                && !IsHostileAirInterceptionAuthorized(payload, targetIdentity, out message))
+            {
+                return false;
+            }
+
+            if (payload.AllowHostileNavalInterception
+                && !IsHostileNavalInterceptionAuthorized(payload, targetIdentity, out message))
+            {
+                return false;
+            }
+
             if ((payload.RequiresDeclaredWar || payload.TargetTeamId > 0)
+                && !payload.AllowHostileAirInterception
+                && !payload.AllowHostileNavalInterception
                 && !IsAttackTargetAuthorized(payload, out message))
             {
                 return false;
@@ -3167,6 +3293,117 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return true;
+        }
+
+        private bool IsHostileAirInterceptionAuthorized(
+            IA_AttackOrderData payload,
+            IdentidadeUnidade targetIdentity,
+            out string message)
+        {
+            message = string.Empty;
+            if (payload == null
+                || !payload.AllowHostileAirInterception
+                || payload.Target == null
+                || payload.TargetTeamId <= 0
+                || targetIdentity == null
+                || !IsActualAirUnit(payload.Target))
+            {
+                message = "interceptacao cancelada: alvo aereo hostil invalido";
+                return false;
+            }
+
+            if (!ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(_bridge.TeamId, targetIdentity))
+            {
+                message = "interceptacao cancelada: relacao diplomatica nao autoriza combate";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool IsHostileNavalInterceptionAuthorized(
+            IA_AttackOrderData payload,
+            IdentidadeUnidade targetIdentity,
+            out string message)
+        {
+            message = string.Empty;
+            if (payload == null
+                || !payload.AllowHostileNavalInterception
+                || payload.Target == null
+                || payload.TargetTeamId <= 0
+                || targetIdentity == null
+                || !IsActualNavalUnit(payload.Target)
+                || !ContainsNavalUnit(payload.Units))
+            {
+                message = "interceptacao naval cancelada: alvo ou unidade naval invalida";
+                return false;
+            }
+
+            if (!ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(_bridge.TeamId, targetIdentity))
+            {
+                message = "interceptacao naval cancelada: relacao diplomatica nao autoriza combate";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsActualNavalUnit(Transform target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            GameObject unitRoot = target.root != null ? target.root.gameObject : target.gameObject;
+            IdentidadeUnidade identity = unitRoot.GetComponentInChildren<IdentidadeUnidade>(true);
+            return unitRoot.GetComponentInChildren<IdentidadeNaval>(true) != null
+                || unitRoot.GetComponentInChildren<ControleNavioRealista>(true) != null
+                || unitRoot.GetComponentInChildren<ControleSubmarino>(true) != null
+                || (identity != null && identity.tipoUnidade == TipoUnidade.Naval);
+        }
+
+        private static bool ContainsNavalUnit(List<GameObject> units)
+        {
+            if (units == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < units.Count; i++)
+            {
+                GameObject unit = units[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                IdentidadeUnidade identity = unit.GetComponent<IdentidadeUnidade>()
+                    ?? unit.GetComponentInChildren<IdentidadeUnidade>(true);
+                if (identity != null && identity.tipoUnidade == TipoUnidade.Naval)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsActualAirUnit(Transform target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            GameObject unitRoot = target.root != null ? target.root.gameObject : target.gameObject;
+            IdentidadeUnidade identity = unitRoot.GetComponentInChildren<IdentidadeUnidade>(true);
+            return unitRoot.GetComponentInChildren<ControleAviao>(true) != null
+                   || unitRoot.GetComponentInChildren<ControleAviaoCaca>(true) != null
+                   || unitRoot.GetComponentInChildren<AviaoBombardeiro>(true) != null
+                   || unitRoot.GetComponentInChildren<Helicoptero>(true) != null
+                   || unitRoot.GetComponentInChildren<C700TransporteAereo>(true) != null
+                   || (identity != null && identity.tipoUnidade == TipoUnidade.Aereo);
         }
 
         private bool ExecutePatrol(IA_CommandRequest request, out string message)

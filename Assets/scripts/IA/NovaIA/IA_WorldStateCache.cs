@@ -239,7 +239,7 @@ namespace Hegemonia.AI.Master
                 }
 
                 if (entry.teamId <= 0 || entry.teamId == _teamId || IsAllied(entry.teamId)
-                    || !RTSVisibilityService.TeamsAtWar(_teamId, entry.teamId))
+                    || !ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, entry.teamId))
                 {
                     continue;
                 }
@@ -274,7 +274,7 @@ namespace Hegemonia.AI.Master
                 if (!visibility.TryGetContactForTeam(_teamId, pair.Key, out RTSVisibilityContact contact)
                     || contact == null
                     || contact.lastKnownExpiresAt < Time.unscaledTime
-                    || !RTSVisibilityService.TeamsAtWar(_teamId, contact.targetTeamId))
+                    || !ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, contact.targetTeamId))
                 {
                     _staleKeys.Add(pair.Key);
                     continue;

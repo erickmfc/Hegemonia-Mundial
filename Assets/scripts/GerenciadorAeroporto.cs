@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.Shared;
 
 public class GerenciadorAeroporto : MonoBehaviour
@@ -1604,7 +1605,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (_identidadeCacheada != null && idAviao != null)
         {
-            idAviao.teamID = _identidadeCacheada.teamID;
+            idAviao.teamID = Mathf.Max(1, _identidadeCacheada.teamID);
             SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
             DadosPaisGoverno pais = governo != null ? governo.ObterPais(idAviao.teamID) : null;
             idAviao.nomeDoPais = pais != null && !string.IsNullOrWhiteSpace(pais.nomePais)
@@ -1633,6 +1634,22 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
 
         int teamAeronave = idAviao != null ? idAviao.teamID : 1;
+        string paisAeronave = idAviao != null ? idAviao.nomeDoPais : "Hegemonia";
+        // Instantiate registra identidades antes de o aeroporto transferir
+        // equipe e classificação. Aplique o proprietário também às identidades
+        // internas para que sensores não tratem partes da aeronave como outro país.
+        IdentidadeUnidade[] identidadesAeronave = aeronaveNascente.GetComponentsInChildren<IdentidadeUnidade>(true);
+        for (int i = 0; i < identidadesAeronave.Length; i++)
+        {
+            IdentidadeUnidade identidade = identidadesAeronave[i];
+            if (identidade == null) continue;
+            identidade.teamID = teamAeronave;
+            identidade.nomeDoPais = paisAeronave;
+            if (identidade == idAviao) identidade.tipoUnidade = TipoUnidade.Aereo;
+            IA_WorldState.NotifyEntityChanged(identidade);
+        }
+        RegistroEntidadesJogo.NotificarAlteracao();
+
         SistemaGovernoMundial governoAeronave = SistemaGovernoMundial.Instancia;
         if (governoAeronave != null && !governoAeronave.TentarMobilizarEfetivoDaUnidade(teamAeronave, aeronaveNascente))
         {

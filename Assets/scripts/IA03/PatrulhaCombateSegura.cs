@@ -195,7 +195,8 @@ public sealed class PatrulhaCombateSegura : MonoBehaviour
         if (!exigirEstadoDeGuerra) return true;
         IdentidadeUnidade identidadeAlvo = alvo != null ? alvo.GetComponentInParent<IdentidadeUnidade>() : null;
         int equipe = equipeOverride > 0 ? equipeOverride : (identidade != null ? identidade.teamID : 0);
-        return identidadeAlvo != null && RTSVisibilityService.TeamsAtWar(equipe, identidadeAlvo.teamID);
+        return identidadeAlvo != null
+            && ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(equipe, identidadeAlvo);
     }
 
     private void PublicarContatoReconhecido(Transform alvo)

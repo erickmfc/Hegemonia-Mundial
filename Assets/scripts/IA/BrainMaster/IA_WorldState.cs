@@ -747,9 +747,10 @@ namespace Hegemonia.AI.BrainMaster
         {
             for (int i = 0; i < output.Count; i++)
             {
-                if (output[i] != null && output[i].Kind == target.Kind)
+                IA_StrategicTargetData existing = output[i];
+                if (existing != null && existing.Transform == target.Transform)
                 {
-                    if (target.Score <= output[i].Score)
+                    if (target.Score <= existing.Score)
                     {
                         return;
                     }
@@ -1031,7 +1032,7 @@ namespace Hegemonia.AI.BrainMaster
                     || !visibility.TryGetContactForTeam(_teamId, pair.Key, out RTSVisibilityContact knownContact)
                     || knownContact == null
                     || knownContact.lastKnownExpiresAt < Time.unscaledTime
-                    || !RTSVisibilityService.TeamsAtWar(_teamId, knownContact.targetTeamId))
+                    || !ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, knownContact.targetTeamId))
                 {
                     _staleEnemyIds.Add(pair.Key);
                     continue;
@@ -1161,7 +1162,7 @@ namespace Hegemonia.AI.BrainMaster
         private bool IsHostileVisible(IdentidadeUnidade target)
         {
             if (target == null || target.teamID <= 0 || target.teamID == _teamId
-                || !RTSVisibilityService.TeamsAtWar(_teamId, target.teamID)) return false;
+                || !ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, target.teamID)) return false;
             RTSVisibilityService visibility = RTSVisibilityService.Instancia;
             return visibility != null && visibility.IsVisibleToTeam(_teamId, target);
         }

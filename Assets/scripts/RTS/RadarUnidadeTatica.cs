@@ -213,7 +213,15 @@ namespace Hegemonia.RTS
             else if (expiraContatoHostilConhecido > manterLigadoAte)
                 manterLigadoAte = expiraContatoHostilConhecido;
 
-            bool deveEmitir = Time.unscaledTime < manterLigadoAte;
+            // Radares fixos precisam emitir antes de haver um contato; esperar
+            // por uma ameaça conhecida criava um ciclo que impedia a primeira
+            // detecção justamente quando a base não tinha outra cobertura.
+            IA_ConstructionMetadata metadata = GetComponent<IA_ConstructionMetadata>();
+            bool radarFixo = (metadata != null && metadata.IsRadar)
+                || (identidade.tipoUnidade == TipoUnidade.Estrutura
+                    && name.IndexOf("radar", System.StringComparison.OrdinalIgnoreCase) >= 0);
+
+            bool deveEmitir = radarFixo || Time.unscaledTime < manterLigadoAte;
             if (deveEmitir)
                 TentarLigarRadar(identidade.teamID);
             else

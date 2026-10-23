@@ -211,6 +211,8 @@ namespace Hegemonia.AI.Master
         private readonly List<PierMarinha> _pierBuffer = new List<PierMarinha>(8);
         private readonly List<GerenciadorAeroporto> _airportBuffer = new List<GerenciadorAeroporto>(8);
         private readonly List<Heliporto> _heliportBuffer = new List<Heliporto>(8);
+        private static DadosConstrucao[] _resourceCatalog;
+        private readonly HashSet<DadosConstrucao> _catalogSet = new HashSet<DadosConstrucao>();
         private readonly List<DadosConstrucao> _catalogBuffer = new List<DadosConstrucao>(256);
         private readonly Collider[] _spacingBuffer = new Collider[64];
         [Header("Posicionamento Seguro")]
@@ -457,7 +459,9 @@ namespace Hegemonia.AI.Master
                     return false;
                 }
 
+                IA_BackendBridge.AttachConstructionMetadata(created, data);
                 EnsureTeamIdentity(created);
+                AtivarDefesasAereas(created);
                 Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
                 if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
                 PierMarinha createdPier = created.GetComponent<PierMarinha>();
@@ -530,6 +534,7 @@ namespace Hegemonia.AI.Master
 
             if (produced != null)
             {
+                IA_BackendBridge.AttachConstructionMetadata(produced, data);
                 EnsureTeamIdentity(produced);
                 IAAutoProductionRegistry.Complete(orderId, Time.time);
             }
@@ -706,6 +711,8 @@ namespace Hegemonia.AI.Master
                     if (aircraftIdentity != null)
                     {
                         aircraftIdentity.tipoUnidade = TipoUnidade.Aereo;
+                        IA_WorldState.NotifyEntityChanged(aircraftIdentity);
+                        RegistroEntidadesJogo.NotificarAlteracao();
                     }
 
                     governo = governo != null ? governo : SistemaGovernoMundial.Instancia;
@@ -805,9 +812,30 @@ namespace Hegemonia.AI.Master
             }
 
             _catalogBuffer.Clear();
+            _catalogSet.Clear();
             if (MenuConstrucao.catalogoGlobal != null)
             {
-                _catalogBuffer.AddRange(MenuConstrucao.catalogoGlobal);
+                for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
+                {
+                    DadosConstrucao item = MenuConstrucao.catalogoGlobal[i];
+                    if (item != null && _catalogSet.Add(item))
+                    {
+                        _catalogBuffer.Add(item);
+                    }
+                }
+            }
+
+            if (_resourceCatalog == null || _resourceCatalog.Length == 0)
+            {
+                _resourceCatalog = Resources.LoadAll<DadosConstrucao>("Construcoes");
+            }
+            for (int i = 0; i < _resourceCatalog.Length; i++)
+            {
+                DadosConstrucao item = _resourceCatalog[i];
+                if (item != null && _catalogSet.Add(item))
+                {
+                    _catalogBuffer.Add(item);
+                }
             }
 
             for (int i = 0; i < _catalogBuffer.Count; i++)
@@ -821,9 +849,11 @@ namespace Hegemonia.AI.Master
                 string byName = IA_Text.Normalize(candidate.NomeItem);
                 string byAsset = IA_Text.Normalize(candidate.name);
                 string byPrefab = IA_Text.Normalize(candidate.PrefabDaUnidade.name);
+                string aliases = IA_Text.Normalize(candidate.aliases + " " + candidate.descricao);
                 if (byName == key || byAsset == key || byPrefab == key
                     || byName.Contains(key) || key.Contains(byName)
-                    || byPrefab.Contains(key) || key.Contains(byPrefab))
+                    || byPrefab.Contains(key) || key.Contains(byPrefab)
+                    || aliases.Contains(key))
                 {
                     data = candidate;
                     return true;
@@ -868,6 +898,19 @@ namespace Hegemonia.AI.Master
                 return true;
             }
 
+            if (IsAirportBuildItem(data))
+            {
+                Vector2 halfExtents = EstimateAirportHalfExtents(data.PrefabDaUnidade);
+                Vector3 dryLandPoint;
+                if (_spatialGrid == null
+                    || !_spatialGrid.TryFindDryLandSite(point, 1200f, halfExtents, out dryLandPoint))
+                {
+                    return false;
+                }
+
+                point = dryLandPoint;
+            }
+
             if (Mathf.Abs(point.y) <= 0.01f)
             {
                 if (Physics.Raycast(new Vector3(point.x, point.y + 500f, point.z), Vector3.down, out RaycastHit hit, 1200f, _landMask))
@@ -877,6 +920,74 @@ namespace Hegemonia.AI.Master
             }
 
             return true;
+        }
+
+        private static bool IsAirportBuildItem(DadosConstrucao data)
+        {
+            if (data == null || data.PrefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            GameObject prefab = data.PrefabDaUnidade;
+            if (prefab.GetComponent<GerenciadorPortaAvioes>() != null
+                || prefab.GetComponent<Heliporto>() != null)
+            {
+                return false;
+            }
+
+            if (data.HasCapability(IA_ConstructionCapability.Airport)
+                || data.HasCapability(IA_ConstructionCapability.MilitaryAirport)
+                || data.HasCapability(IA_ConstructionCapability.CommercialAirport)
+                || prefab.GetComponent<GerenciadorAeroporto>() != null)
+            {
+                return true;
+            }
+
+            string name = IA_Text.Normalize(data.NomeItem + " " + data.name + " " + data.PrefabDaUnidade.name);
+            return name.Contains("aeroporto")
+                   || name.Contains("airport")
+                   || name.Contains("base aerea")
+                   || name.Contains("pista");
+        }
+
+        private static Vector2 EstimateAirportHalfExtents(GameObject prefab)
+        {
+            Renderer[] renderers = prefab != null ? prefab.GetComponentsInChildren<Renderer>(true) : null;
+            if (renderers == null || renderers.Length == 0)
+            {
+                return new Vector2(90f, 90f);
+            }
+
+            Bounds bounds = new Bounds(prefab.transform.position, Vector3.zero);
+            bool hasBounds = false;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            if (!hasBounds)
+            {
+                return new Vector2(90f, 90f);
+            }
+
+            return new Vector2(
+                Mathf.Clamp(bounds.extents.x + 15f, 60f, 450f),
+                Mathf.Clamp(bounds.extents.z + 15f, 60f, 450f));
         }
 
         private bool TryResolveNavalUnitSpawnPoint(Vector3 anchor, out Vector3 spawnPoint)
@@ -930,14 +1041,53 @@ namespace Hegemonia.AI.Master
                 return;
             }
 
-            IdentidadeUnidade identity = instance.GetComponent<IdentidadeUnidade>();
-            if (identity == null)
+            IdentidadeUnidade rootIdentity = instance.GetComponent<IdentidadeUnidade>();
+            if (rootIdentity == null)
             {
-                identity = instance.AddComponent<IdentidadeUnidade>();
+                rootIdentity = instance.AddComponent<IdentidadeUnidade>();
             }
 
-            identity.teamID = _teamId;
+            IdentidadeUnidade[] identities = instance.GetComponentsInChildren<IdentidadeUnidade>(true);
+            SistemaGovernoMundial government = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno country = government != null ? government.ObterPais(_teamId) : null;
+            IA_BackendBridge.EnsureIdentityClassification(instance);
+            for (int i = 0; i < identities.Length; i++)
+            {
+                if (identities[i] == null)
+                {
+                    continue;
+                }
+
+                identities[i].teamID = _teamId;
+                if (country != null && !string.IsNullOrWhiteSpace(country.nomePais))
+                {
+                    identities[i].nomeDoPais = country.nomePais;
+                }
+                IA_WorldState.NotifyEntityChanged(identities[i]);
+            }
+
+            // A identidade pode registrar-se no OnEnable antes de receber o
+            // time e o tipo corretos. Renove os caches globais de sensores.
+            RegistroEntidadesJogo.NotificarAlteracao();
+
             instance.SetActive(true);
+        }
+
+        private static void AtivarDefesasAereas(GameObject instance)
+        {
+            if (instance == null)
+            {
+                return;
+            }
+
+            TorretaAntiaerea[] defenses = instance.GetComponentsInChildren<TorretaAntiaerea>(true);
+            for (int i = 0; i < defenses.Length; i++)
+            {
+                if (defenses[i] != null)
+                {
+                    defenses[i].DefinirModoAtivo(true);
+                }
+            }
         }
 
         private bool IsNavalItem(DadosConstrucao data)

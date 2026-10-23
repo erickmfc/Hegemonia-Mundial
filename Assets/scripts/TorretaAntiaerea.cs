@@ -11,7 +11,7 @@ public class TorretaAntiaerea : MonoBehaviour
     [Tooltip("Distância máxima que a torreta consegue enxergar as ameaças aéreas")]
     public float alcanceArea = 150f;
     
-    [Tooltip("Altura mínima no eixo Y para considerar que o alvo está voando (evita atirar em tropas no chão)")]
+    [Tooltip("Mantido para compatibilidade com prefabs antigos; a altura do terreno não define um alvo como aeronave.")]
     public float alturaMinimaVoo = 5f;
 
     [Header("Articulações da Torreta")]
@@ -73,8 +73,9 @@ public class TorretaAntiaerea : MonoBehaviour
     private float proximoAvisoSemSaldo;
     private AudioSource audioSource;
     private int indexPontoDisparo = 0;
-    private Collider[] _bufferOverlaps = new Collider[96];
     private static readonly List<IdentidadeUnidade> unidadesRegistroRadar = new List<IdentidadeUnidade>(256);
+    private static int versaoRegistroRadar = -1;
+    private static readonly RaycastHit[] _linhaDeVisaoHits = new RaycastHit[32];
     private Quaternion rotacaoInicialBaseGiratoria = Quaternion.identity;
     private Quaternion rotacaoInicialCanoElevacao = Quaternion.identity;
     private Vector3 eulerRepousoBaseGiratoria;
@@ -115,13 +116,7 @@ public class TorretaAntiaerea : MonoBehaviour
             }
             cartuchosAtuais = Mathf.Max(1, capacidadeCartucho);
         }
-        // Procura ou cria a identidade do time para não atirar nos próprios aviões
-        minhaIdentidade = GetComponentInParent<IdentidadeUnidade>();
-        if (minhaIdentidade == null)
-        {
-            minhaIdentidade = gameObject.AddComponent<IdentidadeUnidade>();
-            minhaIdentidade.teamID = 1; // 1 = Time do Jogador por padrão
-        }
+        SincronizarIdentidadePropria();
 
         if (baseGiratoria != null)
         {
@@ -206,93 +201,38 @@ public class TorretaAntiaerea : MonoBehaviour
         if (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy)
         {
             if (Vector3.Distance(transform.position, alvoAtual.position) <= alcanceArea)
-                return; 
+            {
+                ReportarContatoAereo(alvoAtual);
+                return;
+            }
         }
 
         alvoAtual = null;
 
-        // NonAlloc: evita alocacao/GC quando houver muitos coliders (ex.: misseis no ar).
-        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceArea, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
-        if (hitCount >= _bufferOverlaps.Length)
-        {
-            // Cresce o buffer (sem fazer isso todo frame) caso a area esteja muito densa.
-            _bufferOverlaps = new Collider[Mathf.Min(_bufferOverlaps.Length * 2, 1024)];
-            hitCount = Physics.OverlapSphereNonAlloc(transform.position, alcanceArea, _bufferOverlaps, ~0, QueryTriggerInteraction.UseGlobal);
-        }
-
-        float menorDistancia = Mathf.Infinity;
-        Transform melhorAlvo = null;
-
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider hit = _bufferOverlaps[i];
-            if (hit == null) continue;
-
-            // Ignora projeteis/misseis para nao inflar o radar antiaereo.
-            if (hit.GetComponentInParent<Projetil>() != null) continue;
-            if (hit.GetComponentInParent<MisselCaca>() != null) continue;
-            if (hit.GetComponentInParent<MisselNaval>() != null) continue;
-            if (hit.GetComponentInParent<MisselSubmarino>() != null) continue;
-            if (hit.GetComponentInParent<MissilTeleguiado>() != null) continue;
-
-            // Busca IdentidadeUnidade (Componente que define time)
-            IdentidadeUnidade idAlvo = hit.GetComponent<IdentidadeUnidade>();
-            if (idAlvo == null) idAlvo = hit.GetComponentInParent<IdentidadeUnidade>();
-
-            // Filtro Principal: É uma aeronave? 
-            bool ehAereo = hit.GetComponentInParent<Helicoptero>() != null || 
-                           hit.GetComponentInParent<ControleAviao>() != null ||
-                           (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo);
-
-            if (!ehAereo)
-            {
-                string nm = hit.name;
-                ehAereo = nm.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("caca", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("caça", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("jato", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("drone", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("vap", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("bombard", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
-                          nm.IndexOf("b260", System.StringComparison.OrdinalIgnoreCase) >= 0;
-            }
-
-            if (!ehAereo) continue; // Pula unidades terrestres e prédios altos
-
-            // Filtro Secundário: Fogo Amigo
-            if (idAlvo != null && idAlvo.teamID != minhaIdentidade.teamID && idAlvo.teamID != 0)
-            {
-                Transform alvoPrincipal = ResolverTransformPrincipal(hit.transform);
-                float dist = Vector3.Distance(transform.position, alvoPrincipal.position);
-                if (dist < menorDistancia)
-                {
-                    menorDistancia = dist;
-                    melhorAlvo = alvoPrincipal;
-                }
-            }
-        }
-
-        if (melhorAlvo == null)
-        {
-            melhorAlvo = ProcurarAlvoAereoNoRegistroGlobal();
-        }
-
-        if (melhorAlvo != null)
-        {
-            alvoAtual = melhorAlvo;
-        }
+        // O Ares tem alcance de vários quilômetros. Um OverlapSphere desse
+        // tamanho vasculhava prédios, projéteis e colisores sem identidade em
+        // cada bateria. O registro de unidades já contém o time e o tipo do
+        // alvo, e evita esse custo de física sem perder o alcance vertical.
+        alvoAtual = ProcurarAlvoAereoNoRegistroGlobal();
+        ReportarContatoAereo(alvoAtual);
     }
 
     public void DefinirModoAtivo(bool ativo)
     {
+        SincronizarIdentidadePropria();
         modoPassivo = !ativo;
         if (modoPassivo) alvoAtual = null;
     }
 
     private Transform ProcurarAlvoAereoNoRegistroGlobal()
     {
-        RegistroEntidadesJogo.FillUnidades(unidadesRegistroRadar);
+        SincronizarIdentidadePropria();
+        if (minhaIdentidade == null || minhaIdentidade.teamID <= 0)
+        {
+            return null;
+        }
+
+        AtualizarCacheAlvosAereos();
         float alcanceSqr = alcanceArea * alcanceArea;
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
@@ -301,19 +241,14 @@ public class TorretaAntiaerea : MonoBehaviour
         {
             IdentidadeUnidade idAlvo = unidadesRegistroRadar[i];
             if (idAlvo == null || !idAlvo.gameObject.activeInHierarchy) continue;
-            if (idAlvo.teamID == 0 || idAlvo.teamID == minhaIdentidade.teamID) continue;
+            if (!ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(minhaIdentidade.teamID, idAlvo)) continue;
+
+            Vector3 identidadePosicao = idAlvo.transform.position;
+            float distanciaIdentidadeSqr = (identidadePosicao - transform.position).sqrMagnitude;
+            if (distanciaIdentidadeSqr > alcanceSqr || distanciaIdentidadeSqr >= menorDistancia) continue;
 
             Transform alvoPrincipal = ResolverTransformPrincipal(idAlvo.transform);
             if (alvoPrincipal == null || alvoPrincipal.root == transform.root) continue;
-
-            bool ehAereo = idAlvo.tipoUnidade == TipoUnidade.Aereo
-                || alvoPrincipal.position.y >= alturaMinimaVoo
-                || alvoPrincipal.GetComponentInParent<Helicoptero>() != null
-                || alvoPrincipal.GetComponentInParent<ControleAviao>() != null
-                || alvoPrincipal.GetComponentInParent<ControleAviaoCaca>() != null
-                || alvoPrincipal.GetComponentInParent<C700TransporteAereo>() != null;
-
-            if (!ehAereo) continue;
 
             float distSqr = (alvoPrincipal.position - transform.position).sqrMagnitude;
             if (distSqr > alcanceSqr || distSqr >= menorDistancia) continue;
@@ -322,8 +257,89 @@ public class TorretaAntiaerea : MonoBehaviour
             melhorAlvo = alvoPrincipal;
         }
 
-        unidadesRegistroRadar.Clear();
         return melhorAlvo;
+    }
+
+    private void ReportarContatoAereo(Transform alvo)
+    {
+        if (alvo == null || minhaIdentidade == null || minhaIdentidade.teamID <= 0)
+            return;
+
+        Hegemonia.RTS.RTSVisibilityService visibilidade = Hegemonia.RTS.RTSVisibilityService.Instancia;
+        IdentidadeUnidade identidadeAlvo = ResolverIdentidadeAlvo(alvo);
+        if (visibilidade != null && identidadeAlvo != null)
+        {
+            visibilidade.ReportContact(
+                minhaIdentidade.teamID,
+                identidadeAlvo,
+                Hegemonia.RTS.RTSDetectionSource.Radar);
+        }
+    }
+
+    private static void AtualizarCacheAlvosAereos()
+    {
+        int versaoAtual = RegistroEntidadesJogo.Version;
+        if (versaoRegistroRadar == versaoAtual)
+            return;
+
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistroRadar);
+        for (int i = unidadesRegistroRadar.Count - 1; i >= 0; i--)
+        {
+            IdentidadeUnidade identidade = unidadesRegistroRadar[i];
+            if (identidade == null || !EhIdentidadeAerea(identidade))
+                unidadesRegistroRadar.RemoveAt(i);
+        }
+
+        versaoRegistroRadar = versaoAtual;
+    }
+
+    private static bool EhIdentidadeAerea(IdentidadeUnidade identidade)
+    {
+        if (identidade == null) return false;
+        if (identidade.tipoUnidade == TipoUnidade.Aereo) return true;
+
+        Transform alvo = identidade.transform;
+        if (alvo.GetComponentInParent<Helicoptero>() != null
+            || alvo.GetComponentInParent<ControleAviao>() != null
+            || alvo.GetComponentInParent<ControleAviaoCaca>() != null
+            || alvo.GetComponentInParent<AviaoBombardeiro>() != null
+            || alvo.GetComponentInParent<C700TransporteAereo>() != null)
+        {
+            return true;
+        }
+
+        string nome = alvo.name;
+        return nome.IndexOf("aviao", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("avião", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("caca", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("caça", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("jato", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("drone", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("bombard", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || nome.IndexOf("b260", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private void SincronizarIdentidadePropria()
+    {
+        IdentidadeUnidade identidadeRaiz = transform.root != null
+            ? transform.root.GetComponent<IdentidadeUnidade>()
+            : null;
+        minhaIdentidade = identidadeRaiz != null
+            ? identidadeRaiz
+            : GetComponentInParent<IdentidadeUnidade>();
+
+        IdentidadeIA identidadeIA = GetComponentInParent<IdentidadeIA>()
+            ?? GetComponentInChildren<IdentidadeIA>(true);
+        if (minhaIdentidade == null)
+        {
+            minhaIdentidade = gameObject.AddComponent<IdentidadeUnidade>();
+        }
+
+        if (identidadeIA != null && identidadeIA.teamID > 0)
+        {
+            minhaIdentidade.teamID = identidadeIA.teamID;
+        }
     }
 
     void MirarNoAlvo()
@@ -392,15 +408,25 @@ public class TorretaAntiaerea : MonoBehaviour
         // 3. Segurança: Não atirar através do próprio navio!
         if (checarLinhaDeVisao && pontosDeDisparo != null && pontosDeDisparo.Length > 0 && pontosDeDisparo[0] != null)
         {
-            RaycastHit hit;
-            // Um raio curto (35m) do cano pra frente pra ver se bate no nosso casco/heliponto
-            if (Physics.Raycast(pontosDeDisparo[0].position, pontosDeDisparo[0].forward, out hit, 35f, Physics.AllLayers, QueryTriggerInteraction.Ignore))
+            // O cano pode começar dentro do collider da própria unidade. Ignorar
+            // esses hits evita que a malha do veículo trave todos os disparos;
+            // obstáculos externos no corredor curto continuam bloqueando o tiro.
+            int hitCount = Physics.RaycastNonAlloc(
+                pontosDeDisparo[0].position,
+                pontosDeDisparo[0].forward,
+                _linhaDeVisaoHits,
+                35f,
+                Physics.AllLayers,
+                QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hitCount; i++)
             {
-                // Se a bala for bater num objeto com a mesma RAIZ que a torreta (o nosso navio)
-                if (hit.transform.root == transform.root)
+                Collider collider = _linhaDeVisaoHits[i].collider;
+                if (collider == null || collider.transform.root == transform.root)
                 {
-                    return false; // Trava o tiro
+                    continue;
                 }
+
+                return false;
             }
         }
 

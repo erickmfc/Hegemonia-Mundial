@@ -16,6 +16,8 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
     public GlobalTerrainStreamer streamer;
     public bool visible = true;
     [Min(0.1f)] public float sampleInterval = 1f;
+    [Min(1f)] public float activeObjectScanInterval = 5f;
+    [Min(1)] public int activeObjectScanBudgetPerFrame = 256;
     [Tooltip("Nome do perfil/distância do teste, por exemplo 5km-floresta-camara-movendo.")]
     public string benchmarkLabel = "250km-parado";
     public KeyCode benchmarkKey = KeyCode.F9;
@@ -66,6 +68,16 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
     private long benchmarkFrameCount;
     private double benchmarkTotalFrameMilliseconds;
     private Process currentProcess;
+    private readonly List<Transform> activeObjectScan = new List<Transform>(4096);
+    private int activeObjectScanCursor;
+    private int activeObjectScanCount;
+    private int activeObjectScanUnits;
+    private int activeObjectScanNavalUnits;
+    private int activeObjectScanProjectiles;
+    private int activeObjectScanParticleSystems;
+    private int activeObjectScanTrailRenderers;
+    private float nextActiveObjectScanAt;
+    private bool activeObjectScanInProgress;
 
     private struct FrameSample
     {
@@ -98,6 +110,10 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
 
     private void OnEnable()
     {
+        activeObjectScanInProgress = false;
+        activeObjectScan.Clear();
+        activeObjectScanCursor = 0;
+        nextActiveObjectScanAt = 0f;
         mainThreadRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "Main Thread", 15);
         renderThreadRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Render Thread", 15);
         List<ProfilerRecorderHandle> handles = new List<ProfilerRecorderHandle>(64);
@@ -113,6 +129,9 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
     private void OnDisable()
     {
         if (benchmarkRecording) StopBenchmark();
+        activeObjectScanInProgress = false;
+        activeObjectScan.Clear();
+        activeObjectScanCursor = 0;
         if (mainThreadRecorder.Valid) mainThreadRecorder.Dispose();
         if (renderThreadRecorder.Valid) renderThreadRecorder.Dispose();
         if (gpuRecorder.Valid) gpuRecorder.Dispose();
@@ -125,6 +144,14 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
 
     private void Update()
     {
+        if (visible || benchmarkRecording)
+        {
+            if (!activeObjectScanInProgress && Time.unscaledTime >= nextActiveObjectScanAt)
+                BeginActiveObjectScan();
+            if (activeObjectScanInProgress)
+                AdvanceActiveObjectScan();
+        }
+
         if (Input.GetKeyDown(benchmarkKey))
         {
             if (benchmarkRecording) StopBenchmark();
@@ -145,12 +172,6 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
             graphicsBytes = Profiler.GetAllocatedMemoryForGraphicsDriver();
             long workingSetBytes = currentProcess != null ? currentProcess.WorkingSet64 : 0L;
             processWorkingSetBytes = workingSetBytes > 0L ? workingSetBytes : -1L;
-            activeGameObjects = CountActiveSceneObjects(
-                out activeUnits,
-                out activeNavalUnits,
-                out activeProjectiles,
-                out activeParticleSystems,
-                out activeTrailRenderers);
             benchmarkMemorySampleAt = Time.unscaledTime;
         }
 
@@ -441,58 +462,75 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         return default;
     }
 
-    private void CountChildren(
-        Transform parent,
-        ref int count,
-        ref int units,
-        ref int navalUnits,
-        ref int projectiles,
-        ref int particleSystems,
-        ref int trailRenderers)
+    private void BeginActiveObjectScan()
     {
-        count++;
-        if (parent.TryGetComponent(out IdentidadeUnidade identidadeUnidade) && identidadeUnidade.enabled)
-            units++;
-        else if (parent.TryGetComponent(out IdentidadeNaval identidadeNaval) && identidadeNaval.enabled)
-            units++;
-        if (parent.TryGetComponent(out IdentidadeNaval navalIdentity) && navalIdentity.enabled)
-            navalUnits++;
-        if (parent.TryGetComponent(out Projetil projectile) && projectile.enabled)
-            projectiles++;
-        if (parent.TryGetComponent(out ParticleSystem particleSystem) && particleSystem.IsAlive(true))
-            particleSystems++;
-        if (parent.TryGetComponent(out TrailRenderer trailRenderer) && trailRenderer.enabled && trailRenderer.positionCount > 0)
-            trailRenderers++;
-        for (int i = 0; i < parent.childCount; i++)
-        {
-            Transform child = parent.GetChild(i);
-            if (child.gameObject.activeInHierarchy)
-                CountChildren(child, ref count, ref units, ref navalUnits, ref projectiles, ref particleSystems, ref trailRenderers);
-        }
-    }
-
-    private int CountActiveSceneObjects(
-        out int units,
-        out int navalUnits,
-        out int projectiles,
-        out int particleSystems,
-        out int trailRenderers)
-    {
-        Scene activeScene = SceneManager.GetActiveScene();
+        activeObjectScan.Clear();
         sceneRoots.Clear();
-        activeScene.GetRootGameObjects(sceneRoots);
-        int count = 0;
-        units = 0;
-        navalUnits = 0;
-        projectiles = 0;
-        particleSystems = 0;
-        trailRenderers = 0;
+        Scene activeScene = SceneManager.GetActiveScene();
+        if (activeScene.IsValid() && activeScene.isLoaded)
+            activeScene.GetRootGameObjects(sceneRoots);
+
         for (int i = 0; i < sceneRoots.Count; i++)
         {
             GameObject root = sceneRoots[i];
             if (root != null && root.activeInHierarchy)
-                CountChildren(root.transform, ref count, ref units, ref navalUnits, ref projectiles, ref particleSystems, ref trailRenderers);
+                activeObjectScan.Add(root.transform);
         }
-        return count;
+
+        activeObjectScanCursor = 0;
+        activeObjectScanCount = 0;
+        activeObjectScanUnits = 0;
+        activeObjectScanNavalUnits = 0;
+        activeObjectScanProjectiles = 0;
+        activeObjectScanParticleSystems = 0;
+        activeObjectScanTrailRenderers = 0;
+        activeObjectScanInProgress = true;
+    }
+
+    private void AdvanceActiveObjectScan()
+    {
+        int budget = Mathf.Max(1, activeObjectScanBudgetPerFrame);
+        int processed = 0;
+        while (activeObjectScanCursor < activeObjectScan.Count && processed < budget)
+        {
+            Transform current = activeObjectScan[activeObjectScanCursor++];
+            processed++;
+            if (current == null || !current.gameObject.activeInHierarchy)
+                continue;
+
+            activeObjectScanCount++;
+            if (current.TryGetComponent(out IdentidadeUnidade identidadeUnidade) && identidadeUnidade.enabled)
+                activeObjectScanUnits++;
+            else if (current.TryGetComponent(out IdentidadeNaval identidadeNaval) && identidadeNaval.enabled)
+                activeObjectScanUnits++;
+            if (current.TryGetComponent(out IdentidadeNaval navalIdentity) && navalIdentity.enabled)
+                activeObjectScanNavalUnits++;
+            if (current.TryGetComponent(out Projetil projectile) && projectile.enabled)
+                activeObjectScanProjectiles++;
+            if (current.TryGetComponent(out ParticleSystem particleSystem) && particleSystem.IsAlive(true))
+                activeObjectScanParticleSystems++;
+            if (current.TryGetComponent(out TrailRenderer trailRenderer) && trailRenderer.enabled && trailRenderer.positionCount > 0)
+                activeObjectScanTrailRenderers++;
+
+            for (int i = 0; i < current.childCount; i++)
+            {
+                Transform child = current.GetChild(i);
+                if (child != null && child.gameObject.activeInHierarchy)
+                    activeObjectScan.Add(child);
+            }
+        }
+
+        if (activeObjectScanCursor < activeObjectScan.Count)
+            return;
+
+        activeGameObjects = activeObjectScanCount;
+        activeUnits = activeObjectScanUnits;
+        activeNavalUnits = activeObjectScanNavalUnits;
+        activeProjectiles = activeObjectScanProjectiles;
+        activeParticleSystems = activeObjectScanParticleSystems;
+        activeTrailRenderers = activeObjectScanTrailRenderers;
+        activeObjectScanInProgress = false;
+        nextActiveObjectScanAt = Time.unscaledTime + Mathf.Max(1f, activeObjectScanInterval);
+        activeObjectScan.Clear();
     }
 }

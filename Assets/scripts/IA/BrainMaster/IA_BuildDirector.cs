@@ -55,6 +55,7 @@ namespace Hegemonia.AI.BrainMaster
         private const int MaxBootstrapAnchorRefinements = 4;
         private readonly IA_Context _context;
         private float _nextDecisionTime;
+        private float _nextCatalogRefreshAfterMiss;
         private float _nextFoundationAttemptTime;
         private int _lastKnownStructureCount = -1;
         private float _lastProgressTime;
@@ -575,13 +576,14 @@ namespace Hegemonia.AI.BrainMaster
             bool hasCoastScanAnchor = landAnchor != Vector3.zero
                                        || baseCenter != Vector3.zero
                                        || developedStructures > 0;
+            bool manualAreasCoverNavalGaps = (estaleiros >= targetShipyards || estaleiroManualOverride)
+                                              && (piers >= targetPiers || pierManualOverride)
+                                              && (plataformas >= targetPlatforms || plataformaManualOverride);
+            bool needsAutomaticNavalExpansion = estaleiros + piers > 0
+                                                && allowAutomaticNavalExpansion
+                                                && (counter.ReinforceCoast || counter.NavalWeight > 0.20f);
             bool needCoastScan = hasCoastScanAnchor
-                                 && ((estaleiros < targetShipyards && !estaleiroManualOverride)
-                                 || (piers < targetPiers && !pierManualOverride)
-                                 || (plataformas < targetPlatforms && !plataformaManualOverride)
-                                 || imperialOilGap
-                                 || counter.ReinforceCoast
-                                 || counter.NavalWeight > 0.20f);
+                                 && (!manualAreasCoverNavalGaps || needsAutomaticNavalExpansion);
             if (!allowAutomaticNavalExpansion && !imperialOilGap && estaleiros + piers > 0 && !estaleiroManualOverride && !pierManualOverride && !plataformaManualOverride)
             {
                 needCoastScan = false;
@@ -1024,7 +1026,16 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     if ((hasMetadata && metadata.IsCommercialAirport) || name.Contains("comercial") || name.Contains("commercial"))
                     {
-                        commercialAirports++;
+                        if (NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
+                            structure.transform.position,
+                            NavalPlacementResolver.ResolveSeaLevel()))
+                        {
+                            ReportValdoriaBuildBlock("aeroporto comercial", "a estrutura existente está sobre água; será substituída por um ponto em terra firme");
+                        }
+                        else
+                        {
+                            commercialAirports++;
+                        }
                     }
                     else if (hasMetadata && metadata.IsMilitaryAirport)
                     {
@@ -1275,9 +1286,14 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 0;
-            if (teamId == 2 && NavalPlacementResolver.IsWaterAtPosition(structure.transform.position))
+            if (NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
+                structure.transform.position,
+                NavalPlacementResolver.ResolveSeaLevel()))
             {
-                ReportValdoriaBuildBlock("aeroporto militar", "a base existente está sobre água; será substituída por um ponto em terra firme");
+                if (teamId == 2)
+                {
+                    ReportValdoriaBuildBlock("aeroporto militar", "a base existente está sobre água; será substituída por um ponto em terra firme");
+                }
                 return;
             }
 
@@ -1341,7 +1357,9 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (NavalPlacementResolver.IsWaterAtPosition(candidate))
+            if (NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
+                candidate,
+                NavalPlacementResolver.ResolveSeaLevel()))
             {
                 reason = "o aeroporto militar da IA03 não pode ser construído na água";
                 return false;
@@ -1540,6 +1558,55 @@ namespace Hegemonia.AI.BrainMaster
                         break;
                     }
 
+                    if (!foundInsideArea && zone == IA_ZoneType.Naval)
+                    {
+                        IA_NavalPlacementField.NavalPlacementKind navalKind = ResolveManualNavalPlacementKind(itemKey);
+                        const int maxFieldCandidates = 4;
+                        for (int attempt = 0; attempt < maxFieldCandidates; attempt++)
+                        {
+                            Vector3 testCandidate;
+                            bool foundFieldCandidate = IA_NavalPlacementField.TryGetBestCandidate(
+                                point.transform.position,
+                                0f,
+                                areaRadius,
+                                navalKind,
+                                candidatePosition => Vector3.Distance(Flatten(candidatePosition), Flatten(point.transform.position)) <= areaRadius,
+                                out testCandidate);
+                            if (!foundFieldCandidate)
+                                break;
+
+                            testCandidate.y = NavalPlacementResolver.ResolveSeaLevel();
+                            Vector3 fieldCandidatePosition = testCandidate;
+                            string validationReason = string.Empty;
+                            bool valid = _context.Backend != null
+                                && _context.Backend.BuildService != null
+                                && _context.Backend.BuildService.ValidatePlacement(itemKey, testCandidate, zone, _context.WorldState, _context.MapAnalyzer, _context.ThreatAnalyzer, out validationReason);
+                            Quaternion candidateRotation = point.transform.rotation;
+                            bool poseResolved = false;
+                            if (valid && TryResolveManualNavalPose(
+                                    itemKey,
+                                    zone,
+                                    point,
+                                    resolvedData,
+                                    ref testCandidate,
+                                    ref candidateRotation,
+                                    out poseResolved,
+                                    out validationReason))
+                            {
+                                pointCandidate = testCandidate;
+                                pointRotation = candidateRotation;
+                                pointNavalPoseResolved = poseResolved;
+                                foundInsideArea = true;
+                                hasBlockedArea = false;
+                                break;
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(validationReason))
+                                lastAreaBlockReason = validationReason;
+                            IA_NavalPlacementField.MarkCellTemporarilyBlocked(fieldCandidatePosition, validationReason, 12f);
+                        }
+                    }
+
                     if (!foundInsideArea)
                         continue;
                 }
@@ -1603,6 +1670,16 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return ManualBuildCandidateStatus.None;
+        }
+
+        private static IA_NavalPlacementField.NavalPlacementKind ResolveManualNavalPlacementKind(string itemKey)
+        {
+            string normalizedItem = IA_Text.Normalize(itemKey);
+            if (normalizedItem.Contains("pier") || normalizedItem.Contains("cais") || normalizedItem.Contains("porto"))
+                return IA_NavalPlacementField.NavalPlacementKind.Pier;
+            if (normalizedItem.Contains("plataforma"))
+                return IA_NavalPlacementField.NavalPlacementKind.Platform;
+            return IA_NavalPlacementField.NavalPlacementKind.Shipyard;
         }
 
         private bool TryResolveManualLandHeight(Vector3 position, out float height)
@@ -1816,7 +1893,9 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 if (manualPoint.ManualRole != IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar
-                    || NavalPlacementResolver.IsWaterAtPosition(candidate))
+                    || NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
+                        candidate,
+                        NavalPlacementResolver.ResolveSeaLevel()))
                 {
                     failureReason = "Creaty do aeroporto militar sem posição terrestre válida; construção bloqueada";
                     ReportValdoriaBuildBlock(itemKey, failureReason);
@@ -4995,6 +5074,7 @@ namespace Hegemonia.AI.BrainMaster
             if (!bootstrapActive
                 && ShouldRespectRuntimeLock()
                 && DiagnosticoDesempenhoJogo.RuntimeSobPressao()
+                && !IsCriticalRuntimeInfrastructure(normalized)
                 && IsHeavyNonEssentialRuntimeBuild(normalized))
             {
                 return false;
@@ -5006,6 +5086,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            bool catalogWasInitialized = _context.Backend.Catalog.Count > 0;
             DadosConstrucao data;
             if (_context.Backend.TryResolveItem(itemKey, out data) && data != null)
             {
@@ -5013,7 +5094,23 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            _missingItemCooldownUntil[normalized] = now + 60f;
+            // MenuConstrucao pode terminar de montar seu catálogo depois do
+            // primeiro ciclo da IA. Recria o índice uma vez por janela curta
+            // antes de marcar o item como ausente por mais tempo.
+            if (catalogWasInitialized
+                && _context.Backend.Catalog.Count > 0
+                && now >= _nextCatalogRefreshAfterMiss)
+            {
+                _nextCatalogRefreshAfterMiss = now + 5f;
+                _context.Backend.RefreshCatalog();
+                if (_context.Backend.TryResolveItem(itemKey, out data) && data != null)
+                {
+                    _missingItemCooldownUntil.Remove(normalized);
+                    return true;
+                }
+            }
+
+            _missingItemCooldownUntil[normalized] = now + 10f;
             ReportValdoriaBuildBlock(itemKey, "item de construção ausente do catálogo nacional");
             return false;
         }
@@ -5037,6 +5134,21 @@ namespace Hegemonia.AI.BrainMaster
                    || normalizedItemKey.Contains("armazem")
                    || normalizedItemKey.Contains("estaleiro")
                    || normalizedItemKey.Contains("pier");
+        }
+
+        private static bool IsCriticalRuntimeInfrastructure(string normalizedItemKey)
+        {
+            return normalizedItemKey.Contains("radar")
+                   || normalizedItemKey.Contains("estaleiro")
+                   || normalizedItemKey.Contains("shipyard")
+                   || normalizedItemKey.Contains("pier")
+                   || normalizedItemKey.Contains("plataforma")
+                   || normalizedItemKey.Contains("offshore")
+                   || normalizedItemKey.Contains("aeroporto")
+                   || normalizedItemKey.Contains("airport")
+                   || normalizedItemKey.Contains("ciws")
+                   || normalizedItemKey.Contains("torreta")
+                   || normalizedItemKey.Contains("antia");
         }
 
         private static bool ShouldRespectRuntimeLock()

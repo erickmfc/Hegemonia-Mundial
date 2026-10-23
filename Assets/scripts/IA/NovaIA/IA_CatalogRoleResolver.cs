@@ -34,6 +34,8 @@ namespace Hegemonia.AI.Master
         private static float _nextRefreshTime;
         private static readonly Dictionary<IA_CatalogRole, string> _resolved = new Dictionary<IA_CatalogRole, string>();
         private static readonly List<DadosConstrucao> _catalog = new List<DadosConstrucao>(256);
+        private static readonly HashSet<DadosConstrucao> _catalogSet = new HashSet<DadosConstrucao>();
+        private static DadosConstrucao[] _resourceCatalog;
 
         public static string ResolveOrFallback(IA_CatalogRole role, string fallback)
         {
@@ -55,11 +57,24 @@ namespace Hegemonia.AI.Master
         {
             _nextRefreshTime = Time.time + 8f;
             _catalog.Clear();
+            _catalogSet.Clear();
             _resolved.Clear();
 
             if (MenuConstrucao.catalogoGlobal != null)
             {
-                _catalog.AddRange(MenuConstrucao.catalogoGlobal);
+                for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
+                {
+                    AddCatalogItem(MenuConstrucao.catalogoGlobal[i]);
+                }
+            }
+
+            if (_resourceCatalog == null)
+            {
+                _resourceCatalog = Resources.LoadAll<DadosConstrucao>("Construcoes");
+            }
+            for (int i = 0; i < _resourceCatalog.Length; i++)
+            {
+                AddCatalogItem(_resourceCatalog[i]);
             }
 
             ResolveRole(IA_CatalogRole.Core, "prefeitura", "capital", "governo");
@@ -83,6 +98,14 @@ namespace Hegemonia.AI.Master
             ResolveRole(IA_CatalogRole.House, "residencial", "predio", "casa popular", "house");
             ResolveRole(IA_CatalogRole.Commercial, "comercial", "shopping", "loja");
             ResolveRole(IA_CatalogRole.NavalPatrol, "fragata", "corveta", "destroyer", "navio de guerra");
+        }
+
+        private static void AddCatalogItem(DadosConstrucao item)
+        {
+            if (item != null && item.PrefabDaUnidade != null && _catalogSet.Add(item))
+            {
+                _catalog.Add(item);
+            }
         }
 
         private static void ResolveRole(IA_CatalogRole role, params string[] aliases)
@@ -118,7 +141,8 @@ namespace Hegemonia.AI.Master
                         continue;
                     }
 
-                    string joined = IA_Text.Normalize(item.NomeItem + " " + item.name + " " + item.PrefabDaUnidade.name);
+                    string joined = IA_Text.Normalize(
+                        item.NomeItem + " " + item.name + " " + item.PrefabDaUnidade.name + " " + item.aliases + " " + item.descricao);
                     if (joined.Contains(alias))
                     {
                         _resolved[role] = item.GetDisplayName();

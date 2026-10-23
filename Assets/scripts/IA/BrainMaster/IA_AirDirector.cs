@@ -7,6 +7,10 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_AirDirector : IIAIncrementalUpdateModule
     {
+        private const int MaxBombersPerStrategicTarget = 2;
+        private const float MinStrategicTargetSeparation = 650f;
+        private const float StrategicBomberOrderCooldownSeconds = 45f;
+
         private enum DecisionPhase
         {
             Idle,
@@ -250,17 +254,36 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            if (airEnemy != null)
+            {
+                // Com alvo confirmado, a patrulha de fallback nao participa da
+                // ordem. Evite uma amostragem de terreno cara nesse caminho.
+                QueueAttack(
+                    "air_intercept_" + airEnemy.GetInstanceID(),
+                    _activeAirUnitsBuffer,
+                    airEnemy,
+                    airEnemy.position,
+                    87,
+                    12f,
+                    0,
+                    true);
+                return;
+            }
+
             if (TryDispatchEconomicAirRaids(baseCenter, _activeAirUnitsBuffer))
             {
                 return;
             }
 
-            Transform target = airEnemy != null ? airEnemy : fallbackEnemy;
-            if (target != null)
+            if (fallbackEnemy != null)
             {
-                // Com alvo confirmado, a patrulha de fallback nao participa da
-                // ordem. Evite uma amostragem de terreno cara nesse caminho.
-                QueueAttack("air_intercept", _activeAirUnitsBuffer, target, target.position, 87, 2.9f);
+                QueueAttack(
+                    "air_intercept_" + fallbackEnemy.GetInstanceID(),
+                    _activeAirUnitsBuffer,
+                    fallbackEnemy,
+                    fallbackEnemy.position,
+                    87,
+                    12f);
             }
             else
             {
@@ -273,7 +296,7 @@ namespace Hegemonia.AI.BrainMaster
                     null,
                     fallback + Vector3.up * 20f,
                     80,
-                    3.1f,
+                    12f,
                     fallbackTeamId);
             }
         }
@@ -344,7 +367,13 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            QueueAttack("air_raid_" + key + "_" + target.Kind, units, target.Transform, target.Position + Vector3.up * 20f, priority, cooldown);
+            QueueAttack(
+                "air_raid_" + key + "_" + target.Kind,
+                units,
+                target.Transform,
+                target.Position + Vector3.up * 20f,
+                priority,
+                Mathf.Max(20f, cooldown));
             return true;
         }
 
@@ -526,7 +555,8 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 targetPosition,
             int priority,
             float cooldown,
-            int targetTeamId = 0)
+            int targetTeamId = 0,
+            bool allowHostileAirInterception = false)
         {
             List<GameObject> availableUnits = CloneUnits(units);
             if (availableUnits.Count == 0)
@@ -547,9 +577,10 @@ namespace Hegemonia.AI.BrainMaster
                 Units = availableUnits,
                 Target = target,
                 TargetPosition = targetPosition,
-                RequiresDeclaredWar = target != null || resolvedTargetTeamId > 0,
+                RequiresDeclaredWar = !allowHostileAirInterception && (target != null || resolvedTargetTeamId > 0),
                 TargetTeamId = resolvedTargetTeamId,
-                AllowCoordinateAttackAgainstKnownEnemy = coordinateAttackAgainstKnownEnemy
+                AllowCoordinateAttackAgainstKnownEnemy = coordinateAttackAgainstKnownEnemy,
+                AllowHostileAirInterception = allowHostileAirInterception
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -752,7 +783,9 @@ namespace Hegemonia.AI.BrainMaster
                 if (IsBomber(unit))
                 {
                     ControleAviao aircraft = unit.GetComponent<ControleAviao>();
-                    if (aircraft != null && (aircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio || aircraft.estadoAtual == ControleAviao.EstadoAviao.EmMissao))
+                    if (aircraft != null
+                        && aircraft.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
+                        && TrySpendReadyAircraftForLaunch(aircraft))
                     {
                         _activeBombersBuffer.Add(unit);
                     }
@@ -774,6 +807,22 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
+                Vector3 candidatePosition = Flatten(candidate.Transform.position);
+                bool overlapsExistingTarget = false;
+                for (int existing = 0; existing < validTargetCount; existing++)
+                {
+                    IA_StrategicTargetData selected = _strategicTargetsBuffer[existing];
+                    if (selected != null
+                        && selected.Transform != null
+                        && Vector3.Distance(candidatePosition, Flatten(selected.Transform.position)) < MinStrategicTargetSeparation)
+                    {
+                        overlapsExistingTarget = true;
+                        break;
+                    }
+                }
+                if (overlapsExistingTarget)
+                    continue;
+
                 if (validTargetCount != i)
                 {
                     _strategicTargetsBuffer[validTargetCount] = candidate;
@@ -784,6 +833,14 @@ namespace Hegemonia.AI.BrainMaster
 
             if (validTargetCount > 0)
             {
+                int maximumStrikePackage = validTargetCount * MaxBombersPerStrategicTarget;
+                if (_activeBombersBuffer.Count > maximumStrikePackage)
+                {
+                    _activeBombersBuffer.RemoveRange(
+                        maximumStrikePackage,
+                        _activeBombersBuffer.Count - maximumStrikePackage);
+                }
+
                 _airRaidA.Clear();
                 _airRaidB.Clear();
                 _airRaidC.Clear();
@@ -805,13 +862,20 @@ namespace Hegemonia.AI.BrainMaster
 
             if (pressureTarget != Vector3.zero && pressureTargetTeamId > 0)
             {
+                if (_activeBombersBuffer.Count > MaxBombersPerStrategicTarget)
+                {
+                    _activeBombersBuffer.RemoveRange(
+                        MaxBombersPerStrategicTarget,
+                        _activeBombersBuffer.Count - MaxBombersPerStrategicTarget);
+                }
+
                 QueueAttack(
                     "strategic_bombing_fallback_" + pressureTargetTeamId,
                     _activeBombersBuffer,
                     null,
                     pressureTarget + Vector3.up * 20f,
                     75,
-                    10.0f,
+                    StrategicBomberOrderCooldownSeconds,
                     pressureTargetTeamId);
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_air", _activeBombersBuffer.Count);
             }
@@ -839,7 +903,14 @@ namespace Hegemonia.AI.BrainMaster
             int positionX = Mathf.RoundToInt(target.Position.x / 100f);
             int positionZ = Mathf.RoundToInt(target.Position.z / 100f);
             string key = "strategic_bombing_" + targetTeamId + "_" + target.Kind + "_" + positionX + "_" + positionZ;
-            QueueAttack(key, units, target.Transform, target.Position, 95, 8.0f, targetTeamId);
+            QueueAttack(
+                key,
+                units,
+                target.Transform,
+                target.Position,
+                95,
+                StrategicBomberOrderCooldownSeconds,
+                targetTeamId);
         }
 
         private static int ResolveTargetTeamId(Transform target)

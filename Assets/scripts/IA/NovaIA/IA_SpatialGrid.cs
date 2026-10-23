@@ -139,6 +139,74 @@ namespace Hegemonia.AI.Master
             return FindBestCellByType(baseCenter, 1800f, CellType.Land, false);
         }
 
+        public bool TryFindDryLandSite(Vector3 around, float searchRadius, Vector2 halfExtents, out Vector3 landPoint)
+        {
+            landPoint = around;
+            if (!_configured || _cells == null)
+            {
+                return false;
+            }
+
+            int centerX;
+            int centerY;
+            if (!WorldToCell(around, out centerX, out centerY))
+            {
+                return false;
+            }
+
+            float radius = Mathf.Max(_cellSize, searchRadius);
+            float radiusSquared = radius * radius;
+            int cellRadius = Mathf.CeilToInt(radius / _cellSize);
+            float bestDistanceSquared = float.PositiveInfinity;
+            Vector3 bestPoint = around;
+            float now = Time.time;
+
+            for (int y = centerY - cellRadius; y <= centerY + cellRadius; y++)
+            {
+                for (int x = centerX - cellRadius; x <= centerX + cellRadius; x++)
+                {
+                    if (!Inside(x, y))
+                    {
+                        continue;
+                    }
+
+                    GridCell cell = _cells[x, y];
+                    if (cell.type == CellType.Unknown || cell.validUntil <= now)
+                    {
+                        cell = ResolveCell(x, y, now);
+                        _cells[x, y] = cell;
+                    }
+
+                    if (cell.type != CellType.Land)
+                    {
+                        continue;
+                    }
+
+                    float distanceSquared = (Flatten(cell.center) - Flatten(around)).sqrMagnitude;
+                    if (distanceSquared > radiusSquared || distanceSquared >= bestDistanceSquared)
+                    {
+                        continue;
+                    }
+
+                    if (!HasDryFootprint(cell.center, halfExtents))
+                    {
+                        continue;
+                    }
+
+                    bestDistanceSquared = distanceSquared;
+                    bestPoint = cell.center;
+                }
+            }
+
+            if (float.IsPositiveInfinity(bestDistanceSquared))
+            {
+                return false;
+            }
+
+            landPoint = bestPoint;
+            return true;
+        }
+
         public bool TryGetCell(Vector3 world, out GridCell cell)
         {
             int x, y;
@@ -347,12 +415,48 @@ namespace Hegemonia.AI.Master
 
         private bool IsWater(Vector3 point)
         {
-            if (_waterMask.value == 0)
+            float seaLevel = NavalPlacementResolver.ResolveSeaLevel();
+            Vector3 probe = new Vector3(point.x, seaLevel, point.z);
+            ClassificacaoSuperficieMapa surface;
+            float surfaceHeight;
+            if (RegistroSuperficieMapa.TryClassify(probe, out surface, out surfaceHeight))
             {
-                return false;
+                return surface == ClassificacaoSuperficieMapa.Agua;
             }
-            RaycastHit hit;
-            return Physics.Raycast(point + Vector3.up * 220f, Vector3.down, out hit, 440f, _waterMask, QueryTriggerInteraction.Ignore);
+
+            if (_waterMask.value != 0)
+            {
+                RaycastHit hit;
+                if (Physics.Raycast(probe + Vector3.up * 220f, Vector3.down, out hit, 440f, _waterMask, QueryTriggerInteraction.Ignore))
+                {
+                    return true;
+                }
+            }
+
+            return NavalPlacementResolver.IsWaterAtPosition(probe, seaLevel);
+        }
+
+        private bool HasDryFootprint(Vector3 center, Vector2 halfExtents)
+        {
+            float extentX = Mathf.Max(_cellSize * 0.5f, halfExtents.x);
+            float extentZ = Mathf.Max(_cellSize * 0.5f, halfExtents.y);
+            float seaLevel = NavalPlacementResolver.ResolveSeaLevel();
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int z = -1; z <= 1; z++)
+                {
+                    Vector3 probe = new Vector3(
+                        center.x + x * extentX,
+                        seaLevel,
+                        center.z + z * extentZ);
+                    if (NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(probe, seaLevel))
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         private bool IsBlocked(Vector3 point)

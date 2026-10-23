@@ -636,7 +636,7 @@ namespace Hegemonia.RTS
 
             // Esta consulta apenas classifica a informacao que ja chegou pelo
             // fluxo existente. Ela nao libera armamento, ROE ou ordens.
-            return RTSVisibilityService.TeamsAtWar(observerTeamId, targetTeamId)
+            return ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(observerTeamId, targetTeamId)
                 ? RTSTacticalContactRelation.Hostile
                 : RTSTacticalContactRelation.Unknown;
         }

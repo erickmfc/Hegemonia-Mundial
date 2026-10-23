@@ -8,6 +8,9 @@ using System.Collections.Generic;
 [RequireComponent(typeof(SistemaDeDanos))]
 public class LancadorMisselCaca : MonoBehaviour
 {
+    private const float DuracaoMinimaAlvoForcado = 60f;
+    private const float DuracaoAlvoAposDisparo = 8f;
+
     [Header("Configuração de Munição e Vida")]
     public int municaoAtual = 2;    
     public int municaoMaxima = 4;
@@ -161,6 +164,14 @@ public class LancadorMisselCaca : MonoBehaviour
         bool alvoIAAtivo = _alvoIAForcado != null && Time.time <= _tempoValidadeAlvoIA;
         bool emMissao = _vooModerno != null && _vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao;
         bool deveEscanear = radarAtivoVisualmente || emMissao || alvoIAAtivo;
+
+        // Uma ordem de ataque já contém um alvo confirmado pelo jogador ou
+        // pela IA. Tente disparar continuamente ao entrar no alcance, sem
+        // depender da próxima varredura de aquisição (que ocorre a cada 1 s).
+        if (alvoIAAtivo && emMissao)
+        {
+            TentarDisparoContraAlvoIA();
+        }
 
         // Detecção de Inimigos (Radar) — Apenas a cada 1 segundo pra não pesar
         if (deveEscanear && Time.time > tempoUltimoScan + 1.0f)
@@ -334,7 +345,10 @@ public class LancadorMisselCaca : MonoBehaviour
         }
         _alvoIAForcado = alvo;
         _ultimoPontoAlvoIA = alvo != null ? alvo.position : alvoFallback;
-        _tempoValidadeAlvoIA = Time.time + Mathf.Max(1.5f, duracaoSegundos);
+        // Uma ordem de ataque sobrevive ao taxiamento, à decolagem e à
+        // aproximação. A janela de 4–6 s expirava antes do caça ficar em
+        // estado EmMissao ou entrar no alcance do míssil.
+        _tempoValidadeAlvoIA = Time.time + Mathf.Max(DuracaoMinimaAlvoForcado, duracaoSegundos);
         modoPassivo = false;
 
         if (_vooModerno != null && _vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
@@ -369,7 +383,9 @@ public class LancadorMisselCaca : MonoBehaviour
 
         if (!Disparar(_alvoIAForcado)) return false;
         _ultimoPontoAlvoIA = _alvoIAForcado.position;
-        _tempoValidadeAlvoIA = Time.time + 1.5f;
+        // Preserve o alvo por várias cadências para permitir mais de um
+        // disparo contra o mesmo contato quando a ordem ainda está ativa.
+        _tempoValidadeAlvoIA = Time.time + Mathf.Max(DuracaoAlvoAposDisparo, tempoRecarga + 1f);
         return true;
     }
 
@@ -379,11 +395,11 @@ public class LancadorMisselCaca : MonoBehaviour
 
         string nomeAlvo = alvoTransform.name;
 
-        return alvoTransform.position.y > 15f ||
-               alvoTransform.GetComponentInParent<ControleAviao>() != null ||
+        return alvoTransform.GetComponentInParent<ControleAviao>() != null ||
                alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null ||
                alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
                alvoTransform.GetComponentInParent<Helicoptero>() != null ||
+               alvoTransform.GetComponentInParent<C700TransporteAereo>() != null ||
                (idUnidade != null && idUnidade.tipoUnidade == TipoUnidade.Aereo) ||
                NomeContem(nomeAlvo, "aviao") ||
                NomeContem(nomeAlvo, "caca") ||

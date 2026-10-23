@@ -920,14 +920,25 @@ public class Estaleiro : MonoBehaviour
         if (idNavio == null) idNavio = navioPronto.AddComponent<IdentidadeUnidade>();
 
         int ownerTeam = Mathf.Max(1, OwnerTeamId);
-        idNavio.teamID = ownerTeam;
-        idNavio.nomeDoPais = idEstaleiro != null
+        string nomePaisNavio = idEstaleiro != null
             && idEstaleiro.teamID == ownerTeam
             && !string.IsNullOrEmpty(idEstaleiro.nomeDoPais)
             ? idEstaleiro.nomeDoPais
             : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
 
-        idNavio.tipoUnidade = TipoUnidade.Naval;
+        IdentidadeUnidade[] identidadesNavio = navioPronto.GetComponentsInChildren<IdentidadeUnidade>(true);
+        for (int i = 0; i < identidadesNavio.Length; i++)
+        {
+            IdentidadeUnidade identidade = identidadesNavio[i];
+            if (identidade == null) continue;
+            identidade.teamID = ownerTeam;
+            identidade.nomeDoPais = nomePaisNavio;
+            if (identidade == idNavio) identidade.tipoUnidade = TipoUnidade.Naval;
+            IA_WorldState.NotifyEntityChanged(identidade);
+        }
+        // O clone registra as identidades quando é ativado, antes de receber
+        // este país. Invalide também sensores que cacheiam alvos por versão.
+        RegistroEntidadesJogo.NotificarAlteracao();
         SistemaGovernoMundial governoNaval = SistemaGovernoMundial.Instancia;
         if (governoNaval != null && !governoNaval.TentarMobilizarEfetivoDaUnidade(ownerTeam, navioPronto))
         {

@@ -493,7 +493,8 @@ namespace Hegemonia.AI.BrainMaster
                 Target = target,
                 TargetPosition = targetPosition,
                 RequiresDeclaredWar = target != null,
-                TargetTeamId = targetIdentity != null ? targetIdentity.teamID : 0
+                TargetTeamId = targetIdentity != null ? targetIdentity.teamID : 0,
+                AllowHostileNavalInterception = IsNavalTarget(target)
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -509,6 +510,21 @@ namespace Hegemonia.AI.BrainMaster
 
             string reason;
             _context.CommandQueue.Enqueue(request, Time.time, out reason);
+        }
+
+        private static bool IsNavalTarget(Transform target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            IdentidadeUnidade identity = target.GetComponentInParent<IdentidadeUnidade>()
+                ?? target.GetComponentInChildren<IdentidadeUnidade>(true);
+            return target.GetComponentInParent<IdentidadeNaval>() != null
+                || target.GetComponentInParent<ControleNavioRealista>() != null
+                || target.GetComponentInParent<ControleSubmarino>() != null
+                || (identity != null && identity.tipoUnidade == TipoUnidade.Naval);
         }
 
         private List<GameObject> CloneUnits(List<GameObject> source)

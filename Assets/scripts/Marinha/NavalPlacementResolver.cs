@@ -95,6 +95,7 @@ public static class NavalPlacementResolver
     private const float GlobalTerrainLookupRetrySeconds = 1f;
     private const float CacheCellSize = 4f;
     private const int MaxProbeCacheEntries = 64;
+    private static readonly RaycastHit[] PhysicalWaterProbeHits = new RaycastHit[64];
     private static float _nextExplicitWaterProbeTime = -1f;
     private static bool _hasExplicitWaterSurface;
     private static float _cachedSeaLevel;
@@ -1244,6 +1245,104 @@ public static class NavalPlacementResolver
         // Fallback genérico: se o chão estiver abaixo do nível do mar, consideramos água.
         float alturaChao = SampleGroundHeight(position, seaLevel);
         return alturaChao <= seaLevel + WaterTolerance;
+    }
+
+    /// <summary>
+    /// Classifica pontos de implantação em terra usando primeiro a geometria
+    /// visível. É usado para estruturas grandes que não podem aceitar uma
+    /// máscara geográfica desatualizada sob o collider do mar.
+    /// </summary>
+    public static bool IsWaterAtPositionForDryLandPlacement(Vector3 position, float seaLevel)
+    {
+        int hitCount = Physics.RaycastNonAlloc(
+            new Vector3(position.x, seaLevel + 1000f, position.z),
+            Vector3.down,
+            PhysicalWaterProbeHits,
+            3000f,
+            BuildRayMask(),
+            QueryTriggerInteraction.Collide);
+
+        float waterSurfaceHeight = float.MinValue;
+        float solidSurfaceHeight = float.MinValue;
+        bool foundWater = false;
+        bool foundSolid = false;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = PhysicalWaterProbeHits[i];
+            Collider collider = hit.collider;
+            if (collider == null || IsDynamicObstacle(collider))
+            {
+                continue;
+            }
+
+            if (LooksLikeWater(collider))
+            {
+                if (!foundWater || hit.point.y > waterSurfaceHeight)
+                {
+                    waterSurfaceHeight = hit.point.y;
+                }
+
+                foundWater = true;
+                continue;
+            }
+
+            if (!IsGroundSurfaceCollider(collider))
+            {
+                continue;
+            }
+
+            if (!foundSolid || hit.point.y > solidSurfaceHeight)
+            {
+                solidSurfaceHeight = hit.point.y;
+            }
+
+            foundSolid = true;
+        }
+
+        if (foundWater)
+        {
+            float effectiveWaterHeight = Mathf.Max(seaLevel, waterSurfaceHeight);
+            return !foundSolid || solidSurfaceHeight <= effectiveWaterHeight - VisibleWaterDepthTolerance;
+        }
+
+        if (TryClassifyWaterFromGlobalMap(position, out bool waterFromGlobalMap))
+        {
+            return waterFromGlobalMap;
+        }
+
+        if (RegistroSuperficieMapa.TryClassify(
+            position,
+            out ClassificacaoSuperficieMapa surface,
+            out _))
+        {
+            return surface == ClassificacaoSuperficieMapa.Agua
+                   || surface == ClassificacaoSuperficieMapa.Costa;
+        }
+
+        return IsWaterAtPosition(position, seaLevel);
+    }
+
+    private static bool IsGroundSurfaceCollider(Collider collider)
+    {
+        if (collider == null)
+        {
+            return false;
+        }
+
+        if (collider is TerrainCollider)
+        {
+            return true;
+        }
+
+        MarcadorSuperficieMapa marker = collider.GetComponentInParent<MarcadorSuperficieMapa>();
+        if (marker != null)
+        {
+            return marker.TipoSuperficie == TipoSuperficieMapa.Chao;
+        }
+
+        int groundLayer = LayerMask.NameToLayer("Chao");
+        return groundLayer >= 0 && collider.gameObject.layer == groundLayer;
     }
 
     private static bool TryClassifyWaterFromGlobalMap(Vector3 position, out bool isWater)

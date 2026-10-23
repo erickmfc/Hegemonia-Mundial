@@ -138,7 +138,7 @@ namespace Hegemonia.AI.Sovereign
                 }
 
                 if (id.teamID <= 0 || id.teamID == _teamId || IsAllied(id.teamID)
-                    || !RTSVisibilityService.TeamsAtWar(_teamId, id.teamID))
+                    || !ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, id.teamID))
                 {
                     continue;
                 }

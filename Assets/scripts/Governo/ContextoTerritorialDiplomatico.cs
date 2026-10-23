@@ -224,8 +224,27 @@ public static class ContextoTerritorialDiplomatico
         return relacao == null || !relacao.cessarFogoAtivo;
     }
 
+    /// <summary>Classifica uma equipe como hostil quando há postura inimiga ou guerra, respeitando o cessar-fogo.</summary>
+    public static bool HaHostilidadeOuGuerra(int teamAtacante, int teamAlvo)
+    {
+        if (teamAtacante <= 0 || teamAlvo <= 0 || teamAtacante == teamAlvo)
+            return false;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null)
+            return RTSVisibilityService.TeamsAtWar(teamAtacante, teamAlvo);
+
+        RelacaoPaisGoverno relacao = governo.ObterRelacao(teamAtacante, teamAlvo);
+        if (relacao != null && relacao.cessarFogoAtivo)
+            return false;
+
+        bool posturaHostil = relacao != null
+            && relacao.PosturaDe(teamAtacante) == PosturaRelacaoPais.Inimigo;
+        return posturaHostil || PodeDispararEmGuerra(teamAtacante, teamAlvo);
+    }
+
     /// <summary>
-    /// Gate para aquisição automática de alvos por armas terrestres. A postura
+    /// Gate para aquisição automática de alvos por armamentos. A postura
     /// hostil ou a guerra declarada autorizam o engajamento; cessar-fogo e
     /// zonas desmilitarizadas continuam bloqueando o disparo.
     /// </summary>
@@ -235,16 +254,8 @@ public static class ContextoTerritorialDiplomatico
             return false;
 
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
-        if (governo == null) return false;
-
-        RelacaoPaisGoverno relacao = governo.ObterRelacao(teamAtacante, alvo.teamID);
-        if (relacao != null && relacao.cessarFogoAtivo) return false;
-
-        bool posturaHostil = relacao != null
-            && relacao.PosturaDe(teamAtacante) == PosturaRelacaoPais.Inimigo;
-        if (relacao != null && relacao.cessarFogoAtivo) return false;
-        bool emGuerra = !posturaHostil && PodeDispararEmGuerra(teamAtacante, alvo.teamID);
-        if (!posturaHostil && !emGuerra) return false;
+        if (!HaHostilidadeOuGuerra(teamAtacante, alvo.teamID)) return false;
+        if (governo == null) return true;
 
         return !governo.EstaPosicaoDesmilitarizada(alvo.teamID, alvo.transform.position);
     }

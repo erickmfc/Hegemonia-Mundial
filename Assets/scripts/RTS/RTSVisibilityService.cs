@@ -677,7 +677,8 @@ namespace Hegemonia.RTS
 
         private void TentarContraAtaquePorCoordenada(int equipeInimiga, IdentidadeUnidade emissor)
         {
-            if (emissor == null || !TeamsAtWar(equipeInimiga, emissor.teamID)) return;
+            if (emissor == null
+                || !ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(equipeInimiga, emissor)) return;
 
             long chave = ((long)equipeInimiga << 32) ^ (uint)emissor.GetInstanceID();
             float agora = Time.unscaledTime;
@@ -828,7 +829,7 @@ namespace Hegemonia.RTS
                 if (relacao == null || !relacao.pactoMilitar
                     || (relacao.teamA != observerTeamId && relacao.teamB != observerTeamId)) continue;
                 int aliado = relacao.Outro(observerTeamId);
-                if (aliado > 0 && TeamsAtWar(aliado, target.teamID))
+                if (aliado > 0 && ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(aliado, target.teamID))
                     ReportContact(aliado, target, source, duration);
             }
         }
@@ -858,7 +859,7 @@ namespace Hegemonia.RTS
             for (int i = 0; i < nearbyAlliedTeamsBuffer.Count; i++)
             {
                 int aliado = nearbyAlliedTeamsBuffer[i];
-                if (TeamsAtWar(aliado, target.teamID))
+                if (ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(aliado, target.teamID))
                     ReportContact(aliado, target, source, duration);
             }
         }

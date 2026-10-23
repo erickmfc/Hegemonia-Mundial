@@ -250,6 +250,11 @@ namespace Hegemonia.AI.BrainMaster
         // Allows an explicit coordinate attack without a live Transform when
         // the producer identifies the enemy team; dispatch still requires war.
         public bool AllowCoordinateAttackAgainstKnownEnemy;
+        // Defensive interception may engage an observed hostile aircraft before
+        // formal war, using the same hostile-posture/cease-fire rules as weapons.
+        public bool AllowHostileAirInterception;
+        // Naval units may similarly defend against an observed hostile fleet.
+        public bool AllowHostileNavalInterception;
     }
 
     [Serializable]
