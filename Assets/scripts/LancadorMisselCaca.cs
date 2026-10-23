@@ -161,6 +161,18 @@ public class LancadorMisselCaca : MonoBehaviour
             if (_vooModerno.aeroportoOrigem.aviaoSelecionadoParaMissao == _vooModerno) radarAtivoVisualmente = true;
         }
 
+        bool vooComOrdemAtiva = _vooModerno != null
+            && (_vooModerno.estadoAtual == ControleAviao.EstadoAviao.Taxiando
+                || _vooModerno.estadoAtual == ControleAviao.EstadoAviao.Decolando
+                || _vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao);
+        if (vooComOrdemAtiva && _alvoIAForcado != null && Time.time > _tempoValidadeAlvoIA)
+        {
+            // Um voo de ataque pode levar vários minutos até entrar no alcance.
+            // O prazo inicial evita alvos esquecidos no pátio, mas não deve
+            // apagar uma ordem enquanto o mesmo voo ainda está em execução.
+            _tempoValidadeAlvoIA = Time.time + DuracaoAlvoAposDisparo;
+        }
+
         bool alvoIAAtivo = _alvoIAForcado != null && Time.time <= _tempoValidadeAlvoIA;
         bool emMissao = _vooModerno != null && _vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao;
         bool deveEscanear = radarAtivoVisualmente || emMissao || alvoIAAtivo;

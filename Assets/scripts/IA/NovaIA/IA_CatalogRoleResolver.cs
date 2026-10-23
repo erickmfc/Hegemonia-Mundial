@@ -68,7 +68,7 @@ namespace Hegemonia.AI.Master
                 }
             }
 
-            if (_resourceCatalog == null)
+            if (_resourceCatalog == null || _resourceCatalog.Length == 0)
             {
                 _resourceCatalog = Resources.LoadAll<DadosConstrucao>("Construcoes");
             }
