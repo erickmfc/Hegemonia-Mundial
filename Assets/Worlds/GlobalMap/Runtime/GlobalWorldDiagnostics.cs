@@ -196,7 +196,7 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         GUI.Label(new Rect(12f, 30f, 305f, 22f), "FPS: " + smoothedFps.ToString("F1") + "    altitude: " + altitude);
         GUI.Label(new Rect(12f, 52f, 305f, 22f), "terrain tiles: " + streamer.ActiveTileCount + "    trees: " + streamer.ActiveTreeCount);
         GUI.Label(new Rect(12f, 74f, 305f, 22f), "active GameObjects: " + activeGameObjects);
-        GUI.Label(new Rect(12f, 96f, 305f, 22f), "tile generation: " + streamer.LastGenerationMilliseconds + " ms (last)");
+        GUI.Label(new Rect(12f, 96f, 305f, 22f), "last tile CPU work: " + streamer.LastGenerationMilliseconds + " ms total");
         GUI.Label(new Rect(12f, 118f, 305f, 22f), "CPU main/render: " + mainThread + " / " + renderThread);
         GUI.Label(new Rect(12f, 140f, 305f, 22f), "GPU frame: " + ToMilliseconds(gpuRecorder));
         GUI.Label(new Rect(12f, 162f, 305f, 22f), "draw / triangles / batches: "

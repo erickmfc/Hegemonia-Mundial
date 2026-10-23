@@ -575,7 +575,7 @@ namespace Hegemonia.AI.BrainMaster
             bool defenseGap = snapshot.NavalUnits < TargetCoastalDefenseShips
                               || snapshot.FixedWingAircraft < 2
                               || snapshot.RadarCount < TargetRadars
-                              || (TargetCiws > 0 && CountOwnByHintFast("ciws", "phalanx", "antia") < TargetCiws);
+                              || (TargetCiws > 0 && CountOwnByHintFast("ciws", "phalanx", "antia", "ares ar") < TargetCiws);
             bool forceGap = snapshot.NavalUnits < TargetFleet || snapshot.FixedWingAircraft < TargetAircraft;
             WeakEmpireRecoveryActive = elapsed >= 900f
                                        && (snapshot.PlatformCount < 1
@@ -584,7 +584,7 @@ namespace Hegemonia.AI.BrainMaster
                                            || snapshot.NavalUnits < Mathf.Min(6, TargetFleet)
                                            || snapshot.FixedWingAircraft < Mathf.Min(6, TargetAircraft)
                                            || snapshot.RadarCount < TargetRadars
-                                           || (TargetCiws > 0 && CountOwnByHintFast("ciws", "phalanx", "antia") < TargetCiws));
+                                           || (TargetCiws > 0 && CountOwnByHintFast("ciws", "phalanx", "antia", "ares ar") < TargetCiws));
 
             if (elapsed < 180f)
             {
@@ -760,7 +760,7 @@ namespace Hegemonia.AI.BrainMaster
                             + " plataformas=" + snapshot.PlatformCount + "/" + TargetPlatforms
                             + " piers=" + snapshot.PierCount + "/" + TargetPiers
                             + " radar=" + snapshot.RadarCount + "/" + TargetRadars
-                            + " ciws=" + CountOwnByHintFast("ciws", "phalanx", "antia") + "/" + TargetCiws
+                            + " ciws=" + CountOwnByHintFast("ciws", "phalanx", "antia", "ares ar") + "/" + TargetCiws
                             + " recuperacao=" + WeakEmpireRecoveryActive;
             DiagnosticoDesempenhoJogo.RegistrarEvento("IA_Imperial", resumo);
             DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia_relatorio_" + marco + "_" + TeamId, resumo);

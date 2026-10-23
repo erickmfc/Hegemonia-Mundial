@@ -201,6 +201,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private void TickAresPlacement(float now)
         {
+            ReconcileAresCountWithWorld();
             if (_aresBuilt >= MaxAresTotal)
                 return;
 
@@ -246,6 +247,32 @@ namespace Hegemonia.AI.BrainMaster
                 QueueAresBuild("ares", baseCenter, IA_TerrainType.Open,
                     60f, AresMaxRadius, 88, 25f);
             }
+        }
+
+        private void ReconcileAresCountWithWorld()
+        {
+            if (_context == null || _context.WorldState == null)
+                return;
+
+            int existingAres = 0;
+            for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
+            {
+                GameObject structure = _context.WorldState.OwnStructures[i];
+                if (structure == null)
+                    continue;
+
+                IA_ConstructionMetadata metadata = structure.GetComponent<IA_ConstructionMetadata>();
+                string identity = metadata != null
+                    ? IA_Text.Normalize(metadata.ItemId + " " + metadata.DisplayName + " " + metadata.SourcePrefabName + " " + structure.name)
+                    : IA_Text.Normalize(structure.name);
+                if (identity.Contains("ares_ar") || identity.Contains("ares ar"))
+                    existingAres++;
+            }
+
+            // _aresBuilt também reserva vagas já enfileiradas neste runtime.
+            // O máximo mantém essas reservas e recupera estruturas existentes
+            // depois que o diretor é recriado ao carregar uma partida salva.
+            _aresBuilt = Mathf.Max(_aresBuilt, existingAres);
         }
 
         private bool QueueAresBuild(string itemKey, Vector3 anchor, IA_TerrainType terrain,

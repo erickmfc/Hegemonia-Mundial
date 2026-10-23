@@ -1323,6 +1323,45 @@ public static class NavalPlacementResolver
         return IsWaterAtPosition(position, seaLevel);
     }
 
+    /// <summary>
+    /// Confirma que a área ocupada por uma estrutura terrestre inteira está em
+    /// chão firme. O centro sozinho não basta para pistas e outros prédios largos.
+    /// </summary>
+    public static bool IsDryLandFootprintValid(
+        Vector3 center,
+        Vector2 footprintSize,
+        Quaternion rotation,
+        float padding = 0f,
+        float sampleSpacing = 16f,
+        int maxSamplesPerAxis = 9)
+    {
+        float halfX = Mathf.Max(1f, footprintSize.x * 0.5f + padding);
+        float halfZ = Mathf.Max(1f, footprintSize.y * 0.5f + padding);
+        float spacing = Mathf.Max(4f, sampleSpacing);
+        int maxSamples = Mathf.Clamp(maxSamplesPerAxis, 3, 15);
+        int samplesX = Mathf.Clamp(Mathf.CeilToInt((halfX * 2f) / spacing) + 1, 3, maxSamples);
+        int samplesZ = Mathf.Clamp(Mathf.CeilToInt((halfZ * 2f) / spacing) + 1, 3, maxSamples);
+        float seaLevel = ResolveSeaLevel();
+
+        for (int x = 0; x < samplesX; x++)
+        {
+            float tx = samplesX == 1 ? 0.5f : x / (float)(samplesX - 1);
+            float localX = Mathf.Lerp(-halfX, halfX, tx);
+            for (int z = 0; z < samplesZ; z++)
+            {
+                float tz = samplesZ == 1 ? 0.5f : z / (float)(samplesZ - 1);
+                float localZ = Mathf.Lerp(-halfZ, halfZ, tz);
+                Vector3 sample = center + rotation * new Vector3(localX, 0f, localZ);
+                if (IsWaterAtPositionForDryLandPlacement(sample, seaLevel))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     private static bool IsGroundSurfaceCollider(Collider collider)
     {
         if (collider == null)

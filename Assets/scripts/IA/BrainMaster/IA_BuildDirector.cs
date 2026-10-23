@@ -1017,7 +1017,11 @@ namespace Hegemonia.AI.BrainMaster
                     sentries++;
                 }
 
-                if (name.Contains("ciws") || name.Contains("phalanx") || name.Contains("antia"))
+                string defenseIdentity = hasMetadata
+                    ? IA_Text.Normalize(metadata.ItemId + " " + metadata.DisplayName + " " + metadata.SourcePrefabName)
+                    : name;
+                if (name.Contains("ciws") || name.Contains("phalanx") || name.Contains("antia")
+                    || defenseIdentity.Contains("ares_ar") || defenseIdentity.Contains("ares ar"))
                 {
                     ciws++;
                 }

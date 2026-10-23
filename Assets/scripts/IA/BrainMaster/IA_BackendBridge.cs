@@ -968,7 +968,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (RequiresDryLand(data, zone) && !IsDryLandFootprintValid(position, halfExtents, map, data, zone))
+            if (RequiresDryLand(data, zone) && !IsDryLandFootprintValid(position, resolvedRotation, halfExtents, map, data, zone))
             {
                 reason = "footprint invade agua ou costa";
                 return false;
@@ -1753,7 +1753,7 @@ namespace Hegemonia.AI.BrainMaster
             return true;
         }
 
-        private bool IsDryLandFootprintValid(Vector3 position, Vector2 halfExtents, IA_MapAnalyzer map, DadosConstrucao data, IA_ZoneType zone)
+        private bool IsDryLandFootprintValid(Vector3 position, Quaternion rotation, Vector2 halfExtents, IA_MapAnalyzer map, DadosConstrucao data, IA_ZoneType zone)
         {
             bool rejectCoast = RequiresDryLand(data, zone);
             bool airport = IsAirport(data, zone);
@@ -1772,7 +1772,7 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     float tz = sampleCountZ <= 1 ? 0.5f : iz / (float)(sampleCountZ - 1);
                     float offsetZ = Mathf.Lerp(-extentZ, extentZ, tz);
-                    Vector3 samplePosition = position + new Vector3(offsetX, 0f, offsetZ);
+                    Vector3 samplePosition = position + rotation * new Vector3(offsetX, 0f, offsetZ);
 
                     // A classificacao marcada e reutilizada pela validacao
                     // fisica abaixo. Antes o mesmo ponto era consultado duas

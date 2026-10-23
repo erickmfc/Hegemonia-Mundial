@@ -238,17 +238,17 @@ namespace Hegemonia.AI.IA01
                 ponto = hit.point;
             }
 
-            ClassificacaoSuperficieMapa classificacao;
-            if (RegistroSuperficieMapa.TryClassify(ponto, out classificacao, out _, 1.5f, 2f)
-                && classificacao == ClassificacaoSuperficieMapa.Agua)
+            if (definition.Domain != IA01BuildDomain.Coastal
+                && !NavalPlacementResolver.IsDryLandFootprintValid(
+                    ponto,
+                    lot.Footprint,
+                    lot.Rotation,
+                    definition.Domain == IA01BuildDomain.Airfield ? 12f : 3f,
+                    definition.Domain == IA01BuildDomain.Airfield ? 16f : 24f))
             {
-                reason = "estrutura terrestre sobre agua";
-                return false;
-            }
-
-            if (definition.Domain != IA01BuildDomain.Coastal && NavalPlacementResolver.IsWaterAtPosition(ponto))
-            {
-                reason = "terreno selecionado e agua, mas a estrutura e terrestre";
+                reason = definition.Domain == IA01BuildDomain.Airfield
+                    ? "a area da pista ou do aeroporto alcança agua"
+                    : "a area da estrutura terrestre alcança agua";
                 return false;
             }
 

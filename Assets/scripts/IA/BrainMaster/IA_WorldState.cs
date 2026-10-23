@@ -67,7 +67,13 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<IdentidadeUnidade> _globalIdentityCache = new List<IdentidadeUnidade>(256);
         private readonly List<RegistrySnapshotEntry> _registrySnapshot = new List<RegistrySnapshotEntry>(256);
         private readonly Dictionary<int, IA_EnemyObservation> _enemyMemoryById = new Dictionary<int, IA_EnemyObservation>(256);
-        private readonly IA_ForceSnapshot _forceSnapshot = new IA_ForceSnapshot();
+        private IA_ForceSnapshot _publishedForceSnapshot = new IA_ForceSnapshot();
+        private IA_ForceSnapshot _workingForceSnapshot = new IA_ForceSnapshot();
+        private int _visibleEnemyStructures;
+        private readonly List<GameObject> _workingOwnUnits = new List<GameObject>(128);
+        private readonly List<GameObject> _workingOwnStructures = new List<GameObject>(128);
+        private readonly List<GameObject> _workingOwnCombatUnits = new List<GameObject>(128);
+        private readonly List<IA_VisibilityProvider> _workingVisibilityProviders = new List<IA_VisibilityProvider>(48);
         private readonly List<int> _staleEnemyIds = new List<int>(64);
         private readonly HashSet<int> _canonicalKeys = new HashSet<int>();
         private readonly List<IA_StrategicTargetData> _strategicTargetPool = new List<IA_StrategicTargetData>(16);
@@ -100,10 +106,10 @@ namespace Hegemonia.AI.BrainMaster
         private static int _registryVersion = 1;
         private static float _nextFindFallbackAllowedTime = -999f;
 
-        public readonly List<GameObject> OwnUnits = new List<GameObject>(128);
-        public readonly List<GameObject> OwnStructures = new List<GameObject>(128);
-        public readonly List<GameObject> OwnCombatUnits = new List<GameObject>(128);
-        public readonly List<IA_VisibilityProvider> VisibilityProviders = new List<IA_VisibilityProvider>(48);
+        public List<GameObject> OwnUnits { get; private set; } = new List<GameObject>(128);
+        public List<GameObject> OwnStructures { get; private set; } = new List<GameObject>(128);
+        public List<GameObject> OwnCombatUnits { get; private set; } = new List<GameObject>(128);
+        public List<IA_VisibilityProvider> VisibilityProviders { get; private set; } = new List<IA_VisibilityProvider>(48);
         public readonly List<IA_EnemyObservation> VisibleEnemies = new List<IA_EnemyObservation>(128);
 
         public Vector3 BaseCenter { get; private set; }
@@ -117,7 +123,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public IA_ForceSnapshot ForceSnapshot
         {
-            get { return _forceSnapshot; }
+            get { return _publishedForceSnapshot; }
         }
 
         public IA_WorldState(int teamId)
@@ -273,10 +279,10 @@ namespace Hegemonia.AI.BrainMaster
         {
             RebuildRegistrySnapshotIfNeeded(now);
 
-            OwnUnits.Clear();
-            OwnStructures.Clear();
-            OwnCombatUnits.Clear();
-            VisibilityProviders.Clear();
+            _workingOwnUnits.Clear();
+            _workingOwnStructures.Clear();
+            _workingOwnCombatUnits.Clear();
+            _workingVisibilityProviders.Clear();
             ResetForceSnapshot();
 
             _mobileVisibilityBudget = MaxMobileVisibilityProviders;
@@ -309,16 +315,16 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (snap.Cache.IsStructure)
                 {
-                    OwnStructures.Add(snap.GameObject);
+                    _workingOwnStructures.Add(snap.GameObject);
                     AccumulateStructureSnapshot(snap.Cache);
                 }
                 else
                 {
-                    OwnUnits.Add(snap.GameObject);
+                    _workingOwnUnits.Add(snap.GameObject);
                     AccumulateUnitSnapshot(snap.Cache);
                     if (!snap.Cache.IsTransport)
                     {
-                        OwnCombatUnits.Add(snap.GameObject);
+                        _workingOwnCombatUnits.Add(snap.GameObject);
                     }
                 }
 
@@ -328,7 +334,7 @@ namespace Hegemonia.AI.BrainMaster
                         ref _mobileVisibilityBudget,
                         ref _structureVisibilityBudget))
                 {
-                    VisibilityProviders.Add(new IA_VisibilityProvider
+                    _workingVisibilityProviders.Add(new IA_VisibilityProvider
                     {
                         Source = snap.Transform,
                         Radius = snap.Cache.VisionRadius
@@ -341,23 +347,9 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            NavioTransporteTropas.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
-            TransporteAnfibio.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
-            BaseCenter = ComputeBaseCenter();
-
-            if (_baseProbe == null)
-            {
-                _baseProbe = CreateVirtualBaseProbe();
-            }
-
-            _baseProbe.position = BaseCenter;
-            VisibilityProviders.Add(new IA_VisibilityProvider
-            {
-                Source = _baseProbe,
-                Radius = 260f
-            });
-
-            LastScanTime = now;
+            NavioTransporteTropas.AcumularForcaEmbarcada(_teamId, _workingForceSnapshot);
+            TransporteAnfibio.AcumularForcaEmbarcada(_teamId, _workingForceSnapshot);
+            PublishOwnedSnapshot(now);
             _ownedRefreshInProgress = false;
             _lastSeenRegistryVersion = _registryVersion;
             _lastSeenEntityRegistryVersion = RegistroEntidadesJogo.Version;
@@ -370,6 +362,63 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return true;
+        }
+
+        private void PublishOwnedSnapshot(float now)
+        {
+            List<GameObject> oldOwnUnits = OwnUnits;
+            OwnUnits = _workingOwnUnits;
+            _workingOwnUnits = oldOwnUnits;
+
+            List<GameObject> oldOwnStructures = OwnStructures;
+            OwnStructures = _workingOwnStructures;
+            _workingOwnStructures = oldOwnStructures;
+
+            List<GameObject> oldOwnCombatUnits = OwnCombatUnits;
+            OwnCombatUnits = _workingOwnCombatUnits;
+            _workingOwnCombatUnits = oldOwnCombatUnits;
+
+            List<IA_VisibilityProvider> oldVisibilityProviders = VisibilityProviders;
+            VisibilityProviders = _workingVisibilityProviders;
+            _workingVisibilityProviders = oldVisibilityProviders;
+
+            IA_ForceSnapshot oldSnapshot = _publishedForceSnapshot;
+            _publishedForceSnapshot = _workingForceSnapshot;
+            _workingForceSnapshot = oldSnapshot;
+
+            BaseCenter = ComputeBaseCenter();
+            if (_baseProbe == null)
+            {
+                _baseProbe = CreateVirtualBaseProbe();
+            }
+
+            _baseProbe.position = BaseCenter;
+            VisibilityProviders.Add(new IA_VisibilityProvider
+            {
+                Source = _baseProbe,
+                Radius = 260f
+            });
+
+            float recentCombatSeconds = _lastCombatSeenTime <= 0f
+                ? 999f
+                : Mathf.Max(0f, now - _lastCombatSeenTime);
+            SetSnapshotCombatTelemetry(_publishedForceSnapshot, now, recentCombatSeconds);
+            SetSnapshotCombatTelemetry(_workingForceSnapshot, now, recentCombatSeconds);
+            LastScanTime = now;
+        }
+
+        private void SetSnapshotCombatTelemetry(IA_ForceSnapshot snapshot, float now, float recentCombatSeconds)
+        {
+            if (snapshot == null)
+                return;
+
+            snapshot.LastUpdatedTime = now;
+            snapshot.VisibleEnemies = VisibleEnemies.Count;
+            snapshot.VisibleEnemyStructures = _visibleEnemyStructures;
+            snapshot.EnemyVisible = VisibleEnemies.Count > 0;
+            snapshot.ActiveMissiles = IA_CombatTelemetry.ActiveMissiles;
+            snapshot.ActiveProjectiles = IA_CombatTelemetry.ActiveProjectiles;
+            snapshot.RecentCombatSeconds = recentCombatSeconds;
         }
 
         private void RefreshVisibleAndMaintenance(float now)
@@ -790,16 +839,22 @@ namespace Hegemonia.AI.BrainMaster
                 return 0;
             }
 
+            return CountEntitiesByHint(OwnUnits, hints)
+                   + CountEntitiesByHint(OwnStructures, hints);
+        }
+
+        private int CountEntitiesByHint(List<GameObject> entities, string[] hints)
+        {
             int count = 0;
-            for (int i = 0; i < OwnUnits.Count; i++)
+            for (int i = 0; i < entities.Count; i++)
             {
-                GameObject unit = OwnUnits[i];
-                if (unit == null)
+                GameObject entity = entities[i];
+                if (entity == null)
                 {
                     continue;
                 }
 
-                string name = GetEntityCache(unit).NormalizedName;
+                string name = GetEntityCache(entity).NormalizedName;
                 bool matched = false;
 
                 for (int h = 0; h < hints.Length; h++)
@@ -825,10 +880,10 @@ namespace Hegemonia.AI.BrainMaster
         {
             RebuildRegistrySnapshotIfNeeded(now);
 
-            OwnUnits.Clear();
-            OwnStructures.Clear();
-            OwnCombatUnits.Clear();
-            VisibilityProviders.Clear();
+            _workingOwnUnits.Clear();
+            _workingOwnStructures.Clear();
+            _workingOwnCombatUnits.Clear();
+            _workingVisibilityProviders.Clear();
             ResetForceSnapshot();
 
             int mobileVisibilityBudget = MaxMobileVisibilityProviders;
@@ -849,16 +904,16 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (snap.Cache.IsStructure)
                 {
-                    OwnStructures.Add(snap.GameObject);
+                    _workingOwnStructures.Add(snap.GameObject);
                     AccumulateStructureSnapshot(snap.Cache);
                 }
                 else
                 {
-                    OwnUnits.Add(snap.GameObject);
+                    _workingOwnUnits.Add(snap.GameObject);
                     AccumulateUnitSnapshot(snap.Cache);
                     if (!snap.Cache.IsTransport)
                     {
-                        OwnCombatUnits.Add(snap.GameObject);
+                        _workingOwnCombatUnits.Add(snap.GameObject);
                     }
                 }
 
@@ -867,7 +922,7 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                VisibilityProviders.Add(new IA_VisibilityProvider
+                _workingVisibilityProviders.Add(new IA_VisibilityProvider
                 {
                     Source = snap.Transform,
                     Radius = snap.Cache.VisionRadius
@@ -876,24 +931,9 @@ namespace Hegemonia.AI.BrainMaster
 
             // Tropas dentro de transporte continuam sendo força nacional para decisões
             // de produção, porém não são unidades de campo, alvos ou fontes de visão.
-            NavioTransporteTropas.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
-            TransporteAnfibio.AcumularForcaEmbarcada(_teamId, _forceSnapshot);
-
-            BaseCenter = ComputeBaseCenter();
-
-            if (_baseProbe == null)
-            {
-                _baseProbe = CreateVirtualBaseProbe();
-            }
-
-            _baseProbe.position = BaseCenter;
-            VisibilityProviders.Add(new IA_VisibilityProvider
-            {
-                Source = _baseProbe,
-                Radius = 260f
-            });
-
-            LastScanTime = now;
+            NavioTransporteTropas.AcumularForcaEmbarcada(_teamId, _workingForceSnapshot);
+            TransporteAnfibio.AcumularForcaEmbarcada(_teamId, _workingForceSnapshot);
+            PublishOwnedSnapshot(now);
         }
 
         private void RebuildRegistrySnapshotIfNeeded(float now)
@@ -980,6 +1020,7 @@ namespace Hegemonia.AI.BrainMaster
         private void RefreshVisibleEnemies(float now)
         {
             VisibleEnemies.Clear();
+            _visibleEnemyStructures = 0;
             RTSVisibilityService visibility = RTSVisibilityService.Instancia;
 
             for (int i = 0; i < _registrySnapshot.Count; i++)
@@ -1019,7 +1060,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 if (obs.IsStructure)
                 {
-                    _forceSnapshot.VisibleEnemyStructures++;
+                    _visibleEnemyStructures++;
                 }
             }
 
@@ -1048,6 +1089,9 @@ namespace Hegemonia.AI.BrainMaster
 
             for (int i = 0; i < _staleEnemyIds.Count; i++)
                 _enemyMemoryById.Remove(_staleEnemyIds[i]);
+
+            _publishedForceSnapshot.VisibleEnemyStructures = _visibleEnemyStructures;
+            _workingForceSnapshot.VisibleEnemyStructures = _visibleEnemyStructures;
         }
 
         private void CleanupMemory(float now, float maxAge)
@@ -1107,8 +1151,8 @@ namespace Hegemonia.AI.BrainMaster
                 CombatPressure = new IA_CombatPressure();
             }
 
-            int navalUnits = _forceSnapshot.NavalUnits + _forceSnapshot.Submarines;
-            int airUnits = _forceSnapshot.AirUnits;
+            int navalUnits = _publishedForceSnapshot.NavalUnits + _publishedForceSnapshot.Submarines;
+            int airUnits = _publishedForceSnapshot.AirUnits;
             bool enemyVisible = VisibleEnemies.Count > 0;
             int activeMissiles = IA_CombatTelemetry.ActiveMissiles;
             int activeProjectiles = IA_CombatTelemetry.ActiveProjectiles;
@@ -1151,12 +1195,8 @@ namespace Hegemonia.AI.BrainMaster
             CombatPressure.ActiveProjectiles = activeProjectiles;
             CombatPressure.LastUpdatedTime = now;
 
-            _forceSnapshot.LastUpdatedTime = now;
-            _forceSnapshot.VisibleEnemies = VisibleEnemies.Count;
-            _forceSnapshot.EnemyVisible = enemyVisible;
-            _forceSnapshot.ActiveMissiles = activeMissiles;
-            _forceSnapshot.ActiveProjectiles = activeProjectiles;
-            _forceSnapshot.RecentCombatSeconds = recentCombatSeconds;
+            SetSnapshotCombatTelemetry(_publishedForceSnapshot, now, recentCombatSeconds);
+            SetSnapshotCombatTelemetry(_workingForceSnapshot, now, recentCombatSeconds);
         }
 
         private bool IsHostileVisible(IdentidadeUnidade target)
@@ -1360,203 +1400,203 @@ namespace Hegemonia.AI.BrainMaster
 
         private void ResetForceSnapshot()
         {
-            _forceSnapshot.LastUpdatedTime = Time.time;
-            _forceSnapshot.TotalOwnUnits = 0;
-            _forceSnapshot.TotalOwnStructures = 0;
-            _forceSnapshot.TotalCombatUnits = 0;
-            _forceSnapshot.InfantryUnits = 0;
-            _forceSnapshot.TankUnits = 0;
-            _forceSnapshot.ArtilleryUnits = 0;
-            _forceSnapshot.Helicopters = 0;
-            _forceSnapshot.FixedWingAircraft = 0;
-            _forceSnapshot.ReadyAircraft = 0;
-            _forceSnapshot.ReadyFighters = 0;
-            _forceSnapshot.AirUnits = 0;
-            _forceSnapshot.NavalUnits = 0;
-            _forceSnapshot.AircraftCarriers = 0;
-            _forceSnapshot.Submarines = 0;
-            _forceSnapshot.OilTankers = 0;
-            _forceSnapshot.CargoShips = 0;
-            _forceSnapshot.CoastalDefenseShips = 0;
-            _forceSnapshot.AttackFleetShips = 0;
-            _forceSnapshot.GroundTransports = 0;
-            _forceSnapshot.HoverTransports = 0;
-            _forceSnapshot.NavalTransports = 0;
-            _forceSnapshot.VisibleEnemies = 0;
-            _forceSnapshot.VisibleEnemyStructures = 0;
-            _forceSnapshot.BarracksCount = 0;
-            _forceSnapshot.FactoryCount = 0;
-            _forceSnapshot.AirportCount = 0;
-            _forceSnapshot.MilitaryAirportCount = 0;
-            _forceSnapshot.CommercialAirportCount = 0;
-            _forceSnapshot.HeliportCount = 0;
-            _forceSnapshot.CommercialAircraft = 0;
-            _forceSnapshot.ShipyardCount = 0;
-            _forceSnapshot.PierCount = 0;
-            _forceSnapshot.PlatformCount = 0;
-            _forceSnapshot.WarehouseCount = 0;
-            _forceSnapshot.RadarCount = 0;
-            _forceSnapshot.ActiveMissiles = 0;
-            _forceSnapshot.ActiveProjectiles = 0;
-            _forceSnapshot.EnemyVisible = false;
+            _workingForceSnapshot.LastUpdatedTime = Time.time;
+            _workingForceSnapshot.TotalOwnUnits = 0;
+            _workingForceSnapshot.TotalOwnStructures = 0;
+            _workingForceSnapshot.TotalCombatUnits = 0;
+            _workingForceSnapshot.InfantryUnits = 0;
+            _workingForceSnapshot.TankUnits = 0;
+            _workingForceSnapshot.ArtilleryUnits = 0;
+            _workingForceSnapshot.Helicopters = 0;
+            _workingForceSnapshot.FixedWingAircraft = 0;
+            _workingForceSnapshot.ReadyAircraft = 0;
+            _workingForceSnapshot.ReadyFighters = 0;
+            _workingForceSnapshot.AirUnits = 0;
+            _workingForceSnapshot.NavalUnits = 0;
+            _workingForceSnapshot.AircraftCarriers = 0;
+            _workingForceSnapshot.Submarines = 0;
+            _workingForceSnapshot.OilTankers = 0;
+            _workingForceSnapshot.VisibleEnemyStructures = _visibleEnemyStructures;
+            _workingForceSnapshot.CargoShips = 0;
+            _workingForceSnapshot.CoastalDefenseShips = 0;
+            _workingForceSnapshot.AttackFleetShips = 0;
+            _workingForceSnapshot.GroundTransports = 0;
+            _workingForceSnapshot.HoverTransports = 0;
+            _workingForceSnapshot.NavalTransports = 0;
+            _workingForceSnapshot.VisibleEnemies = VisibleEnemies.Count;
+            _workingForceSnapshot.BarracksCount = 0;
+            _workingForceSnapshot.FactoryCount = 0;
+            _workingForceSnapshot.AirportCount = 0;
+            _workingForceSnapshot.MilitaryAirportCount = 0;
+            _workingForceSnapshot.CommercialAirportCount = 0;
+            _workingForceSnapshot.HeliportCount = 0;
+            _workingForceSnapshot.CommercialAircraft = 0;
+            _workingForceSnapshot.ShipyardCount = 0;
+            _workingForceSnapshot.PierCount = 0;
+            _workingForceSnapshot.PlatformCount = 0;
+            _workingForceSnapshot.WarehouseCount = 0;
+            _workingForceSnapshot.RadarCount = 0;
+            _workingForceSnapshot.ActiveMissiles = IA_CombatTelemetry.ActiveMissiles;
+            _workingForceSnapshot.ActiveProjectiles = IA_CombatTelemetry.ActiveProjectiles;
+            _workingForceSnapshot.EnemyVisible = VisibleEnemies.Count > 0;
         }
 
         private void AccumulateUnitSnapshot(EntityRuntimeCacheEntry entry)
         {
-            _forceSnapshot.TotalOwnUnits++;
+            _workingForceSnapshot.TotalOwnUnits++;
 
             if (!entry.IsTransport)
             {
-                _forceSnapshot.TotalCombatUnits++;
+                _workingForceSnapshot.TotalCombatUnits++;
             }
 
             if (entry.IsOilTanker)
             {
-                _forceSnapshot.OilTankers++;
+                _workingForceSnapshot.OilTankers++;
             }
 
             if (entry.IsCargoShip)
             {
-                _forceSnapshot.CargoShips++;
+                _workingForceSnapshot.CargoShips++;
             }
 
             if (entry.Domain == IA_Domain.Naval && !entry.IsSubmarine && !entry.IsOilTanker && !entry.IsNavalTransport)
             {
-                _forceSnapshot.NavalUnits++;
+                _workingForceSnapshot.NavalUnits++;
                 if (entry.IsHighValueMobile)
                 {
-                    _forceSnapshot.AttackFleetShips++;
+                    _workingForceSnapshot.AttackFleetShips++;
                 }
                 else
                 {
-                    _forceSnapshot.CoastalDefenseShips++;
+                    _workingForceSnapshot.CoastalDefenseShips++;
                 }
             }
 
             if (entry.IsAircraftCarrier)
             {
-                _forceSnapshot.AircraftCarriers++;
+                _workingForceSnapshot.AircraftCarriers++;
             }
             else if (entry.Domain == IA_Domain.Air)
             {
-                _forceSnapshot.AirUnits++;
+                _workingForceSnapshot.AirUnits++;
             }
 
             if (entry.IsSubmarine)
             {
-                _forceSnapshot.Submarines++;
+                _workingForceSnapshot.Submarines++;
             }
 
             if (entry.IsInfantry)
             {
-                _forceSnapshot.InfantryUnits++;
+                _workingForceSnapshot.InfantryUnits++;
             }
 
             if (entry.IsTank)
             {
-                _forceSnapshot.TankUnits++;
+                _workingForceSnapshot.TankUnits++;
             }
 
             if (entry.IsArtillery)
             {
-                _forceSnapshot.ArtilleryUnits++;
+                _workingForceSnapshot.ArtilleryUnits++;
             }
 
             if (entry.IsHelicopter)
             {
-                _forceSnapshot.Helicopters++;
+                _workingForceSnapshot.Helicopters++;
             }
 
             if (entry.IsFixedWing)
             {
-                _forceSnapshot.FixedWingAircraft++;
-                _forceSnapshot.ReadyAircraft++;
-                _forceSnapshot.ReadyFighters++;
+                _workingForceSnapshot.FixedWingAircraft++;
+                _workingForceSnapshot.ReadyAircraft++;
+                _workingForceSnapshot.ReadyFighters++;
             }
 
             if (entry.IsCommercialAircraft)
             {
-                _forceSnapshot.CommercialAircraft++;
-                _forceSnapshot.ReadyAircraft++;
+                _workingForceSnapshot.CommercialAircraft++;
+                _workingForceSnapshot.ReadyAircraft++;
             }
 
             if (entry.IsNavalTransport)
             {
-                _forceSnapshot.NavalTransports++;
+                _workingForceSnapshot.NavalTransports++;
             }
 
             if (entry.IsGroundTransport)
             {
-                _forceSnapshot.GroundTransports++;
+                _workingForceSnapshot.GroundTransports++;
             }
 
             if (entry.IsHoverTransport)
             {
-                _forceSnapshot.HoverTransports++;
+                _workingForceSnapshot.HoverTransports++;
             }
         }
 
         private void AccumulateStructureSnapshot(EntityRuntimeCacheEntry entry)
         {
             string n = entry.NormalizedName;
-            _forceSnapshot.TotalOwnStructures++;
+            _workingForceSnapshot.TotalOwnStructures++;
 
             if (entry.IsBarracks || n.Contains("tenda") || n.Contains("barraca") || n.Contains("quartel"))
             {
-                _forceSnapshot.BarracksCount++;
+                _workingForceSnapshot.BarracksCount++;
             }
 
             if (entry.IsFactory || n.Contains("construtor de veiculos") || n.Contains("construtor") || n.Contains("fabrica"))
             {
-                _forceSnapshot.FactoryCount++;
+                _workingForceSnapshot.FactoryCount++;
             }
 
             if ((entry.IsAirport && !entry.IsHeliport) || entry.IsMilitaryAirport || entry.IsCommercialAirport
                 || n.Contains("aeroporto") || n.Contains("airport") || n.Contains("base aerea") || n.Contains("pista"))
             {
-                _forceSnapshot.AirportCount++;
+                _workingForceSnapshot.AirportCount++;
                 if (entry.IsCommercialAirport || n.Contains("comercial") || n.Contains("commercial"))
                 {
-                    _forceSnapshot.CommercialAirportCount++;
+                    _workingForceSnapshot.CommercialAirportCount++;
                 }
                 else if (entry.IsMilitaryAirport)
                 {
-                    _forceSnapshot.MilitaryAirportCount++;
+                    _workingForceSnapshot.MilitaryAirportCount++;
                 }
                 else
                 {
-                    _forceSnapshot.MilitaryAirportCount++;
+                    _workingForceSnapshot.MilitaryAirportCount++;
                 }
             }
 
             if (entry.IsHeliport || n.Contains("heliporto") || n.Contains("heliport") || n.Contains("hangar"))
             {
-                _forceSnapshot.HeliportCount++;
+                _workingForceSnapshot.HeliportCount++;
             }
 
             if (entry.IsShipyard || n.Contains("estaleiro"))
             {
-                _forceSnapshot.ShipyardCount++;
+                _workingForceSnapshot.ShipyardCount++;
             }
 
             if (entry.IsPier || n.Contains("pier"))
             {
-                _forceSnapshot.PierCount++;
+                _workingForceSnapshot.PierCount++;
             }
 
             if (entry.IsPlatform || n.Contains("plataforma"))
             {
-                _forceSnapshot.PlatformCount++;
+                _workingForceSnapshot.PlatformCount++;
             }
 
             if (entry.IsWarehouse || n.Contains("armazem") || n.Contains("warehouse"))
             {
-                _forceSnapshot.WarehouseCount++;
+                _workingForceSnapshot.WarehouseCount++;
             }
 
             if (entry.IsRadar)
             {
-                _forceSnapshot.RadarCount++;
+                _workingForceSnapshot.RadarCount++;
             }
         }
 
