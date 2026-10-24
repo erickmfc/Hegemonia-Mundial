@@ -309,7 +309,7 @@ public sealed class IA03EventHookPlayModeTests
             GameObject lostUnitA = CreateEntity(objects, identityType, damageType, 1, false, "IA03 lost force A");
             GameObject lostUnitB = CreateEntity(objects, identityType, damageType, 1, false, "IA03 lost force B");
             GameObject enemyAttacker = CreateEntity(objects, identityType, damageType, 2, false, "IA03 report enemy attacker");
-            IList ownCombatUnits = (IList)worldStateType.GetField("OwnCombatUnits").GetValue(worldState);
+            IList ownCombatUnits = (IList)worldStateType.GetProperty("OwnCombatUnits").GetValue(worldState, null);
             ownCombatUnits.Add(attacker);
             ownCombatUnits.Add(survivingUnitA);
             ownCombatUnits.Add(survivingUnitB);
