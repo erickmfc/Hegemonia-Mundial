@@ -2547,7 +2547,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         mensagem = "Sancoes aplicadas contra " + alvo.nomePais + ".";
         RegistrarNoticia(mensagem);
         SistemaMercadoGlobal.Instancia?.SimularMercado();
-        ProcessarEconomia();
+        if (isActiveAndEnabled) ProcessarEconomia();
         NotificarGovernoAtualizadoSeguro();
         return true;
     }
@@ -2582,7 +2582,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         mensagem = "Sancoes removidas de " + alvo.nomePais + ".";
         RegistrarNoticia(mensagem);
         SistemaMercadoGlobal.Instancia?.SimularMercado();
-        ProcessarEconomia();
+        if (isActiveAndEnabled) ProcessarEconomia();
         NotificarGovernoAtualizadoSeguro();
         return true;
     }

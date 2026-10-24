@@ -16,6 +16,9 @@ public sealed class AgriculturaNacional : MonoBehaviour
     public const string PesquisaAgrotoxicosId = "pesquisa_tecnologia_agrotoxicos";
     public const int InvestimentoMinimoSemanal = 100; // $100M por semana
     public const int CapacidadeArmazenamentoPadrao = 5000;
+    // Uma verba diária de 20 mil financia capacidade para produzir uma unidade
+    // de comida por dia. A previsão e a produção usam a mesma conversão.
+    public const long VerbaPorUnidadeComidaDiaria = 20_000L;
     private const float ProducaoBaseDiaria = 24f;
     // Mesmo sem irrigação e insumos, uma parcela das lavouras de sequeiro continua
     // produzindo. Os recursos elevam o rendimento acima desse piso.
@@ -215,6 +218,12 @@ public sealed class AgriculturaNacional : MonoBehaviour
     public static string ObterNomeCultura(string id)
     {
         if (string.IsNullOrEmpty(id)) return "Alimento";
+        switch (id)
+        {
+            case "comida_feijao": return "Feijão";
+            case "comida_cafe": return "Café";
+            case "comida_hortalicas": return "Hortaliças";
+        }
         string nome = id.Replace("comida_", string.Empty).Replace('_', ' ');
         return System.Globalization.CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(nome);
     }
@@ -556,8 +565,7 @@ public sealed class AgriculturaNacional : MonoBehaviour
                 ? CalcularBonusInvestimentoPercentual(pais.ultimaCobrancaAgricola)
                 : CalcularBonusAplicadoInvestimentoFixo(
                     investimento, pais.ultimaCobrancaAgricola, pais.investimentoAgricolaSemRecursos);
-        int quantidade = Mathf.FloorToInt(EstimarProducaoDiaria(pais, bonusInvestimento)
-            * OrcamentoInvestimentoNacional.FatorProducao(pais, 0));
+        int quantidade = EstimarProducaoDiaria(pais, bonusInvestimento);
         if (quantidade <= 0) return;
 
         float irrigacao = pais.niveisInvestimentoAgricola[(int)AreaInvestimentoAgricola.Irrigacao];
@@ -576,12 +584,41 @@ public sealed class AgriculturaNacional : MonoBehaviour
     /// </summary>
     public int EstimarProducaoDiaria(DadosPaisGoverno pais, float bonusInvestimento)
     {
+        long verbaAgricolaDiaria = pais != null && pais.orcamentoInvestimentoAtivo
+            ? pais.orcamentoAgriculturaHoje
+            : 0L;
+        return EstimarProducaoDiaria(pais, bonusInvestimento, verbaAgricolaDiaria);
+    }
+
+    /// <summary>
+    /// Projeta a produção do próximo ciclo com uma verba agrícola configurada,
+    /// usando os estoques e a capacidade de armazenamento atuais.
+    /// </summary>
+    public int EstimarProducaoPrevistaParaOrcamento(DadosPaisGoverno pais, long verbaAgricolaDiaria)
+    {
+        if (pais == null) return 0;
+        long verba = Math.Max(0L, verbaAgricolaDiaria);
+        long equivalenteSemanal = verba > long.MaxValue / 7L ? long.MaxValue : verba * 7L;
+        float bonusInvestimento = CalcularBonusInvestimentoPercentual(equivalenteSemanal);
+        int producao = EstimarProducaoDiaria(pais, bonusInvestimento, verba);
+        return Mathf.Min(producao, ObterCapacidadeLivreComida(pais));
+    }
+
+    public static int CalcularCapacidadeFinanciadaPorOrcamentoDiario(long verbaAgricolaDiaria)
+    {
+        long verba = Math.Max(0L, verbaAgricolaDiaria);
+        return (int)Math.Min(int.MaxValue, verba / VerbaPorUnidadeComidaDiaria);
+    }
+
+    private int EstimarProducaoDiaria(DadosPaisGoverno pais, float bonusInvestimento, long verbaAgricolaDiaria)
+    {
         if (pais == null) return 0;
         if (governo == null) governo = SistemaGovernoMundial.Instancia;
         if (governo == null) return 0;
 
         GarantirDadosArea(pais);
-        float capacidade = CalcularCapacidadeNominal(pais);
+        float capacidade = CalcularCapacidadeNominal(pais)
+            + CalcularCapacidadeFinanciadaPorOrcamentoDiario(verbaAgricolaDiaria);
         int[] niveis = pais.niveisInvestimentoAgricola;
         float eficiencia = Mathf.Clamp(pais.eficienciaAgricola + Mathf.Max(0f, bonusInvestimento)
             + niveis[(int)AreaInvestimentoAgricola.Pesquisa] * 0.015f, 0.5f, 1.8f);

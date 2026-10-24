@@ -571,7 +571,15 @@ public class SistemaEconomiaImoveis : MonoBehaviour
                 : null;
             if (paisOrcamento != null && paisOrcamento.orcamentoInvestimentoAtivo)
             {
-                economia.comidaProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 0);
+                // A produção agrícola já aplica a verba à capacidade diária.
+                // O fator do setor segue valendo para a comida de estruturas,
+                // sem multiplicar a colheita pela segunda vez.
+                float producaoAgricola = Mathf.Min(
+                    Mathf.Max(0f, economia.comidaProduzida),
+                    Mathf.Max(0, paisOrcamento.producaoAgricolaDiaria));
+                float producaoDeEstruturas = Mathf.Max(0f, economia.comidaProduzida - producaoAgricola);
+                economia.comidaProduzida = producaoAgricola + producaoDeEstruturas
+                    * OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 0);
                 economia.energiaProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 1);
                 economia.petroleoProduzido *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 2);
                 economia.industriaProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 3);

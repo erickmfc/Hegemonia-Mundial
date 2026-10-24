@@ -71,8 +71,14 @@ public static class OrcamentoInvestimentoNacional
         GerenciadorTempo tempo = GerenciadorTempo.Instancia;
         int diaAtual = tempo != null ? Mathf.Max(1, tempo.totalDias) : 1;
         if (pais.ultimoDiaOrcamentoProcessado < diaAtual) return 1f;
+        return FatorProducaoPrevisto(pais, indice, ObterValorAplicadoSetor(pais, indice));
+    }
+
+    public static float FatorProducaoPrevisto(DadosPaisGoverno pais, int indice, long valorAplicado)
+    {
+        if (pais == null) return 1f;
         long baseSetor = ObterValorBaseSetor(pais, indice);
-        long aplicado = ObterValorAplicadoSetor(pais, indice);
+        long aplicado = Math.Max(0L, valorAplicado);
         if (baseSetor <= 0L) return 0.25f;
         return Mathf.Clamp(0.25f + 0.75f * (float)((double)aplicado / baseSetor), 0.25f, 2f);
     }

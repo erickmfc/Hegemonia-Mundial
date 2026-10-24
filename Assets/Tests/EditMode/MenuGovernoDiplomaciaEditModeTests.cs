@@ -25,6 +25,10 @@ public sealed class MenuGovernoDiplomaciaEditModeTests
     private FieldInfo identidadesField;
     private IList listaIdentidadesOriginal;
     private object[] snapshotIdentidades;
+    private Type registroNacoesType;
+    private FieldInfo instanciaRegistroField;
+    private object registroOriginal;
+    private GameObject registroObject;
 
     [SetUp]
     public void SetUp()
@@ -34,11 +38,20 @@ public sealed class MenuGovernoDiplomaciaEditModeTests
         relacaoType = FindGameplayType("RelacaoPaisGoverno");
         identidadeType = FindGameplayType("IdentidadeIA");
         identidadesField = identidadeType.GetField("TodasIdentidades", BindingFlags.Public | BindingFlags.Static);
+        registroNacoesType = FindGameplayType("RegistroNacoesGoverno");
+        instanciaRegistroField = registroNacoesType.GetField("<Instancia>k__BackingField", BindingFlags.NonPublic | BindingFlags.Static);
+        registroOriginal = instanciaRegistroField.GetValue(null);
         listaIdentidadesOriginal = (IList)identidadesField.GetValue(null);
         snapshotIdentidades = listaIdentidadesOriginal != null
             ? listaIdentidadesOriginal.Cast<object>().ToArray()
             : Array.Empty<object>();
         identidadesField.SetValue(null, CreateList(identidadeType));
+
+        // Supply the runtime registry without invoking DontDestroyOnLoad from EditMode.
+        registroObject = new GameObject("Teste_RegistroNacoes_MenuGoverno");
+        registroObject.SetActive(false);
+        object registro = registroObject.AddComponent(registroNacoesType);
+        instanciaRegistroField.SetValue(null, registro);
 
         governoObject = new GameObject("Teste_MenuGoverno_Diplomacia");
         governoObject.SetActive(false);
@@ -61,6 +74,8 @@ public sealed class MenuGovernoDiplomaciaEditModeTests
     {
         if (identidadeObject != null) UnityEngine.Object.DestroyImmediate(identidadeObject);
         if (governoObject != null) UnityEngine.Object.DestroyImmediate(governoObject);
+        instanciaRegistroField.SetValue(null, registroOriginal);
+        if (registroObject != null) UnityEngine.Object.DestroyImmediate(registroObject);
 
         IList restored = CreateList(identidadeType);
         if (listaIdentidadesOriginal != null)
@@ -190,10 +205,23 @@ public sealed class MenuGovernoDiplomaciaEditModeTests
         Set(identidade, "estaAtivo", ativa);
         Set(identidade, "eliminado", false);
         identidadeObject.SetActive(true);
+
+        // EditMode tests do not consistently invoke MonoBehaviour.OnEnable, so
+        // register the fixture explicitly in the same collection used by the
+        // runtime diplomatic target validation.
+        IList identidades = (IList)identidadesField.GetValue(null);
+        if (!identidades.Contains(identidade)) identidades.Add(identidade);
+        Assert.That(identidades.Cast<Component>().Any(item => item != null
+            && Get<int>(item, "teamID") == 2
+            && Get<bool>(item, "estaAtivo") == ativa
+            && !Get<bool>(item, "eliminado")), Is.True,
+            "The diplomatic test target must be registered with the requested active state.");
     }
 
     private (bool sucesso, string mensagem) CallWithMessage(string methodName, int teamId)
     {
+        Assert.That(registroNacoesType.GetProperty("Instancia").GetValue(null), Is.Not.Null,
+            "The edit-mode fixture must keep a national registry available.");
         object[] args = { teamId, null };
         MethodInfo method = governoType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance);
         bool sucesso = (bool)method.Invoke(governo, args);

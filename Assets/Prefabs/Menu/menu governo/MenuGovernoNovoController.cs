@@ -39,6 +39,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private int diaProducaoRenderizado = -1;
     private int diaProducaoPendente = -1;
     private float horarioAtualizacaoProducao;
+    private int diaPrevisaoOrcamentoRenderizado = -1;
+    private int diaPrevisaoOrcamentoPendente = -1;
+    private float horarioAtualizacaoPrevisaoOrcamento;
     // Mostra o catalogo negociavel ao abrir; o jogador pode filtrar ofertas ativas.
     private bool mercadoSomenteDisponiveis;
     private string mercadoCategoria = "Todos";
@@ -46,8 +49,14 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private readonly List<SliderInt> slidersOrcamentoForcas = new List<SliderInt>();
     private readonly List<Label> valoresOrcamentoSetores = new List<Label>();
     private readonly List<Label> valoresOrcamentoForcas = new List<Label>();
+    private readonly List<int> percentuaisPrevisaoAgricola = new List<int>();
+    private readonly List<Label> linhasPrevisaoAgricola = new List<Label>();
+    private readonly List<Label> verbasPrevisaoAgricola = new List<Label>();
+    private readonly List<Label> producoesPrevisaoAgricola = new List<Label>();
+    private readonly List<Label> populacoesPrevisaoAgricola = new List<Label>();
     private Label resumoOrcamentoDiario;
     private Label statusOrcamento;
+    private Label limiteRecursosAgricolas;
     private string assinaturaBandeira;
 
     private int TeamJogador => ResolverTeamJogador(SistemaGovernoMundial.Instancia);
@@ -176,6 +185,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AtualizarCabecalho();
         AtualizarRecursos();
         AtualizarProducaoSeNovoDia();
+        AtualizarPrevisaoOrcamentoSeNovoDia();
     }
 
     public void Abrir(bool abrir)
@@ -360,7 +370,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             string nomeSecao = nome;
             Button botao = new Button(() => MostrarSecao(nomeSecao))
             {
-                text = nomeSecao.ToUpperInvariant(),
+                text = RotuloMenu(nomeSecao).ToUpperInvariant(),
                 name = "nav-" + nomeSecao.ToLowerInvariant()
             };
             botao.AddToClassList("gov-nav-button");
@@ -386,7 +396,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         for (int i = 0; i < nomesAbas.Length; i++)
         {
             string aba = nomesAbas[i];
-            Button botao = new Button(() => MostrarPagina(aba)) { text = aba.ToUpperInvariant() };
+            Button botao = new Button(() => MostrarPagina(aba))
+            {
+                text = RotuloMenu(aba).ToUpperInvariant(),
+                name = "tab-" + aba.ToLowerInvariant()
+            };
             botao.AddToClassList("gov-tab-button");
             abas.Add(botao);
         }
@@ -411,8 +425,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             diaProducaoPendente = -1;
         }
         foreach (Button botao in abas.Query<Button>().ToList())
-            botao.EnableInClassList("active", botao.text.Equals(aba, StringComparison.OrdinalIgnoreCase));
-        if (breadcrumb != null) breadcrumb.text = categoria + " / " + aba;
+            botao.EnableInClassList("active", botao.name == "tab-" + aba.ToLowerInvariant());
+        if (breadcrumb != null) breadcrumb.text = RotuloMenu(categoria) + " / " + RotuloMenu(aba);
 
         detalheAtual = null;
         conteudo.Clear();
@@ -1168,7 +1182,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         Label titulo = new Label("ORCAMENTO DIARIO DE ALIMENTOS");
         titulo.AddToClassList("gov-card-title");
         controle.Add(titulo);
-        Label explicacao = new Label("A compra usa agora a porcentagem do caixa disponivel. Com pais e rota ativos, a verba e reservada e o cargueiro entrega; sem fornecedor/rota, o Mercado automatico entrega na hora.");
+        Label explicacao = new Label("A compra usa agora a porcentagem do caixa disponível. Com país e rota ativos, a verba é reservada e o cargueiro entrega; sem fornecedor ou rota, o Mercado automático entrega na hora.");
         explicacao.AddToClassList("gov-action-section-copy");
         controle.Add(explicacao);
 
@@ -1227,7 +1241,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             int indice = Mathf.Max(0, culturas.IndexOf(cultura.value));
             bool ok = agricultura.DefinirParticipacaoCompraAlimentar(TeamJogador, indice, percentualCultura.value);
-            MostrarMensagem(ok ? "Mix alimentar salvo para " + culturas[indice] + "." : "Nao foi possivel salvar o mix alimentar.");
+            MostrarMensagem(ok ? "Mix alimentar salvo para " + culturas[indice] + "." : "Não foi possível salvar o mix alimentar.");
             MostrarPagina(abaAtual);
         }) { text = "APLICAR MIX" };
         aplicarMix.AddToClassList("gov-mini-button");
@@ -1237,7 +1251,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             agricultura.DefinirPercentualCompraAlimentar(TeamJogador, percentualCaixa.value);
             bool ok = agricultura.ExecutarCompraAlimentarPercentualCaixa(TeamJogador, out string mensagem, out _);
-            MostrarMensagem(ok ? mensagem : "Compra nao executada: " + mensagem);
+            MostrarMensagem(ok ? mensagem : "Compra não executada: " + mensagem);
             if (pais.compraAlimentarDiariaAtiva && GerenciadorTempo.Instancia != null)
                 pais.ultimoDiaCompraAlimentarProcessado = Mathf.Max(1, GerenciadorTempo.Instancia.totalDias);
             AtualizarRecursos();
@@ -1252,7 +1266,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             agricultura.DefinirPercentualCompraAlimentar(TeamJogador, percentualCaixa.value);
             bool ativa = !pais.compraAlimentarDiariaAtiva;
             bool ok = agricultura.DefinirCompraAlimentarDiaria(TeamJogador, ativa, out string mensagem);
-            MostrarMensagem(ok ? mensagem : "Rotina diaria atualizada com aviso: " + mensagem);
+            MostrarMensagem(ok ? mensagem : "Rotina diária atualizada com aviso: " + mensagem);
             AtualizarRecursos();
             MostrarPagina(abaAtual);
         }) { text = pais.compraAlimentarDiariaAtiva ? "PAUSAR ROTINA" : "ATIVAR + COMPRAR HOJE" };
@@ -1285,7 +1299,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             && pais.niveisInvestimentoAgricola.Length > (int)AreaInvestimentoAgricola.Agroindustria)
             capacidadeNominal += pais.niveisInvestimentoAgricola[(int)AreaInvestimentoAgricola.Agroindustria] * 2f;
 
-        VisualElement expansao = AdicionarSecaoAcoes("CAPACIDADE AGRÍCOLA", "A ampliação adiciona capacidade nominal; a colheita real é atualizada no próximo dia.");
+        VisualElement expansao = AdicionarSecaoAcoes("CAPACIDADE AGRÍCOLA", "O custo é debitado agora; a colheita recebe a capacidade ampliada na próxima virada diária.");
         AdicionarTextoAcao(expansao, "Atual: " + capacidadeNominal.ToString("N0") + " t/dia | nível " + nivel + "/10");
         Button ampliar = AdicionarBotaoAcao(expansao,
             nivel >= 10 ? "CAPACIDADE NO MÁXIMO" : "AMPLIAR +5 t/dia\n" + Moeda(custoProximoNivel),
@@ -1295,6 +1309,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             ampliar.tooltip = "Saldo insuficiente. Custo do próximo nível: " + Moeda(custoProximoNivel);
 
         long saldo = governo.ObterSaldoDisponivelParaOperacao(TeamJogador);
+        int diaAtual = GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+        int diasAteCobranca = 7 - ((diaAtual - 1) % 7);
+        int proximoDiaCobranca = diaAtual + diasAteCobranca;
         string investimentoAtual = pais.investimentoAgricolaPercentualAtivo
             ? pais.investimentoAgricolaPercentualSemanal.ToString("0.###", CultureInfo.GetCultureInfo("pt-BR"))
                 + "% semanal • próxima cobrança estimada: "
@@ -1303,6 +1320,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         VisualElement recorrencia = AdicionarSecaoAcoes("INVESTIMENTO RECORRENTE", "Escolha o valor fixo semanal ou um percentual do saldo. A seleção apenas agenda a cobrança; a primeira cobrança ocorre na próxima virada semanal.");
         AdicionarTextoAcao(recorrencia, "Configuração atual: " + investimentoAtual);
         AdicionarTextoAcao(recorrencia, "Saldo disponível para operação: " + Moeda(saldo) + ". Nenhuma quantia é debitada ao clicar.");
+        AdicionarTextoAcao(recorrencia, pais.orcamentoInvestimentoAtivo
+            ? "Orçamento diário ativo: a agricultura usa o rateio de hoje; a cobrança semanal separada não será feita."
+            : "Próxima cobrança: dia " + proximoDiaCobranca + " (faltam " + diasAteCobranca + " dias). Nenhum débito ocorre antes dessa virada semanal.");
         bool mostrarPercentual = modoPercentualAgricolaSelecionadoNoMenu ?? pais.investimentoAgricolaPercentualAtivo;
         VisualElement gradeModos = AdicionarGradeAcoes(recorrencia);
         Button modoFixo = AdicionarBotaoGrade(gradeModos, "VALOR FIXO\nPOR SEMANA",
@@ -1513,7 +1533,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         DadosItemMercado item = mercado != null ? mercado.ObterItem("comida") : null;
         if (governo == null || mercado == null || pais == null || item == null)
         {
-            MostrarMensagem("A compra de alimentos esta indisponivel porque governo ou mercado nao foi inicializado.");
+            MostrarMensagem("A compra de alimentos está indisponível porque o governo ou o mercado não foi inicializado.");
             return;
         }
 
@@ -1627,16 +1647,16 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
         AdicionarCard(conteudo, "PARCEIROS COMERCIAIS CONECTADOS",
             parceirosComerciais.Count > 0
-                ? string.Join(", ", parceirosComerciais) + ". As vendas priorizam esses paises conforme a demanda e o saldo."
-                : "Nenhum pais amigo esta conectado para comprar automaticamente. Melhore as relacoes diplomaticas ou remova sancoes.");
+                ? string.Join(", ", parceirosComerciais) + ". As vendas priorizam esses países conforme a demanda e o saldo."
+                : "Nenhum país amigo está conectado para comprar automaticamente. Melhore as relações diplomáticas ou remova sanções.");
 
         if (abaAtual == "Comprar" || abaAtual == "Vender")
         {
             bool comprar = abaAtual == "Comprar";
             AdicionarCard(conteudo, comprar ? "COMPRAR RECURSOS" : "VENDER RECURSOS",
                 comprar
-                    ? "Escolha a quantidade em cada card. O valor total e calculado antes da confirmacao."
-                    : "Venda recursos do estoque nacional para compradores internacionais disponiveis.");
+                    ? "Escolha a quantidade em cada cartão. O valor total é calculado antes da confirmação."
+                    : "Venda recursos do estoque nacional para compradores internacionais disponíveis.");
             if (comprar) AdicionarControleCompraAlimentar(conteudo);
 
             VisualElement filtros = new VisualElement();
@@ -1658,7 +1678,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             });
             filtros.Add(estoquePrimeiro);
 
-            Toggle somenteDisponiveis = new Toggle("SOMENTE DISPONIVEIS")
+            Toggle somenteDisponiveis = new Toggle("SOMENTE DISPONÍVEIS")
             {
                 value = mercadoSomenteDisponiveis
             };
@@ -1691,7 +1711,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 {
                     mercadoCategoria = categoriaBotao;
                     MostrarPagina(abaAtual);
-                }) { text = categoriaBotao.ToUpperInvariant() };
+                }) { text = RotuloCategoriaMercado(categoriaBotao).ToUpperInvariant() };
                 botaoCategoria.AddToClassList("gov-market-filter");
                 if (categoriaBotao == mercadoCategoria) botaoCategoria.AddToClassList("active");
                 categorias.Add(botaoCategoria);
@@ -1744,8 +1764,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         if (abaAtual == "Rotas")
         {
-            AdicionarCard(conteudo, "ROTAS E OPERACOES RECENTES",
-                "As transacoes abaixo mostram a origem, o destino e o valor movimentado pelo mercado global.");
+            AdicionarCard(conteudo, "ROTAS E OPERAÇÕES RECENTES",
+                "As transações abaixo mostram a origem, o destino e o valor movimentado pelo mercado global.");
             TabelaCabecalho("RECURSO", "ORIGEM", "DESTINO", "QUANTIDADE", "TOTAL");
             foreach (TransacaoMercado transacao in mercado.historico.Where(t => t != null).Reverse<TransacaoMercado>().Take(20))
             {
@@ -1758,19 +1778,19 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             transacao.quantidade.ToString("N0"), Moeda(transacao.total));
             }
             if (!mercado.historico.Any(t => t != null))
-                AdicionarCard(conteudo, "SEM OPERACOES", "Ainda nao existem rotas comerciais registradas.");
+                AdicionarCard(conteudo, "SEM OPERAÇÕES", "Ainda não existem rotas comerciais registradas.");
             return;
         }
 
-        AdicionarCard(conteudo, "COTACOES DO MERCADO",
-            "Compare precos, variacoes, oferta e disponibilidade antes de negociar.");
-        TabelaCabecalho("ITEM", "PRECO", "VARIACAO", "ESTOQUE GLOBAL", "STATUS");
+        AdicionarCard(conteudo, "COTAÇÕES DO MERCADO",
+            "Compare preços, variações, oferta e disponibilidade antes de negociar.");
+        TabelaCabecalho("ITEM", "PREÇO", "VARIAÇÃO", "ESTOQUE GLOBAL", "STATUS");
         foreach (DadosItemMercado item in itens)
         {
             string status = item.precoAtual <= 0
-                ? "SEM PRECO"
+                ? "SEM PREÇO"
                 : item.podeComprar && item.estoqueGlobal > 0
-                    ? "OFERTA DISPONIVEL"
+                    ? "OFERTA DISPONÍVEL"
                     : item.podeVender
                         ? "VENDA NACIONAL"
                         : "SEM OFERTA";
@@ -1842,19 +1862,19 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         string variacao = item.variacaoPercentual.ToString("+0.0;-0.0;0.0") + "%";
         string unidadeLabel = item.equipamentoMilitar ? " un." : item.municaoMilitar ? " cart." : " t";
         string liquidacao = item.equipamentoMilitar
-            ? "\nA unidade sera transferida diretamente ao comprador."
+            ? "\nA unidade será transferida diretamente ao comprador."
             : item.municaoMilitar
-                ? "\nEstoque de municao nacional, creditado apos a entrega."
-                : "\nLiquidacao no estoque agregado do armazem.";
+                ? "\nEstoque de munição nacional, creditado após a entrega."
+                : "\nLiquidação no estoque agregado do armazém.";
         string limiteLabel = limiteQuantidade > 0
-            ? "\nLimite desta operacao: " + limiteQuantidade.ToString("N0") + unidadeLabel
+            ? "\nLimite desta operação: " + limiteQuantidade.ToString("N0") + unidadeLabel
             : string.Empty;
         Label detalhes = new Label(
-            "Preco unitario: " + Moeda(item.precoAtual) +
-            "\nVariacao: " + variacao +
+            "Preço unitário: " + Moeda(item.precoAtual) +
+            "\nVariação: " + variacao +
             (comprar
                 ? "\nOferta global: " + item.estoqueGlobal.ToString("N0") + unidadeLabel
-                    + (parceiro != null ? "\nPais vendedor: " + parceiro.nomePais
+                    + (parceiro != null ? "\nPaís vendedor: " + parceiro.nomePais
                         + (item.equipamentoMilitar ? string.Empty : " (estoque: " + estoqueFornecedor.ToString("N0") + unidadeLabel + ")") : string.Empty)
                 : "\nSeu estoque: " + estoqueJogador.ToString("N0") + unidadeLabel
                     + (parceiro != null ? "\nComprador: " + parceiro.nomePais : string.Empty)) + limiteLabel + liquidacao);
@@ -1873,7 +1893,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             int valor = Mathf.Clamp(quantidade.value, 1, Mathf.Max(1, limiteQuantidade));
             if (item.precoAtual <= 0)
             {
-                total.text = "SEM PRECO DISPONIVEL";
+                total.text = "SEM PREÇO DISPONÍVEL";
                 return;
             }
 
@@ -1883,7 +1903,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 ? "ITENS: " + Moeda(subtotal) + " | FRETE: " + Moeda(frete)
                     + "\nTOTAL A PAGAR: " + Moeda(subtotal + frete) + " | " + valor.ToString("N0") + unidadeLabel
                 : "VALOR DA VENDA: " + Moeda(subtotal) + " | FRETE DO COMPRADOR: " + Moeda(frete)
-                    + "\nVOCE RECEBE: " + Moeda(subtotal) + " | " + valor.ToString("N0") + unidadeLabel;
+                    + "\nVOCÊ RECEBE: " + Moeda(subtotal) + " | " + valor.ToString("N0") + unidadeLabel;
         };
         Toggle repeticao = null;
         quantidade.RegisterValueChangedCallback(evt =>
@@ -1935,7 +1955,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         if (!disponivel)
         {
             string motivoIndisponibilidade = item.precoAtual <= 0
-                ? "SEM PRECO"
+                ? "SEM PREÇO"
                 : comprar && item.estoqueGlobal <= 0
                     ? "OFERTA GLOBAL ESGOTADA"
                     : !comprar && estoqueJogador <= 0
@@ -1946,7 +1966,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                                 ? "FORNECEDOR SEM ESTOQUE"
                                 : limiteQuantidade <= 0
                                     ? (comprar ? "SALDO INSUFICIENTE PARA ITEM E FRETE" : "COMPRADOR SEM SALDO PARA ESTA QUANTIDADE")
-                                : "OPERACAO INDISPONIVEL";
+                                : "OPERAÇÃO INDISPONÍVEL";
             Label aviso = new Label(motivoIndisponibilidade);
             aviso.AddToClassList("gov-market-warning");
             card.Add(aviso);
@@ -2038,7 +2058,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             else
                 ok = m.Vender(g.teamJogador, comprador.teamId, item.id, quantidade, out mensagem);
         }
-        MostrarMensagem((ok ? "Operacao concluida: " : "Operacao recusada: ") + mensagem);
+        MostrarMensagem((ok ? "Operação concluída: " : "Operação recusada: ") + mensagem);
         AtualizarRecursos();
         MostrarPagina(abaAtual);
     }
@@ -2059,7 +2079,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         string categoria = (item.categoria ?? string.Empty).ToLowerInvariant();
         if (item.recurso == RecursoMercado.Comida || id.Contains("comida_")) return "Alimentos";
         if (item.recurso == RecursoMercado.Agua || id.Contains("agua")) return "Agua";
-        if (categoria.Contains("insumo agricola")) return "Insumos";
+        if (categoria.Contains("insumo agricola") || categoria.Contains("insumo agrícola")) return "Insumos";
 
         switch (item.recurso)
         {
@@ -2085,6 +2105,18 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 if (texto.Contains("combust") || texto.Contains("gasolina") || texto.Contains("diesel")) return "Combustiveis";
                 if (IndustriaIds.EhIndustrial(item.RecursoIdEfetivo)) return "Industrial";
                 return "Outros";
+        }
+    }
+
+    private static string RotuloCategoriaMercado(string categoria)
+    {
+        switch (categoria)
+        {
+            case "Minerios": return "Minérios";
+            case "Combustiveis": return "Combustíveis";
+            case "Agua": return "Água";
+            case "Municoes": return "Munições";
+            default: return categoria;
         }
     }
 
@@ -2560,6 +2592,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         slidersOrcamentoForcas.Clear();
         valoresOrcamentoSetores.Clear();
         valoresOrcamentoForcas.Clear();
+        percentuaisPrevisaoAgricola.Clear();
+        linhasPrevisaoAgricola.Clear();
+        verbasPrevisaoAgricola.Clear();
+        producoesPrevisaoAgricola.Clear();
+        populacoesPrevisaoAgricola.Clear();
 
         VisualElement configuracao = new VisualElement();
         configuracao.AddToClassList("gov-card");
@@ -2673,6 +2710,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             forcas.Add(linha);
         }
         conteudo.Add(forcas);
+        ConstruirTabelaPrevisaoAgricola(pais);
         AtualizarResumoOrcamento(pais);
         SincronizarControlesOrcamento(pais);
     }
@@ -2698,7 +2736,126 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             slidersOrcamentoForcas[i].SetValueWithoutNotify(percentuaisForcas[i]);
             valoresOrcamentoForcas[i].text = percentuaisForcas[i] + "%  ·  " + Moeda(valoresForcas[i]) + "/dia";
         }
+        AtualizarTabelaPrevisaoAgricola(pais);
         AtualizarResumoOrcamento(pais);
+    }
+
+    private void ConstruirTabelaPrevisaoAgricola(DadosPaisGoverno pais)
+    {
+        VisualElement card = new VisualElement();
+        card.AddToClassList("gov-card");
+        card.AddToClassList("gov-budget-card");
+        Label titulo = new Label("TABELA DE RETORNO · AGRICULTURA E ALIMENTOS");
+        titulo.AddToClassList("gov-card-title");
+        card.Add(titulo);
+        Label explicacao = new Label("Cada 20 mil de verba financia capacidade para 1 unidade de comida/dia. Projeção usa água, insumos e estoque atuais; 1 unidade atende 100 civis/dia, e militares consomem o dobro.");
+        explicacao.AddToClassList("gov-budget-description");
+        card.Add(explicacao);
+
+        VisualElement cabecalho = new VisualElement();
+        cabecalho.AddToClassList("gov-budget-forecast-row");
+        cabecalho.AddToClassList("header");
+        AdicionarCelulaPrevisao(cabecalho, "DESTINAÇÃO", "gov-budget-forecast-cell");
+        AdicionarCelulaPrevisao(cabecalho, "VERBA / DIA", "gov-budget-forecast-cell");
+        AdicionarCelulaPrevisao(cabecalho, "COMIDA / DIA", "gov-budget-forecast-cell");
+        AdicionarCelulaPrevisao(cabecalho, "CIVIS / DIA", "gov-budget-forecast-cell");
+        card.Add(cabecalho);
+
+        foreach (int percentual in new[] { 0, 10, 20, 30, 50, 100, -1 })
+        {
+            percentuaisPrevisaoAgricola.Add(percentual);
+            VisualElement linha = new VisualElement();
+            linha.AddToClassList("gov-budget-forecast-row");
+            if (percentual < 0) linha.AddToClassList("current");
+            linhasPrevisaoAgricola.Add(AdicionarCelulaPrevisao(linha,
+                percentual < 0 ? "ATUAL" : percentual + "%", "gov-budget-forecast-cell"));
+            verbasPrevisaoAgricola.Add(AdicionarCelulaPrevisao(linha, "—", "gov-budget-forecast-cell"));
+            producoesPrevisaoAgricola.Add(AdicionarCelulaPrevisao(linha, "—", "gov-budget-forecast-cell"));
+            populacoesPrevisaoAgricola.Add(AdicionarCelulaPrevisao(linha, "—", "gov-budget-forecast-cell"));
+            card.Add(linha);
+        }
+
+        limiteRecursosAgricolas = new Label();
+        limiteRecursosAgricolas.AddToClassList("gov-budget-forecast-note");
+        card.Add(limiteRecursosAgricolas);
+        conteudo.Add(card);
+        AtualizarTabelaPrevisaoAgricola(pais);
+        diaPrevisaoOrcamentoRenderizado = GerenciadorTempo.Instancia != null
+            ? GerenciadorTempo.Instancia.totalDias : -1;
+        diaPrevisaoOrcamentoPendente = -1;
+    }
+
+    private static Label AdicionarCelulaPrevisao(VisualElement linha, string texto, string classe)
+    {
+        Label celula = new Label(texto);
+        celula.AddToClassList(classe);
+        linha.Add(celula);
+        return celula;
+    }
+
+    private void AtualizarTabelaPrevisaoAgricola(DadosPaisGoverno pais)
+    {
+        if (pais == null || linhasPrevisaoAgricola.Count == 0) return;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        AgriculturaNacional agricultura = governo != null ? governo.GetComponent<AgriculturaNacional>() : null;
+        long tetoAplicavel = Math.Max(0L, pais.orcamentoInvestimentoDiario);
+        if (governo != null)
+            tetoAplicavel = Math.Min(tetoAplicavel, Math.Max(0L, governo.ObterSaldoDisponivelParaOperacao(pais.teamId)));
+
+        for (int i = 0; i < percentuaisPrevisaoAgricola.Count; i++)
+        {
+            int percentual = percentuaisPrevisaoAgricola[i] < 0
+                ? OrcamentoInvestimentoNacional.ObterPercentualSetor(pais, 0)
+                : percentuaisPrevisaoAgricola[i];
+            long verba = (long)Math.Floor(tetoAplicavel * (double)percentual / 100d);
+            int comida = agricultura != null ? agricultura.EstimarProducaoPrevistaParaOrcamento(pais, verba) : 0;
+            linhasPrevisaoAgricola[i].text = percentuaisPrevisaoAgricola[i] < 0 ? percentual + "% · ATUAL" : percentual + "%";
+            verbasPrevisaoAgricola[i].text = Moeda(verba);
+            producoesPrevisaoAgricola[i].text = agricultura != null ? comida.ToString("N0") + " un." : "SEM SISTEMA";
+            populacoesPrevisaoAgricola[i].text = SistemaPopulacao.CalcularCivisAtendidosPorComida(comida).ToString("N0");
+        }
+
+        if (limiteRecursosAgricolas != null)
+        {
+            if (agricultura == null || governo == null)
+                limiteRecursosAgricolas.text = "Projeção indisponível: sistema agrícola não conectado.";
+            else
+            {
+                int necessidade = Mathf.CeilToInt(Mathf.Max(0, pais.populacaoCivil)
+                    / (float)SistemaPopulacao.CivisAtendidosPorUnidadeComidaDiaria
+                    + Mathf.Max(0, pais.populacaoMilitarAtiva)
+                    / (float)SistemaPopulacao.CivisAtendidosPorUnidadeComidaDiaria * 2f);
+                limiteRecursosAgricolas.text = "Necessidade atual estimada: " + necessidade.ToString("N0")
+                    + " un./dia para civis e efetivo ativo. Previsão limitada pelo estoque atual e pela armazenagem livre.";
+            }
+        }
+    }
+
+    private void AtualizarPrevisaoOrcamentoSeNovoDia()
+    {
+        if (categoria != "Economia" || abaAtual != "Orcamento" || linhasPrevisaoAgricola.Count == 0)
+        {
+            diaPrevisaoOrcamentoPendente = -1;
+            return;
+        }
+
+        GerenciadorTempo tempo = GerenciadorTempo.Instancia;
+        int diaAtual = tempo != null ? tempo.totalDias : -1;
+        if (diaAtual < 0 || diaAtual == diaPrevisaoOrcamentoRenderizado) return;
+        if (diaPrevisaoOrcamentoPendente != diaAtual)
+        {
+            diaPrevisaoOrcamentoPendente = diaAtual;
+            horarioAtualizacaoPrevisaoOrcamento = Time.unscaledTime + 0.75f;
+            return;
+        }
+        if (Time.unscaledTime < horarioAtualizacaoPrevisaoOrcamento) return;
+
+        DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null
+            ? SistemaGovernoMundial.Instancia.ObterPais(TeamJogador)
+            : null;
+        AtualizarTabelaPrevisaoAgricola(pais);
+        diaPrevisaoOrcamentoRenderizado = diaAtual;
+        diaPrevisaoOrcamentoPendente = -1;
     }
 
     private void AtualizarResumoOrcamento(DadosPaisGoverno pais)
@@ -4317,7 +4474,34 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         return Moeda((long)Math.Round(valor, MidpointRounding.AwayFromZero));
     }
 
-    private static string Titulo(string secao, string aba) => secao.ToUpperInvariant() + " - " + aba.ToUpperInvariant();
-    private static string Descricao(string secao) => "Painel nacional de " + secao.ToLowerInvariant() + ". Informacoes organizadas para leitura rapida e tomada de decisao.";
+    private static string RotuloMenu(string chave)
+    {
+        switch (chave)
+        {
+            case "Relacoes": return "Relações";
+            case "Aliancas": return "Alianças";
+            case "Sancoes": return "Sanções";
+            case "Pais": return "País";
+            case "Ciencia": return "Ciência";
+            case "Nacoes": return "Nações";
+            case "Pressao": return "Pressão";
+            case "Historico": return "Histórico";
+            case "Emprestimos": return "Empréstimos";
+            case "Orcamento": return "Orçamento";
+            case "Producao": return "Produção";
+            case "Populacao": return "População";
+            case "Exercito": return "Exército";
+            case "Aerea": return "Aérea";
+            case "Precos": return "Preços";
+            default: return chave;
+        }
+    }
+
+    private static string Titulo(string secao, string aba) =>
+        RotuloMenu(secao).ToUpperInvariant() + " - " + RotuloMenu(aba).ToUpperInvariant();
+
+    private static string Descricao(string secao) =>
+        "Painel nacional de " + RotuloMenu(secao).ToLower(CultureInfo.GetCultureInfo("pt-BR"))
+        + ". Informações organizadas para leitura rápida e tomada de decisão.";
 }
 

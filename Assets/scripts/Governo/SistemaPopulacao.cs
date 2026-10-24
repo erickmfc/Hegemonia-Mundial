@@ -14,6 +14,7 @@ using UnityEngine;
 public static class SistemaPopulacao
 {
     // --- Constantes de Calibracao ---
+    public const int CivisAtendidosPorUnidadeComidaDiaria = 100;
     private const float TAXA_CRESCIMENTO_BASE   = 0.015f;
     private const float TAXA_EMIGRACAO_BASE      = 0.012f;
     private const float OCUP_MINIMA_SEM_MORADIA  = 0.30f;
@@ -309,8 +310,15 @@ public static class SistemaPopulacao
     private static float CalcularNecessidadeComida(DadosPaisGoverno pais)
     {
         if (pais == null) return 0f;
-        return (UnityEngine.Mathf.Max(0, pais.populacaoCivil) / 100f)
-            + (UnityEngine.Mathf.Max(0, pais.populacaoMilitarAtiva) / 100f * 2f);
+        return (UnityEngine.Mathf.Max(0, pais.populacaoCivil) / (float)CivisAtendidosPorUnidadeComidaDiaria)
+            + (UnityEngine.Mathf.Max(0, pais.populacaoMilitarAtiva) / (float)CivisAtendidosPorUnidadeComidaDiaria * 2f);
+    }
+
+    public static int CalcularCivisAtendidosPorComida(float comidaDiaria)
+    {
+        if (float.IsNaN(comidaDiaria) || float.IsInfinity(comidaDiaria) || comidaDiaria <= 0f) return 0;
+        if (comidaDiaria >= int.MaxValue / (float)CivisAtendidosPorUnidadeComidaDiaria) return int.MaxValue;
+        return UnityEngine.Mathf.FloorToInt(comidaDiaria * CivisAtendidosPorUnidadeComidaDiaria);
     }
 
     private static int AplicarConsequenciasDaFome(

@@ -96,6 +96,39 @@ public sealed class AgriculturaNacionalEditModeTests
         Assert.That(estoqueCompleto, Is.EqualTo(1f).Within(0.001f));
     }
 
+    [TestCase(44_000_000L, 2200)]
+    [TestCase(22_000_000L, 1100)]
+    [TestCase(19_999L, 0)]
+    [TestCase(-1L, 0)]
+    public void OrcamentoDiarioFinanciaCapacidadeAgricolaProporcional(long verba, int capacidadeEsperada)
+    {
+        Assert.That(InvocarInt("AgriculturaNacional", "CalcularCapacidadeFinanciadaPorOrcamentoDiario", verba),
+            Is.EqualTo(capacidadeEsperada));
+    }
+
+    [Test]
+    public void ReferenciaDeQuarentaEQuatroMilhoesAproximaCemMilCivisComSafraMinima()
+    {
+        int capacidadeFinanciada = InvocarInt("AgriculturaNacional",
+            "CalcularCapacidadeFinanciadaPorOrcamentoDiario", 44_000_000L);
+        float bonus = InvocarFloat("CalcularBonusInvestimentoPercentual", 44_000_000L * 7L);
+        float producao = InvocarFloat("CalcularProducaoDiaria",
+            54f + capacidadeFinanciada, 1f + bonus, 0.3f, 1f, 1f, 1f, 1f);
+        int comidaArredondada = (int)Math.Round(producao, MidpointRounding.AwayFromZero);
+        int civis = InvocarInt("SistemaPopulacao", "CalcularCivisAtendidosPorComida", comidaArredondada);
+        Assert.That(capacidadeFinanciada, Is.EqualTo(2200));
+        Assert.That(comidaArredondada, Is.EqualTo(1014));
+        Assert.That(civis, Is.EqualTo(101400));
+    }
+
+    [TestCase(388f, 38800)]
+    [TestCase(1000f, 100000)]
+    [TestCase(0f, 0)]
+    public void UnidadesDeComidaMostramCivisAtendidosNaEscalaDoConsumo(float comida, int civisEsperados)
+    {
+        Assert.That(InvocarInt("SistemaPopulacao", "CalcularCivisAtendidosPorComida", comida), Is.EqualTo(civisEsperados));
+    }
+
     private static float Calcular(params float[] args)
     {
         Type tipo = Type.GetType("AgriculturaNacional, Assembly-CSharp");
@@ -121,5 +154,14 @@ public sealed class AgriculturaNacionalEditModeTests
         MethodInfo metodo = tipo.GetMethod(nome, BindingFlags.Public | BindingFlags.Static);
         Assert.That(metodo, Is.Not.Null);
         return (float)metodo.Invoke(null, args);
+    }
+
+    private static int InvocarInt(string tipoNome, string nome, params object[] args)
+    {
+        Type tipo = Type.GetType(tipoNome + ", Assembly-CSharp");
+        Assert.That(tipo, Is.Not.Null);
+        MethodInfo metodo = tipo.GetMethod(nome, BindingFlags.Public | BindingFlags.Static);
+        Assert.That(metodo, Is.Not.Null);
+        return Convert.ToInt32(metodo.Invoke(null, args));
     }
 }

@@ -425,7 +425,7 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     }
 
     [UnityTest]
-    public IEnumerator ProductionTabCanBuyFoodCapacityAndMiniMapFitsBothTargetResolutions()
+    public IEnumerator ProductionTabCanBuyFoodCapacity()
     {
         object government = ReadStatic(ResolveType("SistemaGovernoMundial"), "Instancia");
         Assert.That(government, Is.Not.Null);
@@ -577,6 +577,11 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { false });
         }
 
+    }
+
+    [UnityTest]
+    public IEnumerator MiniMapFitsBothTargetResolutions()
+    {
         Type miniMapType = ResolveType("MiniMapa");
         Component miniMap = UnityEngine.Object.FindFirstObjectByType(miniMapType, FindObjectsInactive.Include) as Component;
         Assert.That(miniMap, Is.Not.Null);
@@ -606,6 +611,7 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         float margin = Convert.ToSingle(Read(miniMap, "margemBorda"));
         AssertLayout(calculate, 1920f, 1080f, 1f, margin);
         AssertLayout(calculate, 1280f, 720f, 2f / 3f, margin);
+        yield return null;
     }
 
     private static void AssertLayout(MethodInfo calculate, float width, float height, float canvasScale, float margin)
