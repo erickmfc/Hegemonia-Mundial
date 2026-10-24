@@ -486,7 +486,7 @@ namespace Hegemonia.AI.IA01
         // reaches its production directors instead of remaining permanently idle.
         private void Update()
         {
-            if (!Application.isPlaying || !IsEnabled)
+            if (!Application.isPlaying || !IsEnabled || Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada)
             {
                 return;
             }

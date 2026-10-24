@@ -24,6 +24,7 @@ public class SistemaNoticiasEconomicas : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         impactoRestante = Mathf.MoveTowards(impactoRestante, 0f, Time.unscaledDeltaTime * 0.02f);
         if (Time.unscaledTime < proximoTick) return;
         proximoTick = Time.unscaledTime + Mathf.Max(8f, intervaloNoticias);

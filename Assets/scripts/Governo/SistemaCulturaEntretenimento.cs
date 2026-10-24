@@ -302,6 +302,7 @@ public sealed class SistemaCulturaEntretenimento : MonoBehaviour
     private void Update()
     {
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)) return;
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime >= proximaDescoberta)
         {
             proximaDescoberta = Time.unscaledTime + IntervaloDescobertaEstruturas;

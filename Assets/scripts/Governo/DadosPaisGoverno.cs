@@ -83,6 +83,7 @@ public class PesquisaNacionalEstado
     public int custoSaldo;
     public int custoEnergia;
     public int duracaoDias = 1;
+    public float diasPesquisaFinanciados;
     public int diaInicio = -1;
     public int nivelAtual;
     public int nivelMaximo = 1;
@@ -102,6 +103,7 @@ public class TecnologiaNacionalEstado
     public int custoSaldo;
     public int custoEnergia;
     public int duracaoDias = 1;
+    public float diasPesquisaFinanciados;
     public int diaInicio = -1;
     public int nivelAtual;
     public int nivelMaximo = 1;
@@ -119,6 +121,7 @@ public class LaboratorioNacionalEstado
     public int custoSaldo;
     public int custoEnergia;
     public int duracaoDias = 1;
+    public float diasPesquisaFinanciados;
     public int diaInicio = -1;
     public int nivelAtual;
     public int nivelMaximo = 3;
@@ -145,6 +148,11 @@ public class DadosPaisGoverno
     public string nomePresidente = "Presidente Atlas";
     public string nomeMoeda = "Atlas";
     public string simboloMoeda = "AT$";
+    public bool configuracaoInicialConcluida;
+    [Range(0, 3)] public int modeloBandeira;
+    public string corBandeiraPrimaria = "#117C87";
+    public string corBandeiraSecundaria = "#F5C451";
+    public string corBandeiraDestaque = "#F4F6F7";
 
     [Header("Economia")]
     public float valorMoeda = 1f;
@@ -202,6 +210,32 @@ public class DadosPaisGoverno
     public float custoManutencao;
     public float saldoOperacional;
     [Range(0f, 0.50f)] public float bonusPoderCompraComercio;
+
+    [Header("Orçamento nacional diário")]
+    public bool orcamentoInvestimentoAtivo;
+    [Min(0)] public long orcamentoInvestimentoDiario = 100000000L;
+    [Range(0, 100)] public int orcamentoPctAgricultura = 20;
+    [Range(0, 100)] public int orcamentoPctEnergia = 20;
+    [Range(0, 100)] public int orcamentoPctPetroleo = 15;
+    [Range(0, 100)] public int orcamentoPctIndustria = 15;
+    [Range(0, 100)] public int orcamentoPctCiencia = 10;
+    [Range(0, 100)] public int orcamentoPctMilitar = 20;
+    [Range(0, 100)] public int orcamentoPctExercito = 60;
+    [Range(0, 100)] public int orcamentoPctMarinha = 25;
+    [Range(0, 100)] public int orcamentoPctAerea = 15;
+    [Min(-1)] public int ultimoDiaOrcamentoProcessado = -1;
+    [Min(0)] public long orcamentoGastoHoje;
+    [Min(0)] public long orcamentoAgriculturaHoje;
+    [Min(0)] public long orcamentoEnergiaHoje;
+    [Min(0)] public long orcamentoPetroleoHoje;
+    [Min(0)] public long orcamentoIndustriaHoje;
+    [Min(0)] public long orcamentoCienciaHoje;
+    [Min(0)] public long orcamentoMilitarHoje;
+    [Min(0)] public long orcamentoReservaFolhaMilitar;
+    [Min(0)] public long orcamentoRecrutamentoExercitoHoje;
+    [Min(0)] public long orcamentoRecrutamentoMarinhaHoje;
+    [Min(0)] public long orcamentoRecrutamentoAereaHoje;
+    [Min(0)] public float diasPesquisaFinanciadosAcumulados;
 
     [Header("Economia Viva")]
     public float qualidadeVida = 55f;

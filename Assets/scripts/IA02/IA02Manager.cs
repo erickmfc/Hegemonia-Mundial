@@ -230,7 +230,7 @@ namespace Hegemonia.AI.IA02
 
         private void Update()
         {
-            if (RTSGameSession.Instancia != null && RTSGameSession.Instancia.Phase == RTSSessionPhase.Paused)
+            if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada)
             {
                 return;
             }
@@ -296,7 +296,7 @@ namespace Hegemonia.AI.IA02
         private bool ExecutarTickGlobal(float agora)
         {
             if (!isActiveAndEnabled
-                || (RTSGameSession.Instancia != null && RTSGameSession.Instancia.Phase == RTSSessionPhase.Paused)
+                || Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada
                 || ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
             {
                 return true;

@@ -23,6 +23,20 @@ namespace Hegemonia.RTS
         public float SimulationSpeed => simulationSpeed;
         public float TickInterval => tickInterval;
 
+        public static bool SimulacaoPausada
+        {
+            get
+            {
+                RTSGameSession session = RTSGameSession.Instancia;
+                if (session != null)
+                    return session.Phase != RTSSessionPhase.Playing;
+
+                return Instancia != null
+                    ? Instancia.Paused
+                    : global::MenuPausaController.EstaPausado;
+            }
+        }
+
         private float accumulator;
 
         // Os presets visuais 1x/2x/4x aplicam escala real 1x/6,75x/32x.

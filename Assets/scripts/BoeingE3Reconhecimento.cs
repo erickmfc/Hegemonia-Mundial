@@ -180,6 +180,7 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     protected override void Update()
     {
         base.Update();
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         // O ControleAviao base pode restaurar o visual usando apenas o eixo Y
         // durante taxi/pouso. O E-3 precisa manter a matriz de importacao
         // completa em qualquer estado.

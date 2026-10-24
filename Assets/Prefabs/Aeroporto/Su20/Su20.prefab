@@ -508,7 +508,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2984b26662f2d541ba5ac8a0958d292, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LancadorMisselCaca
-  municaoAtual: 6
+  municaoAtual: 5
   municaoMaxima: 5
   pontosDeSaida: []
   missilCacaPrefab: {fileID: 1828480966644363526, guid: b08f5a92de3e8f64f86cac8213399aad, type: 3}

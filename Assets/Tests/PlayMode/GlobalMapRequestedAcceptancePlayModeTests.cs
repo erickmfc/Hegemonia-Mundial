@@ -66,6 +66,29 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator GlobalMapShowsKnownEnemyContactsInPeaceAndKeepsFogOfWar()
+    {
+        Type mapType = ResolveType("MapaGeralController");
+        MethodInfo policy = mapType.GetMethod("DeveExibirEntidadeNoMapa", Members);
+        Assert.That(policy, Is.Not.Null, "A política de exibição de contatos do mapa não foi encontrada.");
+
+        bool detectedEnemyInPeace = (bool)policy.Invoke(null, new object[] { false, false, true, false });
+        bool rememberedEnemyInPeace = (bool)policy.Invoke(null, new object[] { false, false, false, true });
+        bool unknownEnemy = (bool)policy.Invoke(null, new object[] { false, false, false, false });
+        bool allyWithoutContact = (bool)policy.Invoke(null, new object[] { true, false, false, false });
+
+        Assert.That(detectedEnemyInPeace, Is.True,
+            "Um contato hostil já detectado precisa permanecer visível mesmo sem guerra declarada.");
+        Assert.That(rememberedEnemyInPeace, Is.True,
+            "A última posição conhecida de um contato hostil precisa permanecer disponível na neblina.");
+        Assert.That(unknownEnemy, Is.False,
+            "A mudança não pode revelar unidades hostis sem visão nem posição conhecida.");
+        Assert.That(allyWithoutContact, Is.True,
+            "As unidades aliadas precisam continuar visíveis sem depender do serviço de contatos.");
+        yield return null;
+    }
+
+    [UnityTest]
     public IEnumerator GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve()
     {
         Component valdoria = FindBrain(2);
@@ -571,8 +594,8 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         Assert.That(Read(miniMap, "espessuraBorda"), Is.EqualTo(0f));
         Transform panelTransform = canvasObject.transform.Find("MiniMapa_Container");
         Assert.That(panelTransform, Is.Not.Null);
-        Assert.That(panelTransform.localScale, Is.EqualTo(Vector3.one * 0.5f),
-            "O painel visual do minimapa deve ser reduzido em 50%.");
+        Assert.That(panelTransform.localScale, Is.EqualTo(Vector3.one),
+            "O minimapa deve ocupar o mesmo painel de referência dos dados de desempenho.");
         Transform frameTransform = panelTransform.Find("Frame");
         Assert.That(frameTransform, Is.Not.Null);
         Assert.That(frameTransform.GetComponent<UnityEngine.UI.Image>().enabled, Is.False,
@@ -590,17 +613,15 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         Rect layout = (Rect)calculate.Invoke(null, new object[] { width, height, canvasScale, margin });
         float canvasWidth = width / canvasScale;
         float canvasHeight = height / canvasScale;
-        float visibleScale = canvasScale * 0.5f;
-        float rightEdge = (layout.x + layout.width * 0.5f) * canvasScale;
+        float visibleScale = canvasScale;
+        float rightEdge = (layout.x + layout.width) * canvasScale;
         float bottomEdge = layout.y * canvasScale;
-        float topEdge = (layout.y + layout.height * 0.5f) * canvasScale;
-        float hudHeight = Mathf.Min(Mathf.Clamp(canvasHeight * 0.19f, 145f, 190f), canvasHeight * 0.25f);
-        float hudTop = (Mathf.Max(8f, margin / canvasScale) + hudHeight) * canvasScale;
+        float topEdge = (layout.y + layout.height) * canvasScale;
 
-        Assert.That(layout.width * visibleScale, Is.GreaterThan(0f));
-        Assert.That(layout.height * visibleScale, Is.GreaterThan(0f));
-        Assert.That(width - rightEdge, Is.EqualTo(margin).Within(1.5f), "margem direita em pixels da tela");
-        Assert.That(bottomEdge, Is.GreaterThanOrEqualTo(hudTop + 22f * canvasScale - 1f), "o minimapa não pode cobrir o HUD inferior");
+        Assert.That(layout.width * visibleScale, Is.EqualTo(330f).Within(1f), "largura alinhada ao painel de desempenho");
+        Assert.That(layout.height * visibleScale, Is.EqualTo(262f).Within(1f), "altura alinhada ao painel de desempenho");
+        Assert.That(width - rightEdge, Is.EqualTo(12f).Within(1.5f), "margem direita alinhada ao painel de desempenho");
+        Assert.That(bottomEdge, Is.EqualTo(178f).Within(1f), "posicao vertical igual ao painel de desempenho");
         Assert.That(topEdge, Is.LessThanOrEqualTo(height - margin * canvasScale + 1f), "o minimapa deve permanecer dentro da tela");
     }
 

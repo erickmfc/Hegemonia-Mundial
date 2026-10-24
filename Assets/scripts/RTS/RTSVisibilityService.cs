@@ -108,6 +108,7 @@ namespace Hegemonia.RTS
 
         private void Update()
         {
+            if (RTSSimulationClock.SimulacaoPausada) return;
             if (Time.unscaledTime < nextScanAt)
             {
                 return;

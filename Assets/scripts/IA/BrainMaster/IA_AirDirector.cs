@@ -913,6 +913,12 @@ namespace Hegemonia.AI.BrainMaster
                 targetTeamId);
         }
 
+        private static Vector3 Flatten(Vector3 position)
+        {
+            position.y = 0f;
+            return position;
+        }
+
         private static int ResolveTargetTeamId(Transform target)
         {
             if (target == null)

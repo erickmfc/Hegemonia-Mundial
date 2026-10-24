@@ -701,7 +701,8 @@ public class GerenciadorAeroporto : MonoBehaviour
 
     protected virtual void Update()
     {
-        ProcessarFilaCompraAeronavesIA();
+        if (!Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada)
+            ProcessarFilaCompraAeronavesIA();
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
 
         // A limpeza de referencias e uma manutencao de baixa prioridade;
@@ -1667,7 +1668,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         // feed sem acoplar o aeroporto a nenhuma tela especifica.
         if (_identidadeCacheada != null)
         {
-            string paisAeronave = string.IsNullOrWhiteSpace(_identidadeCacheada.nomeDoPais)
+            string paisComprador = string.IsNullOrWhiteSpace(_identidadeCacheada.nomeDoPais)
                 ? "Uma nação"
                 : _identidadeCacheada.nomeDoPais;
             string categoria = _identidadeCacheada.teamID > 1 ? "MUNDO" : "AEROPORTO";
@@ -1675,7 +1676,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             StatusNotificacaoFeed.Publicar(
                 categoria,
                 titulo,
-                paisAeronave + " comprou a aeronave " + prefabDeAeronave.name + ".",
+                paisComprador + " comprou a aeronave " + prefabDeAeronave.name + ".",
                 StatusNotificacaoSeveridade.Info);
         }
 

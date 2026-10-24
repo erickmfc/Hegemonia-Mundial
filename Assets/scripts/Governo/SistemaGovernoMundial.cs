@@ -112,6 +112,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime < proximoTick) return;
         proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloEconomia);
         ProcessarAcordosTemporarios();
@@ -805,6 +806,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         SistemaGastosMilitares.Instancia?.RegistrarPesquisa(teamId, pesquisa.id, pesquisa.nome, pesquisa.custoSaldo, pesquisa.categoria);
 
         pesquisa.diaInicio = DiaAtual();
+        pesquisa.diasPesquisaFinanciados = 0f;
         pesquisa.emAndamento = true;
         mensagem = "Pesquisa iniciada: " + pesquisa.nome + ".";
         NotificarGovernoAtualizadoSeguro();
@@ -865,6 +867,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         SistemaGastosMilitares.Instancia?.RegistrarPesquisa(teamId, tecnologia.id, tecnologia.nome, custoSaldo, tecnologia.categoria);
 
         tecnologia.diaInicio = DiaAtual();
+        tecnologia.diasPesquisaFinanciados = 0f;
         tecnologia.emAndamento = true;
         mensagem = "Tecnologia em desenvolvimento: " + tecnologia.nome + ".";
         NotificarGovernoAtualizadoSeguro();
@@ -922,6 +925,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         laboratorio.diaInicio = DiaAtual();
+        laboratorio.diasPesquisaFinanciados = 0f;
         laboratorio.emExpansao = true;
         mensagem = "Expansao iniciada: " + laboratorio.nome + ".";
         NotificarGovernoAtualizadoSeguro();
@@ -2057,7 +2061,10 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         foreach (PesquisaNacionalEstado pesquisa in pais.pesquisas.Where(p => p != null && p.emAndamento))
         {
-            if (diaAtual < pesquisa.diaInicio + Mathf.Max(1, pesquisa.duracaoDias))
+            bool prazoCumprido = pais.orcamentoInvestimentoAtivo
+                ? pesquisa.diasPesquisaFinanciados + 0.0001f >= Mathf.Max(1, pesquisa.duracaoDias)
+                : diaAtual >= pesquisa.diaInicio + Mathf.Max(1, pesquisa.duracaoDias);
+            if (!prazoCumprido)
             {
                 continue;
             }
@@ -2079,7 +2086,10 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         foreach (TecnologiaNacionalEstado tecnologia in pais.tecnologias.Where(t => t != null && t.emAndamento))
         {
-            if (diaAtual < tecnologia.diaInicio + Mathf.Max(1, tecnologia.duracaoDias))
+            bool prazoCumprido = pais.orcamentoInvestimentoAtivo
+                ? tecnologia.diasPesquisaFinanciados + 0.0001f >= Mathf.Max(1, tecnologia.duracaoDias)
+                : diaAtual >= tecnologia.diaInicio + Mathf.Max(1, tecnologia.duracaoDias);
+            if (!prazoCumprido)
             {
                 continue;
             }
@@ -2092,7 +2102,10 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         foreach (LaboratorioNacionalEstado laboratorio in pais.laboratorios.Where(l => l != null && l.emExpansao))
         {
-            if (diaAtual < laboratorio.diaInicio + Mathf.Max(1, laboratorio.duracaoDias))
+            bool prazoCumprido = pais.orcamentoInvestimentoAtivo
+                ? laboratorio.diasPesquisaFinanciados + 0.0001f >= Mathf.Max(1, laboratorio.duracaoDias)
+                : diaAtual >= laboratorio.diaInicio + Mathf.Max(1, laboratorio.duracaoDias);
+            if (!prazoCumprido)
             {
                 continue;
             }

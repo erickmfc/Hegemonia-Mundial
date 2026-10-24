@@ -37,6 +37,7 @@ public class SistemaArmamentoHelice : MonoBehaviour
     private int meuTime = 1;
     private float cronometroScan = 0f;
     private Transform alvoAtualGuardado;
+    private Transform alvoPrioritarioManual;
     private readonly List<Transform> bufferPercepcaoTatica = new List<Transform>(12);
 
     // === NOVA MÁQUINA DE ESTADOS DO SUPER TUCANO ===
@@ -95,6 +96,17 @@ public class SistemaArmamentoHelice : MonoBehaviour
         cronometroTiro = 0f;
     }
 
+    public void DefinirAlvoPrioritario(Transform alvo)
+    {
+        alvoPrioritarioManual = alvo;
+        if (alvo == null)
+        {
+            alvoAtualGuardado = null;
+            estadoAtualAtaque = EstadoCombate.Patrulha;
+            cronometroEvasao = 0f;
+        }
+    }
+
     void Update()
     {
         // 1. ANIMAÇÃO DA HÉLICE (Sempre roda)
@@ -147,6 +159,25 @@ public class SistemaArmamentoHelice : MonoBehaviour
 
     void EscanearAreaAoRedorLento()
     {
+        if (alvoPrioritarioManual != null)
+        {
+            Transform alvoManual = ResolverAlvoPrioritarioManual();
+            if (alvoManual != null)
+            {
+                if (alvoManual != alvoAtualGuardado)
+                {
+                    alvoAtualGuardado = alvoManual;
+                    estadoAtualAtaque = EstadoCombate.Patrulha;
+                    cronometroEvasao = 0f;
+                }
+                return;
+            }
+
+            alvoPrioritarioManual = null;
+            alvoAtualGuardado = null;
+            estadoAtualAtaque = EstadoCombate.Patrulha;
+        }
+
         // Se já temos um alvo e ele está vivo, não precisa procurar outro agora
         if (alvoAtualGuardado != null && alvoAtualGuardado.gameObject.activeInHierarchy)
         {
@@ -198,6 +229,28 @@ public class SistemaArmamentoHelice : MonoBehaviour
                 cronometroEvasao = 0f;
             }
         }
+    }
+
+    private Transform ResolverAlvoPrioritarioManual()
+    {
+        Transform alvo = alvoPrioritarioManual;
+        if (alvo == null || !alvo.gameObject.activeInHierarchy
+            || alvo.root == transform.root
+            || !ControleSubmarino.PodeSerAlvoConvencional(alvo))
+        {
+            return null;
+        }
+
+        IdentidadeUnidade identidadeAlvo = alvo.GetComponent<IdentidadeUnidade>()
+            ?? alvo.GetComponentInParent<IdentidadeUnidade>()
+            ?? alvo.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (identidadeAlvo != null && identidadeAlvo.teamID == meuTime) return null;
+
+        SistemaDeDanos danos = alvo.GetComponent<SistemaDeDanos>()
+            ?? alvo.GetComponentInParent<SistemaDeDanos>()
+            ?? alvo.GetComponentInChildren<SistemaDeDanos>(true);
+        if (danos != null && danos.vidaAtual <= 0f) return null;
+        return danos != null ? danos.transform : alvo;
     }
 
     void ExecutarManobrasDeCombate()

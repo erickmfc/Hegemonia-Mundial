@@ -70,10 +70,10 @@ namespace Hegemonia.AI.BrainMaster
         private IA_ForceSnapshot _publishedForceSnapshot = new IA_ForceSnapshot();
         private IA_ForceSnapshot _workingForceSnapshot = new IA_ForceSnapshot();
         private int _visibleEnemyStructures;
-        private readonly List<GameObject> _workingOwnUnits = new List<GameObject>(128);
-        private readonly List<GameObject> _workingOwnStructures = new List<GameObject>(128);
-        private readonly List<GameObject> _workingOwnCombatUnits = new List<GameObject>(128);
-        private readonly List<IA_VisibilityProvider> _workingVisibilityProviders = new List<IA_VisibilityProvider>(48);
+        private List<GameObject> _workingOwnUnits = new List<GameObject>(128);
+        private List<GameObject> _workingOwnStructures = new List<GameObject>(128);
+        private List<GameObject> _workingOwnCombatUnits = new List<GameObject>(128);
+        private List<IA_VisibilityProvider> _workingVisibilityProviders = new List<IA_VisibilityProvider>(48);
         private readonly List<int> _staleEnemyIds = new List<int>(64);
         private readonly HashSet<int> _canonicalKeys = new HashSet<int>();
         private readonly List<IA_StrategicTargetData> _strategicTargetPool = new List<IA_StrategicTargetData>(16);

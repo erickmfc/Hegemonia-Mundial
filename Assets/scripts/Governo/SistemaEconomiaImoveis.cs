@@ -79,6 +79,7 @@ public class SistemaEconomiaImoveis : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime < proximoTick) return;
         proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloLeitura);
         Recalcular();
@@ -565,6 +566,19 @@ public class SistemaEconomiaImoveis : MonoBehaviour
     {
         foreach (DadosEconomiaPais economia in economias.Values)
         {
+            DadosPaisGoverno paisOrcamento = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.ObterPais(economia.teamId)
+                : null;
+            if (paisOrcamento != null && paisOrcamento.orcamentoInvestimentoAtivo)
+            {
+                economia.comidaProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 0);
+                economia.energiaProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 1);
+                economia.petroleoProduzido *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 2);
+                economia.industriaProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 3);
+                economia.energiaSolarProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 1);
+                economia.energiaCarvaoProduzida *= OrcamentoInvestimentoNacional.FatorProducao(paisOrcamento, 1);
+            }
+
             int populacaoReal = Mathf.Max(0, economia.populacaoTotal);
             if (SistemaGovernoMundial.Instancia != null
                 && economia.teamId == SistemaGovernoMundial.Instancia.teamJogador

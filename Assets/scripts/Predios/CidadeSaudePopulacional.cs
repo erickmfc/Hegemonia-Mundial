@@ -52,6 +52,7 @@ public sealed class CidadeSaudePopulacional : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime < proximaAtualizacao) return;
         proximaAtualizacao = Time.unscaledTime + 5f;
         AtualizarIndicadores();

@@ -29,6 +29,7 @@ public class MenuPausaController : MonoBehaviour
     private GameObject hudTempoObject;
     private Text textoVelocidade;
     private Text textoBotaoPausa;
+    private int cicloHUDN;
     private float velocidadeHUDAnterior = -1f;
     private float velocidadeFallbackAtual = 1f;
     private bool estadoPausaHUDAnterior;
@@ -215,6 +216,7 @@ public class MenuPausaController : MonoBehaviour
         if (EstaDigitandoEmCampoTexto()) return;
 
         if (Input.GetKeyDown(KeyCode.Alpha4)) AlternarHUDTempo();
+        if (Input.GetKeyDown(KeyCode.N)) CiclarHUDTempoEMiniMapa();
 
         Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
         SincronizarEstadoPausa();
@@ -235,6 +237,37 @@ public class MenuPausaController : MonoBehaviour
     {
         if (hudTempoObject == null) return;
         hudTempoObject.SetActive(!hudTempoObject.activeSelf);
+        cicloHUDN = ResolverEstadoCicloHUDN();
+    }
+
+    private void CiclarHUDTempoEMiniMapa()
+    {
+        cicloHUDN = cicloHUDN >= 4 ? 1 : cicloHUDN + 1;
+        bool mostrarTempo = cicloHUDN == 1 || cicloHUDN == 4;
+        bool mostrarMiniMapa = cicloHUDN == 1 || cicloHUDN == 2;
+
+        if (hudTempoObject != null)
+        {
+            hudTempoObject.SetActive(mostrarTempo);
+        }
+
+        MiniMapa miniMapa = Object.FindFirstObjectByType<MiniMapa>(FindObjectsInactive.Include);
+        if (miniMapa != null)
+        {
+            miniMapa.DefinirVisibilidadePeloAtalho(mostrarMiniMapa);
+        }
+    }
+
+    private int ResolverEstadoCicloHUDN()
+    {
+        bool mostrarTempo = hudTempoObject != null && hudTempoObject.activeSelf;
+        MiniMapa miniMapa = Object.FindFirstObjectByType<MiniMapa>(FindObjectsInactive.Include);
+        bool mostrarMiniMapa = miniMapa != null && miniMapa.VisibilidadeSolicitada;
+
+        if (mostrarTempo && mostrarMiniMapa) return 1;
+        if (!mostrarTempo && mostrarMiniMapa) return 2;
+        if (!mostrarTempo && !mostrarMiniMapa) return 3;
+        return 0;
     }
 
     private void AlternarPausaTempo()
@@ -335,8 +368,21 @@ public class MenuPausaController : MonoBehaviour
 
         if (textoBotaoPausa != null && estadoPausaHUDAnterior != EstaPausado)
         {
-            textoBotaoPausa.text = EstaPausado ? "RETOMAR 6" : "PAUSAR 6";
+            textoBotaoPausa.text = EstaPausado ? "● RETOMAR 6" : "PAUSAR 6";
             estadoPausaHUDAnterior = EstaPausado;
+        }
+
+        if (textoBotaoPausa != null)
+        {
+            if (EstaPausado)
+            {
+                float pulso = 0.35f + Mathf.PingPong(Time.unscaledTime * 1.8f, 0.65f);
+                textoBotaoPausa.color = Color.Lerp(corTextoAlerta, new Color(1f, 0.42f, 0.16f, 1f), pulso);
+            }
+            else
+            {
+                textoBotaoPausa.color = corTexto;
+            }
         }
     }
 
@@ -510,6 +556,7 @@ public class MenuPausaController : MonoBehaviour
         statusBoxObject.SetActive(false);
         CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 22f), new Vector2(-48f, 20f));
         ConstruirHUDTempo();
+        cicloHUDN = ResolverEstadoCicloHUDN();
     }
 
     private void RecriarInterface()

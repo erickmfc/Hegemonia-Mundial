@@ -182,6 +182,7 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime >= nextRecalculateTime)
         {
             nextRecalculateTime = Time.unscaledTime + RecalculateInterval;

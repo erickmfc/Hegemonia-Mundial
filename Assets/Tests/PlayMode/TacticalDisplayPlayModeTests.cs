@@ -55,6 +55,8 @@ public sealed class TacticalDisplayPlayModeTests
         Assert.That(displayRoot.Find("MiniMapa_Container/Frame/Inner/MapViewport/MapRecenterArea"), Is.Not.Null);
         Assert.That(displayRoot.Find("MiniMapa_Container/Frame/Inner/Controls/ZoomIn"), Is.Not.Null);
         Assert.That(displayRoot.Find("MiniMapa_Container/Frame/Inner/Controls/ZoomOut"), Is.Not.Null);
+        Assert.That(displayRoot.gameObject.activeSelf, Is.False,
+            "O minimapa começa oculto e aparece pelo ciclo compartilhado do atalho N.");
         Assert.That(displayRoot.GetComponentsInChildren<Camera>(true), Is.Empty,
             "A interface não deve criar câmera para renderizar unidades ocultas.");
 
@@ -65,6 +67,17 @@ public sealed class TacticalDisplayPlayModeTests
         Assert.That(panel.sizeDelta.x, Is.InRange(160f, 420f));
         Assert.That(panel.sizeDelta.y, Is.InRange(150f, 360f));
 
+        InvokePrivate(miniMap, "DefinirVisibilidadePeloAtalho", true);
+        Assert.That(displayRoot.gameObject.activeSelf, Is.True,
+            "O ciclo de HUD deve conseguir exibir o minimapa.");
+        Type menuGovernoType = ResolveType("MenuGoverno");
+        FieldInfo estadoMenuGoverno = menuGovernoType.GetField("EstaAberto", StaticMembers);
+        bool governoAbertoAntes = (bool)estadoMenuGoverno.GetValue(null);
+        estadoMenuGoverno.SetValue(null, true);
+        InvokePrivate(miniMap, "SuprimirPorMenuComando", false);
+        Assert.That(displayRoot.gameObject.activeSelf, Is.True,
+            "O Tactical Display pode permanecer aberto junto ao menu Governo.");
+        estadoMenuGoverno.SetValue(null, governoAbertoAntes);
         InvokePrivate(miniMap, "SuprimirPorMenuComando", true);
         Assert.That(displayRoot.gameObject.activeSelf, Is.False,
             "O mapa deve parar de receber cliques quando outro menu modal estiver aberto.");

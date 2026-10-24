@@ -253,6 +253,11 @@ namespace Hegemonia.Cartel
                 return;
             }
 
+            if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada)
+            {
+                return;
+            }
+
             if (!initialized)
             {
                 if (Time.unscaledTime >= nextActivationCheckTime)

@@ -19,11 +19,16 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
 {
     private const string ValidationScenePath = "Assets/Tests/PlayMode/IA03_WarValidation.unity";
     private const string FighterPrefabPath = "Assets/Prefabs/Aeroporto/f16b/F-16D Bloco 60 Falcão.prefab";
+    private const string G18PrefabPath = "Assets/Prefabs/Aeroporto/G18/G18M.prefab";
+    private const string GunFighterPrefabPath = "Assets/Prefabs/Aeroporto/A_20/A10.prefab";
+    private const string HasafPrefabPath = "Assets/Prefabs/Aeroporto/Drone Hasaf/DH_Hasaf.prefab";
     private const BindingFlags InstanceMembers = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private const BindingFlags StaticMembers = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
     private GameObject fighter;
     private GameObject target;
+    private GameObject attackMenuForTargetPick;
+    private GameObject attackOrdersForTest;
     private GameObject navalAttacker;
     private GameObject navalTarget;
     private Component unitController;
@@ -34,6 +39,13 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
     private object[] diplomacyBefore;
     private readonly HashSet<int> activeMissilesBefore = new HashSet<int>();
     private readonly List<Component> missilesSpawnedByTest = new List<Component>();
+    private readonly HashSet<int> activeGunProjectilesBefore = new HashSet<int>();
+    private readonly List<Component> gunProjectilesSpawnedByTest = new List<Component>();
+    private bool trackingGunProjectiles;
+    private readonly HashSet<int> activeTacticalMissilesBefore = new HashSet<int>();
+    private readonly List<Component> tacticalMissilesSpawnedByTest = new List<Component>();
+    private bool trackingTacticalMissiles;
+    private Component tacticalMissileSpawnedByTest;
     private readonly HashSet<int> activeNavalMissilesBefore = new HashSet<int>();
     private readonly List<Component> navalMissilesSpawnedByTest = new List<Component>();
     private readonly Dictionary<Behaviour, bool> sceneTurretsBefore = new Dictionary<Behaviour, bool>();
@@ -137,9 +149,9 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
     public IEnumerator OrdemAereaExplicitaEmPazMantemPrioridadeEAplicaDano()
     {
         yield return LoadValidationSceneOnly();
-        SetNeutralDiplomacy();
+        SetNeutralDiplomacy(2);
         CacheActiveMissiles();
-        CreateRealFighterAndTarget();
+        CreateRealFighterAndTarget(G18PrefabPath, 2);
 
         Component launcher = fighter.GetComponent(ResolveType("LancadorMisselCaca"));
         Component flight = fighter.GetComponent(ResolveType("ControleAviao"));
@@ -171,16 +183,33 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         Assert.That(Convert.ToBoolean(GetMember(relation, "guerraDeclarada")), Is.False);
         Assert.That(Convert.ToString(GetMember(relation, "posturaAParaB")), Is.EqualTo("Neutro"));
         Assert.That(Convert.ToString(GetMember(relation, "posturaBParaA")), Is.EqualTo("Neutro"));
+
+        attackMenuForTargetPick = new GameObject("IA03_Aerial_ManualAttack_TargetPicker");
+        attackMenuForTargetPick.SetActive(false);
+        Component menu = attackMenuForTargetPick.AddComponent(ResolveType("MenuComandoController"));
+        MethodInfo findAttackTarget = menu.GetType().GetMethod("EncontrarUnidadeProxima", InstanceMembers,
+            null, new[] { typeof(Vector3), typeof(float), typeof(bool) }, null);
+        Assert.That(findAttackTarget, Is.Not.Null, "O seletor de alvo do Mapa Global não foi encontrado.");
+        GameObject selectedTarget = findAttackTarget.Invoke(menu,
+            new object[] { target.transform.position, 150f, true }) as GameObject;
+        Assert.That(selectedTarget, Is.SameAs(target),
+            "O seletor de alvo do mapa descartou a unidade IA 03 enquanto Team 1 e Team 2 estavam em paz.");
+
         // Evita colidir com registros terminais quando o Unity reutiliza
         // InstanceIDs entre execuções PlayMode nesta mesma sessão.
         SetMember(unitController, "sequenciaOrdemMovimento", 1000 + Time.frameCount);
 
-        MethodInfo issueAttack = unitController.GetType().GetMethod(
-            "EmitirMissaoAereaOfensiva", InstanceMembers, null,
-            new[] { typeof(Vector3), typeof(Transform) }, null);
-        Assert.That(issueAttack, Is.Not.Null, "ControleUnidade.EmitirMissaoAereaOfensiva não foi encontrado.");
-        bool accepted = Convert.ToBoolean(issueAttack.Invoke(unitController,
-            new object[] { target.transform.position, target.transform }));
+        attackOrdersForTest = new GameObject("IA03_Aerial_ManualAttack_OrderExecutor");
+        attackOrdersForTest.SetActive(false);
+        Component orderExecutor = attackOrdersForTest.AddComponent(ResolveType("DesenharLinhasOrdem"));
+        SetMember(orderExecutor, "modoAtaqueAtivo", true);
+        ((IList)GetMember(orderExecutor, "_alvosModo")).Add(fighter);
+        MethodInfo applyAttackOrder = orderExecutor.GetType().GetMethod("AplicarOrdemAtaqueDoMenu", InstanceMembers,
+            null, new[] { typeof(Vector3), typeof(Transform) }, null);
+        Assert.That(applyAttackOrder, Is.Not.Null, "O executor de ataque do Mapa Global não foi encontrado.");
+        int acceptedOrders = Convert.ToInt32(applyAttackOrder.Invoke(orderExecutor,
+            new object[] { selectedTarget.transform.position, selectedTarget.transform }));
+        bool accepted = acceptedOrders > 0;
         explicitAirOrderIssued = accepted;
 
         Assert.That(accepted, Is.True, "O executor de voo recusou a ordem explícita contra o alvo de teste.");
@@ -223,6 +252,176 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
             "A ordem aérea explícita foi aceita, mas o míssil não aplicou dano real.");
         Assert.That(aggressorTeam, Is.EqualTo(1),
             "O impacto da ordem aérea não foi atribuído à identidade Team 1.");
+        Assert.That(Convert.ToBoolean(GetMember(relation, "guerraDeclarada")), Is.True,
+            "O primeiro dano do G18 não registrou a guerra formal.");
+    }
+
+    [UnityTest]
+    public IEnumerator CacaComMetralhadoraRespeitaAlvoExplicitoEPermanecePassivo()
+    {
+        yield return LoadValidationSceneOnly();
+        SetNeutralDiplomacy();
+        CacheActiveGunProjectiles();
+
+#if UNITY_EDITOR
+        GameObject fighterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(GunFighterPrefabPath);
+        Assert.That(fighterPrefab, Is.Not.Null, "Prefab A10 com metralhadora não foi encontrado.");
+        fighter = UnityEngine.Object.Instantiate(
+            fighterPrefab, new Vector3(100000f, 10000f, 100000f), Quaternion.identity);
+        fighter.name = "IA03_Aerial_Integration_A10_GunOnly";
+
+        Component identity = fighter.GetComponentInChildren(ResolveType("IdentidadeUnidade"), true);
+        unitController = fighter.GetComponent(ResolveType("ControleUnidade"));
+        Component flight = fighter.GetComponent(ResolveType("ControleAviao"));
+        Component gun = fighter.GetComponent(ResolveType("SistemaArmamentoHelice"));
+        Assert.That(identity, Is.Not.Null, "O A10 real está sem IdentidadeUnidade.");
+        Assert.That(unitController, Is.Not.Null, "O A10 real está sem ControleUnidade.");
+        Assert.That(flight, Is.Not.Null, "O A10 real está sem ControleAviao.");
+        Assert.That(gun, Is.Not.Null, "O A10 real está sem SistemaArmamentoHelice.");
+        SetMember(identity, "teamID", 1);
+        SetEnumMember(identity, "tipoUnidade", "Aereo");
+
+        target = new GameObject("IA03_Aerial_Gun_Target_Team3");
+        target.transform.position = fighter.transform.position + Vector3.forward * 300f;
+        target.AddComponent<BoxCollider>().size = Vector3.one * 12f;
+        Component targetDamage = target.AddComponent(ResolveType("SistemaDeDanos"));
+        SetMember(targetDamage, "vidaMaxima", 1000f);
+        SetMember(targetDamage, "vidaAtual", 1000f);
+        Component targetIdentity = target.AddComponent(ResolveType("IdentidadeUnidade"));
+        SetMember(targetIdentity, "teamID", 3);
+        SetEnumMember(targetIdentity, "tipoUnidade", "Aereo");
+
+        yield return null;
+        yield return null;
+
+        MethodInfo setCombatMode = unitController.GetType().GetMethod("DefinirModoCombate", InstanceMembers,
+            null, new[] { typeof(bool) }, null);
+        Assert.That(setCombatMode, Is.Not.Null);
+        setCombatMode.Invoke(unitController, new object[] { true });
+        SetMember(flight, "estadoAtual", Enum.Parse(GetMemberType(flight, "estadoAtual"), "EmMissao"));
+        ((Behaviour)flight).enabled = false;
+        ((Behaviour)gun).enabled = false;
+        SetMember(gun, "cronometroScan", 0f);
+        SetMember(gun, "cronometroTiro", 0f);
+
+        MethodInfo definePriority = unitController.GetType().GetMethod(
+            "DefinirAlvoPrioritario", InstanceMembers, null, new[] { typeof(Transform) }, null);
+        Assert.That(definePriority, Is.Not.Null);
+        definePriority.Invoke(unitController, new object[] { target.transform });
+
+        MethodInfo scanGun = gun.GetType().GetMethod("EscanearAreaAoRedorLento", InstanceMembers);
+        Assert.That(scanGun, Is.Not.Null);
+        scanGun.Invoke(gun, null);
+        Assert.That(GetMember(gun, "alvoAtualGuardado"), Is.SameAs(target.transform));
+        SetMember(gun, "estadoAtualAtaque", Enum.Parse(GetMemberType(gun, "estadoAtualAtaque"), "Mergulho_Atacar"));
+        SetMember(gun, "cronometroScan", 10f); // Mantém o alvo recém-adquirido durante a passagem de ataque.
+
+        MethodInfo updateGun = gun.GetType().GetMethod("Update", InstanceMembers);
+        Assert.That(updateGun, Is.Not.Null);
+        int ammoBeforeActive = Convert.ToInt32(GetMember(gun, "balasAtuais"));
+        updateGun.Invoke(gun, null);
+        CollectNewGunProjectiles();
+        int ammoAfterActive = Convert.ToInt32(GetMember(gun, "balasAtuais"));
+
+        Assert.That(GetMember(gun, "alvoAtualGuardado"), Is.SameAs(target.transform),
+            "A metralhadora substituiu o alvo explícito do mapa por outro contato automático.");
+        Assert.That(ammoAfterActive, Is.LessThan(ammoBeforeActive),
+            "A aeronave ativa com canhão não disparou contra o alvo explícito.");
+        Assert.That(gunProjectilesSpawnedByTest.Count, Is.GreaterThan(0),
+            "A ordem ativa não criou um projétil real de metralhadora.");
+        Assert.That(Convert.ToBoolean(GetMember(relation, "guerraDeclarada")), Is.False,
+            "A ordem manual alterou a diplomacia antes de qualquer impacto.");
+
+        setCombatMode.Invoke(unitController, new object[] { false });
+        SetMember(gun, "cronometroTiro", 0f);
+        int ammoBeforePassive = Convert.ToInt32(GetMember(gun, "balasAtuais"));
+        updateGun.Invoke(gun, null);
+        Assert.That(Convert.ToInt32(GetMember(gun, "balasAtuais")), Is.EqualTo(ammoBeforePassive),
+            "A metralhadora disparou depois que a unidade foi colocada no modo passivo.");
+#else
+        Assert.Fail("O teste aéreo precisa executar no Editor para carregar o prefab de A10.");
+#endif
+    }
+
+    [UnityTest]
+    public IEnumerator DroneHasafDisparaNoAlvoManualEmPazEPermanecePassivo()
+    {
+        yield return LoadValidationSceneOnly();
+        SetNeutralDiplomacy();
+        CacheActiveTacticalMissiles();
+
+#if UNITY_EDITOR
+        GameObject dronePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(HasafPrefabPath);
+        Assert.That(dronePrefab, Is.Not.Null, "Prefab do drone Hasaf não foi encontrado.");
+        fighter = UnityEngine.Object.Instantiate(
+            dronePrefab, new Vector3(100000f, 10000f, 100000f), Quaternion.identity);
+        fighter.name = "IA03_Aerial_Integration_Hasaf";
+
+        Component identity = fighter.GetComponentInChildren(ResolveType("IdentidadeUnidade"), true);
+        unitController = fighter.GetComponent(ResolveType("ControleUnidade"));
+        Component flight = fighter.GetComponent(ResolveType("ControleAviao"));
+        Component drone = fighter.GetComponent(ResolveType("ControleDroneHasaf"));
+        Assert.That(identity, Is.Not.Null, "O Hasaf real está sem IdentidadeUnidade.");
+        Assert.That(unitController, Is.Not.Null, "O Hasaf real está sem ControleUnidade.");
+        Assert.That(flight, Is.Not.Null, "O Hasaf real está sem ControleAviao.");
+        Assert.That(drone, Is.Not.Null, "O Hasaf real está sem ControleDroneHasaf.");
+        SetMember(identity, "teamID", 1);
+        SetEnumMember(identity, "tipoUnidade", "Aereo");
+
+        target = new GameObject("IA03_Aerial_Hasaf_Target_Team3");
+        target.transform.position = fighter.transform.position + Vector3.forward * 70f;
+        target.AddComponent<BoxCollider>().size = Vector3.one * 12f;
+        Component targetDamage = target.AddComponent(ResolveType("SistemaDeDanos"));
+        SetMember(targetDamage, "vidaMaxima", 1000f);
+        SetMember(targetDamage, "vidaAtual", 1000f);
+        Component targetIdentity = target.AddComponent(ResolveType("IdentidadeUnidade"));
+        SetMember(targetIdentity, "teamID", 3);
+        SetEnumMember(targetIdentity, "tipoUnidade", "Aereo");
+
+        yield return null;
+        yield return null;
+
+        MethodInfo setCombatMode = unitController.GetType().GetMethod("DefinirModoCombate", InstanceMembers,
+            null, new[] { typeof(bool) }, null);
+        Assert.That(setCombatMode, Is.Not.Null);
+        setCombatMode.Invoke(unitController, new object[] { true });
+        SetMember(flight, "estadoAtual", Enum.Parse(GetMemberType(flight, "estadoAtual"), "EmMissao"));
+        ((Behaviour)flight).enabled = false;
+        ((Behaviour)drone).enabled = false;
+
+        MethodInfo definePriority = unitController.GetType().GetMethod(
+            "DefinirAlvoPrioritario", InstanceMembers, null, new[] { typeof(Transform) }, null);
+        Assert.That(definePriority, Is.Not.Null);
+        definePriority.Invoke(unitController, new object[] { target.transform });
+        SetMember(drone, "cronometroRecarga", 10f);
+
+        MethodInfo updateDrone = drone.GetType().GetMethod("Update", InstanceMembers);
+        Assert.That(updateDrone, Is.Not.Null);
+        updateDrone.Invoke(drone, null);
+        CollectNewTacticalMissiles();
+        int ammoAfterActive = Convert.ToInt32(GetMember(drone, "municaoAtual"));
+        tacticalMissileSpawnedByTest = tacticalMissilesSpawnedByTest.Count > 0
+            ? tacticalMissilesSpawnedByTest[tacticalMissilesSpawnedByTest.Count - 1]
+            : null;
+
+        Assert.That(GetMember(drone, "alvoSeguir"), Is.SameAs(target.transform),
+            "A ordem de ataque do mapa não chegou ao controlador do Hasaf.");
+        Assert.That(ammoAfterActive, Is.EqualTo(3),
+            "O Hasaf ativo não consumiu uma munição contra o alvo manual em paz.");
+        Assert.That(tacticalMissileSpawnedByTest, Is.Not.Null,
+            "O Hasaf não criou um míssil tático real usando a saída de fallback do próprio avião.");
+
+        setCombatMode.Invoke(unitController, new object[] { false });
+        SetMember(drone, "cronometroRecarga", 10f);
+        int ammoBeforePassive = Convert.ToInt32(GetMember(drone, "municaoAtual"));
+        drone.GetType().GetMethod("DispararMissil", InstanceMembers)
+            ?.Invoke(drone, new object[] { target.transform });
+        updateDrone.Invoke(drone, null);
+        Assert.That(Convert.ToInt32(GetMember(drone, "municaoAtual")), Is.EqualTo(ammoBeforePassive),
+            "O Hasaf disparou um míssil depois que a unidade foi colocada no modo passivo.");
+#else
+        Assert.Fail("O teste aéreo precisa executar no Editor para carregar o prefab do Hasaf.");
+#endif
     }
 
     [UnityTest]
@@ -360,10 +559,24 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         }
         CollectNewMissiles();
         DestroyNewMissiles();
+        if (trackingGunProjectiles)
+        {
+            CollectNewGunProjectiles();
+            DestroyNewGunProjectiles();
+            trackingGunProjectiles = false;
+        }
+        if (trackingTacticalMissiles)
+        {
+            CollectNewTacticalMissiles();
+            DestroyNewTacticalMissiles();
+            trackingTacticalMissiles = false;
+        }
         CollectNewNavalMissiles();
         DestroyNewNavalMissiles();
         if (fighter != null) UnityEngine.Object.Destroy(fighter);
         if (target != null) UnityEngine.Object.Destroy(target);
+        if (attackMenuForTargetPick != null) UnityEngine.Object.Destroy(attackMenuForTargetPick);
+        if (attackOrdersForTest != null) UnityEngine.Object.Destroy(attackOrdersForTest);
         if (navalAttacker != null) UnityEngine.Object.Destroy(navalAttacker);
         if (navalTarget != null) UnityEngine.Object.Destroy(navalTarget);
         RestoreDiplomacy();
@@ -374,6 +587,8 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         sceneTurretsBefore.Clear();
         fighter = null;
         target = null;
+        attackMenuForTargetPick = null;
+        attackOrdersForTest = null;
         navalAttacker = null;
         navalTarget = null;
         unitController = null;
@@ -434,7 +649,7 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         }
     }
 
-    private void SetNeutralDiplomacy()
+    private void SetNeutralDiplomacy(int targetTeamId = 3)
     {
         Type governmentType = ResolveType("SistemaGovernoMundial");
         Assert.That(governmentType, Is.Not.Null);
@@ -444,8 +659,8 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         MethodInfo getRelation = governmentType.GetMethod("ObterRelacao", InstanceMembers,
             null, new[] { typeof(int), typeof(int) }, null);
         Assert.That(getRelation, Is.Not.Null);
-        relation = getRelation.Invoke(government, new object[] { 1, 3 });
-        Assert.That(relation, Is.Not.Null, "A relação Team 1/Team 3 não existe.");
+        relation = getRelation.Invoke(government, new object[] { 1, targetTeamId });
+        Assert.That(relation, Is.Not.Null, "A relação diplomática do cenário não existe.");
 
         diplomacyBefore = new[]
         {
@@ -466,11 +681,11 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         government.GetType().GetMethod("NotificarGovernoAtualizado", InstanceMembers)?.Invoke(government, null);
     }
 
-    private void CreateRealFighterAndTarget()
+    private void CreateRealFighterAndTarget(string prefabPath = FighterPrefabPath, int targetTeamId = 3)
     {
 #if UNITY_EDITOR
-        GameObject fighterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(FighterPrefabPath);
-        Assert.That(fighterPrefab, Is.Not.Null, "Prefab real F-16 não foi encontrado.");
+        GameObject fighterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        Assert.That(fighterPrefab, Is.Not.Null, "Prefab real de caça não foi encontrado: " + prefabPath);
         fighter = UnityEngine.Object.Instantiate(fighterPrefab, new Vector3(100000f, 10000f, 100000f), Quaternion.identity);
         fighter.name = "IA03_Aerial_Integration_F16";
 
@@ -484,13 +699,13 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
         Component unitController = fighter.GetComponent(unitControllerType);
         if (unitController == null) unitController = fighter.AddComponent(unitControllerType);
 
-        target = new GameObject("IA03_Aerial_Integration_Target_Team3");
+        target = new GameObject("IA03_Aerial_Integration_Target_Team" + targetTeamId);
         target.transform.position = fighter.transform.position + Vector3.forward * 90f;
         target.AddComponent<BoxCollider>().size = Vector3.one * 12f;
         Component targetDamage = target.AddComponent(ResolveType("SistemaDeDanos"));
         SetMember(targetDamage, "vidaMaxima", 1000f);
         Component targetIdentity = target.AddComponent(unitIdentityType);
-        SetMember(targetIdentity, "teamID", 3);
+        SetMember(targetIdentity, "teamID", targetTeamId);
         SetEnumMember(targetIdentity, "tipoUnidade", "Aereo");
 #endif
     }
@@ -536,6 +751,95 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
             else UnityEngine.Object.Destroy(missile.gameObject);
         }
         missilesSpawnedByTest.Clear();
+    }
+
+    private void CacheActiveGunProjectiles()
+    {
+        trackingGunProjectiles = true;
+        activeGunProjectilesBefore.Clear();
+        Type projectileType = ResolveType("Projetil");
+        if (projectileType == null) return;
+        UnityEngine.Object[] active = UnityEngine.Object.FindObjectsByType(
+            projectileType, FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < active.Length; i++)
+        {
+            if (active[i] != null) activeGunProjectilesBefore.Add(active[i].GetInstanceID());
+        }
+    }
+
+    private void CollectNewGunProjectiles()
+    {
+        Type projectileType = ResolveType("Projetil");
+        if (projectileType == null) return;
+        UnityEngine.Object[] active = UnityEngine.Object.FindObjectsByType(
+            projectileType, FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < active.Length; i++)
+        {
+            Component projectile = active[i] as Component;
+            if (projectile == null || activeGunProjectilesBefore.Contains(projectile.GetInstanceID())) continue;
+            if (!gunProjectilesSpawnedByTest.Contains(projectile)) gunProjectilesSpawnedByTest.Add(projectile);
+        }
+    }
+
+    private void DestroyNewGunProjectiles()
+    {
+        Type poolType = ResolveType("PoolDeObjetosCombate");
+        MethodInfo release = poolType != null
+            ? poolType.GetMethod("Release", StaticMembers, null, new[] { typeof(GameObject) }, null)
+            : null;
+        for (int i = 0; i < gunProjectilesSpawnedByTest.Count; i++)
+        {
+            Component projectile = gunProjectilesSpawnedByTest[i];
+            if (projectile == null || !projectile.gameObject.activeInHierarchy) continue;
+            if (release != null) release.Invoke(null, new object[] { projectile.gameObject });
+            else UnityEngine.Object.Destroy(projectile.gameObject);
+        }
+        gunProjectilesSpawnedByTest.Clear();
+    }
+
+    private void CacheActiveTacticalMissiles()
+    {
+        trackingTacticalMissiles = true;
+        activeTacticalMissilesBefore.Clear();
+        Type missileType = ResolveType("MisselTatico");
+        if (missileType == null) return;
+        UnityEngine.Object[] active = UnityEngine.Object.FindObjectsByType(
+            missileType, FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < active.Length; i++)
+        {
+            if (active[i] != null) activeTacticalMissilesBefore.Add(active[i].GetInstanceID());
+        }
+    }
+
+    private void CollectNewTacticalMissiles()
+    {
+        Type missileType = ResolveType("MisselTatico");
+        if (missileType == null) return;
+        UnityEngine.Object[] active = UnityEngine.Object.FindObjectsByType(
+            missileType, FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < active.Length; i++)
+        {
+            Component missile = active[i] as Component;
+            if (missile == null || activeTacticalMissilesBefore.Contains(missile.GetInstanceID())) continue;
+            if (!tacticalMissilesSpawnedByTest.Contains(missile)) tacticalMissilesSpawnedByTest.Add(missile);
+        }
+    }
+
+    private void DestroyNewTacticalMissiles()
+    {
+        Type poolType = ResolveType("PoolDeObjetosCombate");
+        MethodInfo release = poolType != null
+            ? poolType.GetMethod("Release", StaticMembers, null, new[] { typeof(GameObject) }, null)
+            : null;
+        for (int i = 0; i < tacticalMissilesSpawnedByTest.Count; i++)
+        {
+            Component missile = tacticalMissilesSpawnedByTest[i];
+            if (missile == null || !missile.gameObject.activeInHierarchy) continue;
+            if (release != null) release.Invoke(null, new object[] { missile.gameObject });
+            else UnityEngine.Object.Destroy(missile.gameObject);
+        }
+        tacticalMissilesSpawnedByTest.Clear();
+        tacticalMissileSpawnedByTest = null;
     }
 
     private void CacheActiveNavalMissiles()

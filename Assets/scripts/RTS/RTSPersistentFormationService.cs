@@ -296,6 +296,7 @@ namespace Hegemonia.RTS
 
         private void Update()
         {
+            if (RTSSimulationClock.SimulacaoPausada) return;
             float now = Time.unscaledTime;
             for (int i = formations.Count - 1; i >= 0; i--)
             {

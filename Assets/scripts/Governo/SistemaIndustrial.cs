@@ -133,6 +133,7 @@ public class SistemaIndustrial : MonoBehaviour
         foreach (DadosPaisGoverno pais in SistemaGovernoMundial.Instancia.Paises)
         {
             if (pais == null) continue;
+            OrcamentoInvestimentoNacional.ProcessarDia(SistemaGovernoMundial.Instancia, pais, diaAtual);
             ProcessarExtracao(pais, diaAtual);
             if (diaAtual % Mathf.Max(1, intervaloDiasRefino) == 0)
                 ProcessarRefino(pais);
@@ -184,7 +185,8 @@ public class SistemaIndustrial : MonoBehaviour
         System.Random rng = new System.Random(seed);
         float variacao = 0.75f + (float)rng.NextDouble() * 0.50f; // 75% a 125%
 
-        float producaoFinal = producaoBase * eficiencia * energia * estabilidade * variacao;
+        float producaoFinal = producaoBase * eficiencia * energia * estabilidade * variacao
+            * OrcamentoInvestimentoNacional.FatorProducao(pais, 3);
 
         // Limites globais
         float limiteMax = TabelaProducaoMineral.LimiteMaximo(recurso, nivel);

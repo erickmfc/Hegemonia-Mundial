@@ -74,6 +74,7 @@ public class SistemaDeTiro : MonoBehaviour
 
     void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         // O modo oficial da unidade também tem precedência sobre o estado
         // local deste componente, inclusive durante a inicialização de cenas
         // e prefabs em que os dois valores foram salvos de forma divergente.

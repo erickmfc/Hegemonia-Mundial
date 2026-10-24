@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 26;
+    public int saveVersion = 27;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -586,7 +586,7 @@ public class SistemaSaveGame : MonoBehaviour
         GarantirColecoesIA01();
         GarantirColecoesIA02();
         GarantirColecoesCidadesAbstratas();
-        dadosAtuais.saveVersion = 26;
+        dadosAtuais.saveVersion = 27;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -1734,6 +1734,27 @@ public class SistemaSaveGame : MonoBehaviour
         if (salvo.paises == null || salvo.paises.Count == 0)
         {
             return;
+        }
+
+        if (dadosAtuais.saveVersion < 27)
+        {
+            for (int i = 0; i < salvo.paises.Count; i++)
+            {
+                DadosPaisGoverno paisLegado = salvo.paises[i];
+                if (paisLegado == null) continue;
+                paisLegado.configuracaoInicialConcluida = true;
+                paisLegado.orcamentoInvestimentoAtivo = false;
+                paisLegado.orcamentoInvestimentoDiario = 100000000L;
+                paisLegado.orcamentoPctAgricultura = 20;
+                paisLegado.orcamentoPctEnergia = 20;
+                paisLegado.orcamentoPctPetroleo = 15;
+                paisLegado.orcamentoPctIndustria = 15;
+                paisLegado.orcamentoPctCiencia = 10;
+                paisLegado.orcamentoPctMilitar = 20;
+                paisLegado.orcamentoPctExercito = 60;
+                paisLegado.orcamentoPctMarinha = 25;
+                paisLegado.orcamentoPctAerea = 15;
+            }
         }
 
         SistemaGovernoMundial.GarantirInstancia();

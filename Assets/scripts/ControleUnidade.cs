@@ -458,6 +458,7 @@ public class ControleUnidade : MonoBehaviour
 
     void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
 
@@ -1413,6 +1414,14 @@ public class ControleUnidade : MonoBehaviour
         {
             if (lancador != null) lancador.DefinirAlvoPrioritario(alvo);
         }
+
+        SistemaArmamentoHelice armamentoHelice = GetComponent<SistemaArmamentoHelice>()
+            ?? GetComponentInChildren<SistemaArmamentoHelice>(true);
+        if (armamentoHelice != null) armamentoHelice.DefinirAlvoPrioritario(alvo);
+
+        ControleDroneHasaf droneHasaf = GetComponent<ControleDroneHasaf>()
+            ?? GetComponentInChildren<ControleDroneHasaf>(true);
+        if (droneHasaf != null) droneHasaf.AtribuirAlvo(alvo);
         
         // Também avisa ao avião, inclusive quando o alvo é limpo. Sem a
         // segunda parte uma aeronave ficava presa em modo de ataque e a

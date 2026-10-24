@@ -122,6 +122,7 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime < proximoProcessamento) return;
         proximoProcessamento = Time.unscaledTime + Mathf.Max(0.25f, intervaloProcessamento);
         ProcessarViagens();

@@ -104,12 +104,45 @@ public sealed class MenuGovernoTabsPlayModeTests
                 Assert.That(content.childCount, Is.GreaterThan(1), category + " / " + tab + " precisa renderizar seus dados.");
                 Assert.That(actions, Is.Not.Null);
                 Assert.That(actions.childCount, Is.GreaterThan(1), category + " / " + tab + " precisa exibir ações.");
+                if (category == "Economia" && tab == "Orcamento")
+                {
+                    Assert.That(content.Query<SliderInt>(className: "gov-budget-slider").ToList(), Has.Count.EqualTo(9),
+                        "O orçamento deve mostrar seis setores nacionais e três forças militares.");
+                    Assert.That(content.Query<Label>(className: "gov-budget-summary").First(), Is.Not.Null,
+                        "O orçamento deve exibir o teto diário configurado.");
+                }
+                if (category == "Pais" && tab == "Identidade")
+                {
+                    Assert.That(content.Query<DropdownField>(className: "gov-identity-color").ToList(), Has.Count.EqualTo(3),
+                        "A identidade nacional deve permitir editar as três cores da bandeira.");
+                    Assert.That(content.Query<DropdownField>().ToList(), Has.Count.EqualTo(4),
+                        "A identidade nacional deve permitir escolher o modelo e as cores da bandeira.");
+                    Assert.That(content.Query<VisualElement>(className: "gov-flag-large").First(), Is.Not.Null,
+                        "A tela de identidade deve mostrar a prévia da bandeira editada.");
+                }
+                if (category == "Mercado" && tab == "Vender")
+                {
+                    ScrollView sales = content as ScrollView;
+                    Assert.That(sales, Is.Not.Null, "A lista de vendas deve estar dentro do painel rolável do Mercado.");
+                    VisualElement grid = sales.Query<VisualElement>(className: "gov-market-grid").First();
+                    Assert.That(grid, Is.Not.Null, "A lista de itens à venda deve estar renderizada no Mercado.");
+                    yield return null;
+                    yield return null;
+                    if (grid.childCount > 0 && sales.verticalScroller.highValue > 0f)
+                    {
+                        sales.scrollOffset = new Vector2(0f, sales.verticalScroller.highValue);
+                        yield return null;
+                        Rect ultimoItem = grid[grid.childCount - 1].worldBound;
+                        Assert.That(ultimoItem.yMax, Is.LessThanOrEqualTo(sales.contentViewport.worldBound.yMax + 2f),
+                            "O último item da venda precisa poder ser alcançado no fim da rolagem do Mercado.");
+                    }
+                }
                 tabCount++;
                 yield return null;
             }
         }
 
-        Assert.That(tabCount, Is.EqualTo(36), "A auditoria precisa visitar todas as subtabs declaradas do Governo.");
+        Assert.That(tabCount, Is.EqualTo(37), "A auditoria precisa visitar todas as subtabs declaradas do Governo.");
         open.Invoke(controller, new object[] { false });
     }
 

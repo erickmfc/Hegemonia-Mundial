@@ -1757,11 +1757,6 @@ public class MapaGeralController : MonoBehaviour
             bool ehNeutro  = (id.teamID == 0);
             bool ehInimigo = (!ehAliado && !ehNeutro);
 
-            // Estruturas inimigas também respeitam a neblina: ser imóvel não
-            // concede conhecimento estratégico automático ao observador.
-            if (!ehAliado && !ehNeutro && !RTSVisibilityService.TeamsAtWar(meuTeamID, id.teamID))
-                continue;
-
             Vector3 posicaoMapa = id.transform.position;
             RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
             bool contatoAnonimoRecon = ehInimigo && visibilidade != null
@@ -1769,14 +1764,12 @@ public class MapaGeralController : MonoBehaviour
                 && contatoRecon != null && contatoRecon.source == RTSDetectionSource.AirRecon;
             bool contatoAtual = !ehInimigo || (visibilidade != null
                 && visibilidade.IsVisibleToTeam(meuTeamID, id));
-            if (!ehAliado && !ehNeutro && !contatoAtual)
+            bool contatoMemorizado = false;
+            if (ehInimigo && !contatoAtual && visibilidade != null)
             {
-                if (visibilidade == null
-                    || !visibilidade.TryGetLastKnownPosition(meuTeamID, id, out posicaoMapa))
-                {
-                    continue;
-                }
+                contatoMemorizado = visibilidade.TryGetLastKnownPosition(meuTeamID, id, out posicaoMapa);
             }
+            if (!DeveExibirEntidadeNoMapa(ehAliado, ehNeutro, contatoAtual, contatoMemorizado)) continue;
 
             // Componentes móveis e NavMeshObstacle são classificados uma vez
             // por atualização do cache, não em cada repaint IMGUI.
@@ -1878,6 +1871,18 @@ public class MapaGeralController : MonoBehaviour
                 GUI.Label(new Rect(x + 5f, y - 8f, 19f, 16f), cluster.quantidade.ToString(), _legendaMapaStyle);
             }
         }
+    }
+
+    internal static bool DeveExibirEntidadeNoMapa(
+        bool ehAliado,
+        bool ehNeutro,
+        bool contatoAtual,
+        bool contatoMemorizado)
+    {
+        // A diplomacia controla disparos automáticos, não apaga contatos que
+        // o jogador já detectou. A neblina continua bloqueando alvos sem
+        // visão atual nem posição conhecida.
+        return ehAliado || ehNeutro || contatoAtual || contatoMemorizado;
     }
 
     private void DesenharIconeUnidade(float x, float y, float tamanho, int codigoSimbolo,

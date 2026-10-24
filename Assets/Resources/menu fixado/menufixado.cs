@@ -38,7 +38,7 @@ public class MenuFixadoController : MonoBehaviour
     private VisualElement statusContainer;
     private StatusNotificacao decisionNotification;
     private StatusNotificacao alertaDecisaoFechado;
-    private bool? ultimaPrefeituraOperacional;
+    private string ultimaOrientacaoInicial;
     private bool? ultimoAeroportoDoJogador;
     private bool? ultimaSituacaoComida;
     private bool? ultimaSituacaoEnergia;
@@ -612,6 +612,10 @@ public class MenuFixadoController : MonoBehaviour
 
     private void AtualizarAlertasAutomaticos(GerenciadorRecursos recursos, DadosEconomiaPais economia)
     {
+        DadosPaisGoverno paisJogador = SistemaGovernoMundial.Instancia != null
+            ? SistemaGovernoMundial.Instancia.ObterPais(1)
+            : null;
+        bool precisaConfigurarPais = paisJogador != null && !paisJogador.configuracaoInicialConcluida;
         bool prefeituraOperacional = false;
         ComplexoGovernamental[] complexos = FindObjectsByType<ComplexoGovernamental>(FindObjectsSortMode.None);
         for (int i = 0; i < complexos.Length; i++)
@@ -627,24 +631,35 @@ public class MenuFixadoController : MonoBehaviour
             }
         }
 
-        if (!ultimaPrefeituraOperacional.HasValue || ultimaPrefeituraOperacional.Value != prefeituraOperacional)
+        string orientacaoInicial = precisaConfigurarPais
+            ? "CONFIGURAR_PAIS"
+            : prefeituraOperacional ? "PREFEITURA_OK" : "CONSTRUIR_PREFEITURA";
+        if (!string.Equals(ultimaOrientacaoInicial, orientacaoInicial, System.StringComparison.Ordinal))
         {
-            ultimaPrefeituraOperacional = prefeituraOperacional;
+            ultimaOrientacaoInicial = orientacaoInicial;
             StatusNotificacaoFeed.Publicar(
                 "GOVERNO",
-                prefeituraOperacional ? "Prefeitura operacional" : "Construa a Prefeitura",
-                prefeituraOperacional
-                    ? "A sede do governo esta ativa e pronta para administrar a nação."
-                    : "Construa uma Prefeitura para centralizar o governo da nação.",
-                prefeituraOperacional ? StatusNotificacaoSeveridade.Success : StatusNotificacaoSeveridade.Warning,
-                prefeituraOperacional ? string.Empty : "ABRIR CONSTRUCAO",
-                prefeituraOperacional ? null : (System.Action)(() => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Selecione uma Prefeitura para iniciar a fundacao.")));
+                precisaConfigurarPais ? "Configure seu país" : prefeituraOperacional ? "Prefeitura operacional" : "Construa a Prefeitura",
+                precisaConfigurarPais
+                    ? "A partida está pausada. Abra Governo → País → Identidade e Economia → Orçamento para configurar sua nação."
+                    : prefeituraOperacional
+                        ? "A sede do governo está ativa e pronta para administrar a nação."
+                        : "Construa uma Prefeitura para centralizar o governo da nação.",
+                precisaConfigurarPais || !prefeituraOperacional
+                    ? StatusNotificacaoSeveridade.Warning
+                    : StatusNotificacaoSeveridade.Success,
+                precisaConfigurarPais ? "ABRIR GOVERNO" : prefeituraOperacional ? string.Empty : "ABRIR CONSTRUÇÃO",
+                precisaConfigurarPais
+                    ? (System.Action)(() => AbrirGoverno("Abra País → Identidade e Economia → Orçamento para configurar sua nação."))
+                    : prefeituraOperacional
+                        ? null
+                        : (System.Action)(() => AbrirConstrucao(DadosConstrucao.CategoriaItem.Urbana, "Selecione uma Prefeitura para iniciar a fundação.")));
         }
 
         // A Prefeitura e a fundacao da partida. Enquanto ela nao existe,
         // mantenha apenas esta orientacao: energia, comida e territorio so
         // fazem sentido depois que o governo foi estabelecido.
-        if (!prefeituraOperacional)
+        if (!prefeituraOperacional || precisaConfigurarPais)
         {
             return;
         }

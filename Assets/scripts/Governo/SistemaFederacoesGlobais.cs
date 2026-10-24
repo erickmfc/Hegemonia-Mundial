@@ -48,6 +48,7 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime < proximoTick) return;
         proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloTick);
         GarantirFiliacoes();

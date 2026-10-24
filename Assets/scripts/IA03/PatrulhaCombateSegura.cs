@@ -69,6 +69,7 @@ public sealed class PatrulhaCombateSegura : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (!combateAutorizado || controle == null)
         {
             if (estadoAtual != Estado.Patrulhando && estadoAtual != Estado.RetornandoAPatrulha)

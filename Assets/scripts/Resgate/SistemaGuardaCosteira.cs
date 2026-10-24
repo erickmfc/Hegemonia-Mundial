@@ -95,7 +95,7 @@ public sealed class SistemaGuardaCosteira : MonoBehaviour
 
     private void Update()
     {
-        if (MenuPausaController.EstaPausado) return;
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         AtualizarJanelas();
         if (despachoAutomatico && Time.unscaledTime >= proximoDespacho)
         {

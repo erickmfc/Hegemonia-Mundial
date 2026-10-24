@@ -358,6 +358,7 @@ public sealed class SistemaComercioNacional : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         if (Time.unscaledTime < proximoCiclo) return;
         proximoCiclo = Time.unscaledTime + 1f;
         Recalcular();

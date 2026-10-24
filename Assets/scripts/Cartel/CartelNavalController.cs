@@ -116,6 +116,7 @@ namespace Hegemonia.Cartel
 
         private void Update()
         {
+            if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
             if (!IniciarAutomaticamente || EhCenaDeMenu()) return;
             if (!inicializado) Inicializar();
             if (!inicializado) return;

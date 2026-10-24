@@ -159,6 +159,7 @@ namespace Hegemonia.RTS
 
         private void Update()
         {
+            if (RTSSimulationClock.SimulacaoPausada) return;
             float agora = Time.unscaledTime;
             if (agora >= nextSourceResolveAt)
             {

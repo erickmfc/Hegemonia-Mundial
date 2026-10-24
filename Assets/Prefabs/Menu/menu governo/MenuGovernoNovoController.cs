@@ -17,6 +17,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private Label countryName;
     private Label countryMeta;
     private Label nationalStatus;
+    private VisualElement flagPreview;
     private VisualElement recursos;
     private ScrollView navegacao;
     private ScrollView abas;
@@ -32,6 +33,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private int paisSelecionado = -1;
     private float proximaAtualizacao;
     private bool aberturaPendente;
+    private bool tentandoAbrirQuandoPronto;
     private bool mercadoEstoquePrimeiro;
     private bool? modoPercentualAgricolaSelecionadoNoMenu;
     private int diaProducaoRenderizado = -1;
@@ -40,6 +42,13 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     // Mostra o catalogo negociavel ao abrir; o jogador pode filtrar ofertas ativas.
     private bool mercadoSomenteDisponiveis;
     private string mercadoCategoria = "Todos";
+    private readonly List<SliderInt> slidersOrcamentoSetores = new List<SliderInt>();
+    private readonly List<SliderInt> slidersOrcamentoForcas = new List<SliderInt>();
+    private readonly List<Label> valoresOrcamentoSetores = new List<Label>();
+    private readonly List<Label> valoresOrcamentoForcas = new List<Label>();
+    private Label resumoOrcamentoDiario;
+    private Label statusOrcamento;
+    private string assinaturaBandeira;
 
     private int TeamJogador => ResolverTeamJogador(SistemaGovernoMundial.Instancia);
 
@@ -54,6 +63,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         "Aliancas",
         "Sancoes",
         "Economia",
+        "Pais",
         "Mercado",
         "Interior",
         "Defesa",
@@ -66,6 +76,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         { "Aliancas", new[] { "Blocos", "Membros", "Pactos", "Pedidos" } },
         { "Sancoes", new[] { "Ativas", "Embargos", "Pressao", "Historico", "Legitimidade", "Emprestimos" } },
         { "Economia", new[] { "Tesouro", "Orcamento", "Gastos", "Producao", "Impostos" } },
+        { "Pais", new[] { "Identidade" } },
         { "Mercado", new[] { "Comprar", "Vender", "Precos", "Rotas" } },
         { "Interior", new[] { "Populacao", "Cidades", "Bem-estar", "Prioridades" } },
         { "Defesa", new[] { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" } },
@@ -173,7 +184,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         if (!Pronto || root == null)
         {
             aberturaPendente = abrir;
-            StartCoroutine(AbrirQuandoPronto());
+            if (!tentandoAbrirQuandoPronto)
+            {
+                tentandoAbrirQuandoPronto = true;
+                StartCoroutine(AbrirQuandoPronto());
+            }
             return;
         }
 
@@ -236,26 +251,33 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
     private System.Collections.IEnumerator AbrirQuandoPronto()
     {
-        for (int i = 0; i < 30 && !Pronto; i++)
+        for (int i = 0; i < 30 && (!Pronto || root == null); i++)
         {
             yield return null;
             InicializarSeNecessario();
         }
 
-        if (Pronto)
+        tentandoAbrirQuandoPronto = false;
+        if (Pronto && root != null)
         {
             bool abrir = aberturaPendente;
             aberturaPendente = false;
             Abrir(abrir);
         }
+        else
+        {
+            aberturaPendente = false;
+        }
     }
 
     private void InicializarSeNecessario()
     {
-        if (Pronto)
+        if (Pronto && root != null)
         {
             return;
         }
+
+        Pronto = false;
 
         if (documento == null)
         {
@@ -274,6 +296,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         countryName = root.Q<Label>("country-name");
         countryMeta = root.Q<Label>("country-meta");
         nationalStatus = root.Q<Label>("national-status");
+        flagPreview = root.Q<VisualElement>("flag-preview");
         recursos = root.Q<VisualElement>("resource-bar");
         navegacao = root.Q<ScrollView>("navigation");
         abas = root.Q<ScrollView>("section-tabs");
@@ -434,11 +457,22 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(TeamJogador) : null;
         if (countryName != null)
-            countryName.text = pais != null && !string.IsNullOrWhiteSpace(pais.nomePais) ? pais.nomePais.ToUpperInvariant() : "REPUBLICA ATLAS";
+            countryName.text = pais != null && !string.IsNullOrWhiteSpace(pais.nomePais) ? pais.nomePais.ToUpperInvariant() : "PAÍS SEM NOME";
         if (countryMeta != null)
-            countryMeta.text = pais != null && !string.IsNullOrWhiteSpace(pais.nomePresidente) ? pais.nomePresidente.ToUpperInvariant() : "PRESIDENTE ATLAS";
+            countryMeta.text = pais != null && !string.IsNullOrWhiteSpace(pais.nomePresidente) ? pais.nomePresidente.ToUpperInvariant() : "CONFIGURE SEU PAÍS";
         if (nationalStatus != null)
             nationalStatus.text = ObterStatusNacional(pais);
+        if (flagPreview != null)
+        {
+            string novaAssinatura = pais != null
+                ? pais.modeloBandeira + "|" + pais.corBandeiraPrimaria + "|" + pais.corBandeiraSecundaria + "|" + pais.corBandeiraDestaque
+                : string.Empty;
+            if (!string.Equals(assinaturaBandeira, novaAssinatura, StringComparison.Ordinal))
+            {
+                assinaturaBandeira = novaAssinatura;
+                PreencherBandeira(flagPreview, pais);
+            }
+        }
     }
 
     private static string ObterStatusNacional(DadosPaisGoverno pais)
@@ -633,6 +667,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             case "Aliancas": ConstruirAliancas(pais); break;
             case "Sancoes": ConstruirSancoes(); break;
             case "Economia": ConstruirEconomia(pais); break;
+            case "Pais": ConstruirIdentidade(pais); break;
             case "Mercado": ConstruirMercado(); break;
             case "Interior": ConstruirInterior(pais); break;
             case "Defesa": ConstruirDefesa(pais); break;
@@ -717,6 +752,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     Acao("INVESTIR EM ENERGIA", () => Investir("energia"));
                     Acao("AJUSTAR IMPOSTOS +1", () => AjustarImposto(1));
                 }
+                break;
+            case "Pais":
+                Acao("FINALIZAR CONFIGURACAO DO PAIS", SalvarIdentidadeDoPais, "warning");
+                Acao("ABRIR ORCAMENTO NACIONAL", () => { categoria = "Economia"; MostrarSecao("Economia"); MostrarPagina("Orcamento"); });
                 break;
             case "Mercado":
                 Acao("ATUALIZAR COTACOES", AtualizarMercado);
@@ -2514,6 +2553,365 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         }
     }
 
+    private void ConstruirOrcamentoInvestimento(DadosPaisGoverno pais)
+    {
+        OrcamentoInvestimentoNacional.NormalizarPercentuais(pais);
+        slidersOrcamentoSetores.Clear();
+        slidersOrcamentoForcas.Clear();
+        valoresOrcamentoSetores.Clear();
+        valoresOrcamentoForcas.Clear();
+
+        VisualElement configuracao = new VisualElement();
+        configuracao.AddToClassList("gov-card");
+        configuracao.AddToClassList("gov-budget-card");
+        Label titulo = new Label("ORÇAMENTO DIÁRIO DO PAÍS");
+        titulo.AddToClassList("gov-card-title");
+        configuracao.Add(titulo);
+        Label explicacao = new Label("Defina o teto diário e distribua 100% entre os setores. O débito ocorre uma vez por dia e respeita o saldo operacional disponível.");
+        explicacao.AddToClassList("gov-budget-description");
+        configuracao.Add(explicacao);
+
+        Toggle ativo = new Toggle("ATIVAR RATEIO E INVESTIMENTO DIÁRIO")
+        {
+            value = pais.orcamentoInvestimentoAtivo
+        };
+        ativo.AddToClassList("gov-budget-toggle");
+        ativo.RegisterValueChangedCallback(evt =>
+        {
+            pais.orcamentoInvestimentoAtivo = evt.newValue;
+            AtualizarResumoOrcamento(pais);
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+        });
+        configuracao.Add(ativo);
+
+        IntegerField totalMilhoes = new IntegerField("TETO DIÁRIO (MILHÕES)")
+        {
+            value = (int)Math.Min(int.MaxValue, Math.Max(0L, pais.orcamentoInvestimentoDiario) / 1_000_000L)
+        };
+        totalMilhoes.AddToClassList("gov-budget-total-field");
+        totalMilhoes.RegisterValueChangedCallback(evt =>
+        {
+            long milhoes = Math.Max(0, evt.newValue);
+            pais.orcamentoInvestimentoDiario = milhoes > long.MaxValue / 1_000_000L
+                ? long.MaxValue : milhoes * 1_000_000L;
+            SincronizarControlesOrcamento(pais);
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+        });
+        configuracao.Add(totalMilhoes);
+
+        resumoOrcamentoDiario = new Label();
+        resumoOrcamentoDiario.AddToClassList("gov-budget-summary");
+        configuracao.Add(resumoOrcamentoDiario);
+        statusOrcamento = new Label();
+        statusOrcamento.AddToClassList("gov-budget-status");
+        configuracao.Add(statusOrcamento);
+        conteudo.Add(configuracao);
+
+        VisualElement setores = new VisualElement();
+        setores.AddToClassList("gov-card");
+        setores.AddToClassList("gov-budget-card");
+        Label tituloSetores = new Label("DISTRIBUIÇÃO NACIONAL · 100%");
+        tituloSetores.AddToClassList("gov-card-title");
+        setores.Add(tituloSetores);
+        string[] nomesSetores = { "AGRICULTURA E ALIMENTOS", "ENERGIA", "PETRÓLEO E MANUTENÇÃO", "INDÚSTRIA E RECURSOS", "PESQUISA E TECNOLOGIA", "MILITAR" };
+        for (int i = 0; i < nomesSetores.Length; i++)
+        {
+            int indice = i;
+            VisualElement linha = new VisualElement();
+            linha.AddToClassList("gov-budget-row");
+            Label nome = new Label(nomesSetores[i]);
+            nome.AddToClassList("gov-budget-name");
+            Label valor = new Label();
+            valor.AddToClassList("gov-budget-value");
+            SliderInt slider = new SliderInt { lowValue = 0, highValue = 100, value = OrcamentoInvestimentoNacional.ObterPercentualSetor(pais, i) };
+            slider.AddToClassList("gov-budget-slider");
+            slider.RegisterValueChangedCallback(evt =>
+            {
+                OrcamentoInvestimentoNacional.AjustarPercentualSetor(pais, indice, evt.newValue);
+                SincronizarControlesOrcamento(pais);
+                SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+            });
+            slidersOrcamentoSetores.Add(slider);
+            valoresOrcamentoSetores.Add(valor);
+            linha.Add(nome);
+            linha.Add(slider);
+            linha.Add(valor);
+            setores.Add(linha);
+        }
+        conteudo.Add(setores);
+
+        VisualElement forcas = new VisualElement();
+        forcas.AddToClassList("gov-card");
+        forcas.AddToClassList("gov-budget-card");
+        Label tituloForcas = new Label("DISTRIBUIÇÃO MILITAR · 100% DA VERBA MILITAR");
+        tituloForcas.AddToClassList("gov-card-title");
+        forcas.Add(tituloForcas);
+        string[] nomesForcas = { "EXÉRCITO", "MARINHA", "AERONÁUTICA" };
+        int[] percentuaisForcas = { pais.orcamentoPctExercito, pais.orcamentoPctMarinha, pais.orcamentoPctAerea };
+        for (int i = 0; i < nomesForcas.Length; i++)
+        {
+            int indice = i;
+            VisualElement linha = new VisualElement();
+            linha.AddToClassList("gov-budget-row");
+            Label nome = new Label(nomesForcas[i]);
+            nome.AddToClassList("gov-budget-name");
+            Label valor = new Label();
+            valor.AddToClassList("gov-budget-value");
+            SliderInt slider = new SliderInt { lowValue = 0, highValue = 100, value = percentuaisForcas[i] };
+            slider.AddToClassList("gov-budget-slider");
+            slider.RegisterValueChangedCallback(evt =>
+            {
+                OrcamentoInvestimentoNacional.AjustarPercentualForca(pais, indice, evt.newValue);
+                SincronizarControlesOrcamento(pais);
+                SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+            });
+            slidersOrcamentoForcas.Add(slider);
+            valoresOrcamentoForcas.Add(valor);
+            linha.Add(nome);
+            linha.Add(slider);
+            linha.Add(valor);
+            forcas.Add(linha);
+        }
+        conteudo.Add(forcas);
+        AtualizarResumoOrcamento(pais);
+        SincronizarControlesOrcamento(pais);
+    }
+
+    private void SincronizarControlesOrcamento(DadosPaisGoverno pais)
+    {
+        if (pais == null) return;
+        for (int i = 0; i < slidersOrcamentoSetores.Count; i++)
+        {
+            slidersOrcamentoSetores[i].SetValueWithoutNotify(OrcamentoInvestimentoNacional.ObterPercentualSetor(pais, i));
+            valoresOrcamentoSetores[i].text = OrcamentoInvestimentoNacional.ObterPercentualSetor(pais, i)
+                + "%  ·  " + Moeda(OrcamentoInvestimentoNacional.ObterValorSetor(pais, i)) + "/dia";
+        }
+        int[] percentuaisForcas = { pais.orcamentoPctExercito, pais.orcamentoPctMarinha, pais.orcamentoPctAerea };
+        long[] valoresForcas =
+        {
+            (long)Math.Floor(pais.orcamentoInvestimentoDiario * (double)pais.orcamentoPctMilitar / 100d * pais.orcamentoPctExercito / 100d),
+            (long)Math.Floor(pais.orcamentoInvestimentoDiario * (double)pais.orcamentoPctMilitar / 100d * pais.orcamentoPctMarinha / 100d),
+            (long)Math.Floor(pais.orcamentoInvestimentoDiario * (double)pais.orcamentoPctMilitar / 100d * pais.orcamentoPctAerea / 100d)
+        };
+        for (int i = 0; i < slidersOrcamentoForcas.Count; i++)
+        {
+            slidersOrcamentoForcas[i].SetValueWithoutNotify(percentuaisForcas[i]);
+            valoresOrcamentoForcas[i].text = percentuaisForcas[i] + "%  ·  " + Moeda(valoresForcas[i]) + "/dia";
+        }
+        AtualizarResumoOrcamento(pais);
+    }
+
+    private void AtualizarResumoOrcamento(DadosPaisGoverno pais)
+    {
+        if (pais == null) return;
+        if (resumoOrcamentoDiario != null)
+            resumoOrcamentoDiario.text = "TETO CONFIGURADO: " + Moeda(pais.orcamentoInvestimentoDiario) + " / dia";
+        if (statusOrcamento != null)
+        {
+            string estado = pais.orcamentoInvestimentoAtivo ? "ATIVO" : "PAUSADO";
+            string gasto = pais.orcamentoGastoHoje > 0L
+                ? " · debitado hoje: " + Moeda(pais.orcamentoGastoHoje)
+                : " · próximo débito na virada do dia";
+            statusOrcamento.text = estado + gasto;
+        }
+    }
+
+    private void ConstruirIdentidade(DadosPaisGoverno pais)
+    {
+        AdicionarCard(conteudo, "CONFIGURE SEU PAÍS", "Esses dados identificam sua nação no Governo e na interface de recursos; a configuração entra no save da campanha.");
+        VisualElement identidade = new VisualElement();
+        identidade.AddToClassList("gov-card");
+        identidade.AddToClassList("gov-identity-card");
+
+        TextField nomePais = new TextField("NOME DO PAÍS") { value = pais.nomePais ?? string.Empty, maxLength = 48 };
+        nomePais.AddToClassList("gov-identity-field");
+        nomePais.RegisterValueChangedCallback(evt =>
+        {
+            pais.nomePais = evt.newValue;
+            AtualizarCabecalho();
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+        });
+        identidade.Add(nomePais);
+
+        TextField nomeMoeda = new TextField("NOME DA MOEDA") { value = pais.nomeMoeda ?? string.Empty, maxLength = 32 };
+        nomeMoeda.AddToClassList("gov-identity-field");
+        nomeMoeda.RegisterValueChangedCallback(evt =>
+        {
+            pais.nomeMoeda = evt.newValue;
+            AtualizarRecursos();
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+        });
+        identidade.Add(nomeMoeda);
+
+        TextField simboloMoeda = new TextField("SÍMBOLO MONETÁRIO") { value = pais.simboloMoeda ?? string.Empty, maxLength = 8 };
+        simboloMoeda.AddToClassList("gov-identity-field");
+        simboloMoeda.RegisterValueChangedCallback(evt =>
+        {
+            pais.simboloMoeda = evt.newValue;
+            AtualizarRecursos();
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+        });
+        identidade.Add(simboloMoeda);
+
+        string[] modelos = { "Faixas horizontais", "Faixas verticais", "Faixa central", "Cruz central" };
+        DropdownField modelo = new DropdownField("FORMATO DA BANDEIRA", new List<string>(modelos), Mathf.Clamp(pais.modeloBandeira, 0, modelos.Length - 1));
+        modelo.AddToClassList("gov-identity-field");
+        modelo.RegisterValueChangedCallback(evt =>
+        {
+            pais.modeloBandeira = Mathf.Max(0, modelo.choices.IndexOf(evt.newValue));
+            PreencherBandeira(flagPreview, pais);
+            AtualizarAssinaturaBandeira(pais);
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+        });
+        identidade.Add(modelo);
+
+        VisualElement bandeira = new VisualElement();
+        bandeira.AddToClassList("gov-flag-large");
+        PreencherBandeira(bandeira, pais);
+        identidade.Add(bandeira);
+
+        identidade.Add(CriarSeletorCorBandeira("COR PRINCIPAL", pais.corBandeiraPrimaria,
+            cor => AtualizarCorBandeira(pais, bandeira, 0, cor)));
+        identidade.Add(CriarSeletorCorBandeira("COR SECUNDÁRIA", pais.corBandeiraSecundaria,
+            cor => AtualizarCorBandeira(pais, bandeira, 1, cor)));
+        identidade.Add(CriarSeletorCorBandeira("COR DE DESTAQUE", pais.corBandeiraDestaque,
+            cor => AtualizarCorBandeira(pais, bandeira, 2, cor)));
+        conteudo.Add(identidade);
+    }
+
+    private DropdownField CriarSeletorCorBandeira(string rotulo, string corAtual, Action<Color> aoSelecionar)
+    {
+        string[] nomes = { "Azul oceano", "Azul profundo", "Verde floresta", "Vermelho", "Dourado", "Branco", "Grafite", "Violeta", "Coral" };
+        string[] cores = { "#117C87", "#173B63", "#2F7D50", "#B23939", "#F5C451", "#F4F6F7", "#27323A", "#7651A8", "#E17852" };
+        List<string> escolhas = new List<string>(nomes);
+        List<string> valores = new List<string>(cores);
+        string atual = string.IsNullOrWhiteSpace(corAtual) ? cores[0] : corAtual.Trim().ToUpperInvariant();
+        int selecionado = valores.FindIndex(cor => string.Equals(cor, atual, StringComparison.OrdinalIgnoreCase));
+        if (selecionado < 0)
+        {
+            escolhas.Add("Personalizada (" + atual + ")");
+            valores.Add(atual);
+            selecionado = valores.Count - 1;
+        }
+
+        DropdownField seletor = new DropdownField(rotulo, escolhas, selecionado);
+        seletor.AddToClassList("gov-identity-color");
+        seletor.RegisterValueChangedCallback(evt =>
+        {
+            int indice = seletor.choices.IndexOf(evt.newValue);
+            if (indice < 0 || indice >= valores.Count) return;
+            if (ColorUtility.TryParseHtmlString(valores[indice], out Color cor))
+                aoSelecionar?.Invoke(cor);
+        });
+        return seletor;
+    }
+
+    private void AtualizarCorBandeira(DadosPaisGoverno pais, VisualElement preview, int indice, Color cor)
+    {
+        string hex = "#" + ColorUtility.ToHtmlStringRGB(cor);
+        if (indice == 0) pais.corBandeiraPrimaria = hex;
+        else if (indice == 1) pais.corBandeiraSecundaria = hex;
+        else pais.corBandeiraDestaque = hex;
+        PreencherBandeira(preview, pais);
+        AtualizarCabecalho();
+        SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+    }
+
+    private void AtualizarAssinaturaBandeira(DadosPaisGoverno pais)
+    {
+        assinaturaBandeira = pais == null ? string.Empty
+            : pais.modeloBandeira + "|" + pais.corBandeiraPrimaria + "|" + pais.corBandeiraSecundaria + "|" + pais.corBandeiraDestaque;
+    }
+
+    private void SalvarIdentidadeDoPais()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(TeamJogador) : null;
+        if (pais == null) return;
+        pais.nomePais = string.IsNullOrWhiteSpace(pais.nomePais) ? string.Empty : pais.nomePais.Trim();
+        pais.nomeMoeda = string.IsNullOrWhiteSpace(pais.nomeMoeda) ? string.Empty : pais.nomeMoeda.Trim();
+        pais.simboloMoeda = string.IsNullOrWhiteSpace(pais.simboloMoeda) ? string.Empty : pais.simboloMoeda.Trim();
+        if (pais.nomeMoeda.Length == 0 || pais.simboloMoeda.Length == 0)
+        {
+            MostrarMensagem("Informe o nome da moeda e seu símbolo antes de finalizar.");
+            return;
+        }
+        pais.configuracaoInicialConcluida = true;
+        governo.NotificarGovernoAtualizado();
+        AtualizarCabecalho();
+        AtualizarRecursos();
+        MostrarMensagem("Identidade nacional salva na campanha.");
+    }
+
+    private static Color LerCorBandeira(string valor, Color padrao)
+    {
+        return !string.IsNullOrWhiteSpace(valor) && ColorUtility.TryParseHtmlString(valor, out Color cor)
+            ? cor : padrao;
+    }
+
+    private static void PreencherBandeira(VisualElement alvo, DadosPaisGoverno pais)
+    {
+        if (alvo == null) return;
+        alvo.Clear();
+        Color primaria = LerCorBandeira(pais != null ? pais.corBandeiraPrimaria : null, new Color(0.07f, 0.49f, 0.53f));
+        Color secundaria = LerCorBandeira(pais != null ? pais.corBandeiraSecundaria : null, new Color(0.96f, 0.77f, 0.31f));
+        Color destaque = LerCorBandeira(pais != null ? pais.corBandeiraDestaque : null, new Color(0.96f, 0.97f, 0.98f));
+        int modelo = pais != null ? Mathf.Clamp(pais.modeloBandeira, 0, 3) : 0;
+        alvo.style.backgroundColor = primaria;
+        alvo.style.flexDirection = modelo == 1 ? FlexDirection.Row : FlexDirection.Column;
+        if (modelo == 0 || modelo == 1)
+        {
+            foreach (Color cor in new[] { primaria, secundaria, destaque })
+            {
+                VisualElement faixa = new VisualElement();
+                faixa.style.flexGrow = 1f;
+                faixa.style.backgroundColor = cor;
+                alvo.Add(faixa);
+            }
+            return;
+        }
+
+        if (modelo == 2)
+        {
+            VisualElement faixa = new VisualElement();
+            faixa.style.position = Position.Absolute;
+            faixa.style.left = 0;
+            faixa.style.right = 0;
+            faixa.style.top = Length.Percent(36f);
+            faixa.style.height = Length.Percent(28f);
+            faixa.style.backgroundColor = secundaria;
+            alvo.Add(faixa);
+            Label emblema = new Label("✦");
+            emblema.style.position = Position.Absolute;
+            emblema.style.left = Length.Percent(40f);
+            emblema.style.top = Length.Percent(18f);
+            emblema.style.width = Length.Percent(20f);
+            emblema.style.height = Length.Percent(64f);
+            emblema.style.unityTextAlign = TextAnchor.MiddleCenter;
+            emblema.style.color = destaque;
+            emblema.style.fontSize = 22;
+            alvo.Add(emblema);
+            return;
+        }
+
+        VisualElement coluna = new VisualElement();
+        coluna.style.position = Position.Absolute;
+        coluna.style.left = Length.Percent(42f);
+        coluna.style.top = 0;
+        coluna.style.width = Length.Percent(16f);
+        coluna.style.bottom = 0;
+        coluna.style.backgroundColor = secundaria;
+        alvo.Add(coluna);
+        VisualElement barra = new VisualElement();
+        barra.style.position = Position.Absolute;
+        barra.style.left = 0;
+        barra.style.right = 0;
+        barra.style.top = Length.Percent(40f);
+        barra.style.height = Length.Percent(20f);
+        barra.style.backgroundColor = destaque;
+        alvo.Add(barra);
+    }
+
     private void ConstruirEconomia(DadosPaisGoverno p)
     {
         SistemaEconomiaImoveis sistemaEconomia = SistemaEconomiaImoveis.Instancia;
@@ -2554,6 +2952,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         if (abaAtual == "Orcamento")
         {
+            ConstruirOrcamentoInvestimento(p);
             RelatorioOrcamentoNacional rel = SistemaOrcamentoNacional.ObterOuCriar().GerarRelatorio(p != null ? p.teamId : TeamJogador);
 
             LinhaCards(new[]
@@ -3894,7 +4293,11 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
     private static string Moeda(long valor)
     {
-        return ValoresDefinitivosHegemonia.FormatarDinheiro(valor);
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno pais = governo != null ? governo.ObterPais(governo.teamJogador) : null;
+        string simbolo = pais != null && !string.IsNullOrWhiteSpace(pais.simboloMoeda)
+            ? pais.simboloMoeda.Trim() : "$";
+        return simbolo + " " + valor.ToString("N0", CultureInfo.GetCultureInfo("pt-BR"));
     }
 
     private static string Moeda(int valor)

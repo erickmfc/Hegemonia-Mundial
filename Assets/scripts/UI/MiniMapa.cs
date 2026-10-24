@@ -13,6 +13,24 @@ using UnityEngine.UI;
 /// </summary>
 public class MiniMapa : MonoBehaviour
 {
+    private static readonly HashSet<MiniMapa> instancias = new HashSet<MiniMapa>();
+
+    public static bool OverlayVisivel
+    {
+        get
+        {
+            foreach (MiniMapa mapa in instancias)
+            {
+                if (mapa != null && mapa._uiRoot != null && mapa._uiRoot.activeInHierarchy)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    public bool VisibilidadeSolicitada => _visibleByHotkey;
+
     [Header("Configuração")]
     [Tooltip("Transform acompanhado pelo mapa quando o modo Centro está ativo.")]
     public Transform alvoJogador;
@@ -121,7 +139,7 @@ public class MiniMapa : MonoBehaviour
     private bool _initialized;
     private bool _createdUiRoot;
     private bool _createdEventSystem;
-    private bool _visibleByHotkey = true;
+    private bool _visibleByHotkey;
     private bool _suppressedByCommandMenu;
     private bool _suppressedByOtherUi;
     private bool _followPlayer = true;
@@ -162,8 +180,10 @@ public class MiniMapa : MonoBehaviour
 
     private void OnEnable()
     {
+        instancias.Add(this);
         InitializeIfNeeded();
         ResolveContactAdapter();
+        AtualizarSupressaoPorInterface();
         SetRuntimeVisible(ShouldBeVisible());
     }
 
@@ -176,23 +196,8 @@ public class MiniMapa : MonoBehaviour
     {
         if (_uiRoot != null)
             _uiRoot.SetActive(false);
+        instancias.Remove(this);
         UnbindContactAdapter();
-    }
-
-    private void Update()
-    {
-        if (!Input.GetKeyDown(KeyCode.N) || _suppressedByCommandMenu
-            || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
-            return;
-
-        EventSystem events = EventSystem.current;
-        GameObject selected = events != null ? events.currentSelectedGameObject : null;
-        if (selected != null && (selected.GetComponentInParent<InputField>() != null
-            || HasNamedComponentInParents(selected.transform, "TMP_InputField")))
-            return;
-
-        _visibleByHotkey = !_visibleByHotkey;
-        SetRuntimeVisible(ShouldBeVisible());
     }
 
     private void LateUpdate()
@@ -207,8 +212,7 @@ public class MiniMapa : MonoBehaviour
         if (visibilityNow >= _nextVisibilityCheckAt)
         {
             _nextVisibilityCheckAt = visibilityNow + 0.15f;
-            _suppressedByOtherUi = !_suppressedByCommandMenu
-                && IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
+            AtualizarSupressaoPorInterface();
             SetRuntimeVisible(ShouldBeVisible());
         }
 
@@ -684,7 +688,7 @@ public class MiniMapa : MonoBehaviour
         float scale = Mathf.Max(0.1f, _uiCanvas.scaleFactor);
         Rect layout = CalculateResponsivePanelLayout(Screen.width, Screen.height, scale, margemBorda);
         _panelRect.sizeDelta = new Vector2(layout.width, layout.height);
-        _panelRect.localScale = Vector3.one * 0.5f;
+        _panelRect.localScale = Vector3.one;
         _panelRect.anchoredPosition = new Vector2(layout.x, layout.y);
 
         if (_controlsRect != null)
@@ -707,24 +711,16 @@ public class MiniMapa : MonoBehaviour
         float scale = Mathf.Max(0.1f, canvasScale);
         float canvasWidth = screenWidth / scale;
         float canvasHeight = screenHeight / scale;
-        // O Tactical Display permanece responsivo, mas reduzido à metade para
-        // não competir com a área de jogo e com o HUD inferior.
-        float width = Mathf.Clamp(canvasWidth * 0.21f, 190f, 420f);
-        float height = Mathf.Clamp(canvasHeight * 0.33f, 165f, 360f);
-        width = Mathf.Min(width, Mathf.Max(160f, canvasWidth - borderMargin * 2f));
-        height = Mathf.Min(height, Mathf.Max(150f, canvasHeight - borderMargin * 2f));
-
-        float margin = Mathf.Max(8f, borderMargin / scale);
-        float hudHeight = Mathf.Min(Mathf.Clamp(canvasHeight * 0.19f, 145f, 190f), canvasHeight * 0.25f);
-        float bottom = margin + hudHeight + 22f;
-        float visualHeight = height * 0.5f;
-        if (bottom + visualHeight > canvasHeight - margin)
-            bottom = Mathf.Max(margin, canvasHeight - margin - visualHeight);
-        // Anchors remain at the canvas origin for compatibility with existing
-        // UI layout consumers; the computed offset places the scaled panel at
-        // the lower-right edge without relying on a right-anchored pivot.
-        float right = Mathf.Max(margin, canvasWidth - margin - width * 0.5f);
-        return new Rect(right, bottom, width, height);
+        // Alinha o Tactical Display ao painel de desempenho do mapa global:
+        // 330x262 pixels, encostado à direita e 178 pixels acima do rodape.
+        float margin = Mathf.Max(8f, Mathf.Min(12f, borderMargin)) / scale;
+        float width = Mathf.Min(330f / scale, Mathf.Max(160f, canvasWidth - margin * 2f));
+        float height = Mathf.Min(262f / scale, Mathf.Max(150f, canvasHeight - margin * 2f));
+        float bottom = 178f / scale;
+        if (bottom + height > canvasHeight - margin)
+            bottom = Mathf.Max(margin, canvasHeight - margin - height);
+        float left = Mathf.Max(margin, canvasWidth - margin - width);
+        return new Rect(left, bottom, width, height);
     }
 
     private void SetRuntimeVisible(bool visible)
@@ -746,8 +742,34 @@ public class MiniMapa : MonoBehaviour
     public void SuprimirPorMenuComando(bool suprimir)
     {
         _suppressedByCommandMenu = suprimir;
-        _suppressedByOtherUi = !suprimir && IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
+        AtualizarSupressaoPorInterface();
         SetRuntimeVisible(ShouldBeVisible());
+    }
+
+    public void DefinirVisibilidadePeloAtalho(bool visivel)
+    {
+        _visibleByHotkey = visivel;
+        AtualizarSupressaoPorInterface();
+        SetRuntimeVisible(ShouldBeVisible());
+    }
+
+    private void AtualizarSupressaoPorInterface()
+    {
+        // A solicitacao explicita pelo atalho N prevalece sobre a ocultacao
+        // automatica de interfaces, para o ciclo N controlar sempre o que fica
+        // visivel mesmo com Governo e outros paineis abertos.
+        if (_visibleByHotkey)
+        {
+            _suppressedByCommandMenu = false;
+            _suppressedByOtherUi = false;
+            return;
+        }
+
+        // O Tactical Display fica utilizavel junto ao painel Governo; as outras
+        // interfaces mantem a regra de ocultar os indicadores sobre o jogo.
+        _suppressedByOtherUi = !_suppressedByCommandMenu
+            && !MenuGoverno.EstaAberto
+            && IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
     }
 
     private bool ShouldBeVisible()

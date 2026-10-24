@@ -63,6 +63,8 @@ public class PainelRecursos : MonoBehaviour
     private RectTransform conteudoRecursos;
     private RectTransform conteudoStatus;
     private RectTransform conteudoObjetivos;
+    private SistemaGovernoMundial governoInscrito;
+    private TextMeshProUGUI iconeDinheiro;
 
     private TextMeshProUGUI setaRecursos;
     private TextMeshProUGUI setaStatus;
@@ -102,6 +104,7 @@ public class PainelRecursos : MonoBehaviour
     private void Start()
     {
         AtualizarTudo();
+        AtualizarInscricaoGoverno();
 
         if (GerenciadorRecursos.Instancia != null)
             GerenciadorRecursos.Instancia.OnRecursosAtualizados += AtualizarTudo;
@@ -115,6 +118,9 @@ public class PainelRecursos : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (governoInscrito != null)
+            governoInscrito.OnGovernoAtualizado -= AtualizarTudo;
+        governoInscrito = null;
         if (GerenciadorRecursos.Instancia != null)
             GerenciadorRecursos.Instancia.OnRecursosAtualizados -= AtualizarTudo;
 
@@ -123,6 +129,31 @@ public class PainelRecursos : MonoBehaviour
 
         if (GerenciadorArmazens.Instancia != null)
             GerenciadorArmazens.Instancia.OnArmazensAtualizados -= AtualizarTudo;
+    }
+
+    private void OnEnable()
+    {
+        AtualizarInscricaoGoverno();
+    }
+
+    private void LateUpdate()
+    {
+        if (governoInscrito != SistemaGovernoMundial.Instancia)
+            AtualizarInscricaoGoverno();
+    }
+
+    private void AtualizarInscricaoGoverno()
+    {
+        SistemaGovernoMundial atual = SistemaGovernoMundial.Instancia;
+        if (governoInscrito == atual) return;
+        if (governoInscrito != null)
+            governoInscrito.OnGovernoAtualizado -= AtualizarTudo;
+        governoInscrito = atual;
+        if (governoInscrito != null)
+        {
+            governoInscrito.OnGovernoAtualizado += AtualizarTudo;
+            AtualizarTudo();
+        }
     }
 
     [ContextMenu("Reconstruir HUD Lateral Novo")]
@@ -210,6 +241,8 @@ public class PainelRecursos : MonoBehaviour
         conteudoRecursos.offsetMax = new Vector2(-14f, -AlturaHeader - 6f);
 
         CriarLinhaRecurso(conteudoRecursos, 0, "$", "DINHEIRO", "$ 0", corVerde, out textoDinheiro, out ganhoTextoDinheiro);
+        Transform iconeDinheiroTransform = conteudoRecursos.Find("Recurso_DINHEIRO/Icone/Texto_Icone");
+        iconeDinheiro = iconeDinheiroTransform != null ? iconeDinheiroTransform.GetComponent<TextMeshProUGUI>() : null;
         CriarLinhaRecurso(conteudoRecursos, 1, "E", "ENERGIA", "0%", corAmarelo, out textoEnergia, out ganhoTextoEnergia);
         CriarLinhaRecurso(conteudoRecursos, 2, "OIL", "PETROLEO", "0", corCiano, out textoPetroleo, out ganhoTextoPetroleo);
         CriarLinhaRecurso(conteudoRecursos, 3, "AC", "ACO", "0", new Color(0.75f, 0.80f, 0.85f, 1f), out textoAco, out ganhoTextoAco);
@@ -604,12 +637,27 @@ public class PainelRecursos : MonoBehaviour
 
     private void AtualizarTudo()
     {
+        SistemaGovernoMundial.GarantirInstancia();
+        SistemaGovernoMundial governoIdentidade = SistemaGovernoMundial.Instancia;
+        DadosPaisGoverno paisIdentidade = governoIdentidade != null
+            ? governoIdentidade.ObterPais(governoIdentidade.teamJogador)
+            : null;
+        string simboloMoeda = paisIdentidade != null && !string.IsNullOrWhiteSpace(paisIdentidade.simboloMoeda)
+            ? paisIdentidade.simboloMoeda.Trim() + " " : "$ ";
+        if (iconeDinheiro != null)
+        {
+            string simbolo = paisIdentidade != null && !string.IsNullOrWhiteSpace(paisIdentidade.simboloMoeda)
+                ? paisIdentidade.simboloMoeda.Trim() : "$";
+            iconeDinheiro.text = simbolo;
+            iconeDinheiro.fontSize = Mathf.Clamp(16f - Mathf.Max(0, simbolo.Length - 2) * 1.25f, 8f, 16f);
+        }
+
         if (GerenciadorRecursos.Instancia == null)
         {
             long caixaInicial = GameDifficultyManager.Instancia != null
                 ? GameDifficultyManager.PerfilAtual.DinheiroInicial
                 : 0L;
-            AtualizarTextoDinheiro(textoDinheiro, caixaInicial, ganhoTextoDinheiro, 0f, "$ ");
+            AtualizarTextoDinheiro(textoDinheiro, caixaInicial, ganhoTextoDinheiro, 0f, simboloMoeda);
             if (textoEnergia != null) textoEnergia.text = "0% USO";
             if (ganhoTextoEnergia != null) ganhoTextoEnergia.text = "0/0";
             AtualizarTexto(textoPetroleo, 500, ganhoTextoPetroleo, 0, "");
@@ -617,8 +665,11 @@ public class PainelRecursos : MonoBehaviour
             AtualizarTexto(textoComida, 240, ganhoTextoComida, 0, "");
 
             if (textoPopulacao != null) textoPopulacao.text = "12/200";
-            if (textoPais != null) textoPais.text = "Republica Atlas";
-            if (textoMoeda != null) textoMoeda.text = "Atlas 1.00x";
+            if (textoPais != null) textoPais.text = paisIdentidade != null && !string.IsNullOrWhiteSpace(paisIdentidade.nomePais)
+                ? paisIdentidade.nomePais : "PAÍS SEM NOME";
+            if (textoMoeda != null) textoMoeda.text = paisIdentidade != null
+                ? (paisIdentidade.nomeMoeda ?? "") + " " + (paisIdentidade.simboloMoeda ?? string.Empty) + " 1.00x"
+                : "$";
             if (textoOuro != null) textoOuro.text = "500";
             if (textoEstoque != null) textoEstoque.text = "42%";
             if (textoExercito != null) textoExercito.text = "0";
@@ -629,7 +680,7 @@ public class PainelRecursos : MonoBehaviour
 
         var r = GerenciadorRecursos.Instancia;
 
-        AtualizarTextoDinheiro(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, r.dinheiroPorSegundo, "$ ");
+        AtualizarTextoDinheiro(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, r.dinheiroPorSegundo, simboloMoeda);
         AtualizarTexto(textoPetroleo, r.petroleo, ganhoTextoPetroleo, r.petroleoPorSegundo, "");
         AtualizarTexto(textoAco, r.aco, ganhoTextoAco, r.acoPorSegundo, "");
         AtualizarTexto(textoComida, r.comida, ganhoTextoComida, r.comidaPorSegundo, "");
@@ -637,19 +688,18 @@ public class PainelRecursos : MonoBehaviour
         if (textoPopulacao != null)
             textoPopulacao.text = $"{r.populacaoAtual:N0}/{r.populacaoMaxima:N0}";
 
-        SistemaGovernoMundial.GarantirInstancia();
-        DadosPaisGoverno paisJogador = SistemaGovernoMundial.Instancia != null
-            ? SistemaGovernoMundial.Instancia.ObterPais(SistemaGovernoMundial.Instancia.teamJogador)
-            : null;
+        DadosPaisGoverno paisJogador = paisIdentidade;
 
         float energiaConsumida = paisJogador != null ? paisJogador.energiaConsumida : 0f;
         float energiaProduzida = paisJogador != null ? paisJogador.energiaProduzida : 0f;
         AtualizarEnergiaHUD(energiaConsumida, energiaProduzida);
 
         if (textoPais != null)
-            textoPais.text = paisJogador != null ? paisJogador.nomePais : "Pais 1";
+            textoPais.text = paisJogador != null && !string.IsNullOrWhiteSpace(paisJogador.nomePais)
+                ? paisJogador.nomePais : "PAÍS SEM NOME";
         if (textoMoeda != null)
-            textoMoeda.text = paisJogador != null ? $"{paisJogador.nomeMoeda} {paisJogador.cambioComLider:0.00}x" : "$";
+            textoMoeda.text = paisJogador != null
+                ? $"{paisJogador.nomeMoeda} ({paisJogador.simboloMoeda}) {paisJogador.cambioComLider:0.00}x" : "$";
         if (textoOuro != null)
             textoOuro.text = paisJogador != null ? paisJogador.reservaOuro.ToString("N0") : "0";
 

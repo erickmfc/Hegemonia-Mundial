@@ -344,7 +344,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
     private void Update()
     {
-        if (!Application.isPlaying) return;
+        if (!Application.isPlaying || Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
 
         float delta = Mathf.Max(0f, Time.deltaTime);
         if (treinamentoAutomaticoAtivo())
@@ -445,12 +445,17 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             return;
         }
 
+        if (pais.orcamentoInvestimentoAtivo)
+            OrcamentoInvestimentoNacional.ProcessarDia(SistemaGovernoMundial.Instancia, pais, ObterDiaAtual());
+
         int meta = quartel != null ? Mathf.Max(1, quartel.metaEfetivo) : 24;
         int emFormacao = ContarRecrutasEmFormacao();
         int falta = Mathf.Max(0, meta - pais.populacaoMilitarAtiva - emFormacao);
         int disponiveis = Mathf.Max(0, pais.alistaveis);
         int limite = Mathf.Clamp(quantidade, 1, 100);
         int aplicados = Mathf.Min(limite, Mathf.Min(falta, disponiveis));
+        if (pais.orcamentoInvestimentoAtivo)
+            aplicados = Mathf.Min(aplicados, OrcamentoInvestimentoNacional.ObterLimiteRecrutamentoForca(pais, forca));
         if (aplicados <= 0)
         {
             ultimoEvento = "Recrutamento recusado: sem alistaveis ou meta de efetivo atingida";
@@ -459,6 +464,9 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
         for (int i = 0; i < aplicados; i++)
         {
+            if (!OrcamentoInvestimentoNacional.ConsumirVerbaDeRecrutamento(
+                pais, forca, OrcamentoInvestimentoNacional.CustoRecrutamentoPorMilitar))
+                break;
             pais.alistaveis = Mathf.Max(0, pais.alistaveis - 1);
             pais.reservistas += 1;
             recrutas.Add(new QuartelRecrutaV2
@@ -484,24 +492,42 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
         DadosPaisGoverno pais = ObterPais();
         if (pais == null) return;
+        if (pais.orcamentoInvestimentoAtivo)
+            OrcamentoInvestimentoNacional.ProcessarDia(SistemaGovernoMundial.Instancia, pais, dia);
         ultimoDiaRecrutamento = dia;
 
         int meta = quartel != null ? Mathf.Max(1, quartel.metaEfetivo) : 24;
         int emFormacao = ContarRecrutasEmFormacao();
+        int limiteFinanciado = pais.orcamentoInvestimentoAtivo
+            ? OrcamentoInvestimentoNacional.ObterLimiteRecrutamentoDiario(pais)
+            : int.MaxValue;
+        if (pais.orcamentoInvestimentoAtivo && limiteFinanciado > 0 && quartel != null)
+        {
+            int metaFinanciada = Mathf.Min(100000,
+                pais.populacaoMilitarAtiva + emFormacao + limiteFinanciado);
+            quartel.metaEfetivo = Mathf.Max(quartel.metaEfetivo, metaFinanciada);
+            meta = Mathf.Max(1, quartel.metaEfetivo);
+        }
         int falta = Mathf.Max(0, meta - pais.populacaoMilitarAtiva - emFormacao);
-        int quantidade = Mathf.Min(Mathf.Max(0, recrutamentoPorDia), Mathf.Min(Mathf.Max(0, pais.alistaveis), falta));
+        int tetoDiario = pais.orcamentoInvestimentoAtivo
+            ? Mathf.Max(0, limiteFinanciado)
+            : Mathf.Max(0, recrutamentoPorDia);
+        int quantidade = Mathf.Min(tetoDiario, Mathf.Min(Mathf.Max(0, pais.alistaveis), falta));
         if (quantidade <= 0)
         {
             ultimoEvento = "Recrutamento diario aguardando alistaveis ou meta de efetivo";
             return;
         }
 
+        int recrutadosNesteCiclo = 0;
         for (int i = 0; i < quantidade; i++)
         {
+            QuartelForcaV2 forca = EscolherForcaParaRecruta(pais);
+            if (!OrcamentoInvestimentoNacional.ConsumirVerbaDeRecrutamento(
+                pais, forca, OrcamentoInvestimentoNacional.CustoRecrutamentoPorMilitar))
+                break;
             pais.alistaveis = Mathf.Max(0, pais.alistaveis - 1);
             pais.reservistas += 1;
-
-            QuartelForcaV2 forca = EscolherForcaParaRecruta();
             recrutas.Add(new QuartelRecrutaV2
             {
                 id = "quartel-recruta-" + (++sequenciaRecruta),
@@ -514,10 +540,11 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             recrutasConcluidos = ContarRecrutasConcluidos();
             recrutasPorForca[forca] = recrutasPorForca[forca] + 1;
             recrutasRecrutados++;
+            recrutadosNesteCiclo++;
         }
 
         RecalcularPopulacao(pais);
-        ultimoEvento = quantidade + " recruta(s) encaminhado(s) para formacao";
+        ultimoEvento = recrutadosNesteCiclo + " recruta(s) encaminhado(s) para formacao";
     }
 
     private void ConcluirFormacao(QuartelRecrutaV2 recruta)
@@ -556,7 +583,13 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             return;
         }
 
-        if (GerenciadorRecursos.Instancia != null)
+        DadosPaisGoverno paisComOrcamento = ObterPais();
+        if (paisComOrcamento != null && paisComOrcamento.orcamentoInvestimentoAtivo)
+        {
+            ultimoPagamentoRealizado = OrcamentoInvestimentoNacional.TentarPagarFolhaComReserva(
+                paisComOrcamento, custoFolhaCalculado);
+        }
+        else if (GerenciadorRecursos.Instancia != null)
         {
             ultimoPagamentoRealizado = GerenciadorRecursos.Instancia.TentarGastarDinheiro(custoFolhaCalculado);
         }
@@ -1130,8 +1163,30 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
         }
     }
 
-    private QuartelForcaV2 EscolherForcaParaRecruta()
+    private QuartelForcaV2 EscolherForcaParaRecruta(DadosPaisGoverno pais = null)
     {
+        if (pais != null && pais.orcamentoInvestimentoAtivo)
+        {
+            QuartelForcaV2 melhorFinanciada = QuartelForcaV2.Infantaria;
+            long maiorVerba = -1L;
+            for (int i = 0; i < 4; i++)
+            {
+                QuartelForcaV2 forca = (QuartelForcaV2)i;
+                if (!OrcamentoInvestimentoNacional.TemVerbaDeRecrutamento(pais, forca)) continue;
+                long verba = forca == QuartelForcaV2.Naval ? pais.orcamentoRecrutamentoMarinhaHoje
+                    : forca == QuartelForcaV2.Aerea ? pais.orcamentoRecrutamentoAereaHoje
+                    : pais.orcamentoRecrutamentoExercitoHoje;
+                int deficit = CalcularDeficitForca(forca);
+                long prioridade = verba + Math.Max(0, deficit);
+                if (prioridade > maiorVerba)
+                {
+                    maiorVerba = prioridade;
+                    melhorFinanciada = forca;
+                }
+            }
+            return melhorFinanciada;
+        }
+
         QuartelForcaV2 melhor = QuartelForcaV2.Infantaria;
         int maiorDeficit = -1;
         for (int i = 0; i < 4; i++)

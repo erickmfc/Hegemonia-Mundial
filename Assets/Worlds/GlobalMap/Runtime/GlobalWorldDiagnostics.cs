@@ -190,7 +190,9 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         const float panelWidth = 330f;
         const float panelHeight = 262f;
         float panelX = Mathf.Max(12f, Screen.width - panelWidth - 12f);
-        float panelY = Mathf.Max(12f, Screen.height - panelHeight - 178f);
+        float panelY = MiniMapa.OverlayVisivel
+            ? 12f
+            : Mathf.Max(12f, Screen.height - panelHeight - 178f);
         GUI.BeginGroup(new Rect(panelX, panelY, panelWidth, panelHeight));
         GUI.Box(new Rect(0f, 0f, panelWidth, panelHeight), "GLOBAL MAP · PERFORMANCE");
         GUI.Label(new Rect(12f, 30f, 305f, 22f), "FPS: " + smoothedFps.ToString("F1") + "    altitude: " + altitude);

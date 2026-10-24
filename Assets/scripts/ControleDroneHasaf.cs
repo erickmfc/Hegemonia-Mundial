@@ -5,6 +5,8 @@ using System.Collections.Generic;
 [RequireComponent(typeof(ControleAviao))]
 public class ControleDroneHasaf : MonoBehaviour
 {
+    private const float AlcanceMaximoDisparoManual = 600f;
+
     private ControleAviao controleAviao;
     private ControleUnidade controleUnidade;
     
@@ -127,6 +129,7 @@ public class ControleDroneHasaf : MonoBehaviour
 
     void Update()
     {
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         cronometroRecarga += Time.deltaTime;
 
         // A ordem oficial é a única autoridade sobre o deslocamento. O drone
@@ -166,6 +169,11 @@ public class ControleDroneHasaf : MonoBehaviour
             {
                 alvoSeguir = null;
             }
+
+            if (alvoSeguir != null && ModoCombateAtivo)
+            {
+                DispararMissil(alvoSeguir);
+            }
         }
         else if (!ordemDeMovimentoAtiva)
         {
@@ -183,6 +191,8 @@ public class ControleDroneHasaf : MonoBehaviour
     public void AtribuirAlvo(Transform novoAlvo)
     {
         alvoSeguir = novoAlvo;
+        if (novoAlvo == null) return;
+
         // Alterar somente o enum deixava o ControleAviao com
         // estaEmModoVooFisico=false; o drone aparecia como "em missão", mas
         // o Update principal não movia mais o objeto.
@@ -198,25 +208,64 @@ public class ControleDroneHasaf : MonoBehaviour
 
     public void DispararMissil(Transform alvo)
     {
-        if (cronometroRecarga >= tempoRecarga && municaoAtual > 0 && prefabMissil != null && pontosLancamento != null && pontosLancamento.Length > 0)
+        if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada
+            || !ModoCombateAtivo || !PodeDispararContraAlvoOrdenado(alvo)
+            || cronometroRecarga < tempoRecarga || municaoAtual <= 0 || prefabMissil == null)
         {
-            cronometroRecarga = 0f;
-            municaoAtual--;
-            
-            int indiceCano = municaoAtual % pontosLancamento.Length;
-            Transform saida = pontosLancamento[indiceCano];
-            
-            GameObject missilGO = Instantiate(prefabMissil, saida.position, saida.rotation);
-            MisselTatico missil = missilGO.GetComponent<MisselTatico>();
-            if (missil == null) missil = missilGO.AddComponent<MisselTatico>(); // Fallback
-            
-            missil.IniciarLancamento(alvo.position, alvo);
-            
-            // Notificar Menu Satélite
-            if (MenuComandoController.Instancia != null)
-            {
-                MenuComandoController.Instancia.SendMessage("NotificarAtaqueDrone", "MÍSSIL LANÇADO CONTRA " + alvo.name, SendMessageOptions.DontRequireReceiver);
-            }
+            return;
         }
+
+        cronometroRecarga = 0f;
+        municaoAtual--;
+
+        Transform saida = transform;
+        if (pontosLancamento != null && pontosLancamento.Length > 0)
+        {
+            int indiceCano = municaoAtual % pontosLancamento.Length;
+            if (pontosLancamento[indiceCano] != null) saida = pontosLancamento[indiceCano];
+        }
+
+        GameObject missilGO = Instantiate(prefabMissil, saida.position, saida.rotation);
+        MisselTatico missil = missilGO.GetComponent<MisselTatico>();
+        if (missil == null) missil = missilGO.AddComponent<MisselTatico>(); // Fallback
+
+        missil.IniciarLancamento(alvo.position, alvo);
+
+        // Notificar Menu Satélite
+        if (MenuComandoController.Instancia != null)
+        {
+            MenuComandoController.Instancia.SendMessage("NotificarAtaqueDrone", "MÍSSIL LANÇADO CONTRA " + alvo.name, SendMessageOptions.DontRequireReceiver);
+        }
+    }
+
+    private bool ModoCombateAtivo => controleUnidade == null || controleUnidade.ModoCombateAtivo;
+
+    private bool PodeDispararContraAlvoOrdenado(Transform alvo)
+    {
+        if (alvo == null || !alvo.gameObject.activeInHierarchy
+            || !ControleSubmarino.PodeSerAlvoConvencional(alvo))
+        {
+            return false;
+        }
+
+        SistemaDeDanos danos = alvo.GetComponent<SistemaDeDanos>()
+            ?? alvo.GetComponentInParent<SistemaDeDanos>()
+            ?? alvo.GetComponentInChildren<SistemaDeDanos>(true);
+        if (danos != null && danos.vidaAtual <= 0f) return false;
+
+        IdentidadeUnidade identidadePropria = GetComponent<IdentidadeUnidade>()
+            ?? GetComponentInParent<IdentidadeUnidade>()
+            ?? GetComponentInChildren<IdentidadeUnidade>(true);
+        IdentidadeUnidade identidadeAlvo = alvo.GetComponent<IdentidadeUnidade>()
+            ?? alvo.GetComponentInParent<IdentidadeUnidade>()
+            ?? alvo.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (identidadePropria != null && identidadeAlvo != null
+            && identidadePropria.teamID == identidadeAlvo.teamID)
+        {
+            return false;
+        }
+
+        return (alvo.position - transform.position).sqrMagnitude
+            <= AlcanceMaximoDisparoManual * AlcanceMaximoDisparoManual;
     }
 }

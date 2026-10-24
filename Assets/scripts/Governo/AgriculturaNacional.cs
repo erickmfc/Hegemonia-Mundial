@@ -476,6 +476,7 @@ public sealed class AgriculturaNacional : MonoBehaviour
         {
             DadosPaisGoverno pais = paises[i];
             if (pais == null) continue;
+            OrcamentoInvestimentoNacional.ProcessarDia(governo, pais, dia);
             GarantirCapacidadeArmazenamento(pais, pais.teamId == governo.teamJogador);
             GarantirDadosArea(pais);
             governo.ReconciliarEstoqueComidaCulturas(pais.teamId);
@@ -508,6 +509,16 @@ public sealed class AgriculturaNacional : MonoBehaviour
     private void ProcessarCobrancaSemanal(DadosPaisGoverno pais)
     {
         if (pais == null) return;
+        if (pais.orcamentoInvestimentoAtivo)
+        {
+            // O orçamento nacional já pagou o aporte diário; converte-o em
+            // equivalente semanal apenas para calcular o rendimento agrícola.
+            pais.ultimaCobrancaAgricola = pais.orcamentoAgriculturaHoje > long.MaxValue / 7L
+                ? long.MaxValue
+                : pais.orcamentoAgriculturaHoje * 7L;
+            pais.investimentoAgricolaSemRecursos = pais.ultimaCobrancaAgricola <= 0L;
+            return;
+        }
         if (pais.investimentoAgricolaPercentualAtivo)
         {
             long saldo = governo.ObterSaldoDisponivelParaOperacao(pais.teamId);
@@ -538,11 +549,15 @@ public sealed class AgriculturaNacional : MonoBehaviour
         }
 
         int investimento = Mathf.Max(0, pais.investimentoAgricolaSemanal);
-        float bonusInvestimento = pais.investimentoAgricolaPercentualAtivo
-            ? CalcularBonusInvestimentoPercentual(pais.ultimaCobrancaAgricola)
-            : CalcularBonusAplicadoInvestimentoFixo(
-                investimento, pais.ultimaCobrancaAgricola, pais.investimentoAgricolaSemRecursos);
-        int quantidade = EstimarProducaoDiaria(pais, bonusInvestimento);
+        float bonusInvestimento = pais.orcamentoInvestimentoAtivo
+            ? CalcularBonusInvestimentoPercentual(pais.orcamentoAgriculturaHoje > long.MaxValue / 7L
+                ? long.MaxValue : pais.orcamentoAgriculturaHoje * 7L)
+            : pais.investimentoAgricolaPercentualAtivo
+                ? CalcularBonusInvestimentoPercentual(pais.ultimaCobrancaAgricola)
+                : CalcularBonusAplicadoInvestimentoFixo(
+                    investimento, pais.ultimaCobrancaAgricola, pais.investimentoAgricolaSemRecursos);
+        int quantidade = Mathf.FloorToInt(EstimarProducaoDiaria(pais, bonusInvestimento)
+            * OrcamentoInvestimentoNacional.FatorProducao(pais, 0));
         if (quantidade <= 0) return;
 
         float irrigacao = pais.niveisInvestimentoAgricola[(int)AreaInvestimentoAgricola.Irrigacao];

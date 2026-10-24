@@ -100,6 +100,19 @@ public class TorretaAntiaerea : MonoBehaviour
         return alvo.root != null ? alvo.root : alvo;
     }
 
+    private static IdentidadeUnidade ResolverIdentidadeAlvo(Transform alvo)
+    {
+        if (alvo == null) return null;
+
+        IdentidadeUnidade identidade = alvo.GetComponentInParent<IdentidadeUnidade>();
+        if (identidade != null) return identidade;
+
+        Transform raiz = alvo.root;
+        return raiz != null
+            ? raiz.GetComponentInChildren<IdentidadeUnidade>(true)
+            : alvo.GetComponentInChildren<IdentidadeUnidade>(true);
+    }
+
     void Start()
     {
         ehAresAr = SistemaGastosMilitares.EhAresAr(gameObject.name + " " + transform.root.name);
