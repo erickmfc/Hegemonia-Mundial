@@ -1637,7 +1637,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Assert.That(Field(otherBlocLender, "saldo"), Is.EqualTo(1000000L),
                 "O crédito não pode mover recursos entre federações diferentes.");
             Assert.That(((IList)Field(borrower, "emprestimos")).Count, Is.EqualTo(1));
-            Assert.That(Field(summary, "Saldo"), Is.EqualTo(5500L));
+            Assert.That(Field(arguments[3], "Saldo"), Is.EqualTo(5500L));
 
             arguments[2] = 90f;
             Assert.That(requestFinancing.Invoke(economy, arguments), Is.EqualTo(false),
