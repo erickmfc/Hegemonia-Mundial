@@ -5,8 +5,9 @@ using UnityEngine;
 namespace Hegemonia.AI.IA03
 {
     /// <summary>
-    /// Lê o retrato econômico central e ajusta preferências dos diretores existentes.
-    /// Não altera saldos, estoques nem executa compras por conta própria.
+    /// Lê o retrato econômico central, ajusta preferências existentes e solicita
+    /// crédito aos integrantes elegíveis do bloco quando a reserva está baixa.
+    /// Não executa compras por conta própria.
     /// </summary>
     public sealed class GestorEconomiaIA03
     {
@@ -420,6 +421,7 @@ namespace Hegemonia.AI.IA03
                 {
                     DadosPaisGoverno credor = paises[i];
                     if (credor == null || credor.teamId == teamId
+                        || credor.teamId == governo.teamJogador
                         || !string.Equals(credor.federacaoGlobal, devedor.federacaoGlobal, System.StringComparison.Ordinal))
                     {
                         continue;

@@ -1599,6 +1599,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             SetField(government, "teamJogador", 1);
             SetField(player, "teamId", 1);
             SetField(player, "federacaoGlobal", "CooperacaoGlobal");
+            SetField(player, "saldo", 1000000L);
             SetField(borrower, "teamId", 2);
             SetField(borrower, "federacaoGlobal", "CooperacaoGlobal");
             SetField(borrower, "saldo", 0L);
@@ -1633,6 +1634,8 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Assert.That(requestFinancing.Invoke(economy, arguments), Is.EqualTo(true), arguments[4] as string);
 
             Assert.That(Field(borrower, "saldo"), Is.EqualTo(5500L));
+            Assert.That(Field(player, "saldo"), Is.EqualTo(1000000L),
+                "A IA03 não pode retirar dinheiro do caixa do jogador sem uma proposta aceita.");
             Assert.That(Field(sameBlocLender, "saldo"), Is.EqualTo(994500L));
             Assert.That(Field(otherBlocLender, "saldo"), Is.EqualTo(1000000L),
                 "O crédito não pode mover recursos entre federações diferentes.");
