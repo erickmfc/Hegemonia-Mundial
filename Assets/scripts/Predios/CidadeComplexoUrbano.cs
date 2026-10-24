@@ -45,9 +45,9 @@ public class CidadeComplexoUrbano : MonoBehaviour
     public bool possuiRedeSaudeBasica = true;
 
     [Header("🏠 Imobiliária (Moradia)")]
-    [Tooltip("Capacidade habitacional total suportada pela cidade (500.000 a 2.000.000 moradores)")]
-    [Range(500000, 2000000)]
-    public int capacidadeHabitacional = 2000000;
+    [Tooltip("Capacidade habitacional total suportada pela cidade (500.000 a 5.000.000 moradores)")]
+    [Range(500000, 5000000)]
+    public int capacidadeHabitacional = 5000000;
 
     [Tooltip("População atualmente residente na cidade")]
     public int populacaoResidente = 100000;
@@ -419,7 +419,7 @@ public class CidadeComplexoUrbano : MonoBehaviour
 
     private void ValidarLimites()
     {
-        capacidadeHabitacional = Mathf.Clamp(capacidadeHabitacional, 500000, 2000000);
+        capacidadeHabitacional = Mathf.Clamp(capacidadeHabitacional, 500000, 5000000);
         populacaoResidente = Mathf.Clamp(populacaoResidente, 0, capacidadeHabitacional);
         qualidadeVida = Mathf.Clamp(qualidadeVida, 0, 100);
         proporcaoComercio = 0.5f;

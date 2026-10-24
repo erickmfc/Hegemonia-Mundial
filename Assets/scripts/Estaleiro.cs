@@ -984,16 +984,9 @@ public class Estaleiro : MonoBehaviour
             destinoSaida.y = nivelAguaAtual;
         }
 
-        // Remove a movimentação e rotação automáticas em direção ao estaleiro/saída para que fiquem parados na atracagem.
-        var agenteNovo = navioPronto.GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (agenteNovo != null && agenteNovo.enabled)
-        {
-            UnityEngine.AI.NavMeshHit hit;
-            if (UnityEngine.AI.NavMesh.SamplePosition(navioPronto.transform.position, out hit, 20f, UnityEngine.AI.NavMesh.AllAreas))
-            {
-                agenteNovo.Warp(hit.position);
-            }
-        }
+        // NavMesh.SamplePosition aqui poderia encontrar a malha terrestre da
+        // costa e deslocar o navio para fora do nível do mar. O spawn já foi
+        // resolvido para a água em posFinal; preserve essa posição de atracagem.
 
         var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
         if (controleSubmarino != null)
