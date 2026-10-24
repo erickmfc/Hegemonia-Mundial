@@ -177,7 +177,7 @@ public class GerenciadorQuartel : MonoBehaviour
     // estático ficava preso em true quando a cena ou o GameObject do Quartel
     // era desativado, bloqueando seleção e ordens de movimento para sempre.
     private static GerenciadorQuartel interfaceAbertaAtual;
-    private int frameAtalhoBConsumido = -1;
+    [System.NonSerialized] public bool controladorMenuGlobalSemQuartel;
     public static bool InterfaceAberta
     {
         get
@@ -253,16 +253,6 @@ public class GerenciadorQuartel : MonoBehaviour
     public string UltimoIdOperacaoLancamento => ultimoIdOperacaoLancamento;
     public string UltimoMotivoLancamento => ultimoMotivoLancamento;
 
-    /// <summary>
-    /// Usado apenas quando o atalho B criou este gerenciador no mesmo frame.
-    /// Evita que o Update recém-adicionado veja o mesmo GetKeyDown e feche
-    /// imediatamente o painel que acabou de abrir.
-    /// </summary>
-    public void MarcarAtalhoBConsumidoNesteFrame()
-    {
-        frameAtalhoBConsumido = Time.frameCount;
-    }
-    
     private GUIStyle estiloJanela;
     private GUIStyle estiloBotao;
     private GUIStyle estiloBotaoPerigo;
@@ -590,25 +580,6 @@ public class GerenciadorQuartel : MonoBehaviour
 
     void Update()
     {
-        bool atalhoQuartel = RTSInputBindings.GetKeyDown(RTSInputAction.Barracks)
-            || Input.GetKeyDown(KeyCode.B);
-
-        if (atalhoQuartel)
-        {
-            if (frameAtalhoBConsumido == Time.frameCount)
-            {
-                frameAtalhoBConsumido = -1;
-                return;
-            }
-
-            if (!menuAberto && MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
-            {
-                MenuComandoController.Instancia.FecharMenu();
-            }
-            AlternarInterface();
-            return;
-        }
-
         if (CampoTextoQuartelEmEdicao()) return;
 
         if (recolhimentoAutomatico)

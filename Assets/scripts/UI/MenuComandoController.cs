@@ -498,7 +498,41 @@ public class MenuComandoController : MonoBehaviour
             AtualizarVisibilidadeHudTatico();
         }
         CriarRenderTextureFLIR();
+        GarantirControladorMenuQuartelGlobal();
         AdicionarLog("SISTEMA", "Menu Comando inicializado. Tecla [1] para abrir/fechar.", "sistema");
+    }
+
+    private static GerenciadorQuartel EncontrarQuartelAtivoParaMenu()
+    {
+        GerenciadorQuartel[] quarteis = FindObjectsByType<GerenciadorQuartel>(FindObjectsSortMode.None);
+        for (int i = 0; i < quarteis.Length; i++)
+        {
+            if (quarteis[i] != null && !quarteis[i].controladorMenuGlobalSemQuartel)
+                return quarteis[i];
+        }
+
+        for (int i = 0; i < quarteis.Length; i++)
+        {
+            if (quarteis[i] != null && quarteis[i].controladorMenuGlobalSemQuartel)
+                return quarteis[i];
+        }
+
+        return null;
+    }
+
+    private static GerenciadorQuartel GarantirControladorMenuQuartelGlobal()
+    {
+        GerenciadorQuartel existente = EncontrarQuartelAtivoParaMenu();
+        if (existente != null) return existente;
+
+        GameObject objeto = new GameObject("Menu Quartel - Controlador Global");
+        GerenciadorQuartel controlador = objeto.AddComponent<GerenciadorQuartel>();
+        controlador.controladorMenuGlobalSemQuartel = true;
+        controlador.teamID = 1;
+        controlador.usarPainelQuartelUIToolkit = true;
+        controlador.habilitarLancamentoCoordenado = true;
+        controlador.abrirPainelAoIniciarNoPlayMode = false;
+        return controlador;
     }
 
     /// <summary>
@@ -737,68 +771,21 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
-        // O Quartel tem prioridade sobre a lista de teclas bloqueadas do
-        // Satélite. Algumas cenas de tutorial/demo não carregam um
-        // GerenciadorQuartel no YAML; nesse caso o atalho cria somente o
-        // controlador administrativo da cena, sem criar unidades ou dados
-        // fictícios. Nas cenas que já possuem o gerenciador, o próprio
-        // GerenciadorQuartel.Update() continua sendo a autoridade do toggle.
+        // O painel do Quartel existe desde o início da cena e não depende da
+        // compra ou presença de um prédio. Somente este controlador consome B.
         bool solicitouQuartel = RTSInputBindings.GetKeyDown(RTSInputAction.Barracks)
             || Input.GetKeyDown(KeyCode.B);
         if (solicitouQuartel)
         {
-            GerenciadorQuartel quartel = FindFirstObjectByType<GerenciadorQuartel>();
-            if (quartel == null)
-            {
-                // A demo1 mantém o Quartel real desativado enquanto o
-                // tutorial aguarda a construção. Ele ainda é o controlador
-                // correto para o painel; não crie uma segunda instância
-                // quando o prefab já está presente na cena.
-                GerenciadorQuartel[] quarteisNaCena = FindObjectsByType<GerenciadorQuartel>(
-                    FindObjectsInactive.Include,
-                    FindObjectsSortMode.None);
-                for (int i = 0; i < quarteisNaCena.Length; i++)
-                {
-                    if (quarteisNaCena[i] != null)
-                    {
-                        quartel = quarteisNaCena[i];
-                        break;
-                    }
-                }
-            }
+            GerenciadorQuartel quartel = GarantirControladorMenuQuartelGlobal();
 
-            // O Satélite pode continuar desenhado por um frame quando a
-            // abertura vem do mesmo atalho. Fechá-lo antes de ativar o
-            // Quartel evita duas interfaces sobrepostas e não deixa o
-            // bloqueio modal do Quartel parecer um travamento da tecla 1.
             if (menuAberto)
                 FecharMenu();
-
-            if (quartel == null)
+            if (quartel != null)
             {
-                GameObject objetoQuartel = new GameObject("Quartel - Controlador da Cena");
-                objetoQuartel.transform.position = Vector3.zero;
-                quartel = objetoQuartel.AddComponent<GerenciadorQuartel>();
-                quartel.teamID = 1;
-                quartel.usarPainelQuartelUIToolkit = true;
-                quartel.habilitarLancamentoCoordenado = true;
-                quartel.abrirPainelAoIniciarNoPlayMode = false;
                 quartel.AlternarInterface();
-                quartel.MarcarAtalhoBConsumidoNesteFrame();
-            }
-            else if (!quartel.gameObject.activeSelf)
-            {
-                quartel.gameObject.SetActive(true);
                 quartel.usarPainelQuartelUIToolkit = true;
-                quartel.habilitarLancamentoCoordenado = true;
-                quartel.abrirPainelAoIniciarNoPlayMode = false;
-                quartel.AlternarInterface();
-                quartel.MarcarAtalhoBConsumidoNesteFrame();
             }
-
-            // O gerenciador já existente receberá o mesmo B no próprio
-            // Update. Apenas retornamos antes da lista de bloqueios para que
-            // o Satélite não consuma a tecla.
             return;
         }
 
