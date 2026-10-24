@@ -77,16 +77,20 @@ public sealed class MenuGovernoTabsPlayModeTests
         FieldInfo sectionsField = controllerType.GetField("Secoes", Members);
         FieldInfo contentField = controllerType.GetField("conteudo", Members);
         FieldInfo actionsField = controllerType.GetField("acoes", Members);
-        MethodInfo showSection = controllerType.GetMethod("MostrarSecao", Members);
-        MethodInfo showPage = controllerType.GetMethod("MostrarPagina", Members);
+        FieldInfo navigationField = controllerType.GetField("navegacao", Members);
+        FieldInfo tabsField = controllerType.GetField("abas", Members);
         Assert.That(sectionsField, Is.Not.Null);
         Assert.That(contentField, Is.Not.Null);
         Assert.That(actionsField, Is.Not.Null);
-        Assert.That(showSection, Is.Not.Null);
-        Assert.That(showPage, Is.Not.Null);
+        Assert.That(navigationField, Is.Not.Null);
+        Assert.That(tabsField, Is.Not.Null);
 
         IDictionary sections = sectionsField.GetValue(null) as IDictionary;
         Assert.That(sections, Is.Not.Null);
+        ScrollView navigation = navigationField.GetValue(controller) as ScrollView;
+        ScrollView tabsView = tabsField.GetValue(controller) as ScrollView;
+        Assert.That(navigation, Is.Not.Null, "A navegação principal real precisa estar vinculada.");
+        Assert.That(tabsView, Is.Not.Null, "A navegação de subtabs real precisa estar vinculada.");
         int tabCount = 0;
         foreach (DictionaryEntry section in sections)
         {
@@ -94,16 +98,29 @@ public sealed class MenuGovernoTabsPlayModeTests
             string[] tabs = (string[])section.Value;
             Assert.That(tabs, Is.Not.Null.And.Not.Empty, "Cada seção precisa declarar ao menos uma aba: " + category);
 
-            showSection.Invoke(controller, new object[] { category });
+            Button sectionButton = navigation.Query<Button>(className: "gov-nav-button").ToList()
+                .Find(button => button.name == "nav-" + category.ToLowerInvariant());
+            Assert.That(sectionButton, Is.Not.Null, "Falta o botão real da seção " + category + ".");
+            Click(sectionButton);
+            Assert.That(sectionButton.ClassListContains("active"), Is.True,
+                "O clique da seção precisa atualizar seu estado visual: " + category);
             foreach (string tab in tabs)
             {
-                showPage.Invoke(controller, new object[] { tab });
+                Button tabButton = tabsView.Query<Button>(className: "gov-tab-button").ToList()
+                    .Find(button => button.name == "tab-" + tab.ToLowerInvariant());
+                Assert.That(tabButton, Is.Not.Null, "Falta o botão real da subtab " + category + " / " + tab + ".");
+                Click(tabButton);
+                yield return null;
+                Assert.That(tabButton.ClassListContains("active"), Is.True,
+                    "O clique da subtab precisa atualizar seu estado visual: " + category + " / " + tab);
                 VisualElement content = contentField.GetValue(controller) as VisualElement;
                 VisualElement actions = actionsField.GetValue(controller) as VisualElement;
                 Assert.That(content, Is.Not.Null);
                 Assert.That(content.childCount, Is.GreaterThan(1), category + " / " + tab + " precisa renderizar seus dados.");
                 Assert.That(actions, Is.Not.Null);
                 Assert.That(actions.childCount, Is.GreaterThan(1), category + " / " + tab + " precisa exibir ações.");
+                AssertControlsFitWithinCards(content, category + " / " + tab);
+                AssertButtonsFitWithinCards(actions, category + " / " + tab);
                 if (category == "Economia" && tab == "Orcamento")
                 {
                     Assert.That(content.Query<SliderInt>(className: "gov-budget-slider").ToList(), Has.Count.EqualTo(9),
@@ -156,6 +173,83 @@ public sealed class MenuGovernoTabsPlayModeTests
         }
 
         Assert.Fail("Tipo não encontrado: " + typeName);
+        return null;
+    }
+
+    private static void Click(Button button)
+    {
+        object clickable = typeof(Button).GetProperty("clickable", Members).GetValue(button);
+        MethodInfo simulateClick = clickable.GetType().GetMethod(
+            "SimulateSingleClick", Members, null, new[] { typeof(EventBase), typeof(int) }, null);
+        Assert.That(simulateClick, Is.Not.Null, "O botão deve expor seu callback de clique do UI Toolkit.");
+        simulateClick.Invoke(clickable, new object[] { ClickEvent.GetPooled(), 100 });
+    }
+
+    private static void AssertControlsFitWithinCards(VisualElement root, string page)
+    {
+        foreach (VisualElement element in root.Query<VisualElement>().ToList())
+        {
+            VisualElement card = FindCardAncestor(element);
+            if (card == null || element.worldBound.width <= 0f)
+                continue;
+
+            Rect bounds = card.worldBound;
+            Assert.That(element.worldBound.xMin, Is.GreaterThanOrEqualTo(bounds.xMin - 1f),
+                page + ": " + element.GetType().Name + " precisa começar dentro do card.");
+            Assert.That(element.worldBound.xMax, Is.LessThanOrEqualTo(bounds.xMax + 1f),
+                page + ": " + element.GetType().Name + " precisa terminar dentro do card.");
+
+            if (element is Label label && !string.IsNullOrWhiteSpace(label.text))
+            {
+                Assert.That(label.resolvedStyle.fontSize, Is.LessThanOrEqualTo(24f),
+                    page + ": o texto do card não pode crescer além da escala tipográfica prevista: " + label.text);
+            }
+            else if (element is Button button)
+            {
+                Assert.That(string.IsNullOrWhiteSpace(button.text), Is.False,
+                    page + ": todo botão do conteúdo precisa ter rótulo visível.");
+                Assert.That(button.resolvedStyle.fontSize, Is.LessThanOrEqualTo(16f),
+                    page + ": o texto do botão do conteúdo não pode ultrapassar a escala prevista: " + button.text);
+            }
+        }
+    }
+
+    private static void AssertButtonsFitWithinCards(VisualElement root, string page)
+    {
+        foreach (Button button in root.Query<Button>().ToList())
+        {
+            Assert.That(string.IsNullOrWhiteSpace(button.text), Is.False,
+                page + ": todo botão de ação precisa ter rótulo visível.");
+            Assert.That(button.resolvedStyle.fontSize, Is.LessThanOrEqualTo(16f),
+                page + ": o texto do botão não pode ultrapassar a escala prevista: " + button.text);
+
+            VisualElement card = FindCardAncestor(button);
+            if (card == null || button.worldBound.width <= 0f)
+                continue;
+
+            Rect bounds = card.worldBound;
+            Assert.That(button.worldBound.xMin, Is.GreaterThanOrEqualTo(bounds.xMin - 1f),
+                page + ": o botão " + button.text + " precisa começar dentro do card.");
+            Assert.That(button.worldBound.xMax, Is.LessThanOrEqualTo(bounds.xMax + 1f),
+                page + ": o botão " + button.text + " precisa terminar dentro do card.");
+        }
+    }
+
+    private static VisualElement FindCardAncestor(VisualElement element)
+    {
+        for (VisualElement ancestor = element; ancestor != null; ancestor = ancestor.parent)
+        {
+            if (ancestor.ClassListContains("gov-card")
+                || ancestor.ClassListContains("gov-budget-card")
+                || ancestor.ClassListContains("gov-market-card")
+                || ancestor.ClassListContains("gov-culture-control")
+                || ancestor.ClassListContains("gov-identity-card")
+                || ancestor.ClassListContains("gov-stat-card")
+                || ancestor.ClassListContains("gov-science-card")
+                || ancestor.ClassListContains("gov-action-section"))
+                return ancestor;
+        }
+
         return null;
     }
 }

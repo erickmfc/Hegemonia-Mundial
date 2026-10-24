@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
@@ -449,6 +450,13 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         bool previousPercentMode = Convert.ToBoolean(Read(player, "investimentoAgricolaPercentualAtivo"));
         bool previousInvestmentWithoutFunds = Convert.ToBoolean(Read(player, "investimentoAgricolaSemRecursos"));
         long previousAgriculturalCharge = Convert.ToInt64(Read(player, "ultimaCobrancaAgricola"));
+        bool previousDailyFoodPurchase = Convert.ToBoolean(Read(player, "compraAlimentarDiariaAtiva"));
+        float previousDailyFoodPurchasePercent = Convert.ToSingle(Read(player, "compraAlimentarPercentualCaixaDiario"));
+        int previousDailyFoodPurchaseDay = Convert.ToInt32(Read(player, "ultimoDiaCompraAlimentarProcessado"));
+        float[] previousPurchaseCultureShares = (float[])Read(player, "participacaoCompraAlimentar");
+        float[] purchaseCultureSharesSnapshot = previousPurchaseCultureShares != null
+            ? (float[])previousPurchaseCultureShares.Clone()
+            : Array.Empty<float>();
         float[] previousCultureFractions = (float[])Read(player, "saldoFracionarioCulturas");
         float[] cultureFractionsSnapshot = previousCultureFractions != null
             ? (float[])previousCultureFractions.Clone()
@@ -535,9 +543,48 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             Assert.That(Read(player, "saldo"), Is.EqualTo(saldoAntesDeAgendar),
                 "Escolher o valor recorrente agenda a cobrança, sem desconto imediato.");
             MethodInfo cobrarInvestimento = agriculture.GetType().GetMethod("ProcessarCobrancaSemanal", Members);
+            int productionBeforeWeeklyCharge = Convert.ToInt32(Read(player, "producaoAgricolaDiaria"));
+            int foodBeforeWeeklyCharge = Convert.ToInt32(Read(player, "comida"));
             cobrarInvestimento.Invoke(agriculture, new[] { player });
             Assert.That(Read(player, "saldo"), Is.EqualTo(saldoAntesDeAgendar - 250_000_000L),
                 "A virada semanal deve descontar o valor fixo configurado.");
+            produce.Invoke(agriculture, new[] { player });
+            Assert.That(Read(player, "producaoAgricolaDiaria"), Is.GreaterThan(productionBeforeWeeklyCharge),
+                "Depois da cobrança semanal, a safra precisa receber o bônus agrícola configurado.");
+            Assert.That(Read(player, "comida"), Is.GreaterThan(foodBeforeWeeklyCharge),
+                "A colheita do ciclo posterior à cobrança precisa creditar comida no estoque nacional.");
+
+            SliderInt dailyPurchaseBudget = actions.Query<SliderInt>(className: "gov-share-slider").First();
+            Assert.That(dailyPurchaseBudget, Is.Not.Null,
+                "A compra alimentar automatizada precisa expor seu controle de percentual.");
+            dailyPurchaseBudget.value = 0;
+            object gameClock = ReadStatic(ResolveType("GerenciadorTempo"), "Instancia");
+            int dayBeforeAutomation = gameClock != null
+                ? Math.Max(1, Convert.ToInt32(Read(gameClock, "totalDias")))
+                : 1;
+            long balanceBeforeAutomation = Convert.ToInt64(Read(player, "saldo"));
+            int foodBeforeAutomation = Convert.ToInt32(Read(player, "comida"));
+            UnityEngine.UIElements.Button activateDailyPurchase = actions.Query<UnityEngine.UIElements.Button>().ToList()
+                .FirstOrDefault(button => button.text == "ATIVAR + COMPRAR HOJE");
+            Assert.That(activateDailyPurchase, Is.Not.Null,
+                "A rotina de compra diária precisa oferecer o botão de ativação.");
+            SimulateClick(activateDailyPurchase);
+            Assert.That(Read(player, "compraAlimentarDiariaAtiva"), Is.EqualTo(true),
+                "O botão precisa ativar a rotina diária no país.");
+            Assert.That(Read(player, "ultimoDiaCompraAlimentarProcessado"), Is.EqualTo(dayBeforeAutomation),
+                "A tentativa imediata precisa marcar hoje e não cobrar duas vezes na mesma virada.");
+            Assert.That(Read(player, "saldo"), Is.EqualTo(balanceBeforeAutomation),
+                "Com orçamento de compra em zero, ativar a rotina não pode descontar dinheiro.");
+            Assert.That(Read(player, "comida"), Is.EqualTo(foodBeforeAutomation),
+                "Uma compra sem orçamento não pode creditar comida.");
+
+            UnityEngine.UIElements.Button pauseDailyPurchase = actions.Query<UnityEngine.UIElements.Button>().ToList()
+                .FirstOrDefault(button => button.text == "PAUSAR ROTINA");
+            Assert.That(pauseDailyPurchase, Is.Not.Null,
+                "A rotina ativa precisa oferecer o botão de pausa.");
+            SimulateClick(pauseDailyPurchase);
+            Assert.That(Read(player, "compraAlimentarDiariaAtiva"), Is.EqualTo(false),
+                "O botão precisa pausar a rotina diária.");
         }
         finally
         {
@@ -571,12 +618,368 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             Write(player, "investimentoAgricolaPercentualAtivo", previousPercentMode);
             Write(player, "investimentoAgricolaSemRecursos", previousInvestmentWithoutFunds);
             Write(player, "ultimaCobrancaAgricola", previousAgriculturalCharge);
+            Write(player, "compraAlimentarDiariaAtiva", previousDailyFoodPurchase);
+            Write(player, "compraAlimentarPercentualCaixaDiario", previousDailyFoodPurchasePercent);
+            Write(player, "ultimoDiaCompraAlimentarProcessado", previousDailyFoodPurchaseDay);
+            if (previousPurchaseCultureShares != null)
+                Array.Copy(purchaseCultureSharesSnapshot, previousPurchaseCultureShares,
+                    Mathf.Min(purchaseCultureSharesSnapshot.Length, previousPurchaseCultureShares.Length));
             if (previousCultureFractions != null)
                 Array.Copy(cultureFractionsSnapshot, previousCultureFractions,
                     Mathf.Min(cultureFractionsSnapshot.Length, previousCultureFractions.Length));
             menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { false });
         }
 
+    }
+
+    [UnityTest]
+    public IEnumerator MarketBuyButtonDebitsAndDeliversTheSelectedResource()
+    {
+        Type governmentType = ResolveType("SistemaGovernoMundial");
+        object government = ReadStatic(governmentType, "Instancia");
+        object market = ReadStatic(ResolveType("SistemaMercadoGlobal"), "Instancia");
+        object logistics = ReadStatic(ResolveType("SistemaLogisticaMercado"), "Instancia");
+        Assert.That(government, Is.Not.Null);
+        Assert.That(market, Is.Not.Null);
+        Assert.That(logistics, Is.Not.Null);
+
+        object buyer = Call(government, "ObterPais", 1);
+        object seller = Call(government, "ObterPais", 2);
+        object relation = Call(government, "ObterRelacao", 1, 2);
+        object item = Call(market, "ObterItem", "sementes");
+        Assert.That(buyer, Is.Not.Null);
+        Assert.That(seller, Is.Not.Null);
+        Assert.That(relation, Is.Not.Null);
+        Assert.That(item, Is.Not.Null);
+
+        Type menuType = ResolveType("MenuGovernoNovoController");
+        Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
+        Assert.That(menu, Is.Not.Null);
+        for (int frame = 0; frame < 120 && !(bool)Read(menu, "Pronto"); frame++)
+            yield return null;
+        Assert.That(Read(menu, "Pronto"), Is.EqualTo(true));
+
+        long buyerBalance = Convert.ToInt64(Read(buyer, "saldo"));
+        long sellerBalance = Convert.ToInt64(Read(seller, "saldo"));
+        int itemGlobalStock = Convert.ToInt32(Read(item, "estoqueGlobal"));
+        object itemOffer = Read(item, "oferta");
+        object itemDemand = Read(item, "demanda");
+        IList countries = Read(government, "paises") as IList;
+        Assert.That(countries, Is.Not.Null);
+        Dictionary<int, int> seedStocks = new Dictionary<int, int>();
+        foreach (object country in countries)
+        {
+            int team = Convert.ToInt32(Read(country, "teamId"));
+            int stock = Convert.ToInt32(Call(government, "ObterEstoque", team, "sementes"));
+            seedStocks[team] = stock;
+            if (team != 2 && stock > 0)
+                Call(government, "RemoverEstoque", team, "sementes", stock);
+        }
+
+        bool relationTrade = Convert.ToBoolean(Read(relation, "tratadoComercial"));
+        int relationValue = Convert.ToInt32(Read(relation, "valor"));
+        bool relationWar = Convert.ToBoolean(Read(relation, "guerraDeclarada"));
+        bool relationSanction = Convert.ToBoolean(Read(relation, "sancaoAtiva"));
+        float logisticsInterval = Convert.ToSingle(Read(logistics, "intervaloProcessamento"));
+        float loadingTime = Convert.ToSingle(Read(logistics, "tempoEmbarque"));
+        float unloadingTime = Convert.ToSingle(Read(logistics, "tempoDesembarque"));
+        IList orders = Read(logistics, "pedidos") as IList;
+        IList pending = Read(logistics, "entregasPendentes") as IList;
+        IList history = Read(market, "historico") as IList;
+        Assert.That(orders, Is.Not.Null);
+        Assert.That(pending, Is.Not.Null);
+        Assert.That(history, Is.Not.Null);
+        int orderCount = orders.Count;
+        int pendingCount = pending.Count;
+        int historyCount = history.Count;
+        List<GameObject> temporaryObjects = new List<GameObject>();
+
+        try
+        {
+            Call(government, "DefinirSaldoNacional", 1, 1_000_000_000L);
+            Call(government, "DefinirSaldoNacional", 2, 1_000_000_000L);
+            Call(government, "AdicionarEstoque", 2, "sementes", 1_000);
+            Write(item, "estoqueGlobal", Mathf.Max(1_000, itemGlobalStock));
+            Write(relation, "valor", 90);
+            Write(relation, "tratadoComercial", true);
+            Write(relation, "guerraDeclarada", false);
+            Write(relation, "sancaoAtiva", false);
+
+            GameObject sellerPier = new GameObject("GovernmentMarketTest_SellerPier");
+            temporaryObjects.Add(sellerPier);
+            sellerPier.transform.position = Vector3.zero;
+            Component sellerPierComponent = sellerPier.AddComponent(ResolveType("PierMarinha"));
+            Write(sellerPierComponent, "OwnerTeamId", 2);
+
+            GameObject buyerPier = new GameObject("GovernmentMarketTest_BuyerPier");
+            temporaryObjects.Add(buyerPier);
+            buyerPier.transform.position = new Vector3(60f, 0f, 0f);
+            Component buyerPierComponent = buyerPier.AddComponent(ResolveType("PierMarinha"));
+            Write(buyerPierComponent, "OwnerTeamId", 1);
+
+            Write(logistics, "intervaloProcessamento", 0.25f);
+            Write(logistics, "tempoEmbarque", 0.1f);
+            Write(logistics, "tempoDesembarque", 0.1f);
+            GameObject cargoObject = new GameObject("GovernmentMarketTest_Cargo");
+            temporaryObjects.Add(cargoObject);
+            cargoObject.transform.position = sellerPier.transform.position;
+            Component cargo = cargoObject.AddComponent(ResolveType("NavioCargaMercado"));
+            Write(cargo, "velocidadeCruzeiro", 500f);
+            Call(cargo, "Inicializar", 1, false);
+
+            // O serviço de logística atualiza o cache dos piers periodicamente.
+            yield return new WaitForSecondsRealtime(1.1f);
+
+            menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { true });
+            menuType.GetMethod("MostrarSecao", Members).Invoke(menu, new object[] { "Economia" });
+            menuType.GetMethod("MostrarPagina", Members).Invoke(menu, new object[] { "Producao" });
+            FieldInfo actionsField = menuType.GetField("acoes", Members);
+            FieldInfo contentField = menuType.GetField("conteudo", Members);
+            Assert.That(actionsField, Is.Not.Null);
+            Assert.That(contentField, Is.Not.Null);
+            VisualElement actions = actionsField.GetValue(menu) as VisualElement;
+            Button inputMarketButton = actions.Query<Button>().ToList()
+                .FirstOrDefault(button => button.text.StartsWith("SEMENTES E", StringComparison.Ordinal));
+            Assert.That(inputMarketButton, Is.Not.Null,
+                "A produção agrícola precisa abrir o Mercado > Comprar com o botão de insumos.");
+            SimulateClick(inputMarketButton);
+
+            VisualElement content = contentField.GetValue(menu) as VisualElement;
+            Button inputsFilter = content.Query<Button>(className: "gov-market-filter").ToList()
+                .FirstOrDefault(button => string.Equals(button.text, "INSUMOS", StringComparison.OrdinalIgnoreCase));
+            Assert.That(inputsFilter, Is.Not.Null, "O filtro de insumos deve estar acessível no Mercado.");
+            SimulateClick(inputsFilter);
+            yield return null;
+            yield return null;
+
+            content = contentField.GetValue(menu) as VisualElement;
+            VisualElement seedCard = content.Query<VisualElement>(className: "gov-market-card").ToList()
+                .FirstOrDefault(card => card.Query<Label>(className: "gov-card-title").First()?.text
+                    .IndexOf("SEMENTES", StringComparison.OrdinalIgnoreCase) >= 0);
+            Assert.That(seedCard, Is.Not.Null, "O card de sementes precisa aparecer no filtro selecionado.");
+            Assert.That(seedCard.worldBound.width, Is.GreaterThan(0f));
+            foreach (Label label in seedCard.Query<Label>().ToList())
+            {
+                Assert.That(label.worldBound.xMin, Is.GreaterThanOrEqualTo(seedCard.worldBound.xMin - 1f),
+                    "O texto " + label.text + " deve começar dentro do card de mercado.");
+                Assert.That(label.worldBound.xMax, Is.LessThanOrEqualTo(seedCard.worldBound.xMax + 1f),
+                    "O texto " + label.text + " deve terminar dentro do card de mercado.");
+            }
+
+            IntegerField quantity = seedCard.Query<IntegerField>(className: "gov-quantity").First();
+            Assert.That(quantity, Is.Not.Null);
+            quantity.value = 10;
+            Label total = seedCard.Query<Label>(className: "gov-market-total").First();
+            Assert.That(total.text, Does.Contain("TOTAL A PAGAR"));
+            Assert.That(total.text, Does.Contain("10"), "O total precisa refletir a quantidade escolhida.");
+
+            Button buy = seedCard.Query<Button>().ToList()
+                .FirstOrDefault(button => string.Equals(button.text, "COMPRAR", StringComparison.OrdinalIgnoreCase));
+            Assert.That(buy, Is.Not.Null);
+            Assert.That(buy.enabledSelf, Is.True,
+                "Com fornecedor aliado, estoque, rota e saldo disponíveis, COMPRAR precisa estar habilitado.");
+            long balanceBeforePurchase = Convert.ToInt64(Read(buyer, "saldo"));
+            int buyerStockBeforePurchase = Convert.ToInt32(Call(government, "ObterEstoque", 1, "sementes"));
+            SimulateClick(buy);
+
+            float deliveryDeadline = Time.realtimeSinceStartup + 20f;
+            object order = null;
+            while (order == null && Time.realtimeSinceStartup < deliveryDeadline)
+            {
+                if (orders.Count > orderCount)
+                {
+                    for (int index = orders.Count - 1; index >= orderCount; index--)
+                    {
+                        object candidate = orders[index];
+                        if (Convert.ToInt32(Read(candidate, "compradorTeamId")) == 1
+                            && string.Equals(Convert.ToString(Read(candidate, "itemId")), "sementes", StringComparison.OrdinalIgnoreCase))
+                        {
+                            order = candidate;
+                            break;
+                        }
+                    }
+                }
+                if (order == null)
+                    yield return null;
+            }
+
+            Assert.That(order, Is.Not.Null, "O clique em COMPRAR precisa criar uma ordem para o fornecedor.");
+            Assert.That(Read(order, "vendedorTeamId"), Is.EqualTo(2));
+            Assert.That(Read(order, "quantidade"), Is.EqualTo(10));
+            Assert.That(Read(buyer, "saldo"), Is.LessThan(balanceBeforePurchase),
+                "A confirmação precisa descontar o item e o frete do saldo nacional.");
+
+            while (!string.Equals(Convert.ToString(Read(order, "status")), "ENTREGUE", StringComparison.OrdinalIgnoreCase)
+                && Time.realtimeSinceStartup < deliveryDeadline)
+                yield return null;
+
+            Assert.That(Read(order, "status").ToString(), Is.EqualTo("ENTREGUE"),
+                "A ordem criada pela interface precisa completar o embarque e o desembarque.");
+            Assert.That(Call(government, "ObterEstoque", 1, "sementes"), Is.EqualTo(buyerStockBeforePurchase + 10),
+                "As sementes compradas devem ser creditadas no estoque do país depois da entrega.");
+        }
+        finally
+        {
+            menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { false });
+            Call(government, "DefinirSaldoNacional", 1, buyerBalance);
+            Call(government, "DefinirSaldoNacional", 2, sellerBalance);
+            foreach (KeyValuePair<int, int> stock in seedStocks)
+            {
+                int current = Convert.ToInt32(Call(government, "ObterEstoque", stock.Key, "sementes"));
+                int delta = stock.Value - current;
+                if (delta > 0) Call(government, "AdicionarEstoque", stock.Key, "sementes", delta);
+                else if (delta < 0) Call(government, "RemoverEstoque", stock.Key, "sementes", -delta);
+            }
+            Write(item, "estoqueGlobal", itemGlobalStock);
+            Write(item, "oferta", itemOffer);
+            Write(item, "demanda", itemDemand);
+            Write(relation, "valor", relationValue);
+            Write(relation, "tratadoComercial", relationTrade);
+            Write(relation, "guerraDeclarada", relationWar);
+            Write(relation, "sancaoAtiva", relationSanction);
+            Write(logistics, "intervaloProcessamento", logisticsInterval);
+            Write(logistics, "tempoEmbarque", loadingTime);
+            Write(logistics, "tempoDesembarque", unloadingTime);
+            while (orders.Count > orderCount) orders.RemoveAt(orders.Count - 1);
+            while (pending.Count > pendingCount) pending.RemoveAt(pending.Count - 1);
+            while (history.Count > historyCount) history.RemoveAt(history.Count - 1);
+            for (int index = 0; index < temporaryObjects.Count; index++)
+                if (temporaryObjects[index] != null) UnityEngine.Object.Destroy(temporaryObjects[index]);
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator ConstructionMenuSearchRecordsRuntimeRebuildCost()
+    {
+        Type menuType = ResolveType("MenuConstrucao");
+        Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
+        Assert.That(menu, Is.Not.Null, "O menu Construção precisa existir na cena global.");
+        if (!menu.gameObject.activeSelf)
+            menu.gameObject.SetActive(true);
+
+        FieldInfo cardsField = menuType.GetField("containerBotoes", Members);
+        FieldInfo searchField = menuType.GetField("campoBusca", Members);
+        FieldInfo tabsField = menuType.GetField("containerAbas", Members);
+        Assert.That(cardsField, Is.Not.Null);
+        Assert.That(searchField, Is.Not.Null);
+        Assert.That(tabsField, Is.Not.Null);
+        for (int frame = 0; frame < 120; frame++)
+        {
+            if (cardsField.GetValue(menu) != null && searchField.GetValue(menu) != null)
+                break;
+            yield return null;
+        }
+
+        Transform cards = cardsField.GetValue(menu) as Transform;
+        Transform tabs = tabsField.GetValue(menu) as Transform;
+        UnityEngine.UI.InputField search = searchField.GetValue(menu) as UnityEngine.UI.InputField;
+        Assert.That(cards, Is.Not.Null, "A grade real de cards precisa estar criada.");
+        Assert.That(tabs, Is.Not.Null, "As abas reais de categoria precisam estar criadas.");
+        Assert.That(search, Is.Not.Null, "O campo real de pesquisa precisa estar conectado ao filtro.");
+        FieldInfo categoryField = menuType.GetField("categoriaAtual", Members);
+        Assert.That(categoryField, Is.Not.Null);
+        bool originalMenuOpen = Convert.ToBoolean(Read(menu, "menuAberto"));
+        object originalCategory = categoryField.GetValue(menu);
+        string originalSearch = search.text;
+        bool wasActive = menu.gameObject.activeSelf;
+
+        Type categoryType = ResolveType("DadosConstrucao+CategoriaItem");
+        object[] categories = Enum.GetValues(categoryType).Cast<object>().ToArray();
+        Dictionary<string, int> expectedCategoryCounts = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            { "Exercito", 24 },
+            { "Marinha", 30 },
+            { "Aeronautica", 25 },
+            { "Tecnologia", 0 },
+            { "Infraestrutura", 13 },
+            { "Energia", 7 },
+            { "Urbana", 5 },
+        };
+        FieldInfo catalogField = menuType.GetField("catalogo", Members);
+        Assert.That(catalogField, Is.Not.Null);
+        IList catalog = catalogField.GetValue(menu) as IList;
+        Assert.That(catalog, Is.Not.Null);
+        object[] originalCatalog = catalog.Cast<object>().ToArray();
+        object categoryWithMostItems = null;
+        int largestCategory = 0;
+        Stopwatch timer = new Stopwatch();
+        try
+        {
+            menuType.GetMethod("AlternarMenu", Members, null, new[] { typeof(bool) }, null)
+                .Invoke(menu, new object[] { true });
+            for (int frame = 0; frame < 15; frame++)
+                yield return null;
+
+            foreach (object category in categories)
+            {
+                timer.Restart();
+                ClickConstructionCategory(tabs, category);
+                timer.Stop();
+                yield return null;
+                int count = CountVisibleConstructionCards(cards);
+                Assert.That(expectedCategoryCounts.ContainsKey(Convert.ToString(category)), Is.True,
+                    "A nova categoria precisa ser incluída na auditoria de conteúdo.");
+                Assert.That(count, Is.EqualTo(expectedCategoryCounts[Convert.ToString(category)]),
+                    "A otimização não pode remover opções da categoria " + category + ".");
+                TestContext.WriteLine("Construção categoria " + category + ": " + count + " cards; "
+                    + timer.Elapsed.TotalMilliseconds.ToString("F2") + " ms síncronos.");
+                catalog = catalogField.GetValue(menu) as IList;
+                Assert.That(catalog, Is.Not.Null);
+                Assert.That(catalog.Count, Is.EqualTo(originalCatalog.Length), "A validação de cards não pode alterar a quantidade do catálogo.");
+                for (int itemIndex = 0; itemIndex < originalCatalog.Length; itemIndex++)
+                    Assert.That(catalog[itemIndex], Is.SameAs(originalCatalog[itemIndex]),
+                        "A validação de cards não pode remover ou reordenar a ficha " + itemIndex + ".");
+                if (count > largestCategory)
+                {
+                    largestCategory = count;
+                    categoryWithMostItems = category;
+                }
+            }
+
+            Assert.That(categoryWithMostItems, Is.Not.Null);
+            Assert.That(largestCategory, Is.GreaterThan(0), "O catálogo deve renderizar ao menos uma opção de construção.");
+            ClickConstructionCategory(tabs, categoryWithMostItems);
+            yield return null;
+
+            for (int repeat = 0; repeat < 2; repeat++)
+            {
+                timer.Restart();
+                ClickConstructionCategory(tabs, categoryWithMostItems);
+                timer.Stop();
+                yield return null;
+                TestContext.WriteLine("Construção troca repetida " + categoryWithMostItems + " #" + (repeat + 1)
+                    + ": " + CountVisibleConstructionCards(cards) + " cards; "
+                    + timer.Elapsed.TotalMilliseconds.ToString("F2") + " ms síncronos.");
+            }
+
+            string[] prefixes = { "", "a", "ar", "art", "__sem_resultados__" };
+            foreach (string prefix in prefixes)
+            {
+                timer.Restart();
+                search.text = prefix;
+                timer.Stop();
+                yield return null;
+                int visibleCards = CountVisibleConstructionCards(cards);
+                TestContext.WriteLine("Construção pesquisa '" + prefix + "': " + visibleCards + " cards; "
+                    + timer.Elapsed.TotalMilliseconds.ToString("F2") + " ms síncronos.");
+                if (prefix.Length <= 1)
+                    Assert.That(visibleCards, Is.GreaterThan(0), "A busca curta precisa preservar resultados correspondentes.");
+                if (prefix == "__sem_resultados__")
+                    Assert.That(visibleCards, Is.EqualTo(0), "A busca sem correspondências deve esconder todos os cards da grade.");
+            }
+        }
+        finally
+        {
+            search.text = originalSearch;
+            ClickConstructionCategory(tabs, originalCategory);
+            if (!originalMenuOpen)
+                menuType.GetMethod("AlternarMenu", Members, null, new[] { typeof(bool) }, null)
+                    .Invoke(menu, new object[] { false });
+            if (!wasActive)
+                menu.gameObject.SetActive(false);
+        }
+        for (int frame = 0; frame < 15; frame++)
+            yield return null;
     }
 
     [UnityTest]
@@ -629,6 +1032,34 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         Assert.That(width - rightEdge, Is.EqualTo(12f).Within(1.5f), "margem direita alinhada ao painel de desempenho");
         Assert.That(bottomEdge, Is.EqualTo(178f).Within(1f), "posicao vertical igual ao painel de desempenho");
         Assert.That(topEdge, Is.LessThanOrEqualTo(height - margin * canvasScale + 1f), "o minimapa deve permanecer dentro da tela");
+    }
+
+    private static void SimulateClick(Button button)
+    {
+        object clickable = typeof(Button).GetProperty("clickable", Members).GetValue(button);
+        MethodInfo simulateClick = clickable.GetType().GetMethod(
+            "SimulateSingleClick", Members, null, new[] { typeof(EventBase), typeof(int) }, null);
+        Assert.That(simulateClick, Is.Not.Null);
+        simulateClick.Invoke(clickable, new object[] { ClickEvent.GetPooled(), 100 });
+    }
+
+    private static int CountVisibleConstructionCards(Transform cards)
+    {
+        int count = 0;
+        foreach (Transform child in cards)
+            if (child.gameObject.activeSelf)
+                count++;
+        return count;
+    }
+
+    private static void ClickConstructionCategory(Transform tabs, object category)
+    {
+        Transform tab = tabs.Find("Aba_" + Convert.ToString(category));
+        Assert.That(tab, Is.Not.Null, "A aba visual da categoria " + category + " precisa existir.");
+        UnityEngine.UI.Button button = tab.GetComponent<UnityEngine.UI.Button>();
+        Assert.That(button, Is.Not.Null);
+        Assert.That(button.enabled, Is.True);
+        button.onClick.Invoke();
     }
 
     private static Component FindBrain(int teamId)

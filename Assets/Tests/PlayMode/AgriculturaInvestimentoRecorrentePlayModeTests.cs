@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -23,6 +24,18 @@ public sealed class AgriculturaInvestimentoRecorrentePlayModeTests
     private int diaOriginal;
     private float duracaoDiaOriginal;
     private float[] mixOriginal;
+    private FieldInfo paisesField;
+    private object paisesOriginais;
+    private object paisTeste;
+    private int teamTeste;
+    private int ultimoDiaAgricolaOriginal;
+    private Dictionary<string, int> estoquesTesteOriginais;
+    private MethodInfo obterEstoquePorId;
+    private MethodInfo adicionarEstoquePorId;
+    private MethodInfo removerEstoquePorId;
+    private MethodInfo obterItemMercado;
+    private object mercado;
+    private Dictionary<string, object[]> itensMercadoOriginais;
 
     [UnitySetUp]
     public IEnumerator SetUp()
@@ -62,6 +75,12 @@ public sealed class AgriculturaInvestimentoRecorrentePlayModeTests
             agricultura = governmentComponent.gameObject.AddComponent(agricultureType);
             agriculturaCriada = true;
         }
+        paisesField = govType.GetField("paises", Members);
+        paisesOriginais = paisesField.GetValue(governo);
+        ultimoDiaAgricolaOriginal = Convert.ToInt32(Read(agricultura, "ultimoDia"));
+        obterEstoquePorId = govType.GetMethod("ObterEstoque", Members, null, new[] { typeof(int), typeof(string) }, null);
+        adicionarEstoquePorId = govType.GetMethod("AdicionarEstoque", Members, null, new[] { typeof(int), typeof(string), typeof(int) }, null);
+        removerEstoquePorId = govType.GetMethod("RemoverEstoque", Members, null, new[] { typeof(int), typeof(string), typeof(int) }, null);
     }
 
     [UnityTearDown]
@@ -77,11 +96,36 @@ public sealed class AgriculturaInvestimentoRecorrentePlayModeTests
             Write(pais, "ultimaCobrancaAgricola", ultimaCobrancaOriginal);
             if (mixOriginal != null) Write(pais, "mixCulturaAgricola", mixOriginal);
         }
+        if (governo != null && paisTeste != null && estoquesTesteOriginais != null)
+        {
+            foreach (KeyValuePair<string, int> estoqueOriginal in estoquesTesteOriginais)
+            {
+                int atual = Convert.ToInt32(obterEstoquePorId.Invoke(governo, new object[] { teamTeste, estoqueOriginal.Key }));
+                if (atual > estoqueOriginal.Value)
+                    removerEstoquePorId.Invoke(governo, new object[] { teamTeste, estoqueOriginal.Key, atual - estoqueOriginal.Value });
+                else if (atual < estoqueOriginal.Value)
+                    adicionarEstoquePorId.Invoke(governo, new object[] { teamTeste, estoqueOriginal.Key, estoqueOriginal.Value - atual });
+            }
+        }
+        if (mercado != null && obterItemMercado != null && itensMercadoOriginais != null)
+        {
+            foreach (KeyValuePair<string, object[]> itemOriginal in itensMercadoOriginais)
+            {
+                object item = obterItemMercado.Invoke(mercado, new object[] { itemOriginal.Key });
+                if (item == null) continue;
+                Write(item, "estoqueGlobal", itemOriginal.Value[0]);
+                Write(item, "oferta", itemOriginal.Value[1]);
+            }
+        }
+        if (governo != null && paisesField != null && paisesOriginais != null)
+            paisesField.SetValue(governo, paisesOriginais);
         if (tempo != null)
         {
             Write(tempo, "totalDias", diaOriginal);
             Write(tempo, "duracaoDiaSegundos", duracaoDiaOriginal);
         }
+        if (agricultura != null)
+            Write(agricultura, "ultimoDia", ultimoDiaAgricolaOriginal);
         if (agriculturaCriada && agricultura != null)
         {
             UnityEngine.Object.Destroy(agricultura);
@@ -151,6 +195,90 @@ public sealed class AgriculturaInvestimentoRecorrentePlayModeTests
         Assert.That(Convert.ToInt64(Read(pais, "saldo")), Is.Zero,
             "Uma cobrança sem saldo não pode criar dívida nem comida gratuita.");
         Assert.That(Convert.ToBoolean(Read(pais, "investimentoAgricolaSemRecursos")), Is.True);
+        yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator QuatroDiasDeCalendarioCobramOrcamentoDiarioEEntregamComidaAoEstoqueNacional()
+    {
+        Type industrialType = TypeOf("SistemaIndustrialNacional");
+        Assert.That(industrialType.GetProperty("Instancia", Members).GetValue(null),
+            Is.Not.Null, "O armazém industrial precisa estar ativo para receber as culturas produzidas.");
+
+        teamTeste = 987654;
+        Type paisType = TypeOf("DadosPaisGoverno");
+        paisTeste = Activator.CreateInstance(paisType);
+        Write(paisTeste, "teamId", teamTeste);
+        Write(paisTeste, "nomePais", "País de teste agrícola diário");
+        Write(paisTeste, "saldo", 1_000_000_000L);
+        Write(paisTeste, "comida", 0);
+        Write(paisTeste, "estoqueAgricolaTotal", 0);
+        Write(paisTeste, "populacao", 0);
+        Write(paisTeste, "populacaoCivil", 0);
+        Write(paisTeste, "populacaoMilitarAtiva", 0);
+        Write(paisTeste, "capacidadeAgricola", 0);
+        Write(paisTeste, "capacidadeArmazenamentoAgricola", 10000);
+        Write(paisTeste, "agua", 50000);
+        Write(paisTeste, "aguaMaxima", 50000);
+        Write(paisTeste, "orcamentoInvestimentoAtivo", true);
+        Write(paisTeste, "orcamentoInvestimentoDiario", 20_000_000L);
+        Write(paisTeste, "orcamentoPctAgricultura", 100);
+        Write(paisTeste, "orcamentoPctEnergia", 0);
+        Write(paisTeste, "orcamentoPctPetroleo", 0);
+        Write(paisTeste, "orcamentoPctIndustria", 0);
+        Write(paisTeste, "orcamentoPctCiencia", 0);
+        Write(paisTeste, "orcamentoPctMilitar", 0);
+        Write(paisTeste, "ultimoDiaOrcamentoProcessado", diaOriginal);
+
+        IList paisesTeste = (IList)Activator.CreateInstance(paisesField.FieldType);
+        paisesTeste.Add(paisTeste);
+        paisesField.SetValue(governo, paisesTeste);
+
+        string[] idsEstoque = {
+            "sementes", "fertilizante_organico", "agrotoxicos",
+            "comida_milho", "comida_batata", "comida_feijao", "comida_trigo", "comida_arroz",
+            "comida_cana", "comida_soja", "comida_cafe", "comida_cacau", "comida_mandioca",
+            "comida_aveia", "comida_cevada", "comida_tomate", "comida_frutas", "comida_hortalicas"
+        };
+        estoquesTesteOriginais = new Dictionary<string, int>();
+        foreach (string id in idsEstoque)
+            estoquesTesteOriginais[id] = Convert.ToInt32(obterEstoquePorId.Invoke(governo, new object[] { teamTeste, id }));
+
+        Type mercadoType = TypeOf("SistemaMercadoGlobal");
+        mercado = mercadoType.GetProperty("Instancia", Members).GetValue(null);
+        obterItemMercado = mercadoType.GetMethod("ObterItem", Members, null, new[] { typeof(string) }, null);
+        itensMercadoOriginais = new Dictionary<string, object[]>();
+        if (mercado != null && obterItemMercado != null)
+        {
+            foreach (string id in idsEstoque)
+            {
+                if (!id.StartsWith("comida_", StringComparison.Ordinal)) continue;
+                object item = obterItemMercado.Invoke(mercado, new object[] { id });
+                if (item != null) itensMercadoOriginais[id] = new[] { Read(item, "estoqueGlobal"), Read(item, "oferta") };
+            }
+        }
+        adicionarEstoquePorId.Invoke(governo, new object[] { teamTeste, "sementes", 10000 });
+        adicionarEstoquePorId.Invoke(governo, new object[] { teamTeste, "fertilizante_organico", 10000 });
+        adicionarEstoquePorId.Invoke(governo, new object[] { teamTeste, "agrotoxicos", 10000 });
+
+        int comidaAntes = Convert.ToInt32(Read(paisTeste, "comida"));
+        long saldoAntes = Convert.ToInt64(Read(paisTeste, "saldo"));
+        int diaFinal = diaOriginal + 4;
+        Write(agricultura, "ultimoDia", diaOriginal);
+        Write(tempo, "totalDias", diaFinal);
+        Assert.That(agricultura.GetType().GetProperty("RelogioConectado", Members).GetValue(agricultura), Is.EqualTo(true),
+            "O sistema agrícola precisa estar inscrito no evento real de mudança de data.");
+        agricultura.GetType().GetMethod("ProcessarNovoDia", Members).Invoke(agricultura, null);
+
+        Assert.That(agricultura.GetType().GetProperty("UltimoDiaProcessado", Members).GetValue(agricultura), Is.EqualTo(diaFinal),
+            "O sistema agrícola precisa recuperar todos os quatro dias recebidos pelo calendário.");
+        Assert.That(Read(paisTeste, "ultimoDiaOrcamentoProcessado"), Is.EqualTo(diaFinal));
+        Assert.That(Read(paisTeste, "saldo"), Is.EqualTo(saldoAntes - 4L * 20_000_000L),
+            "O orçamento diário precisa debitar uma vez por cada dia processado.");
+        Assert.That(Read(paisTeste, "producaoAgricolaDiaria"), Is.GreaterThan(0));
+        Assert.That(Read(paisTeste, "comida"), Is.GreaterThan(comidaAntes),
+            "A colheita precisa ser creditada no estoque nacional de comida após os quatro dias.");
+        Assert.That(Read(paisTeste, "estoqueAgricolaTotal"), Is.GreaterThan(0));
         yield return null;
     }
 

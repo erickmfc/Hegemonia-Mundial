@@ -83,6 +83,22 @@ public class MenuConstrucao : MonoBehaviour
     private DadosConstrucao.CategoriaItem categoriaAtual = DadosConstrucao.CategoriaItem.Exercito;
     private string filtroBuscaAtual = string.Empty;
     private Dictionary<string, int> quantidadesPorItem = new Dictionary<string, int>();
+    private readonly Dictionary<int, GameObject> cardsModernosPorItem = new Dictionary<int, GameObject>();
+    private List<DadosConstrucao> itensCategoriaCardsCache;
+    private CardCatalogSnapshot[] snapshotCatalogoCards;
+    private DadosConstrucao.CategoriaItem categoriaCardsCache;
+    private bool categoriaCardsCacheValida;
+
+    private struct CardCatalogSnapshot
+    {
+        public DadosConstrucao item;
+        public string nome;
+        public string nomeExibido;
+        public DadosConstrucao.CategoriaItem categoria;
+        public long preco;
+        public GameObject prefab;
+        public Sprite icone;
+    }
     private readonly List<GerenciadorAeroporto> bufferAeroportos = new List<GerenciadorAeroporto>(16);
     private readonly Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria> lookupVisualCategorias = new Dictionary<DadosConstrucao.CategoriaItem, ConfigVisualCategoria>();
     private readonly Dictionary<int, Sprite> cacheIconesResolvidos = new Dictionary<int, Sprite>();
@@ -90,6 +106,20 @@ public class MenuConstrucao : MonoBehaviour
     private Sprite iconePlaceholderRuntime;
     private bool resetarScrollParaTopoPendente;
     private bool atalhosSuspensos;
+#if UNITY_EDITOR
+    private static EditorSpriteEntry[] cacheSpritesEditor;
+
+    private struct EditorSpriteEntry
+    {
+        public string caminho;
+        public string nomeNormalizado;
+    }
+
+    internal static void InvalidarCacheSpritesEditor()
+    {
+        cacheSpritesEditor = null;
+    }
+#endif
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void GarantirInstanciaRuntime()
@@ -162,7 +192,7 @@ public class MenuConstrucao : MonoBehaviour
 
         // A fundacao vem antes de qualquer unidade militar. O primeiro card
         // exibido pelo menu de construcao deve ser a Prefeitura.
-        FiltrarPorCategoria(DadosConstrucao.CategoriaItem.Urbana);
+        FiltrarPorCategoriaValidada(DadosConstrucao.CategoriaItem.Urbana);
     }
 
     void OnDestroy()
@@ -983,8 +1013,7 @@ public class MenuConstrucao : MonoBehaviour
 
     List<DadosConstrucao> ObterItensDaCategoria(DadosConstrucao.CategoriaItem categoriaDesejada, bool aplicarBusca)
     {
-        GarantirCatalogoValido();
-
+        // Os chamadores garantem o catálogo antes de construir ou filtrar cards.
         IEnumerable<DadosConstrucao> query = catalogo.Where(item => item != null && item.categoria == categoriaDesejada);
         if (aplicarBusca)
         {
@@ -1291,7 +1320,7 @@ public class MenuConstrucao : MonoBehaviour
                 LimparBuscaPresa();
             }
 
-            FiltrarPorCategoria(categoriaAtual);
+            FiltrarPorCategoriaValidada(categoriaAtual);
         }
         
         if (canvasGroupPainel != null)
@@ -2108,7 +2137,17 @@ public class MenuConstrucao : MonoBehaviour
             DefinirTextoBuscaSemEvento(filtroBuscaAtual);
         }
 
-        FiltrarPorCategoria(categoriaAtual);
+        // A busca só fica disponível depois de Start montar e validar o
+        // catálogo. Revalidá-lo a cada tecla repetia cargas de Resources e
+        // inspeção de todos os prefabs durante a reconstrução dos cards.
+        bool catalogoAlterado = !CatalogoCardsContinuaValido(catalogo);
+        if (catalogoAlterado)
+        {
+            FiltrarPorCategoria(categoriaAtual);
+            return;
+        }
+
+        FiltrarPorCategoriaValidada(categoriaAtual, true);
     }
 
     bool ItemPassaFiltroBusca(DadosConstrucao item)
@@ -2433,36 +2472,127 @@ public class MenuConstrucao : MonoBehaviour
 
     public void FiltrarPorCategoria(DadosConstrucao.CategoriaItem categoriaDesejada)
     {
+        GarantirCatalogoValido();
+        bool reutilizarCards = categoriaCardsCacheValida
+            && categoriaCardsCache == categoriaDesejada
+            && CatalogoCardsContinuaValido(catalogo);
+        FiltrarPorCategoriaValidada(categoriaDesejada, reutilizarCards);
+    }
+
+    private void FiltrarPorCategoriaValidada(DadosConstrucao.CategoriaItem categoriaDesejada)
+    {
+        FiltrarPorCategoriaValidada(categoriaDesejada, false);
+    }
+
+    private void FiltrarPorCategoriaValidada(
+        DadosConstrucao.CategoriaItem categoriaDesejada,
+        bool reutilizarCards)
+    {
         categoriaAtual = categoriaDesejada;
         AtualizarVisualAbas(categoriaDesejada);
-        GarantirCatalogoValido();
 
         if (containerBotoes == null) return;
 
-        foreach (Transform child in containerBotoes) Destroy(child.gameObject);
+        bool reutilizacaoValida = reutilizarCards
+            && categoriaCardsCacheValida
+            && categoriaCardsCache == categoriaDesejada
+            && itensCategoriaCardsCache != null
+            && CatalogoCardsContinuaValido(catalogo);
+        if (!reutilizacaoValida)
+        {
+            bool catalogoCompativel = CatalogoCardsContinuaValido(catalogo);
+            if (!catalogoCompativel)
+            {
+                foreach (Transform child in containerBotoes)
+                    Destroy(child.gameObject);
+                cardsModernosPorItem.Clear();
+            }
+            else
+            {
+                // Mantém cards de outras categorias inativos para que voltar
+                // a uma aba já visitada não recrie toda a árvore de UI.
+                foreach (GameObject cardCache in cardsModernosPorItem.Values)
+                    if (cardCache != null) cardCache.SetActive(false);
+            }
 
-        List<DadosConstrucao> itensDaCategoria = ObterItensDaCategoria(categoriaDesejada, false);
-        List<DadosConstrucao> itensFiltrados = string.IsNullOrWhiteSpace(filtroBuscaAtual)
-            ? itensDaCategoria
-            : ObterItensDaCategoria(categoriaDesejada, true);
+            itensCategoriaCardsCache = ObterItensDaCategoria(categoriaDesejada, false);
+            categoriaCardsCache = categoriaDesejada;
+            categoriaCardsCacheValida = true;
+            if (!catalogoCompativel)
+                AtualizarSnapshotCatalogoCards();
+        }
 
         DadosConstrucao primeiroItemCategoria = null;
-        foreach (DadosConstrucao item in itensFiltrados)
+        foreach (DadosConstrucao item in itensCategoriaCardsCache)
         {
-            if (item != null)
+            if (item == null) continue;
+
+            int itemId = item.GetInstanceID();
+            if (!cardsModernosPorItem.TryGetValue(itemId, out GameObject card)
+                || card == null)
             {
-                if (primeiroItemCategoria == null)
-                {
-                    primeiroItemCategoria = item;
-                }
-                CriarCardItemModerno(item);
+                card = CriarCardItemModerno(item);
+                cardsModernosPorItem[itemId] = card;
             }
+
+            bool visivel = ItemPassaFiltroBusca(item);
+            card.SetActive(visivel);
+            if (visivel && primeiroItemCategoria == null)
+                primeiroItemCategoria = item;
         }
 
         resetarScrollParaTopoPendente = true;
         AtualizarPainelDetalhes(primeiroItemCategoria);
         
         StartCoroutine(AtualizarLayouts());
+    }
+
+    private bool CatalogoCardsContinuaValido(List<DadosConstrucao> catalogoAtual)
+    {
+        if (catalogoAtual == null || snapshotCatalogoCards == null
+            || catalogoAtual.Count != snapshotCatalogoCards.Length)
+            return false;
+
+        for (int i = 0; i < catalogoAtual.Count; i++)
+        {
+            DadosConstrucao item = catalogoAtual[i];
+            CardCatalogSnapshot snapshot = snapshotCatalogoCards[i];
+            if (item != snapshot.item || item == null
+                || item.NomeItem != snapshot.nome
+                || item.GetDisplayName() != snapshot.nomeExibido
+                || item.categoria != snapshot.categoria
+                || PrecoEfetivo(item) != snapshot.preco
+                || item.PrefabDaUnidade != snapshot.prefab
+                || item.icone != snapshot.icone)
+                return false;
+        }
+
+        return true;
+    }
+
+    private void AtualizarSnapshotCatalogoCards()
+    {
+        if (catalogo == null)
+        {
+            snapshotCatalogoCards = null;
+            return;
+        }
+
+        snapshotCatalogoCards = new CardCatalogSnapshot[catalogo.Count];
+        for (int i = 0; i < catalogo.Count; i++)
+        {
+            DadosConstrucao item = catalogo[i];
+            snapshotCatalogoCards[i] = new CardCatalogSnapshot
+            {
+                item = item,
+                nome = item != null ? item.NomeItem : null,
+                nomeExibido = item != null ? item.GetDisplayName() : null,
+                categoria = item != null ? item.categoria : default(DadosConstrucao.CategoriaItem),
+                preco = PrecoEfetivo(item),
+                prefab = item != null ? item.PrefabDaUnidade : null,
+                icone = item != null ? item.icone : null
+            };
+        }
     }
 
     IEnumerator AtualizarLayouts()
@@ -2478,7 +2608,7 @@ public class MenuConstrucao : MonoBehaviour
         }
     }
 
-    void CriarCardItemModerno(DadosConstrucao item)
+    GameObject CriarCardItemModerno(DadosConstrucao item)
     {
         GameObject cardObj = CriarRetangulo("Card_" + item.NomeItem, containerBotoes);
         Image imgBg = cardObj.AddComponent<Image>();
@@ -2709,6 +2839,7 @@ public class MenuConstrucao : MonoBehaviour
         AdicionarEventoHoverDetalhes(btnMenos, item);
         AdicionarEventoHoverDetalhes(btnMais, item);
         AdicionarEventoHoverDetalhes(btnComprarObj, item);
+        return cardObj;
     }
 
     GameObject CriarBotaoSimples(string texto, Transform pai, Color corTexto)
@@ -3037,12 +3168,24 @@ public class MenuConstrucao : MonoBehaviour
 
         string nomeItem = NormalizarTextoBuscaIcone(item.NomeItem);
         string nomePrefab = item.PrefabDaUnidade != null ? NormalizarTextoBuscaIcone(item.PrefabDaUnidade.name) : string.Empty;
-        string[] guids = UnityEditor.AssetDatabase.FindAssets("t:Sprite", new[] { "Assets" });
-
-        foreach (string guid in guids)
+        if (cacheSpritesEditor == null)
         {
-            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
-            string nomeAsset = NormalizarTextoBuscaIcone(System.IO.Path.GetFileNameWithoutExtension(path));
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:Sprite", new[] { "Assets" });
+            cacheSpritesEditor = new EditorSpriteEntry[guids.Length];
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string caminho = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[i]);
+                cacheSpritesEditor[i] = new EditorSpriteEntry
+                {
+                    caminho = caminho,
+                    nomeNormalizado = NormalizarTextoBuscaIcone(System.IO.Path.GetFileNameWithoutExtension(caminho))
+                };
+            }
+        }
+
+        foreach (EditorSpriteEntry sprite in cacheSpritesEditor)
+        {
+            string nomeAsset = sprite.nomeNormalizado;
             if (string.IsNullOrEmpty(nomeAsset))
             {
                 continue;
@@ -3056,10 +3199,10 @@ public class MenuConstrucao : MonoBehaviour
                 continue;
             }
 
-            Sprite sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(path);
-            if (sprite != null)
+            Sprite asset = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(sprite.caminho);
+            if (asset != null)
             {
-                return sprite;
+                return asset;
             }
         }
 
@@ -4406,3 +4549,17 @@ public class MenuConstrucao : MonoBehaviour
         if(img != null) img.color = corOriginal;
     }
 }
+
+#if UNITY_EDITOR
+internal sealed class MenuConstrucaoSpriteAssetPostprocessor : UnityEditor.AssetPostprocessor
+{
+    private static void OnPostprocessAllAssets(
+        string[] importedAssets,
+        string[] deletedAssets,
+        string[] movedAssets,
+        string[] movedFromAssetPaths)
+    {
+        MenuConstrucao.InvalidarCacheSpritesEditor();
+    }
+}
+#endif

@@ -769,7 +769,8 @@ public sealed class MenuComandoMapaMPlayModeTests
         {
             yield return null;
             ConfigurarAeronaveDeTeste(controleAviao, combustivel, baseAerea, 100f, 1f, 10f);
-            MethodInfo emitirPatrulha = controle.GetType().GetMethod("EmitirOrdemPatrulha", Members);
+            MethodInfo emitirPatrulha = controle.GetType().GetMethod(
+                "EmitirOrdemPatrulha", Members, null, new[] { typeof(IList<Vector3>) }, null);
             Assert.That(emitirPatrulha, Is.Not.Null);
             bool aceita = (bool)emitirPatrulha.Invoke(controle, new object[] { new List<Vector3>
             {
@@ -805,7 +806,8 @@ public sealed class MenuComandoMapaMPlayModeTests
         {
             yield return null;
             ConfigurarAeronaveDeTeste(controleAviao, combustivel, baseAerea, 1000f, 1000f, 0.1f);
-            MethodInfo emitirPatrulha = controle.GetType().GetMethod("EmitirOrdemPatrulha", Members);
+            MethodInfo emitirPatrulha = controle.GetType().GetMethod(
+                "EmitirOrdemPatrulha", Members, null, new[] { typeof(IList<Vector3>) }, null);
             Assert.That(emitirPatrulha, Is.Not.Null);
             bool aceita = (bool)emitirPatrulha.Invoke(controle, new object[] { new List<Vector3>
             {
@@ -848,7 +850,8 @@ public sealed class MenuComandoMapaMPlayModeTests
         {
             yield return null;
             ConfigurarAeronaveDeTeste(controleAviao, combustivel, baseAerea, 1000f, 308f, 0.1f);
-            MethodInfo emitirPatrulha = controle.GetType().GetMethod("EmitirOrdemPatrulha", Members);
+            MethodInfo emitirPatrulha = controle.GetType().GetMethod(
+                "EmitirOrdemPatrulha", Members, null, new[] { typeof(IList<Vector3>) }, null);
             Assert.That(emitirPatrulha, Is.Not.Null);
             bool aceita = (bool)emitirPatrulha.Invoke(controle, new object[] { new List<Vector3>
             {
