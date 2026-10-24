@@ -272,6 +272,8 @@ public class SaveEntityData
     public float capacidadeCombustivel;
     public bool capacidadeCombustivelAtualizada;
     public OrdemControleUnidade ordemAtual;
+    public string ordemMovimentoOwner = string.Empty;
+    public string ordemMovimentoId = string.Empty;
     public bool modoCombateAtivo;
     public bool possuiDestino;
     public SaveVector3 ultimoDestino;
@@ -329,6 +331,7 @@ public class SaveAiStrategicStateData
 {
     public int teamID;
     public IA03RelatorioSaveData relatorioIA03;
+    public SaveIA03MissionStateData estadoMissaoIA03;
     public int strategicPhase;
     public string activeImperialPlan;
     public string activeStrategicTarget;
@@ -346,6 +349,38 @@ public class SaveAiStrategicStateData
     public int playerFleetEstimate;
     public int playerAircraftEstimate;
     public bool weakEmpireRecoveryActive;
+}
+
+[Serializable]
+public sealed class SaveIA03MissionStateData
+{
+    public int teamID;
+    public string missaoAtivaKey = string.Empty;
+    public string missaoAtivaId = string.Empty;
+    public string objetivoEstrategico = string.Empty;
+    public string nomeMissao = string.Empty;
+    public string creatyAtivoId = string.Empty;
+    public int equipeAlvoAtiva;
+    public string alvoPersistenteId = string.Empty;
+    public string idOrdemAtiva = string.Empty;
+    public int estadoMissao;
+    public float tempoDecorridoMissao;
+    public float tempoPermanenciaNoDestino;
+    public int unidadesReservadas;
+    public int unidadesOriginaisNaMissao;
+    public bool grupoChegouAoDestino;
+    public bool grupoSaiuDoDestino;
+    public bool grupoPerdeuUnidade;
+    public bool alvoMissaoFoiDefinido;
+    public bool alvoMissaoDestruido;
+    public bool territorioDoObjetivoCapturado;
+    public bool territorioDoObjetivoPerdido;
+    public bool confirmacaoExternaDeSucesso;
+    public bool confirmacaoExternaDeFracasso;
+    public string motivoConfirmacaoExterna = string.Empty;
+    public List<string> unidadesAtivasIds = new List<string>();
+    public List<string> missoesPendentesKeys = new List<string>();
+    public List<string> missoesConcluidasKeys = new List<string>();
 }
 
 [Serializable]
@@ -381,6 +416,7 @@ public class SaveDeusaStateData
 
 public class SistemaSaveGame : MonoBehaviour
 {
+    public static bool RestauracaoDoMundoEmAndamento { get; private set; }
     public static SistemaSaveGame Instancia;
 
     public DadosDoJogo dadosAtuais;
@@ -438,6 +474,7 @@ public class SistemaSaveGame : MonoBehaviour
     {
         if (Instancia == this)
         {
+            RestauracaoDoMundoEmAndamento = false;
             SceneManager.sceneLoaded -= AoCarregarCena;
         }
     }
@@ -600,7 +637,6 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarEstadoGovernoMundial();
         CapturarEstadoTerritorial();
         CapturarCidadesAbstratas();
-        CapturarEstadoIAImperial();
         CapturarEstadoIA01();
         CapturarEstadoIA02();
         CapturarProducaoAutomaticaIA();
@@ -608,6 +644,8 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarEstadoQuarteis();
         CapturarEstadoSAR();
         CapturarEntidades();
+        // A captura de entidades garante IDs estáveis para unidades e alvos da IA03.
+        CapturarEstadoIAImperial();
         CapturarFormacoesTaticas();
         CapturarManifestosTransporte();
         CapturarSistemaIndustrial();
@@ -989,6 +1027,7 @@ public class SistemaSaveGame : MonoBehaviour
     private IEnumerator RestaurarMundoDepoisDaCena()
     {
         restauracaoPendente = false;
+        RestauracaoDoMundoEmAndamento = true;
         yield return null;
         yield return null;
 
@@ -1065,6 +1104,7 @@ public class SistemaSaveGame : MonoBehaviour
         RestaurarSistemaIndustrial();
         RestaurarSistemaLogisticaMercado();
         DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Mundo restaurado (entidades=" + (dadosAtuais.entidades != null ? dadosAtuais.entidades.Count : 0) + ")");
+        RestauracaoDoMundoEmAndamento = false;
     }
 
     private void SanitizarCenaDePartidaNova(Scene cena)
@@ -1425,6 +1465,9 @@ public class SistemaSaveGame : MonoBehaviour
                 relatorioIA03 = estrategaIA03 != null
                     ? estrategaIA03.CapturarEstadoRelatorioSalvavel()
                     : null,
+                estadoMissaoIA03 = estrategaIA03 != null
+                    ? estrategaIA03.CapturarEstadoMissaoSalvavel()
+                    : null,
                 strategicPhase = (int)brain.StrategicPhase,
                 activeImperialPlan = brain.ActiveImperialPlan,
                 activeStrategicTarget = brain.ActiveStrategicTarget,
@@ -1691,6 +1734,10 @@ public class SistemaSaveGame : MonoBehaviour
             if (estrategaIA03 != null && salvo.relatorioIA03 != null)
             {
                 estrategaIA03.RestaurarEstadoRelatorioSalvavel(salvo.relatorioIA03);
+            }
+            if (estrategaIA03 != null && salvo.estadoMissaoIA03 != null)
+            {
+                estrategaIA03.RestaurarEstadoMissaoSalvavel(salvo.estadoMissaoIA03);
             }
         }
     }
@@ -2220,6 +2267,12 @@ public class SistemaSaveGame : MonoBehaviour
             data.modoCombateAtivo = estado.modoCombateAtivo;
             data.possuiDestino = estado.possuiDestinoOrdenado;
             data.ultimoDestino = new SaveVector3(estado.ultimoDestino);
+            OrdemMovimento ordemMovimento = controle.OrdemMovimentoAtual;
+            if (ordemMovimento != null)
+            {
+                data.ordemMovimentoOwner = ordemMovimento.Dono ?? string.Empty;
+                data.ordemMovimentoId = ordemMovimento.Id ?? string.Empty;
+            }
             if (patrulha != null)
             {
                 data.indicePatrulha = patrulha.IndiceAtual;
@@ -2511,7 +2564,15 @@ public class SistemaSaveGame : MonoBehaviour
         if (data.ordemAtual == OrdemControleUnidade.Patrulhando && data.pontosPatrulha != null && data.pontosPatrulha.Count > 0)
         {
             List<Vector3> pontos = data.pontosPatrulha.Select(p => p.ToVector3()).ToList();
-            controle.EmitirOrdemPatrulha(pontos);
+            if (!string.IsNullOrWhiteSpace(data.ordemMovimentoOwner)
+                && !string.IsNullOrWhiteSpace(data.ordemMovimentoId))
+            {
+                controle.EmitirOrdemPatrulha(pontos, data.ordemMovimentoOwner, data.ordemMovimentoId);
+            }
+            else
+            {
+                controle.EmitirOrdemPatrulha(pontos);
+            }
             ComportamentoPatrulhaUniversal patrulha = saveable.GetComponent<ComportamentoPatrulhaUniversal>();
             if (patrulha != null)
             {
@@ -2528,7 +2589,19 @@ public class SistemaSaveGame : MonoBehaviour
 
         if ((data.ordemAtual == OrdemControleUnidade.Movendo || data.ordemAtual == OrdemControleUnidade.Recuando) && data.possuiDestino)
         {
-            controle.EmitirOrdemMover(data.ultimoDestino.ToVector3());
+            if (!string.IsNullOrWhiteSpace(data.ordemMovimentoOwner)
+                && !string.IsNullOrWhiteSpace(data.ordemMovimentoId))
+            {
+                controle.EmitirOrdemMovimento(
+                    data.ultimoDestino.ToVector3(),
+                    data.ordemMovimentoOwner,
+                    cancelarComportamentos: true,
+                    id: data.ordemMovimentoId);
+            }
+            else
+            {
+                controle.EmitirOrdemMover(data.ultimoDestino.ToVector3());
+            }
         }
     }
 

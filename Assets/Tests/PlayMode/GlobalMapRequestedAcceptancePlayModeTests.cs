@@ -128,6 +128,8 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         for (int frame = 0; frame < 240 && Read(valdoria, "Context") == null; frame++)
             yield return null;
         Assert.That(Read(valdoria, "Context"), Is.Not.Null, "O grafo da IA real precisa iniciar no GlobalMapRTS.");
+        Assert.That((bool)Read(valdoria, "HasExecutionAuthority"), Is.True,
+            "O BrainMaster da Valdoria precisa ser o controlador autorizado a emitir ordens no GlobalMapRTS.");
         Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");
         Component strategist = valdoria.GetComponent(strategistType);
         Assert.That(strategist, Is.Not.Null, "A IA estratégica nacional da Valdoria precisa estar no mapa real.");

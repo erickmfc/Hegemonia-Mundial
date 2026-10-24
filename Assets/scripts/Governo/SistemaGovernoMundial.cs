@@ -2649,17 +2649,37 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public void NotificarGuerra(int teamId)
     {
-        DadosPaisGoverno pais = ObterPais(teamId);
-        if (pais == null) return;
-        pais.emGuerra = true;
-        pais.estabilidade = Mathf.Clamp(pais.estabilidade - 14f, 0f, 100f);
-        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, teamId);
+        // Compatibilidade com os menus antigos: o país do jogador declara
+        // guerra contra o alvo selecionado.
+        DeclararGuerra(teamJogador, teamId);
+    }
+
+    public bool DeclararGuerra(int origemTeamId, int alvoTeamId)
+    {
+        DadosPaisGoverno origem = ObterPais(origemTeamId);
+        DadosPaisGoverno alvo = ObterPais(alvoTeamId);
+        if (origem == null || alvo == null || origemTeamId == alvoTeamId) return false;
+
+        RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, alvoTeamId);
+        bool novaGuerra = !rel.guerraDeclarada;
         rel.guerraDeclarada = true;
+        if (novaGuerra) rel.numeroGuerra = Mathf.Max(0, rel.numeroGuerra) + 1;
+        rel.agressorTeamId = origemTeamId;
+        rel.defensorTeamId = alvoTeamId;
         rel.cessarFogoAtivo = false;
         rel.valor = Mathf.Clamp(rel.valor - 35, -100, 100);
-        RegistrarNoticia("Guerra declarada envolvendo " + pais.nomePais + ".");
+        rel.posturaAParaB = PosturaRelacaoPais.Inimigo;
+        rel.posturaBParaA = PosturaRelacaoPais.Inimigo;
+        origem.emGuerra = true;
+        alvo.emGuerra = true;
+        origem.rivalTeamId = alvoTeamId;
+        alvo.rivalTeamId = origemTeamId;
+        alvo.estabilidade = Mathf.Clamp(alvo.estabilidade - 14f, 0f, 100f);
+        RegistrarNoticia("Guerra declarada entre " + origem.nomePais + " e " + alvo.nomePais + ".");
         SistemaMercadoGlobal.Instancia?.SimularMercado();
-        ProcessarEconomia();
+        if (isActiveAndEnabled) ProcessarEconomia();
+        NotificarGovernoAtualizadoSeguro();
+        return true;
     }
 
     /// <summary>
@@ -2731,6 +2751,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         relacao.guerraDeclarada = true;
+        relacao.numeroGuerra = Mathf.Max(0, relacao.numeroGuerra) + 1;
+        relacao.agressorTeamId = agressorTeamId;
+        relacao.defensorTeamId = vitimaTeamId;
         relacao.posturaAParaB = PosturaRelacaoPais.Inimigo;
         relacao.posturaBParaA = PosturaRelacaoPais.Inimigo;
         if (vitima != null) vitima.emGuerra = true;
@@ -2839,16 +2862,32 @@ public class SistemaGovernoMundial : MonoBehaviour
         TentarAplicarSancao(alvoTeamId, out _);
     }
 
+    public void AplicarSancao(int origemTeamId, int alvoTeamId)
+    {
+        TentarAplicarSancao(origemTeamId, alvoTeamId, out _);
+    }
+
     public bool TentarAplicarSancao(int alvoTeamId, out string mensagem)
     {
-        mensagem = string.Empty;
         if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem)) return false;
+        return TentarAplicarSancao(teamJogador, alvoTeamId, out mensagem);
+    }
 
+    public bool TentarAplicarSancao(int origemTeamId, int alvoTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        DadosPaisGoverno origem = ObterPais(origemTeamId);
         DadosPaisGoverno alvo = ObterPais(alvoTeamId);
-        RelacaoPaisGoverno rel = ObterRelacao(teamJogador, alvoTeamId);
+        if (origem == null || alvo == null || origemTeamId <= 0 || alvoTeamId <= 0 || origemTeamId == alvoTeamId)
+        {
+            mensagem = "Países inválidos para aplicar sanções.";
+            return false;
+        }
+
+        RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, alvoTeamId);
         if (rel.sancaoAtiva)
         {
-            mensagem = "Essa nacao ja esta sob sancao do seu governo.";
+            mensagem = "Essa nacao ja esta sob sancao deste governo.";
             return false;
         }
 
@@ -2856,7 +2895,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         alvo.estabilidade = Mathf.Clamp(alvo.estabilidade - 8f, 0f, 100f);
         rel.sancaoAtiva = true;
         rel.valor = Mathf.Clamp(rel.valor - 18, -100, 100);
-        mensagem = "Sancoes aplicadas contra " + alvo.nomePais + ".";
+        mensagem = origem.nomePais + " aplicou sanções contra " + alvo.nomePais + ".";
         RegistrarNoticia(mensagem);
         SistemaMercadoGlobal.Instancia?.SimularMercado();
         if (isActiveAndEnabled) ProcessarEconomia();
@@ -3001,13 +3040,13 @@ public class SistemaGovernoMundial : MonoBehaviour
             RelacaoPaisGoverno rel = ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId);
             rel.guerraDeclarada = false;
             rel.agressoesConfirmadasNaCrise = 0;
+            rel.agressorTeamId = 0;
+            rel.defensorTeamId = 0;
             rel.cessarFogoAtivo = true;
             rel.pedidoPendente = false;
             rel.valor = Mathf.Clamp(rel.valor + 25, -100, 100);
-            DadosPaisGoverno origem = ObterPais(proposta.origemTeamId);
-            DadosPaisGoverno alvo = ObterPais(proposta.alvoTeamId);
-            if (origem != null) origem.emGuerra = false;
-            if (alvo != null) alvo.emGuerra = false;
+            AtualizarEstadoDeGuerraPais(proposta.origemTeamId);
+            AtualizarEstadoDeGuerraPais(proposta.alvoTeamId);
             mensagem = "Cessar-fogo aceito; hostilidades suspensas.";
             RegistrarNoticia(NomePais(proposta.origemTeamId) + " e " + NomePais(proposta.alvoTeamId) + " suspenderam as hostilidades.");
             return true;
@@ -3177,9 +3216,37 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         if (proposta.tipo == TipoPropostaInternacional.Sancao)
         {
-            AplicarSancao(proposta.alvoTeamId);
-            mensagem = "Sancao aplicada.";
-            return true;
+            return TentarAplicarSancao(proposta.origemTeamId, proposta.alvoTeamId, out mensagem);
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.PedidoApoioMilitar)
+        {
+            if (proposta.respostaApoio == TipoRespostaApoioInternacional.Sancoes)
+            {
+                bool sancionou = TentarAplicarSancao(
+                    proposta.alvoTeamId,
+                    proposta.alvoEstrategicoTeamId,
+                    out mensagem);
+                if (sancionou)
+                {
+                    RegistrarNoticia(NomePais(proposta.alvoTeamId) + " respondeu ao pedido de "
+                        + NomePais(proposta.origemTeamId) + " aplicando sanções contra "
+                        + NomePais(proposta.alvoEstrategicoTeamId) + ".");
+                }
+                return sancionou;
+            }
+
+            if (proposta.respostaApoio == TipoRespostaApoioInternacional.ApoioMilitar)
+            {
+                return ConfirmarApoioMilitar(
+                    proposta.alvoTeamId,
+                    proposta.origemTeamId,
+                    proposta.alvoEstrategicoTeamId,
+                    out mensagem);
+            }
+
+            mensagem = "O pedido de apoio ainda não tem uma decisão válida.";
+            return false;
         }
 
         if (item == null)
@@ -3223,11 +3290,24 @@ public class SistemaGovernoMundial : MonoBehaviour
     {
         if (Time.unscaledTime < proximaDiplomaciaIA) return;
         proximaDiplomaciaIA = Time.unscaledTime + 12f;
-        if (teamJogador <= 0 || IdentidadeIA.TodasIdentidades == null) return;
+        if (IdentidadeIA.TodasIdentidades == null) return;
 
-        foreach (IdentidadeIA identidade in IdentidadeIA.TodasIdentidades.ToArray())
+        List<IdentidadeIA> identidadesAtivas = IdentidadeIA.TodasIdentidades
+            .Where(identidade => identidade != null && identidade.estaAtivo && !identidade.eliminado
+                && identidade.teamID > 0 && identidade.teamID != teamJogador)
+            .GroupBy(identidade => identidade.teamID)
+            .Select(grupo => grupo.First())
+            .OrderBy(identidade => identidade.teamID)
+            .ToList();
+        HashSet<int> equipesIAAtivas = new HashSet<int>(identidadesAtivas.Select(identidade => identidade.teamID));
+
+        GerarPedidosApoioMilitarEntreIAs(equipesIAAtivas);
+        ResolverPropostasRecebidasPelasIAs(equipesIAAtivas);
+        GerarDiplomaciaAutonomaEntreIAs(identidadesAtivas);
+
+        if (teamJogador <= 0) return;
+        foreach (IdentidadeIA identidade in identidadesAtivas)
         {
-            if (identidade == null || !identidade.estaAtivo || identidade.eliminado || identidade.teamID <= 1) continue;
             DadosPaisGoverno ia = ObterPais(identidade.teamID);
             DadosPaisGoverno jogador = ObterPais(teamJogador);
             if (ia == null || jogador == null) continue;
@@ -3267,6 +3347,292 @@ public class SistemaGovernoMundial : MonoBehaviour
                 expiraEm = Time.unscaledTime + 90f,
                 dedupKey = tipo + ":ia:" + identidade.teamID + ":" + teamJogador
             });
+        }
+    }
+
+    private void GerarPedidosApoioMilitarEntreIAs(HashSet<int> equipesIAAtivas)
+    {
+        if (relacoes == null || propostas == null || equipesIAAtivas == null) return;
+
+        foreach (RelacaoPaisGoverno guerra in relacoes.Where(relacao => relacao != null && relacao.guerraDeclarada).ToArray())
+        {
+            int agressorTeamId = guerra.agressorTeamId;
+            int defensorTeamId = guerra.defensorTeamId;
+            if (agressorTeamId <= 0 || defensorTeamId <= 0 || agressorTeamId == defensorTeamId)
+            {
+                agressorTeamId = guerra.teamA;
+                defensorTeamId = guerra.teamB;
+                DadosPaisGoverno paisA = ObterPais(guerra.teamA);
+                DadosPaisGoverno paisB = ObterPais(guerra.teamB);
+                if (paisA != null && paisA.rivalTeamId == guerra.teamB)
+                {
+                    defensorTeamId = guerra.teamA;
+                    agressorTeamId = guerra.teamB;
+                }
+                else if (paisB != null && paisB.rivalTeamId == guerra.teamA)
+                {
+                    defensorTeamId = guerra.teamB;
+                    agressorTeamId = guerra.teamA;
+                }
+            }
+
+            DadosPaisGoverno defensor = ObterPais(defensorTeamId);
+            if (defensor == null || !equipesIAAtivas.Contains(defensorTeamId)
+                || !string.Equals(defensor.federacaoGlobal, SistemaFederacoesGlobais.TipoFederacao.AliancaDefesa.ToString(), StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (IdentidadeIA identidade in IdentidadeIA.TodasIdentidades.ToArray())
+            {
+                if (identidade == null || !identidade.estaAtivo || identidade.eliminado
+                    || identidade.teamID == defensorTeamId || identidade.teamID == agressorTeamId)
+                {
+                    continue;
+                }
+
+                DadosPaisGoverno aliado = ObterPais(identidade.teamID);
+                if (aliado == null || !string.Equals(aliado.federacaoGlobal, defensor.federacaoGlobal, StringComparison.Ordinal)) continue;
+                RelacaoPaisGoverno aliancaComAgressor = ObterRelacao(aliado.teamId, agressorTeamId);
+                if (aliancaComAgressor.guerraDeclarada) continue;
+
+                string dedupKey = "apoio-guerra:" + defensorTeamId + ":" + agressorTeamId + ":" + aliado.teamId;
+                dedupKey += ":" + Mathf.Max(1, guerra.numeroGuerra);
+                if (propostas.Any(proposta => proposta != null && proposta.dedupKey == dedupKey)) continue;
+
+                TentarCriarProposta(new PropostaInternacional
+                {
+                    tipo = TipoPropostaInternacional.PedidoApoioMilitar,
+                    origemTeamId = defensorTeamId,
+                    alvoTeamId = aliado.teamId,
+                    alvoEstrategicoTeamId = agressorTeamId,
+                    quantidade = 1,
+                    prioridade = 95,
+                    motivo = defensor.nomePais + " solicita apoio à defesa contra " + NomePais(agressorTeamId) + ".",
+                    expiraEm = Time.unscaledTime + 180f,
+                    dedupKey = dedupKey
+                });
+            }
+        }
+    }
+
+    private void ResolverPropostasRecebidasPelasIAs(HashSet<int> equipesIAAtivas)
+    {
+        if (propostas == null || equipesIAAtivas == null) return;
+        foreach (PropostaInternacional proposta in propostas.ToArray())
+        {
+            if (proposta == null || !proposta.EstaPendente || !equipesIAAtivas.Contains(proposta.alvoTeamId)) continue;
+
+            DadosPaisGoverno receptor = ObterPais(proposta.alvoTeamId);
+            DadosPaisGoverno origem = ObterPais(proposta.origemTeamId);
+            RelacaoPaisGoverno relacao = ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId);
+            bool aceita;
+            if (proposta.tipo == TipoPropostaInternacional.PedidoApoioMilitar)
+            {
+                TipoRespostaApoioInternacional resposta = AvaliarPedidoApoioMilitar(receptor, origem, proposta.alvoEstrategicoTeamId);
+                if (resposta == TipoRespostaApoioInternacional.Nenhuma)
+                {
+                    ResolverProposta(proposta.id, StatusPropostaInternacional.Recusada, out _);
+                    RegistrarNoticia(NomePais(proposta.alvoTeamId) + " recusou o pedido de apoio de " + NomePais(proposta.origemTeamId) + ".");
+                    continue;
+                }
+
+                proposta.respostaApoio = resposta;
+                if (!ResolverProposta(proposta.id, StatusPropostaInternacional.Aceita, out string mensagemApoio))
+                {
+                    Debug.LogWarning("[Diplomacia] Não foi possível concluir a resposta ao pedido de apoio: " + mensagemApoio, this);
+                }
+                continue;
+            }
+
+            if (receptor == null || origem == null) continue;
+            switch (proposta.tipo)
+            {
+                case TipoPropostaInternacional.Alianca:
+                case TipoPropostaInternacional.PactoDefensivo:
+                    bool mesmaFederacao = !string.IsNullOrWhiteSpace(receptor.federacaoGlobal)
+                        && string.Equals(receptor.federacaoGlobal, origem.federacaoGlobal, StringComparison.Ordinal);
+                    aceita = !relacao.guerraDeclarada && !relacao.sancaoAtiva
+                        && relacao.PosturaDe(proposta.alvoTeamId) != PosturaRelacaoPais.Inimigo
+                        && relacao.valor >= (mesmaFederacao ? 25 : 55)
+                        && receptor.estabilidade >= 30f;
+                    break;
+                case TipoPropostaInternacional.CessarFogo:
+                    aceita = relacao.guerraDeclarada
+                        && (receptor.estabilidade < 60f || receptor.nivelMilitar < origem.nivelMilitar
+                            || receptor.saldo < 5000000L || relacao.valor >= -40);
+                    break;
+                default:
+                    // Pedidos comerciais e territoriais mantêm o fluxo de decisão
+                    // já existente; não são aceitos automaticamente pela IA.
+                    continue;
+            }
+
+            ResolverProposta(
+                proposta.id,
+                aceita ? StatusPropostaInternacional.Aceita : StatusPropostaInternacional.Recusada,
+                out _);
+        }
+    }
+
+    private TipoRespostaApoioInternacional AvaliarPedidoApoioMilitar(
+        DadosPaisGoverno aliado,
+        DadosPaisGoverno defensor,
+        int agressorTeamId)
+    {
+        DadosPaisGoverno agressor = ObterPais(agressorTeamId);
+        if (aliado == null || defensor == null || agressor == null
+            || aliado.teamId == agressorTeamId || aliado.teamId == defensor.teamId
+            || !string.Equals(aliado.federacaoGlobal, SistemaFederacoesGlobais.TipoFederacao.AliancaDefesa.ToString(), StringComparison.Ordinal)
+            || !string.Equals(defensor.federacaoGlobal, aliado.federacaoGlobal, StringComparison.Ordinal))
+        {
+            return TipoRespostaApoioInternacional.Nenhuma;
+        }
+
+        RelacaoPaisGoverno relacaoComDefensor = ObterRelacao(aliado.teamId, defensor.teamId);
+        RelacaoPaisGoverno relacaoComAgressor = ObterRelacao(aliado.teamId, agressorTeamId);
+        bool jaEmGuerraComOutroPais = relacoes.Any(relacao => relacao != null && relacao.guerraDeclarada
+            && (relacao.teamA == aliado.teamId || relacao.teamB == aliado.teamId)
+            && relacao.Outro(aliado.teamId) != agressorTeamId);
+        bool capacidadeEconomica = aliado.saldo >= 5000000L && aliado.estabilidade >= 50f
+            && aliado.comida > 0 && aliado.armamentos >= 100;
+        bool capacidadeMilitar = aliado.nivelMilitar >= 55 && !jaEmGuerraComOutroPais;
+        bool lealdadeDefensiva = relacaoComDefensor.pactoMilitar || relacaoComDefensor.ValorDiplomaticoEstrategico >= 20;
+        bool cautelaComAgressor = relacaoComAgressor.ValorDiplomaticoEstrategico < 35;
+        if (capacidadeEconomica && capacidadeMilitar && lealdadeDefensiva && cautelaComAgressor)
+        {
+            return TipoRespostaApoioInternacional.ApoioMilitar;
+        }
+
+        bool justificativaParaSancoes = relacaoComAgressor.ValorDiplomaticoEstrategico <= -15
+            || relacaoComAgressor.PosturaDe(aliado.teamId) == PosturaRelacaoPais.Inimigo;
+        if (justificativaParaSancoes && aliado.nivelDiplomatico >= 30 && aliado.estabilidade >= 35f
+            && !relacaoComAgressor.sancaoAtiva)
+        {
+            return TipoRespostaApoioInternacional.Sancoes;
+        }
+
+        return TipoRespostaApoioInternacional.Nenhuma;
+    }
+
+    private bool ConfirmarApoioMilitar(int aliadoTeamId, int defensorTeamId, int agressorTeamId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        DadosPaisGoverno aliado = ObterPais(aliadoTeamId);
+        DadosPaisGoverno defensor = ObterPais(defensorTeamId);
+        if (aliado == null || defensor == null || ObterPais(agressorTeamId) == null
+            || aliadoTeamId == defensorTeamId || aliadoTeamId == agressorTeamId
+            || !string.Equals(aliado.federacaoGlobal, SistemaFederacoesGlobais.TipoFederacao.AliancaDefesa.ToString(), StringComparison.Ordinal)
+            || !string.Equals(defensor.federacaoGlobal, aliado.federacaoGlobal, StringComparison.Ordinal))
+        {
+            mensagem = "O apoio militar não corresponde a um membro válido da Aliança de Defesa.";
+            return false;
+        }
+
+        bool jaEmGuerraComOutroPais = relacoes.Any(relacao => relacao != null && relacao.guerraDeclarada
+            && (relacao.teamA == aliadoTeamId || relacao.teamB == aliadoTeamId)
+            && relacao.Outro(aliadoTeamId) != agressorTeamId);
+        if (jaEmGuerraComOutroPais)
+        {
+            mensagem = aliado.nomePais + " não pode abrir uma frente adicional neste momento.";
+            return false;
+        }
+
+        if (!DeclararGuerra(aliadoTeamId, agressorTeamId))
+        {
+            mensagem = "Não foi possível registrar a entrada do aliado na guerra.";
+            return false;
+        }
+
+        Hegemonia.AI.IA03.IA03EstrategaNacional[] estrategistas =
+            UnityEngine.Object.FindObjectsByType<Hegemonia.AI.IA03.IA03EstrategaNacional>(FindObjectsSortMode.None);
+        foreach (Hegemonia.AI.IA03.IA03EstrategaNacional estrategista in estrategistas)
+        {
+            if (estrategista == null) continue;
+            IA_BrainMaster brain = estrategista.GetComponent<IA_BrainMaster>();
+            if (brain != null && brain.TeamId == aliadoTeamId)
+            {
+                estrategista.DefinirPaisAlvo(agressorTeamId, "apoio defensivo à federação");
+                break;
+            }
+        }
+
+        mensagem = aliado.nomePais + " entrou na guerra para defender " + defensor.nomePais + ".";
+        RegistrarNoticia(mensagem);
+        return true;
+    }
+
+    private void AtualizarEstadoDeGuerraPais(int teamId)
+    {
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null) return;
+        RelacaoPaisGoverno outraGuerra = relacoes.FirstOrDefault(relacao => relacao != null
+            && relacao.guerraDeclarada && (relacao.teamA == teamId || relacao.teamB == teamId));
+        pais.emGuerra = outraGuerra != null;
+        pais.rivalTeamId = outraGuerra != null ? outraGuerra.Outro(teamId) : 0;
+    }
+
+    private void GerarDiplomaciaAutonomaEntreIAs(List<IdentidadeIA> identidadesAtivas)
+    {
+        if (identidadesAtivas == null || propostas == null) return;
+        for (int i = 0; i < identidadesAtivas.Count; i++)
+        {
+            DadosPaisGoverno origem = ObterPais(identidadesAtivas[i].teamID);
+            if (origem == null) continue;
+            for (int j = i + 1; j < identidadesAtivas.Count; j++)
+            {
+                DadosPaisGoverno alvo = ObterPais(identidadesAtivas[j].teamID);
+                if (alvo == null) continue;
+                RelacaoPaisGoverno relacao = ObterRelacao(origem.teamId, alvo.teamId);
+                bool temPropostaPendente = propostas.Any(proposta => proposta != null && proposta.EstaPendente
+                    && ((proposta.origemTeamId == origem.teamId && proposta.alvoTeamId == alvo.teamId)
+                        || (proposta.origemTeamId == alvo.teamId && proposta.alvoTeamId == origem.teamId))
+                    && (proposta.tipo == TipoPropostaInternacional.Alianca
+                        || proposta.tipo == TipoPropostaInternacional.PactoDefensivo
+                        || proposta.tipo == TipoPropostaInternacional.CessarFogo));
+                if (temPropostaPendente) continue;
+
+                TipoPropostaInternacional tipo;
+                string motivo;
+                int origemDiplomaticaTeamId = origem.teamId;
+                int alvoDiplomaticoTeamId = alvo.teamId;
+                if (relacao.guerraDeclarada)
+                {
+                    bool origemBuscaPaz = origem.estabilidade < 45f || origem.nivelMilitar < alvo.nivelMilitar
+                        || origem.saldo < 5000000L;
+                    bool alvoBuscaPaz = alvo.estabilidade < 45f || alvo.nivelMilitar < origem.nivelMilitar
+                        || alvo.saldo < 5000000L;
+                    if (!origemBuscaPaz && !alvoBuscaPaz) continue;
+                    if (alvoBuscaPaz && !origemBuscaPaz)
+                    {
+                        origemDiplomaticaTeamId = alvo.teamId;
+                        alvoDiplomaticoTeamId = origem.teamId;
+                    }
+                    tipo = TipoPropostaInternacional.CessarFogo;
+                    motivo = NomePais(origemDiplomaticaTeamId) + " solicita cessar-fogo após avaliar perdas e prontidão nacional.";
+                }
+                else if (relacao.valor >= 55 && !relacao.pactoMilitar && !relacao.sancaoAtiva)
+                {
+                    tipo = TipoPropostaInternacional.Alianca;
+                    motivo = origem.nomePais + " propõe uma aliança após a aproximação diplomática.";
+                }
+                else
+                {
+                    continue;
+                }
+
+                TentarCriarProposta(new PropostaInternacional
+                {
+                    origemTeamId = origemDiplomaticaTeamId,
+                    alvoTeamId = alvoDiplomaticoTeamId,
+                    tipo = tipo,
+                    quantidade = 1,
+                    prioridade = 85,
+                    motivo = motivo,
+                    expiraEm = Time.unscaledTime + 180f,
+                    dedupKey = "diplomacia-ia:" + tipo + ":" + origemDiplomaticaTeamId + ":" + alvoDiplomaticoTeamId
+                });
+            }
         }
     }
 

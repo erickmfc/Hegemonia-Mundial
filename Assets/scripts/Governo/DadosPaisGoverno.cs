@@ -45,7 +45,15 @@ public enum TipoPropostaInternacional
     CessaoTerritorialTemporaria,
     Desmilitarizacao,
     // Acrescentado ao final para preservar os valores já salvos do enum.
-    ReivindicacaoTerritorial
+    ReivindicacaoTerritorial,
+    PedidoApoioMilitar
+}
+
+public enum TipoRespostaApoioInternacional
+{
+    Nenhuma,
+    ApoioMilitar,
+    Sancoes
 }
 
 public enum VotoConselhoMundial
@@ -387,6 +395,10 @@ public class PropostaInternacional
     public StatusPropostaInternacional status = StatusPropostaInternacional.Pendente;
     public int origemTeamId;
     public int alvoTeamId;
+    // Used by military aid requests: the attacked country is origemTeamId,
+    // the responding ally is alvoTeamId, and this is the aggressor.
+    public int alvoEstrategicoTeamId;
+    public TipoRespostaApoioInternacional respostaApoio;
     public RecursoMercado recurso = RecursoMercado.Nenhum;
     public int quantidade;
     public int precoUnitario;
@@ -433,6 +445,9 @@ public class RelacaoPaisGoverno
     public bool pedidoPendente;
     public bool sancaoAtiva;
     public bool guerraDeclarada;
+    public int agressorTeamId;
+    public int defensorTeamId;
+    public int numeroGuerra;
     public int agressoesConfirmadasNaCrise;
     public bool cessarFogoAtivo;
     public bool passagemTerrestrePermitida;

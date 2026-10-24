@@ -37,6 +37,11 @@ public sealed class RegiaoPolitica
     public bool neutral;
     public bool capturable;
     public TipoRegiaoPolitica tipo = TipoRegiaoPolitica.Terra;
+    [Range(0f, 100f)] public float valorRecursos;
+    [Range(0f, 100f)] public float nivelInfraestrutura;
+    [Range(0f, 100f)] public float capacidadeDefensiva;
+    [Range(0f, 100f)] public float custoManutencao;
+    public bool acessoMaritimo;
     public Color corMapa = Color.white;
     [Tooltip("Vértices UV da imagem de referência; a origem é o canto superior esquerdo.")]
     public List<Vector2> vertices = new List<Vector2>();

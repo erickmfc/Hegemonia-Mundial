@@ -71,6 +71,8 @@ namespace Hegemonia.AI.IA03
         private readonly HashSet<int> unidadesPerdidasNaMissao = new HashSet<int>();
         private bool reposicoesReconstruidasDoRegistro;
         private bool restauracaoProducaoPendente;
+        private bool estadoMissaoSalvoAplicado;
+        private bool ordemDaMissaoRestaurada;
         private GestorEconomiaIA03.Resumo economiaAtual;
 
         private IA_BrainMaster brain;
@@ -141,6 +143,249 @@ namespace Hegemonia.AI.IA03
         public void RestaurarEstadoRelatorioSalvavel(IA03RelatorioSaveData estado)
         {
             relatorio.RestaurarEstadoSalvavel(estado);
+        }
+
+        public SaveIA03MissionStateData CapturarEstadoMissaoSalvavel()
+        {
+            if (brain == null)
+            {
+                brain = GetComponent<IA_BrainMaster>();
+            }
+
+            SaveIA03MissionStateData estado = new SaveIA03MissionStateData
+            {
+                teamID = brain != null ? brain.TeamId : 0,
+                equipeAlvoAtiva = equipeAlvoAtiva,
+                creatyAtivoId = creatyAtivo != null ? creatyAtivo.Id : string.Empty,
+                alvoPersistenteId = idPersistenteAlvoMissao ?? string.Empty,
+                idOrdemAtiva = idOrdemAtivaDaMissao ?? string.Empty,
+                estadoMissao = (int)estadoDaMissao,
+                tempoDecorridoMissao = inicioMissaoEm >= 0f ? Mathf.Max(0f, Time.time - inicioMissaoEm) : 0f,
+                tempoPermanenciaNoDestino = inicioPermanenciaNoDestinoEm >= 0f
+                    ? Mathf.Max(0f, Time.time - inicioPermanenciaNoDestinoEm)
+                    : -1f,
+                unidadesReservadas = Mathf.Max(0, unidadesReservadas),
+                unidadesOriginaisNaMissao = Mathf.Max(0, unidadesOriginaisNaMissao),
+                grupoChegouAoDestino = grupoChegouAoDestino,
+                grupoSaiuDoDestino = grupoSaiuDoDestino,
+                grupoPerdeuUnidade = grupoPerdeuUnidade,
+                alvoMissaoFoiDefinido = alvoMissaoFoiDefinido,
+                alvoMissaoDestruido = alvoMissaoDestruido,
+                territorioDoObjetivoCapturado = territorioDoObjetivoCapturado,
+                territorioDoObjetivoPerdido = territorioDoObjetivoPerdido,
+                confirmacaoExternaDeSucesso = confirmacaoExternaDeSucesso,
+                confirmacaoExternaDeFracasso = confirmacaoExternaDeFracasso,
+                motivoConfirmacaoExterna = motivoConfirmacaoExterna ?? string.Empty
+            };
+
+            if (missaoAtiva != null)
+            {
+                estado.missaoAtivaId = missaoAtiva.IdMissao ?? string.Empty;
+                estado.missaoAtivaKey = CriarChaveEquivalencia(missaoAtiva);
+                estado.objetivoEstrategico = missaoAtiva.Objetivo ?? string.Empty;
+                estado.nomeMissao = missaoAtiva.NomeMissao ?? string.Empty;
+            }
+
+            if (alvoMissaoAtivo != null)
+            {
+                estado.alvoPersistenteId = ObterIdPersistenteAlvo(alvoMissaoAtivo);
+            }
+
+            if (unidadesAtivasNaMissao != null)
+            {
+                for (int i = 0; i < unidadesAtivasNaMissao.Count; i++)
+                {
+                    GameObject unidade = unidadesAtivasNaMissao[i];
+                    SaveableEntity saveable = unidade != null ? SaveableEntity.Garantir(unidade) : null;
+                    if (saveable != null && !string.IsNullOrWhiteSpace(saveable.UniqueId)
+                        && !estado.unidadesAtivasIds.Contains(saveable.UniqueId))
+                    {
+                        estado.unidadesAtivasIds.Add(saveable.UniqueId);
+                    }
+                }
+            }
+
+            if (filaMissoes != null)
+            {
+                for (int i = 0; i < filaMissoes.Count; i++)
+                {
+                    string key = CriarChaveEquivalencia(filaMissoes[i]);
+                    if (!string.IsNullOrWhiteSpace(key) && !estado.missoesPendentesKeys.Contains(key))
+                    {
+                        estado.missoesPendentesKeys.Add(key);
+                    }
+                }
+            }
+
+            foreach (string key in chavesMissoesConcluidasNaCrise)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    estado.missoesConcluidasKeys.Add(key);
+                }
+            }
+
+            return estado;
+        }
+
+        public bool RestaurarEstadoMissaoSalvavel(SaveIA03MissionStateData estado)
+        {
+            if (estado == null || estadoMissaoSalvoAplicado)
+            {
+                return false;
+            }
+
+            if (brain == null)
+            {
+                brain = GetComponent<IA_BrainMaster>();
+            }
+
+            if (brain == null || estado.teamID <= 0 || brain.TeamId != estado.teamID)
+            {
+                return false;
+            }
+
+            // O método pode ser chamado novamente por fluxos de recuperação do save.
+            // Aplicar o snapshot uma única vez impede reservas ou ordens duplicadas.
+            estadoMissaoSalvoAplicado = true;
+            equipeAlvoAtiva = Mathf.Max(0, estado.equipeAlvoAtiva);
+            idOrdemAtivaDaMissao = estado.idOrdemAtiva ?? string.Empty;
+            ordemDaMissaoRestaurada = !string.IsNullOrWhiteSpace(idOrdemAtivaDaMissao)
+                && estado.estadoMissao == (int)IA03ResultadoMissao.EmAndamento;
+            idPersistenteAlvoMissao = estado.alvoPersistenteId ?? string.Empty;
+            estadoDaMissao = System.Enum.IsDefined(typeof(IA03ResultadoMissao), estado.estadoMissao)
+                ? (IA03ResultadoMissao)estado.estadoMissao
+                : IA03ResultadoMissao.Pendente;
+            unidadesOriginaisNaMissao = Mathf.Max(0, estado.unidadesOriginaisNaMissao);
+            grupoChegouAoDestino = estado.grupoChegouAoDestino;
+            grupoSaiuDoDestino = estado.grupoSaiuDoDestino;
+            grupoPerdeuUnidade = estado.grupoPerdeuUnidade;
+            alvoMissaoFoiDefinido = estado.alvoMissaoFoiDefinido;
+            alvoMissaoDestruido = estado.alvoMissaoDestruido;
+            territorioDoObjetivoCapturado = estado.territorioDoObjetivoCapturado;
+            territorioDoObjetivoPerdido = estado.territorioDoObjetivoPerdido;
+            confirmacaoExternaDeSucesso = estado.confirmacaoExternaDeSucesso;
+            confirmacaoExternaDeFracasso = estado.confirmacaoExternaDeFracasso;
+            motivoConfirmacaoExterna = estado.motivoConfirmacaoExterna ?? string.Empty;
+            inicioMissaoEm = estado.estadoMissao == (int)IA03ResultadoMissao.EmAndamento
+                ? Time.time - Mathf.Max(0f, estado.tempoDecorridoMissao)
+                : -1f;
+            inicioPermanenciaNoDestinoEm = estado.tempoPermanenciaNoDestino >= 0f
+                ? Time.time - estado.tempoPermanenciaNoDestino
+                : -1f;
+
+            missaoAtiva = ResolverMissaoPorChave(estado.missaoAtivaKey);
+            if (!string.IsNullOrWhiteSpace(estado.missaoAtivaKey) && missaoAtiva == null)
+            {
+                Debug.LogWarning("[IA03] Missão salva não encontrada na configuração do team " + brain.TeamId
+                    + ": " + estado.missaoAtivaKey + ". A ordem persistida não será reenviada.", this);
+                idOrdemAtivaDaMissao = string.Empty;
+            }
+
+            filaMissoes.Clear();
+            if (estado.missoesPendentesKeys != null)
+            {
+                for (int i = 0; i < estado.missoesPendentesKeys.Count; i++)
+                {
+                    MissaoEstrategicaSO pendente = ResolverMissaoPorChave(estado.missoesPendentesKeys[i]);
+                    if (pendente != null && !filaMissoes.Contains(pendente)
+                        && !SaoMissoesEquivalentes(pendente, missaoAtiva))
+                    {
+                        filaMissoes.Add(pendente);
+                    }
+                }
+            }
+
+            chavesMissoesConcluidasNaCrise.Clear();
+            missoesConcluidasNaCrise.Clear();
+            if (estado.missoesConcluidasKeys != null)
+            {
+                for (int i = 0; i < estado.missoesConcluidasKeys.Count; i++)
+                {
+                    string key = estado.missoesConcluidasKeys[i];
+                    if (string.IsNullOrWhiteSpace(key)) continue;
+                    chavesMissoesConcluidasNaCrise.Add(key);
+                    MissaoEstrategicaSO concluida = ResolverMissaoPorChave(key);
+                    if (concluida != null) missoesConcluidasNaCrise.Add(concluida);
+                }
+            }
+
+            unidadesAtivasNaMissao.Clear();
+            Dictionary<string, SaveableEntity> saveables = new Dictionary<string, SaveableEntity>(System.StringComparer.Ordinal);
+            SaveableEntity[] encontrados = IA_UnitySearch.FindAll<SaveableEntity>();
+            for (int i = 0; encontrados != null && i < encontrados.Length; i++)
+            {
+                SaveableEntity candidato = encontrados[i];
+                if (candidato != null && !string.IsNullOrWhiteSpace(candidato.UniqueId))
+                {
+                    saveables[candidato.UniqueId] = candidato;
+                }
+            }
+
+            if (estado.unidadesAtivasIds != null)
+            {
+                for (int i = 0; i < estado.unidadesAtivasIds.Count; i++)
+                {
+                    string id = estado.unidadesAtivasIds[i];
+                    if (!string.IsNullOrWhiteSpace(id) && saveables.TryGetValue(id, out SaveableEntity saveable)
+                        && saveable != null && !unidadesAtivasNaMissao.Contains(saveable.gameObject))
+                    {
+                        unidadesAtivasNaMissao.Add(saveable.gameObject);
+                    }
+                }
+            }
+
+            alvoMissaoAtivo = null;
+            if (!string.IsNullOrWhiteSpace(idPersistenteAlvoMissao)
+                && saveables.TryGetValue(idPersistenteAlvoMissao, out SaveableEntity alvoSaveable)
+                && alvoSaveable != null)
+            {
+                alvoMissaoAtivo = alvoSaveable.transform;
+            }
+
+            creatyAtivo = null;
+            unidadesReservadas = 0;
+            if (!string.IsNullOrWhiteSpace(estado.creatyAtivoId)
+                && RegistroCreatysEstrategicos.TryGetPorId(estado.creatyAtivoId, out CreatyEstrategico creaty)
+                && creaty != null)
+            {
+                creatyAtivo = creaty;
+                int reserva = Mathf.Min(Mathf.Max(0, estado.unidadesReservadas), unidadesAtivasNaMissao.Count);
+                if (reserva > 0 && creaty.TentarReservar(brain.TeamId, equipeAlvoAtiva, reserva))
+                {
+                    unidadesReservadas = reserva;
+                }
+            }
+
+            if (missaoAtiva != null && estado.estadoMissao == (int)IA03ResultadoMissao.EmAndamento
+                && creatyAtivo == null)
+            {
+                // A missão continua identificada, mas sem alvo operacional não se emite
+                // uma ordem substituta que possa duplicar a operação salva.
+                ultimaDecisao = "missão restaurada aguardando o Creaty " + estado.creatyAtivoId;
+            }
+
+            return true;
+        }
+
+        private MissaoEstrategicaSO ResolverMissaoPorChave(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key) || missoesEstrategicas == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < missoesEstrategicas.Count; i++)
+            {
+                MissaoEstrategicaSO candidata = missoesEstrategicas[i];
+                if (candidata != null && string.Equals(
+                    CriarChaveEquivalencia(candidata), key, System.StringComparison.Ordinal))
+                {
+                    return candidata;
+                }
+            }
+
+            return null;
         }
 
         public bool IsUnitReservedForActiveMission(GameObject unit)
@@ -293,6 +538,11 @@ namespace Hegemonia.AI.IA03
 
         public void Tick(float now, float deltaTime)
         {
+            if (SistemaSaveGame.RestauracaoDoMundoEmAndamento)
+            {
+                return;
+            }
+
             if (!ativo || !isActiveAndEnabled)
             {
                 if (missaoAtiva != null)
@@ -322,6 +572,12 @@ namespace Hegemonia.AI.IA03
             {
                 ultimaDecisao = "BrainMaster indisponível";
                 return;
+            }
+
+            if (ordemDaMissaoRestaurada)
+            {
+                brain.Context.CommandQueue.RestoreInFlight(idOrdemAtivaDaMissao);
+                ordemDaMissaoRestaurada = false;
             }
 
             if (restauracaoProducaoPendente)
@@ -2212,6 +2468,7 @@ namespace Hegemonia.AI.IA03
             }
 
             idOrdemAtivaDaMissao = pedido.Id;
+            ordemDaMissaoRestaurada = false;
             return true;
         }
 
@@ -2648,6 +2905,7 @@ namespace Hegemonia.AI.IA03
             unidadesAtivasNaMissao.Clear();
             inicioMissaoEm = -1f;
             idOrdemAtivaDaMissao = string.Empty;
+            ordemDaMissaoRestaurada = false;
             estadoDaMissao = resultado;
             ResetarRastreamentoMissao();
             if (resultado == IA03ResultadoMissao.Cancelada && !string.IsNullOrWhiteSpace(motivo) && ativo)
@@ -3587,9 +3845,29 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
-            foreach (RegiaoPolitica regiao in governo.ObterTerritoriosElegiveisParaReivindicacao())
+            GerenteDeTerritorio gerenteTerritorial = GerenteDeTerritorio.Instancia;
+            DadosMapaTerritorial mapaPolitico = gerenteTerritorial != null ? gerenteTerritorial.MapaPolitico : null;
+            List<RegiaoPolitica> territoriosEstrategicos = governo.ObterTerritoriosElegiveisParaReivindicacao()
+                .Where(regiao => regiao != null)
+                .OrderByDescending(regiao => GestorDiplomaciaIA03.CalcularPontuacaoTerritorial(
+                    mapaPolitico,
+                    regiao,
+                    brain.TeamId))
+                .ThenBy(regiao => regiao.territorioId, System.StringComparer.Ordinal)
+                .ToList();
+
+            foreach (RegiaoPolitica regiao in territoriosEstrategicos)
             {
                 if (regiao == null || string.IsNullOrWhiteSpace(regiao.territorioId)) continue;
+                float pontuacaoTerritorial = GestorDiplomaciaIA03.CalcularPontuacaoTerritorial(
+                    mapaPolitico,
+                    regiao,
+                    brain.TeamId);
+                if (pontuacaoTerritorial < GestorDiplomaciaIA03.PontuacaoMinimaParaReivindicarTerritorio)
+                {
+                    continue;
+                }
+
                 bool jaReivindicou = governo.Propostas != null && governo.Propostas.Any(proposta => proposta != null
                     && proposta.EstaPendente
                     && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial

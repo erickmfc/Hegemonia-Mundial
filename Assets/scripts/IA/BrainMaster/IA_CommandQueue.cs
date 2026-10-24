@@ -238,6 +238,17 @@ namespace Hegemonia.AI.BrainMaster
             return IA_CommandStatus.Cancelled;
         }
 
+        public bool RestoreInFlight(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return false;
+            }
+
+            _statusById[id] = IA_CommandStatus.Running;
+            return true;
+        }
+
         public List<IA_CommandRecord> GetRecentHistory(int maxItems)
         {
             return _history.Reverse().Take(Mathf.Max(1, maxItems)).ToList();

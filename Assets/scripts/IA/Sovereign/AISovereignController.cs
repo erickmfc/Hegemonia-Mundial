@@ -820,7 +820,11 @@ namespace Hegemonia.AI.Sovereign
                         reason = "governo_indisponivel";
                         return false;
                     }
-                    gov.NotificarGuerra(teamId);
+                    if (order.CounterpartyTeamId <= 0 || !gov.DeclararGuerra(teamId, order.CounterpartyTeamId))
+                    {
+                        reason = "pais_alvo_invalido";
+                        return false;
+                    }
                     return true;
             }
 

@@ -9,6 +9,66 @@ namespace Hegemonia.AI.IA03
     /// </summary>
     public sealed class GestorDiplomaciaIA03
     {
+        public const float PontuacaoMinimaParaReivindicarTerritorio = 40f;
+
+        /// <summary>
+        /// Scores an eligible territory using authored regional value plus
+        /// proximity and contiguity to the country's existing land.
+        /// Missing resource/port/defense data remains neutral (zero).
+        /// </summary>
+        public static float CalcularPontuacaoTerritorial(
+            DadosMapaTerritorial mapa,
+            RegiaoPolitica candidata,
+            int teamId)
+        {
+            if (mapa == null || candidata == null || candidata.tipo != TipoRegiaoPolitica.Terra || teamId <= 0)
+            {
+                return float.MinValue;
+            }
+
+            Vector2 centroCandidato = Centroide(candidata);
+            float menorDistancia = float.MaxValue;
+            bool contigua = false;
+            float maiorArea = 0f;
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            for (int i = 0; i < mapa.Regioes.Count; i++)
+            {
+                RegiaoPolitica regiao = mapa.Regioes[i];
+                if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra) continue;
+                maiorArea = Mathf.Max(maiorArea, CalcularArea(regiao));
+                ResultadoConsultaTerritorio estado = gerente != null
+                    ? gerente.ObterEstadoDaRegiao(regiao.territorioId)
+                    : ResultadoConsultaTerritorio.NaoDefinido;
+                int proprietario = estado.encontrouRegiao ? estado.ownerCountryTeamId : regiao.ownerCountryTeamId;
+                bool neutral = estado.encontrouRegiao ? estado.neutral : regiao.neutral;
+                if (proprietario != teamId || neutral || regiao == candidata) continue;
+
+                float distanciaCentro = Vector2.Distance(centroCandidato, Centroide(regiao));
+                menorDistancia = Mathf.Min(menorDistancia, distanciaCentro);
+                if (DistanciaEntreVertices(candidata, regiao) <= 0.018f)
+                {
+                    contigua = true;
+                }
+            }
+
+            float area = CalcularArea(candidata);
+            float valorArea = maiorArea > 0f ? Mathf.Clamp01(area / maiorArea) : 0f;
+            float proximidade = menorDistancia < float.MaxValue
+                ? 1f - Mathf.Clamp01(menorDistancia / 0.60f)
+                : 0f;
+
+            float pontuacao = 30f * proximidade
+                + (contigua ? 30f : 0f)
+                + 10f * Mathf.Sqrt(valorArea)
+                + 15f * NormalizarValor(candidata.valorRecursos)
+                + 12f * NormalizarValor(candidata.nivelInfraestrutura)
+                + (candidata.acessoMaritimo ? 8f : 0f)
+                + 12f * NormalizarValor(candidata.capacidadeDefensiva)
+                - 15f * NormalizarValor(candidata.custoManutencao)
+                + (candidata.capturable ? 4f : 0f);
+            return Mathf.Clamp(pontuacao, 0f, 100f);
+        }
+
         public bool ExisteGuerra(SistemaGovernoMundial governo, int origemTeamId, int alvoTeamId)
         {
             if (governo == null || origemTeamId <= 0 || alvoTeamId <= 0)
@@ -155,32 +215,17 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
-            List<string> candidatos = new List<string>();
-            IReadOnlyList<RegiaoPolitica> regioes = mapa.Regioes;
-            for (int i = 0; i < regioes.Count; i++)
+            List<string> concedidos = SelecionarTerritoriosTerrestres(
+                governo,
+                paisPagadorTeamId,
+                fracaoDeTerritorio,
+                true,
+                out mensagem);
+            if (concedidos == null)
             {
-                RegiaoPolitica regiao = regioes[i];
-                if (regiao == null || !regiao.capturable || regiao.tipo != TipoRegiaoPolitica.Terra)
-                {
-                    continue;
-                }
-
-                ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(regiao.territorioId);
-                if (estado.ownerCountryTeamId == paisPagadorTeamId && !estado.neutral)
-                {
-                    candidatos.Add(regiao.territorioId);
-                }
-            }
-
-            if (candidatos.Count == 0)
-            {
-                mensagem = "O país pagador não possui regiões concedíveis configuradas.";
                 return false;
             }
-
-            candidatos.Sort(System.StringComparer.Ordinal);
-            int quantidade = Mathf.Clamp(Mathf.CeilToInt(candidatos.Count * Mathf.Clamp(fracaoDeTerritorio, 0.3f, 1f)), 1, candidatos.Count);
-            List<string> concedidos = candidatos.GetRange(0, quantidade);
+            int quantidade = concedidos.Count;
             DadosPaisGoverno credor = governo.ObterPais(paisCredorTeamId);
             string presidente = !string.IsNullOrWhiteSpace(nomePresidente)
                 ? nomePresidente.Trim()
@@ -350,7 +395,7 @@ namespace Hegemonia.AI.IA03
             mensagem = string.Empty;
             GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
             DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
-            List<string> candidatos = new List<string>();
+            List<RegiaoPolitica> candidatos = new List<RegiaoPolitica>();
             IReadOnlyList<RegiaoPolitica> regioes = mapa != null ? mapa.Regioes : null;
             if (regioes != null)
             {
@@ -366,7 +411,7 @@ namespace Hegemonia.AI.IA03
                     ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(regiao.territorioId);
                     if (estado.ownerCountryTeamId == proprietarioTeamId && !estado.neutral)
                     {
-                        candidatos.Add(regiao.territorioId);
+                        candidatos.Add(regiao);
                     }
                 }
             }
@@ -377,12 +422,66 @@ namespace Hegemonia.AI.IA03
                 return null;
             }
 
-            candidatos.Sort(System.StringComparer.Ordinal);
+            candidatos.Sort((a, b) =>
+            {
+                float pontuacaoA = CalcularPontuacaoTerritorial(mapa, a, proprietarioTeamId);
+                float pontuacaoB = CalcularPontuacaoTerritorial(mapa, b, proprietarioTeamId);
+                int comparacao = exigirCapturavel
+                    ? pontuacaoA.CompareTo(pontuacaoB) // Concessions preserve the owner's most valuable regions.
+                    : pontuacaoB.CompareTo(pontuacaoA); // Disarmament prioritizes strategically important areas.
+                return comparacao != 0
+                    ? comparacao
+                    : System.StringComparer.Ordinal.Compare(a.territorioId, b.territorioId);
+            });
             int quantidade = Mathf.Clamp(
                 Mathf.CeilToInt(candidatos.Count * Mathf.Clamp(fracao, 0.05f, 1f)),
                 1,
                 candidatos.Count);
-            return candidatos.GetRange(0, quantidade);
+            List<string> escolhidos = new List<string>(quantidade);
+            for (int i = 0; i < quantidade; i++) escolhidos.Add(candidatos[i].territorioId);
+            return escolhidos;
+        }
+
+        private static Vector2 Centroide(RegiaoPolitica regiao)
+        {
+            if (regiao.vertices == null || regiao.vertices.Count == 0) return Vector2.zero;
+            Vector2 soma = Vector2.zero;
+            for (int i = 0; i < regiao.vertices.Count; i++) soma += regiao.vertices[i];
+            return soma / regiao.vertices.Count;
+        }
+
+        private static float DistanciaEntreVertices(RegiaoPolitica a, RegiaoPolitica b)
+        {
+            if (a.vertices == null || b.vertices == null || a.vertices.Count == 0 || b.vertices.Count == 0)
+                return float.MaxValue;
+            float menor = float.MaxValue;
+            for (int i = 0; i < a.vertices.Count; i++)
+            {
+                for (int j = 0; j < b.vertices.Count; j++)
+                {
+                    menor = Mathf.Min(menor, Vector2.Distance(a.vertices[i], b.vertices[j]));
+                    if (menor <= 0.018f) return menor;
+                }
+            }
+            return menor;
+        }
+
+        private static float CalcularArea(RegiaoPolitica regiao)
+        {
+            if (regiao.vertices == null || regiao.vertices.Count < 3) return 0f;
+            float areaDobrada = 0f;
+            for (int i = 0; i < regiao.vertices.Count; i++)
+            {
+                Vector2 atual = regiao.vertices[i];
+                Vector2 proximo = regiao.vertices[(i + 1) % regiao.vertices.Count];
+                areaDobrada += atual.x * proximo.y - proximo.x * atual.y;
+            }
+            return Mathf.Abs(areaDobrada) * 0.5f;
+        }
+
+        private static float NormalizarValor(float valor)
+        {
+            return Mathf.Clamp01(valor / 100f);
         }
 
         private static string ResolverPresidente(
