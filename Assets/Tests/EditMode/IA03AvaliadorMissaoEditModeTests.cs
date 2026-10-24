@@ -1568,6 +1568,93 @@ public sealed class IA03AvaliadorMissaoEditModeTests
     }
 
     [Test]
+    public void IA03SolicitaCreditoFederativoSomenteDeIntegranteDoMesmoBlocoEComCadencia()
+    {
+        Type economyType = ResolverTipo("Hegemonia.AI.IA03.GestorEconomiaIA03");
+        Type summaryType = ResolverTipo("Hegemonia.AI.IA03.GestorEconomiaIA03+Resumo");
+        Type governmentType = ResolverTipo("SistemaGovernoMundial");
+        Type federationType = ResolverTipo("SistemaFederacoesGlobais");
+        Type countryType = ResolverTipo("DadosPaisGoverno");
+        PropertyInfo governmentInstance = governmentType.GetProperty("Instancia", BindingFlags.Public | BindingFlags.Static);
+        PropertyInfo federationInstance = federationType.GetProperty("Instancia", BindingFlags.Public | BindingFlags.Static);
+        MethodInfo setGovernmentInstance = governmentInstance.GetSetMethod(true);
+        MethodInfo setFederationInstance = federationInstance.GetSetMethod(true);
+        object previousGovernment = governmentInstance.GetValue(null, null);
+        object previousFederation = federationInstance.GetValue(null, null);
+        GameObject governmentObject = new GameObject("IA03 federation finance government");
+        GameObject federationObject = new GameObject("IA03 federation finance service");
+        governmentObject.SetActive(false);
+        federationObject.SetActive(false);
+
+        try
+        {
+            Component government = governmentObject.AddComponent(governmentType);
+            Component federations = federationObject.AddComponent(federationType);
+            IList countries = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(countryType));
+            object player = Activator.CreateInstance(countryType);
+            object borrower = Activator.CreateInstance(countryType);
+            object sameBlocLender = Activator.CreateInstance(countryType);
+            object otherBlocLender = Activator.CreateInstance(countryType);
+
+            SetField(government, "teamJogador", 1);
+            SetField(player, "teamId", 1);
+            SetField(player, "federacaoGlobal", "CooperacaoGlobal");
+            SetField(borrower, "teamId", 2);
+            SetField(borrower, "federacaoGlobal", "CooperacaoGlobal");
+            SetField(borrower, "saldo", 0L);
+            SetField(borrower, "rendaPorSegundo", 1000f);
+            SetField(borrower, "gastosPorSegundo", 0f);
+            SetField(sameBlocLender, "teamId", 3);
+            SetField(sameBlocLender, "federacaoGlobal", "CooperacaoGlobal");
+            SetField(sameBlocLender, "saldo", 1000000L);
+            SetField(otherBlocLender, "teamId", 4);
+            SetField(otherBlocLender, "federacaoGlobal", "AliancaDefesa");
+            SetField(otherBlocLender, "saldo", 1000000L);
+
+            countries.Add(player);
+            countries.Add(borrower);
+            countries.Add(sameBlocLender);
+            countries.Add(otherBlocLender);
+            SetField(government, "paises", countries);
+            setGovernmentInstance.Invoke(null, new[] { government });
+            setFederationInstance.Invoke(null, new[] { federations });
+
+            object economy = Activator.CreateInstance(economyType);
+            object summary = Activator.CreateInstance(summaryType);
+            SetField(summary, "DadosDisponiveis", true);
+            SetField(summary, "ReservaFinanceiraBaixa", true);
+            SetField(summary, "ReservaFinanceiraEstrategica", 5000L);
+            SetField(summary, "SaldoDisponivel", 0L);
+
+            MethodInfo requestFinancing = economyType.GetMethod("TentarSolicitarFinanciamento");
+            Assert.That(requestFinancing, Is.Not.Null,
+                "A IA03 deve reaproveitar o serviço de crédito federativo existente.");
+            object[] arguments = { government, 2, 30f, summary, null };
+            Assert.That(requestFinancing.Invoke(economy, arguments), Is.EqualTo(true), arguments[4] as string);
+
+            Assert.That(Field(borrower, "saldo"), Is.EqualTo(5500L));
+            Assert.That(Field(sameBlocLender, "saldo"), Is.EqualTo(994500L));
+            Assert.That(Field(otherBlocLender, "saldo"), Is.EqualTo(1000000L),
+                "O crédito não pode mover recursos entre federações diferentes.");
+            Assert.That(((IList)Field(borrower, "emprestimos")).Count, Is.EqualTo(1));
+            Assert.That(Field(summary, "Saldo"), Is.EqualTo(5500L));
+
+            arguments[2] = 90f;
+            Assert.That(requestFinancing.Invoke(economy, arguments), Is.EqualTo(false),
+                "A IA03 deve respeitar a cadência da nova tentativa de financiamento.");
+            Assert.That(((IList)Field(borrower, "emprestimos")).Count, Is.EqualTo(1),
+                "Uma nova tentativa não deve duplicar o empréstimo ativo.");
+        }
+        finally
+        {
+            setGovernmentInstance.Invoke(null, new[] { previousGovernment });
+            setFederationInstance.Invoke(null, new[] { previousFederation });
+            UnityEngine.Object.DestroyImmediate(governmentObject);
+            UnityEngine.Object.DestroyImmediate(federationObject);
+        }
+    }
+
+    [Test]
     public void ReservaEstrategicaDeManpowerBloqueiaMobilizacaoEProntidaoSemConsumirOPiso()
     {
         Type economyType = ResolverTipo("Hegemonia.AI.IA03.GestorEconomiaIA03");
