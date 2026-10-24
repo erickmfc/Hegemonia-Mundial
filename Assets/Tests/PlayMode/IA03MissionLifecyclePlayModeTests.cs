@@ -168,6 +168,73 @@ public sealed class IA03MissionLifecyclePlayModeTests
         yield return null;
     }
 
+    [UnityTest]
+    public IEnumerator MissionCompletionIsPublishedToGovernmentNews()
+    {
+        Type governmentType = ResolveType("SistemaGovernoMundial");
+        Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type missionType = ResolveType("Hegemonia.AI.IA03.MissaoEstrategicaSO");
+        Type resultType = ResolveType("Hegemonia.AI.IA03.IA03ResultadoMissao");
+        Assert.That(governmentType, Is.Not.Null);
+        Assert.That(strategistType, Is.Not.Null);
+        Assert.That(missionType, Is.Not.Null);
+        Assert.That(resultType, Is.Not.Null);
+
+        PropertyInfo instance = governmentType.GetProperty(
+            "Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.That(instance, Is.Not.Null);
+        object previousGovernment = instance.GetValue(null, null);
+        GameObject governmentObject = new GameObject("IA03 mission news government fixture");
+        governmentObject.SetActive(false);
+        GameObject strategistObject = new GameObject("IA03 mission news strategist fixture");
+        strategistObject.SetActive(false);
+        Component government = null;
+        Component strategist = null;
+        ScriptableObject mission = null;
+        EventInfo newsEvent = null;
+        Action<string> newsHandler = null;
+        string publishedNews = null;
+
+        try
+        {
+            government = governmentObject.AddComponent(governmentType);
+            instance.GetSetMethod(true).Invoke(null, new[] { government });
+            strategist = strategistObject.AddComponent(strategistType);
+            mission = ScriptableObject.CreateInstance(missionType);
+            SetField(mission, "nomeMissao", "Missão de comunicação IA03");
+            SetField(strategist, "missaoAtiva", mission);
+
+            newsEvent = governmentType.GetEvent("OnNoticia", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(newsEvent, Is.Not.Null);
+            newsHandler = message => publishedNews = message;
+            newsEvent.AddEventHandler(government, newsHandler);
+
+            MethodInfo finalize = strategistType.GetMethod("FinalizarMissaoInterno", Members);
+            Assert.That(finalize, Is.Not.Null);
+            finalize.Invoke(strategist, new object[]
+            {
+                Enum.Parse(resultType, "Sucesso"), "objetivo validado", true
+            });
+
+            Assert.That(publishedNews, Is.Not.Null);
+            Assert.That(publishedNews, Does.Contain("IA03"));
+            Assert.That(publishedNews, Does.Contain("Missão de comunicação IA03"));
+            Assert.That(publishedNews, Does.Contain("objetivo validado"));
+        }
+        finally
+        {
+            if (government != null && newsEvent != null && newsHandler != null)
+                newsEvent.RemoveEventHandler(government, newsHandler);
+            if (instance.GetSetMethod(true) != null)
+                instance.GetSetMethod(true).Invoke(null, new[] { previousGovernment });
+            if (strategistObject != null) UnityEngine.Object.Destroy(strategistObject);
+            if (governmentObject != null) UnityEngine.Object.Destroy(governmentObject);
+            if (mission != null) UnityEngine.Object.Destroy(mission);
+        }
+
+        yield return null;
+    }
+
     private static Type ResolveType(string fullName)
     {
         foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())

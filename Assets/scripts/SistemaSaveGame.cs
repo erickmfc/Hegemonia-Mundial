@@ -328,6 +328,7 @@ public class SaveProductionOrderData
 public class SaveAiStrategicStateData
 {
     public int teamID;
+    public IA03RelatorioSaveData relatorioIA03;
     public int strategicPhase;
     public string activeImperialPlan;
     public string activeStrategicTarget;
@@ -1416,9 +1417,14 @@ public class SistemaSaveGame : MonoBehaviour
                 continue;
             }
 
+            IA03EstrategaNacional estrategaIA03 = brain.GetComponent<IA03EstrategaNacional>();
+
             dadosAtuais.estadosIA.Add(new SaveAiStrategicStateData
             {
                 teamID = brain.TeamId,
+                relatorioIA03 = estrategaIA03 != null
+                    ? estrategaIA03.CapturarEstadoRelatorioSalvavel()
+                    : null,
                 strategicPhase = (int)brain.StrategicPhase,
                 activeImperialPlan = brain.ActiveImperialPlan,
                 activeStrategicTarget = brain.ActiveStrategicTarget,
@@ -1680,6 +1686,12 @@ public class SistemaSaveGame : MonoBehaviour
             brain.PlayerFleetEstimate = Mathf.Max(0, salvo.playerFleetEstimate);
             brain.PlayerAircraftEstimate = Mathf.Max(0, salvo.playerAircraftEstimate);
             brain.WeakEmpireRecoveryActive = salvo.weakEmpireRecoveryActive;
+
+            IA03EstrategaNacional estrategaIA03 = brain.GetComponent<IA03EstrategaNacional>();
+            if (estrategaIA03 != null && salvo.relatorioIA03 != null)
+            {
+                estrategaIA03.RestaurarEstadoRelatorioSalvavel(salvo.relatorioIA03);
+            }
         }
     }
 

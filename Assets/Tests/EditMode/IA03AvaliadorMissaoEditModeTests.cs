@@ -4578,6 +4578,35 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         }
     }
 
+    [Test]
+    public void RelatorioDeConflitoIA03SobreviveAoRoundTripDoSave()
+    {
+        Type relatorioType = ResolverTipo("Hegemonia.AI.IA03.IA03RelatorioConflito");
+        Type saveDataType = ResolverTipo("Hegemonia.AI.IA03.IA03RelatorioSaveData");
+        object original = Activator.CreateInstance(relatorioType);
+
+        relatorioType.GetMethod("RegistrarResultadoCombate").Invoke(original, new object[] { true });
+        relatorioType.GetMethod("RegistrarResultadoCombate").Invoke(original, new object[] { false });
+        relatorioType.GetMethod("RegistrarPrejuizoEconomico").Invoke(original, new object[] { true, 2750f });
+        relatorioType.GetMethod("RegistrarObjetivoCapturado").Invoke(original, new object[] { true });
+
+        object saveData = relatorioType.GetMethod("CapturarEstadoSalvavel").Invoke(original, null);
+        string json = JsonUtility.ToJson(saveData);
+        object carregado = JsonUtility.FromJson(json, saveDataType);
+        object restaurado = Activator.CreateInstance(relatorioType);
+        relatorioType.GetMethod("RestaurarEstadoSalvavel").Invoke(restaurado, new[] { carregado });
+
+        object snapshot = relatorioType.GetProperty("Acumulado").GetValue(restaurado);
+        Assert.That(Field(snapshot, "BatalhasVencidas"), Is.EqualTo(1));
+        Assert.That(Field(snapshot, "BatalhasPerdidas"), Is.EqualTo(1));
+        Assert.That(Field(snapshot, "PrejuizoEconomicoInimigo"), Is.EqualTo(2750f));
+        Assert.That(Field(snapshot, "ObjetivosCapturados"), Is.EqualTo(1));
+
+        relatorioType.GetMethod("RestaurarEstadoSalvavel").Invoke(restaurado, new object[] { null });
+        Assert.That(Field(snapshot, "BatalhasVencidas"), Is.EqualTo(1),
+            "Um save legado sem o snapshot IA03 não deve apagar estado já existente.");
+    }
+
     private static Type ResolverTipo(string nome)
     {
         Type tipo = AppDomain.CurrentDomain.GetAssemblies()

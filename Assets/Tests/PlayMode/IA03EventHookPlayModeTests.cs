@@ -309,7 +309,12 @@ public sealed class IA03EventHookPlayModeTests
             GameObject lostUnitA = CreateEntity(objects, identityType, damageType, 1, false, "IA03 lost force A");
             GameObject lostUnitB = CreateEntity(objects, identityType, damageType, 1, false, "IA03 lost force B");
             GameObject enemyAttacker = CreateEntity(objects, identityType, damageType, 2, false, "IA03 report enemy attacker");
-            IList ownCombatUnits = (IList)worldStateType.GetProperty("OwnCombatUnits").GetValue(worldState, null);
+            PropertyInfo ownCombatUnitsProperty = worldStateType.GetProperty("OwnCombatUnits", Members);
+            Assert.That(ownCombatUnitsProperty, Is.Not.Null,
+                "O WorldState deve expor OwnCombatUnits como propriedade para o relatório IA03.");
+            IList ownCombatUnits = ownCombatUnitsProperty.GetValue(worldState, null) as IList;
+            Assert.That(ownCombatUnits, Is.Not.Null,
+                "OwnCombatUnits deve estar inicializada antes de acumular as unidades do relatório.");
             ownCombatUnits.Add(attacker);
             ownCombatUnits.Add(survivingUnitA);
             ownCombatUnits.Add(survivingUnitB);

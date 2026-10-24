@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
@@ -121,6 +122,18 @@ public sealed class MenuGovernoTabsPlayModeTests
                 Assert.That(actions.childCount, Is.GreaterThan(1), category + " / " + tab + " precisa exibir ações.");
                 AssertControlsFitWithinCards(content, category + " / " + tab);
                 AssertButtonsFitWithinCards(actions, category + " / " + tab);
+                if (category == "IA03" && tab == "Situacao")
+                {
+                    string statusText = string.Join("\n", content.Query<Label>().ToList().Select(label => label.text));
+                    Assert.That(statusText, Does.Contain("IA03 — Valdoria"),
+                        "O país da instância IA03 ativa deve aparecer no painel do Governo.");
+                    Assert.That(statusText, Does.Contain("Execução: ATIVA"),
+                        "O painel deve indicar quando o estrategista IA03 está ativo e configurado.");
+                    Assert.That(statusText, Does.Contain("Autoridade de ordens: ativa"),
+                        "Uma IA03 ativa precisa ter autoridade real para enviar ordens pelo BrainMaster.");
+                    Assert.That(statusText, Does.Contain("INATIVA NA PARTIDA"),
+                        "Instâncias IA03 desativadas na cena devem ser identificadas como inativas.");
+                }
                 if (category == "Economia" && tab == "Orcamento")
                 {
                     Assert.That(content.Query<SliderInt>(className: "gov-budget-slider").ToList(), Has.Count.EqualTo(9),
@@ -159,7 +172,51 @@ public sealed class MenuGovernoTabsPlayModeTests
             }
         }
 
-        Assert.That(tabCount, Is.EqualTo(37), "A auditoria precisa visitar todas as subtabs declaradas do Governo.");
+        Assert.That(tabCount, Is.EqualTo(41), "A auditoria precisa visitar todas as subtabs declaradas do Governo.");
+
+        MethodInfo showSection = controllerType.GetMethod("MostrarSecao", Members);
+        MethodInfo showPage = controllerType.GetMethod("MostrarPagina", Members);
+        System.Type governmentType = ResolveType("SistemaGovernoMundial");
+        PropertyInfo governmentInstance = governmentType.GetProperty("Instancia", Members);
+        MethodInfo registerNews = governmentType.GetMethod(
+            "RegistrarNoticia", Members, null, new[] { typeof(string) }, null);
+        Assert.That(showSection, Is.Not.Null);
+        Assert.That(showPage, Is.Not.Null);
+        Assert.That(governmentInstance, Is.Not.Null);
+        Assert.That(registerNews, Is.Not.Null);
+        object government = governmentInstance.GetValue(null);
+        Assert.That(government, Is.Not.Null);
+
+        showSection.Invoke(controller, new object[] { "IA03" });
+        showPage.Invoke(controller, new object[] { "Noticias" });
+        const string testNews = "IA03 notícia de validação do Menu Governo";
+        registerNews.Invoke(government, new object[] { testNews });
+
+        bool newsAppeared = false;
+        for (int attempt = 0; attempt < 120 && !newsAppeared; attempt++)
+        {
+            VisualElement currentContent = contentField.GetValue(controller) as VisualElement;
+            foreach (Label label in currentContent.Query<Label>().ToList())
+            {
+                if (label.text.Contains(testNews))
+                {
+                    newsAppeared = true;
+                    break;
+                }
+            }
+
+            if (!newsAppeared) yield return null;
+        }
+
+        Assert.That(newsAppeared, Is.True,
+            "Uma notícia IA03 recebida com o menu aberto deve atualizar a página sem trocar de aba.");
+
+        System.Type commerceType = ResolveType("SistemaComercioNacional");
+        Component commerceSystem = Object.FindFirstObjectByType(commerceType, FindObjectsInactive.Include) as Component;
+        if (commerceSystem != null)
+            Object.Destroy(commerceSystem.gameObject);
+        yield return null;
+
         open.Invoke(controller, new object[] { false });
     }
 

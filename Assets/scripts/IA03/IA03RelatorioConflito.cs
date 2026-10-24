@@ -59,6 +59,12 @@ namespace Hegemonia.AI.IA03
                                           - (PrejuizoEconomicoProprio / 1000f);
     }
 
+    [Serializable]
+    public sealed class IA03RelatorioSaveData
+    {
+        public IA03RelatorioSnapshot acumulado = new IA03RelatorioSnapshot();
+    }
+
     /// <summary>
     /// Agrega eventos confirmados de combate. A lista de unidades disponível é
     /// fornecida pelo WorldState já registrado do BrainMaster, sem busca global.
@@ -69,6 +75,28 @@ namespace Hegemonia.AI.IA03
         private readonly HashSet<string> eventosDeCombateProcessados = new HashSet<string>(StringComparer.Ordinal);
 
         public IA03RelatorioSnapshot Acumulado => acumulado;
+
+        public IA03RelatorioSaveData CapturarEstadoSalvavel()
+        {
+            return new IA03RelatorioSaveData
+            {
+                acumulado = JsonUtility.FromJson<IA03RelatorioSnapshot>(JsonUtility.ToJson(acumulado))
+            };
+        }
+
+        public void RestaurarEstadoSalvavel(IA03RelatorioSaveData estado)
+        {
+            if (estado == null || estado.acumulado == null)
+            {
+                return;
+            }
+
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(estado.acumulado), acumulado);
+            // IDs dos eventos são sequências temporárias do processo. O histórico
+            // desses eventos não é restaurado pelo save, então não se deve levar
+            // a deduplicação para uma sessão que pode gerar IDs novamente.
+            eventosDeCombateProcessados.Clear();
+        }
 
         public void Resetar()
         {

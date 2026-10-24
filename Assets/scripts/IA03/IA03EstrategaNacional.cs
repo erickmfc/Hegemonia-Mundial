@@ -133,6 +133,16 @@ namespace Hegemonia.AI.IA03
         public bool DebugHabilitado => debugIA03;
         public IA03RelatorioSnapshot RelatorioAtual => relatorio.Acumulado;
 
+        public IA03RelatorioSaveData CapturarEstadoRelatorioSalvavel()
+        {
+            return relatorio.CapturarEstadoSalvavel();
+        }
+
+        public void RestaurarEstadoRelatorioSalvavel(IA03RelatorioSaveData estado)
+        {
+            relatorio.RestaurarEstadoSalvavel(estado);
+        }
+
         public bool IsUnitReservedForActiveMission(GameObject unit)
         {
             if (!ativo || !isActiveAndEnabled || unit == null || missaoAtiva == null)
@@ -1382,6 +1392,8 @@ namespace Hegemonia.AI.IA03
             estadoDaMissao = IA03ResultadoMissao.EmAndamento;
             ultimaMissao = selecionada != null ? selecionada.NomeMissao : ponto.Tipo.ToString();
             ultimaDecisao = "missão enviada: " + ultimaMissao + " -> " + ponto.Id;
+            RegistrarNoticiaMissao("iniciou a missão \"" + ultimaMissao + "\" contra "
+                + NomePaisParaNoticia(paisAlvoTeamId) + ".");
             RegistrarLogDebugSeNecessario();
             return true;
         }
@@ -2572,6 +2584,7 @@ namespace Hegemonia.AI.IA03
             string motivo,
             bool contabilizarResultadoMilitar)
         {
+            string nomeMissaoFinalizada = missaoAtiva != null ? missaoAtiva.NomeMissao : string.Empty;
             bool sucesso = resultado == IA03ResultadoMissao.Sucesso;
             bool final = resultado == IA03ResultadoMissao.Sucesso
                          || resultado == IA03ResultadoMissao.Fracasso
@@ -2595,6 +2608,15 @@ namespace Hegemonia.AI.IA03
                     : "missão falhou: ";
                 ultimaDecisao = verbo
                                 + missaoAtiva.NomeMissao + " — " + (motivo ?? string.Empty);
+            }
+
+            if (!string.IsNullOrWhiteSpace(nomeMissaoFinalizada)
+                && resultado != IA03ResultadoMissao.EmAndamento
+                && resultado != IA03ResultadoMissao.Pendente)
+            {
+                RegistrarNoticiaMissao(DescreverResultadoMissao(resultado) + " a missão \""
+                    + nomeMissaoFinalizada + "\". "
+                    + (string.IsNullOrWhiteSpace(motivo) ? string.Empty : motivo.Trim()));
             }
 
             RegistrarResultadoMissaoMilitar(missaoAtiva, resultado, contabilizarResultadoMilitar);
@@ -2633,6 +2655,38 @@ namespace Hegemonia.AI.IA03
                 ultimaDecisao = "missão cancelada: " + motivo;
             }
             RegistrarLogDebugSeNecessario();
+        }
+
+        private void RegistrarNoticiaMissao(string mensagem)
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            if (governo == null || string.IsNullOrWhiteSpace(mensagem))
+            {
+                return;
+            }
+
+            string pais = brain != null && brain.TeamId > 0
+                ? governo.NomePais(brain.TeamId)
+                : "nação não identificada";
+            governo.RegistrarNoticia("IA03 de " + pais + " " + mensagem);
+        }
+
+        private static string NomePaisParaNoticia(int teamId)
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            return governo != null && teamId > 0 ? governo.NomePais(teamId) : "alvo não identificado";
+        }
+
+        private static string DescreverResultadoMissao(IA03ResultadoMissao resultado)
+        {
+            switch (resultado)
+            {
+                case IA03ResultadoMissao.Sucesso: return "concluiu com sucesso";
+                case IA03ResultadoMissao.Cancelada: return "cancelou";
+                case IA03ResultadoMissao.Expirada: return "deixou expirar";
+                case IA03ResultadoMissao.Fracasso: return "não conseguiu concluir";
+                default: return "finalizou";
+            }
         }
 
         private void RegistrarResultadoMissaoMilitar(

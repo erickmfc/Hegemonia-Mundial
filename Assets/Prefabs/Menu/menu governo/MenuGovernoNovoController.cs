@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
+using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.IA03;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -32,6 +34,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     // substituidas antes de renderizar ou executar acoes diplomaticas.
     private int paisSelecionado = -1;
     private float proximaAtualizacao;
+    private SistemaGovernoMundial governoNoticiaAssinado;
+    private bool noticiasIA03Pendentes;
+    private string assinaturaIA03Renderizada = string.Empty;
     private bool aberturaPendente;
     private bool tentandoAbrirQuandoPronto;
     private bool mercadoEstoquePrimeiro;
@@ -77,6 +82,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         "Interior",
         "Defesa",
         "Ciencia",
+        "IA03",
     };
 
     private static readonly Dictionary<string, string[]> Secoes = new Dictionary<string, string[]>
@@ -90,6 +96,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         { "Interior", new[] { "Populacao", "Cidades", "Bem-estar", "Prioridades" } },
         { "Defesa", new[] { "Comando", "Exercito", "Marinha", "Aerea", "Alertas" } },
         { "Ciencia", new[] { "Pesquisa", "Tecnologias", "Projetos", "Laboratorios" } },
+        { "IA03", new[] { "Situacao", "Relatorios", "Noticias" } },
     };
 
     public static bool GarantirInstancia()
@@ -140,6 +147,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private void OnEnable()
     {
         InicializarSeNecessario();
+        AssinarNotificacoesGoverno();
         if (Pronto)
             AtualizarTudo(false);
         else
@@ -156,11 +164,17 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
     private void OnDestroy()
     {
+        RemoverAssinaturaNotificacoesGoverno();
         InteractionModeService.Release(this, InteractionOwner.GovernmentMenu);
         if (Instancia == this)
         {
             Instancia = null;
         }
+    }
+
+    private void OnDisable()
+    {
+        RemoverAssinaturaNotificacoesGoverno();
     }
 
     private void Update()
@@ -169,6 +183,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         {
             return;
         }
+
+        AssinarNotificacoesGoverno();
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
@@ -186,6 +202,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AtualizarRecursos();
         AtualizarProducaoSeNovoDia();
         AtualizarPrevisaoOrcamentoSeNovoDia();
+        AtualizarPainelIA03SeNecessario();
     }
 
     public void Abrir(bool abrir)
@@ -206,6 +223,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         root.style.display = abrir ? DisplayStyle.Flex : DisplayStyle.None;
         if (abrir)
         {
+            AssinarNotificacoesGoverno();
             modoPercentualAgricolaSelecionadoNoMenu = null;
             // O Governo novo usa UI Toolkit e o menu de Construção usa
             // Canvas. Fechar somente o MenuGoverno antigo deixava o Canvas
@@ -434,6 +452,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AdicionarTitulo(conteudo, Titulo(categoria, aba), Descricao(categoria));
         PreencherDadosBasicos();
         PreencherAcoes();
+        assinaturaIA03Renderizada = categoria == "IA03" ? CriarAssinaturaIA03() : string.Empty;
     }
 
     private void AtualizarProducaoSeNovoDia()
@@ -673,6 +692,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
     private void PreencherDadosBasicos()
     {
+        if (categoria == "IA03")
+        {
+            ConstruirPainelIA03();
+            return;
+        }
+
         DadosPaisGoverno pais = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.ObterPais(TeamJogador) : null;
         if (pais == null) { AdicionarCard(conteudo, "DADOS INDISPONIVEIS", "O sistema de governo ainda esta inicializando."); return; }
         switch (categoria)
@@ -687,6 +712,171 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             case "Defesa": ConstruirDefesa(pais); break;
             case "Ciencia": ConstruirCiencia(pais); break;
         }
+    }
+
+    private void ConstruirPainelIA03()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        List<IA03EstrategaNacional> estrategas = FindObjectsByType<IA03EstrategaNacional>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None)
+            .Where(ia => ia != null)
+            .OrderBy(ResolverTeamIdIA03)
+            .ThenBy(ia => ia.gameObject.name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (estrategas.Count == 0)
+        {
+            AdicionarCard(conteudo, "IA03 NÃO ENCONTRADA",
+                "Nenhum estrategista IA03 está carregado nesta partida.");
+            return;
+        }
+
+        if (abaAtual == "Noticias")
+        {
+            AdicionarCard(conteudo, "NOTÍCIAS DA IA03", UltimasNoticias(governo, 10, "ia03"));
+            return;
+        }
+
+        foreach (IA03EstrategaNacional estratega in estrategas)
+        {
+            int teamId = ResolverTeamIdIA03(estratega);
+            IA_BrainMaster brain = estratega.GetComponent<IA_BrainMaster>();
+            string pais = governo != null && teamId > 0
+                ? governo.NomePais(teamId)
+                : estratega.gameObject.name;
+
+            if (abaAtual == "Relatorios")
+            {
+                ConstruirCardRelatorioIA03(estratega, pais);
+                continue;
+            }
+
+            bool objetoAtivo = estratega.gameObject.activeInHierarchy && estratega.enabled;
+            string execucao = !objetoAtivo ? "INATIVA NA PARTIDA"
+                : !estratega.TemPerfilConfigurado ? "SEM PERFIL CONFIGURADO"
+                : brain == null || !brain.isActiveAndEnabled ? "AGUARDANDO BRAINMASTER"
+                : !brain.HasExecutionAuthority ? "SEM AUTORIDADE DE COMANDO"
+                : "ATIVA";
+            string missaoAtiva = estratega.EstadoDaMissao == IA03ResultadoMissao.EmAndamento
+                ? (string.IsNullOrWhiteSpace(estratega.UltimaMissao) ? "Em andamento" : estratega.UltimaMissao)
+                : "Nenhuma";
+            string alvo = governo != null && estratega.DebugPaisAlvoTeamId > 0
+                ? governo.NomePais(estratega.DebugPaisAlvoTeamId)
+                : "não definido";
+            string ultimaDecisao = string.IsNullOrWhiteSpace(estratega.UltimaDecisao)
+                ? "Ainda não há decisão registrada."
+                : estratega.UltimaDecisao;
+            string ultimaAnalise = estratega.UltimaAnaliseEm < 0f
+                ? "Ainda não analisou a partida."
+                : "Última análise: " + estratega.UltimaAnaliseEm.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR")) + " s de partida.";
+            string texto = "Execução: " + execucao
+                + "\nPerfil: " + (estratega.TemPerfilConfigurado ? "configurado" : "pendente")
+                + "\nBrainMaster: " + (brain != null ? (brain.isActiveAndEnabled ? "ativo" : "inativo") : "ausente")
+                + "\nAutoridade de ordens: " + (brain != null && brain.HasExecutionAuthority ? "ativa" : "bloqueada")
+                + "\nEstado estratégico: " + estratega.EstadoNacional + " (nível " + (int)estratega.NivelDeConflito + ")"
+                + "\nPaís-alvo: " + alvo
+                + "\nMissão em andamento: " + missaoAtiva
+                + "\nÚltimo resultado: " + estratega.EstadoDaMissao
+                + "\nMissões na fila: " + estratega.DebugMissoesNaFila
+                + "\n" + ultimaAnalise
+                + "\nÚltima decisão: " + ultimaDecisao;
+
+            AdicionarCard(conteudo, "IA03 — " + pais, texto);
+        }
+    }
+
+    private void ConstruirCardRelatorioIA03(IA03EstrategaNacional estratega, string pais)
+    {
+        IA03RelatorioSnapshot relatorio = estratega.RelatorioAtual;
+        if (relatorio == null || relatorio.MomentoDoRelatorio <= 0f)
+        {
+            AdicionarCard(conteudo, "RELATÓRIO — " + pais,
+                "Ainda não foi publicado um relatório de conflito nesta partida.");
+            return;
+        }
+
+        string texto = "Duração do conflito: " + Mathf.RoundToInt(relatorio.DuracaoConflitoSegundos / 60f) + " min"
+            + "\nUnidades próprias disponíveis: " + relatorio.UnidadesPropriasDisponiveis
+            + "\nUnidades próprias perdidas: " + relatorio.UnidadesPropriasPerdidas
+            + "\nInimigos conhecidos: " + relatorio.UnidadesInimigasConhecidas
+            + "\nInimigos destruídos: " + relatorio.InimigosDestruidos
+            + "\nBatalhas vencidas/perdidas: " + relatorio.BatalhasVencidas + "/" + relatorio.BatalhasPerdidas
+            + "\nObjetivos capturados/perdidos: " + relatorio.ObjetivosCapturados + "/" + relatorio.ObjetivosPerdidos
+            + "\nEstoque de comida: " + relatorio.EstoqueComida
+            + "\nDéficit de comida: " + relatorio.DeficitComida.ToString("0.0", CultureInfo.GetCultureInfo("pt-BR"));
+        AdicionarCard(conteudo, "RELATÓRIO — " + pais, texto);
+    }
+
+    private static int ResolverTeamIdIA03(IA03EstrategaNacional estratega)
+    {
+        if (estratega == null) return 0;
+        IA_BrainMaster brain = estratega.GetComponent<IA_BrainMaster>();
+        return brain != null ? brain.TeamId : estratega.DebugTeamId;
+    }
+
+    private void AssinarNotificacoesGoverno()
+    {
+        SistemaGovernoMundial atual = SistemaGovernoMundial.Instancia;
+        if (governoNoticiaAssinado == atual) return;
+
+        RemoverAssinaturaNotificacoesGoverno();
+        governoNoticiaAssinado = atual;
+        if (governoNoticiaAssinado != null)
+            governoNoticiaAssinado.OnNoticia += ReceberNoticiaGoverno;
+    }
+
+    private void RemoverAssinaturaNotificacoesGoverno()
+    {
+        if (governoNoticiaAssinado != null)
+            governoNoticiaAssinado.OnNoticia -= ReceberNoticiaGoverno;
+        governoNoticiaAssinado = null;
+        noticiasIA03Pendentes = false;
+    }
+
+    private void ReceberNoticiaGoverno(string noticia)
+    {
+        if (string.IsNullOrWhiteSpace(noticia)
+            || noticia.IndexOf("IA03", StringComparison.OrdinalIgnoreCase) < 0
+            || root == null
+            || root.resolvedStyle.display == DisplayStyle.None)
+        {
+            return;
+        }
+
+        noticiasIA03Pendentes = categoria == "IA03"
+            || (categoria == "Relacoes" && abaAtual == "Crises");
+    }
+
+    private void AtualizarPainelIA03SeNecessario()
+    {
+        bool paginaIA03 = categoria == "IA03";
+        bool estadoMudou = paginaIA03
+            && !string.Equals(CriarAssinaturaIA03(), assinaturaIA03Renderizada, StringComparison.Ordinal);
+        bool paginaCrises = categoria == "Relacoes" && abaAtual == "Crises";
+        if (!estadoMudou && !(noticiasIA03Pendentes && (paginaIA03 || paginaCrises))) return;
+
+        noticiasIA03Pendentes = false;
+        Vector2 scrollConteudo = conteudo != null ? conteudo.scrollOffset : Vector2.zero;
+        Vector2 scrollAcoes = acoes != null ? acoes.scrollOffset : Vector2.zero;
+        MostrarPagina(abaAtual);
+        if (conteudo != null)
+            conteudo.schedule.Execute(() => { if (conteudo != null) conteudo.scrollOffset = scrollConteudo; });
+        if (acoes != null)
+            acoes.schedule.Execute(() => { if (acoes != null) acoes.scrollOffset = scrollAcoes; });
+    }
+
+    private static string CriarAssinaturaIA03()
+    {
+        IA03EstrategaNacional[] estrategas = FindObjectsByType<IA03EstrategaNacional>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+        return string.Join("|", estrategas
+            .Where(ia => ia != null)
+            .OrderBy(ResolverTeamIdIA03)
+            .ThenBy(ia => ia.GetInstanceID())
+            .Select(ia => ia.GetInstanceID() + ":" + ia.isActiveAndEnabled + ":" + ia.TemPerfilConfigurado
+                + ":" + ia.EstadoNacional + ":" + ia.EstadoDaMissao + ":" + ia.UltimaMissao
+                + ":" + ia.UltimaDecisao + ":" + ia.DebugMissoesNaFila + ":"
+                + (ia.GetComponent<IA_BrainMaster>() != null && ia.GetComponent<IA_BrainMaster>().HasExecutionAuthority)));
     }
 
     private void PreencherAcoes()
@@ -836,6 +1026,14 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     Acao("PRIORIZAR ENERGIA", () => Investir("energia"));
                     Acao("ABRIR PESQUISA", () => MostrarPagina("Pesquisa"));
                 }
+                break;
+            case "IA03":
+                Acao("ATUALIZAR PAINEL IA03", () => { assinaturaIA03Renderizada = string.Empty; MostrarPagina(abaAtual); });
+                Acao("ABRIR CRISES", () =>
+                {
+                    MostrarSecao("Relacoes");
+                    MostrarPagina("Crises");
+                });
                 break;
         }
 
@@ -2535,7 +2733,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 string tipo = r.guerraDeclarada ? "GUERRA" : r.sancaoAtiva ? "SANCAO" : "TENSAO";
                 TabelaLinha(outro.nomePais, outro.bloco, r.valor.ToString("+0;-0;0"), tipo, "SELECIONAR", () => { paisSelecionado = outro.teamId; MostrarMensagem(outro.nomePais + " selecionado."); MostrarPagina(abaAtual); });
             }
-            AdicionarCard(conteudo, "HISTORICO RECENTE", UltimasNoticias(g, 5, "guerra", "sanc", "tens", "crise"));
+            AdicionarCard(conteudo, "HISTORICO RECENTE", UltimasNoticias(g, 5, "guerra", "sanc", "tens", "crise", "ia03"));
             return;
         }
 
@@ -4629,6 +4827,10 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             case "Exercito": return "Exército";
             case "Aerea": return "Aérea";
             case "Precos": return "Preços";
+            case "IA03": return "IA03";
+            case "Situacao": return "Situação";
+            case "Relatorios": return "Relatórios";
+            case "Noticias": return "Notícias";
             default: return chave;
         }
     }
