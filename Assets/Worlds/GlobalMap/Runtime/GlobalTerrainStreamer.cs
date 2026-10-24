@@ -369,7 +369,12 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 if (x < 0 || x > maxX) continue;
                 float minX = world.MapMinX + x * size;
                 float minZ = world.MapMinZ + z * size;
-                if (!world.ContainsLand(minX, minZ, minX + size, minZ + size, 10))
+                // Coastal and narrow land strips can be missed by 10 samples
+                // across an 8 km tile. Such a tile then falls back to the
+                // coarse terrain and has no local collider/NavMesh. A denser
+                // test keeps visible land represented by streamed gameplay
+                // terrain without changing the tile radius or frame budget.
+                if (!world.ContainsLand(minX, minZ, minX + size, minZ + size, 16))
                     continue;
                 Vector2Int coordinate = new Vector2Int(x, z);
                 desiredTiles.Add(coordinate);

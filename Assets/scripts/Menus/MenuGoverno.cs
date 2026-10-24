@@ -2082,6 +2082,7 @@ public class MenuGoverno : MonoBehaviour
                 CreateScienceSummaryCard(page.Root.transform, p);
             }
             CreateInfoBlock(page.Root.transform, "Cada card abaixo aplica investimento real, muda o cofre nacional e conversa com pesquisa, tecnologia, projetos e laboratorios.");
+            CreateActionButton(page.Root.transform, "INVESTIR PARA O PRÓXIMO NÍVEL DA CIDADE (1.000M)", corPainel2, InvestirProximaCidadeUI);
             CreateActionButton(page.Root.transform, "INVESTIR EM ENERGIA", corAzulBotao, () => InvestirSetorUI("Energia", 750, "Energia"));
             CreateActionButton(page.Root.transform, "INVESTIR EM INDUSTRIA", corPainel2, () => InvestirSetorUI("Industria", 700, "Industria"));
             CreateActionButton(page.Root.transform, "INVESTIR EM DIPLOMACIA", new Color(0.110f, 0.200f, 0.280f, 1f), () => InvestirSetorUI("Diplomacia", 600, "Diplomacia"));
@@ -2792,6 +2793,13 @@ public class MenuGoverno : MonoBehaviour
         }
         RefreshDynamicData(true);
         return ok;
+    }
+
+    private void InvestirProximaCidadeUI()
+    {
+        MarcadorTerritorio.InvestirParaProximaCidade(paisJogadorId, out string mensagem);
+        Notificar("Economia", mensagem);
+        RefreshDynamicData(true);
     }
 
     private void AjustarImpostoUI(string categoria, int delta)

@@ -17,7 +17,7 @@ public enum TemaCidade
 /// <summary>
 /// Script completo para cidades pré-montadas temáticas (Egito, Moderna, etc.).
 /// Engloba simultaneamente:
-/// 1. Imobiliária (Moradia de 500 mil a 1,5 milhão de habitantes).
+/// 1. Imobiliária (Moradia de 500 mil a 5 milhões de habitantes).
 /// 2. Comércio e Empregos (Metade de cada lugar: 500k moradores -> até 250k comércio/empregos).
 /// 3. Energia elétrica (Consumo idêntico ao que casas e prédios consumiriam para esse montante populacional).
 /// Integra-se transparentemente com o SistemaEconomiaImoveis, GerenciadorRecursos e SistemaGovernoMundial.
@@ -37,6 +37,11 @@ public class CidadeComplexoUrbano : MonoBehaviour
     public string nomeCidade = "Nova Metrópole";
     [Tooltip("Identificador da nação ou time proprietário")]
     public int teamId = 1;
+
+    [Header("Expansão de cidades no mapa global")]
+    [Tooltip("Ative para usar esta cidade pré-posicionada como uma etapa da expansão urbana do mapa global.")]
+    public bool participarProgressaoCidadesGlobais;
+    [Min(0)] public int ordemProgressaoGlobal;
 
     [Header("🏥 Saúde da cidade")]
     [Tooltip("Capacidade hospitalar preventiva inicial do complexo. Hospitais adicionais usam HospitalSaude.")]
@@ -109,17 +114,39 @@ public class CidadeComplexoUrbano : MonoBehaviour
     private void Start()
     {
         ValidarLimites();
+        AlinharBaseAoTerrenoDoMapaGlobal();
+        if (participarProgressaoCidadesGlobais)
+            MarcadorTerritorio.GarantirInicializacaoCidadesGlobais(gameObject.scene.name, this);
         SincronizarEstruturaEconomica();
         RegistrarPopulacaoInicialNaNacao();
         populacaoRegistrada = true;
 
-        if (Application.isPlaying)
+        NotificarSeCapacidadeHabitacionalAtingida();
+    }
+
+    private void AlinharBaseAoTerrenoDoMapaGlobal()
+    {
+        if (!Application.isPlaying || !gameObject.scene.name.Equals("GlobalMapRTS", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        GlobalTerrainStreamer streamer = FindFirstObjectByType<GlobalTerrainStreamer>();
+        GlobalWorldDefinition world = streamer != null ? streamer.world : null;
+        if (world == null)
+            return;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        float baseY = float.PositiveInfinity;
+        for (int i = 0; i < renderers.Length; i++)
         {
-            GerenciadorDivisaoTerritorial.GarantirInstancia();
-            GerenciadorDivisaoTerritorial.Instancia?.RegistrarCidadeUrbana(this);
+            if (renderers[i] != null)
+                baseY = Mathf.Min(baseY, renderers[i].bounds.min.y);
         }
 
-        NotificarSeCapacidadeHabitacionalAtingida();
+        if (float.IsInfinity(baseY))
+            return;
+
+        float terrainY = world.HeightAtWorld(transform.position.x, transform.position.z);
+        transform.position += Vector3.up * (terrainY - baseY);
     }
 
     private void OnEnable()
@@ -129,11 +156,18 @@ public class CidadeComplexoUrbano : MonoBehaviour
         GarantirEstrutura();
         GarantirSaude();
         SincronizarEstruturaEconomica();
+        if (Application.isPlaying)
+        {
+            GerenciadorDivisaoTerritorial.GarantirInstancia();
+            GerenciadorDivisaoTerritorial.Instancia?.RegistrarCidadeUrbana(this);
+        }
     }
 
     private void OnDisable()
     {
         CidadesAtivas.Remove(this);
+        if (Application.isPlaying)
+            GerenciadorDivisaoTerritorial.Instancia?.RemoverCidadeUrbana(this);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -420,6 +454,8 @@ public class CidadeComplexoUrbano : MonoBehaviour
     private void ValidarLimites()
     {
         capacidadeHabitacional = Mathf.Clamp(capacidadeHabitacional, 500000, 5000000);
+        if (string.Equals(nomeCidade, "Nova Aurora", StringComparison.OrdinalIgnoreCase))
+            capacidadeHabitacional = 5000000;
         populacaoResidente = Mathf.Clamp(populacaoResidente, 0, capacidadeHabitacional);
         qualidadeVida = Mathf.Clamp(qualidadeVida, 0, 100);
         proporcaoComercio = 0.5f;

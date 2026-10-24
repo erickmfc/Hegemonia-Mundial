@@ -197,6 +197,7 @@ public class Estaleiro : MonoBehaviour
         AutoDetectarFilhosDaCena();
         NormalizarSlots();
         CorrigirPoseCosteiraSeNecessario();
+        AjustarBaseAoTerrenoDoMapaGlobal();
         GarantirSlotsExistentes();
         AtualizarReferenciasLitoraneas();
 
@@ -208,6 +209,31 @@ public class Estaleiro : MonoBehaviour
         }
 
         RegistrarNoGerente();
+    }
+
+    private void AjustarBaseAoTerrenoDoMapaGlobal()
+    {
+        if (!Application.isPlaying || !gameObject.scene.name.Equals("GlobalMapRTS", System.StringComparison.OrdinalIgnoreCase))
+            return;
+
+        GlobalTerrainStreamer streamer = FindFirstObjectByType<GlobalTerrainStreamer>();
+        GlobalWorldDefinition world = streamer != null ? streamer.world : null;
+        if (world == null || !world.IsLandAtWorld(transform.position.x, transform.position.z))
+            return;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        float baseY = float.PositiveInfinity;
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+                baseY = Mathf.Min(baseY, renderers[i].bounds.min.y);
+        }
+
+        if (float.IsInfinity(baseY))
+            return;
+
+        float terrainY = world.HeightAtWorld(transform.position.x, transform.position.z);
+        transform.position += Vector3.up * (terrainY + 0.25f - baseY);
     }
 
     /// <summary>

@@ -2765,7 +2765,7 @@ MonoBehaviour:
   teamId: 1
   capacidadeHospitalarInicial: 400000
   possuiRedeSaudeBasica: 1
-  capacidadeHabitacional: 2000000
+  capacidadeHabitacional: 5000000
   populacaoResidente: 100000
   qualidadeVida: 75
   proporcaoComercio: 0.5

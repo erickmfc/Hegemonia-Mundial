@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6000000000000000003}
   - component: {fileID: 853472444587252491}
   m_Layer: 0
-  m_Name: Egyto
+  m_Name: Egito city
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -82,6 +82,7 @@ MonoBehaviour:
   petroleoProduzido: 0
   industriaProduzida: 0
   dinheiroGerado: 25
+  manutencaoAlimentosPorDia: 0
   status: 0
   eficiencia: 1
 --- !u!114 &6000000000000000003
@@ -99,6 +100,8 @@ MonoBehaviour:
   tema: 0
   nomeCidade: Egito Imperial
   teamId: 1
+  capacidadeHospitalarInicial: 400000
+  possuiRedeSaudeBasica: 1
   capacidadeHabitacional: 1000000
   populacaoResidente: 500000
   qualidadeVida: 80

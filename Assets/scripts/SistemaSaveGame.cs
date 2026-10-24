@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 28;
+    public int saveVersion = 29;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -294,6 +294,8 @@ public class SaveEntityData
     public int cidadeTeamId;
     public int cidadeCapacidadeHospitalarInicial;
     public bool cidadePossuiRedeSaudeBasica;
+    public bool cidadeParticipaProgressaoGlobal;
+    public int cidadeOrdemProgressaoGlobal;
     public int cidadeCapacidadeHabitacional;
     public int cidadePopulacaoResidente;
     public int cidadeQualidadeVida;
@@ -625,7 +627,7 @@ public class SistemaSaveGame : MonoBehaviour
         GarantirColecoesIA01();
         GarantirColecoesIA02();
         GarantirColecoesCidadesAbstratas();
-        dadosAtuais.saveVersion = 28;
+        dadosAtuais.saveVersion = 29;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -2305,6 +2307,8 @@ public class SistemaSaveGame : MonoBehaviour
         destino.cidadeTeamId = cidade.teamId;
         destino.cidadeCapacidadeHospitalarInicial = cidade.capacidadeHospitalarInicial;
         destino.cidadePossuiRedeSaudeBasica = cidade.possuiRedeSaudeBasica;
+        destino.cidadeParticipaProgressaoGlobal = cidade.participarProgressaoCidadesGlobais;
+        destino.cidadeOrdemProgressaoGlobal = cidade.ordemProgressaoGlobal;
         destino.cidadeCapacidadeHabitacional = cidade.capacidadeHabitacional;
         destino.cidadePopulacaoResidente = cidade.populacaoResidente;
         destino.cidadeQualidadeVida = cidade.qualidadeVida;
@@ -2326,6 +2330,8 @@ public class SistemaSaveGame : MonoBehaviour
         cidade.teamId = Mathf.Max(0, origem.cidadeTeamId);
         cidade.capacidadeHospitalarInicial = Mathf.Max(0, origem.cidadeCapacidadeHospitalarInicial);
         cidade.possuiRedeSaudeBasica = origem.cidadePossuiRedeSaudeBasica;
+        cidade.participarProgressaoCidadesGlobais = origem.cidadeParticipaProgressaoGlobal;
+        cidade.ordemProgressaoGlobal = Mathf.Max(0, origem.cidadeOrdemProgressaoGlobal);
         cidade.capacidadeHabitacional = origem.cidadeCapacidadeHabitacional;
         cidade.populacaoResidente = origem.cidadePopulacaoResidente;
         cidade.qualidadeVida = origem.cidadeQualidadeVida;
