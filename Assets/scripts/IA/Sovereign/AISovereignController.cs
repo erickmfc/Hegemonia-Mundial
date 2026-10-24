@@ -479,20 +479,9 @@ namespace Hegemonia.AI.Sovereign
                 return;
             }
 
-            RelacaoPaisGoverno relJogador = gov.ObterRelacao(teamId, gov.teamJogador);
-            if (_blackboard.PlayerPressure > 0.55f && relJogador.valor <= -55 && !_blackboard.AtWar)
-            {
-                var warOrder = new AISovereignOrderBus.Order
-                {
-                    Type = AISovereignOrderType.DeclareWar,
-                    CounterpartyTeamId = gov.teamJogador,
-                    Priority = 980,
-                    CooldownSeconds = 90f,
-                    DedupKey = "war:" + teamId,
-                    Reason = "revide_automatico"
-                };
-                _orders.Enqueue(warOrder, now);
-            }
+            // Pressão visual e relações ruins não bastam para formalizar guerra.
+            // O Governo registra agressões confirmadas e escala a crise depois de
+            // três impactos; este ciclo mantém apenas as respostas defensivas e táticas.
 
             if (_blackboard.UnderThreat)
             {

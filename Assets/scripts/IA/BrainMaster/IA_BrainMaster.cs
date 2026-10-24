@@ -288,8 +288,7 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsRecoveryCampaignScene()
         {
             Scene active = SceneManager.GetActiveScene();
-            return active.name == ConfiguracaoCenasJogo.CenaCampanhaCanonica
-                || active.path == "Assets/Scenes/cena19).unity";
+            return ConfiguracaoCenasJogo.EhCenaCampanhaRecuperada(active.name, active.path);
         }
 
         private void Start()

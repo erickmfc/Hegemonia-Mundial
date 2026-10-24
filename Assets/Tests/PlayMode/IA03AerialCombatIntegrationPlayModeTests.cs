@@ -252,8 +252,10 @@ public sealed class IA03AerialCombatIntegrationPlayModeTests
             "A ordem aérea explícita foi aceita, mas o míssil não aplicou dano real.");
         Assert.That(aggressorTeam, Is.EqualTo(1),
             "O impacto da ordem aérea não foi atribuído à identidade Team 1.");
-        Assert.That(Convert.ToBoolean(GetMember(relation, "guerraDeclarada")), Is.True,
-            "O primeiro dano do G18 não registrou a guerra formal.");
+        Assert.That(Convert.ToBoolean(GetMember(relation, "guerraDeclarada")), Is.False,
+            "O primeiro impacto deve iniciar uma crise diplomática, sem declarar guerra.");
+        Assert.That(Convert.ToInt32(GetMember(relation, "agressoesConfirmadasNaCrise")), Is.EqualTo(1),
+            "O impacto físico precisa chegar ao contador de agressões da relação.");
     }
 
     [UnityTest]

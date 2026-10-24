@@ -43,7 +43,17 @@ public enum TipoPropostaInternacional
     Indenizacao,
     CessaoTerritorial,
     CessaoTerritorialTemporaria,
-    Desmilitarizacao
+    Desmilitarizacao,
+    // Acrescentado ao final para preservar os valores já salvos do enum.
+    ReivindicacaoTerritorial
+}
+
+public enum VotoConselhoMundial
+{
+    SemVoto = 0,
+    AFavor = 1,
+    Contra = 2,
+    Abster = 3
 }
 
 public enum StatusPropostaInternacional
@@ -383,6 +393,8 @@ public class PropostaInternacional
     public int prioridade = 50;
     public List<string> territoriosConcedidos = new List<string>();
     public List<string> territoriosDesmilitarizados = new List<string>();
+    public List<string> territoriosReivindicados = new List<string>();
+    public List<VotoTerritorialConselho> votosConselho = new List<VotoTerritorialConselho>();
     public int duracaoDias;
     public int terminaEmDiaDeJogo;
     public float criadaEm;
@@ -402,6 +414,13 @@ public class PropostaInternacional
 }
 
 [Serializable]
+public sealed class VotoTerritorialConselho
+{
+    public int teamId;
+    public VotoConselhoMundial voto = VotoConselhoMundial.SemVoto;
+}
+
+[Serializable]
 public class RelacaoPaisGoverno
 {
     public int teamA;
@@ -414,6 +433,7 @@ public class RelacaoPaisGoverno
     public bool pedidoPendente;
     public bool sancaoAtiva;
     public bool guerraDeclarada;
+    public int agressoesConfirmadasNaCrise;
     public bool cessarFogoAtivo;
     public bool passagemTerrestrePermitida;
     public bool passagemAereaPermitida;

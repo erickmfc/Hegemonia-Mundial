@@ -2320,8 +2320,10 @@ public sealed class IA03CombatAuthorizationPlayModeTests
             "SistemaDeDanos não identificou a vítima Team 3.");
         Assert.That(targetHealthAfter, Is.LessThan(targetHealthBefore),
             "O alvo Attack não perdeu vida após o impacto.");
-        Assert.That(Convert.ToBoolean(GetValue(relation, "guerraDeclarada")), Is.True,
-            "A agressão do impacto Attack em paz não declarou guerra.");
+        Assert.That(Convert.ToBoolean(GetValue(relation, "guerraDeclarada")), Is.False,
+            "O primeiro impacto do Attack em paz deve abrir uma crise, sem declarar guerra formal.");
+        Assert.That(Convert.ToInt32(GetValue(relation, "agressoesConfirmadasNaCrise")), Is.EqualTo(1),
+            "O impacto do Attack precisa avançar o contador da crise diplomática.");
 
         LogControlledState("D.afterWait", target);
         LogCaseSummary("D", false, accepted, IsPatrolActive(unitController), target);
@@ -2488,8 +2490,10 @@ public sealed class IA03CombatAuthorizationPlayModeTests
                 "O primeiro dano precisa identificar a unidade/equipe que realmente disparou.");
             Assert.That(firstDamage, Does.Contain("victim=" + target.name + " victimTeam=" + TeamB),
                 "O primeiro dano precisa identificar a unidade/equipe atingida.");
-            Assert.That(GetValue(relation, "guerraDeclarada"), Is.True,
-                "O impacto hostil deveria converter a postura em guerra declarada.");
+            Assert.That(GetValue(relation, "guerraDeclarada"), Is.False,
+                "O primeiro impacto da postura hostil deve abrir uma crise, sem declarar guerra formal.");
+            Assert.That(Convert.ToInt32(GetValue(relation, "agressoesConfirmadasNaCrise")), Is.EqualTo(1),
+                "O primeiro impacto hostil precisa avançar o contador da crise diplomática.");
         }
     }
 

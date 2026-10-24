@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 27;
+    public int saveVersion = 28;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -44,6 +44,7 @@ public class DadosDoJogo
     // Nulo em saves legados: evita sobrescrever a cena com listas vazias.
     public SaveGovernoMundialData governoMundial;
     public List<SaveProprietarioTerritorio> territoriosCapturados = new List<SaveProprietarioTerritorio>();
+    public List<SaveOcupacaoTerritorial> territoriosOcupados = new List<SaveOcupacaoTerritorial>();
     public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
     public List<SaveIA02NationState> estadosIA02 = new List<SaveIA02NationState>();
     public IAAutoProductionSaveData producaoAutomaticaIA = new IAAutoProductionSaveData();
@@ -586,7 +587,7 @@ public class SistemaSaveGame : MonoBehaviour
         GarantirColecoesIA01();
         GarantirColecoesIA02();
         GarantirColecoesCidadesAbstratas();
-        dadosAtuais.saveVersion = 27;
+        dadosAtuais.saveVersion = 28;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -728,6 +729,7 @@ public class SistemaSaveGame : MonoBehaviour
             || TemItens(dados.filaProducao)
             || possuiProducaoAutomatica
             || TemItens(dados.territoriosCapturados)
+            || (dados.saveVersion >= 28 && TemItens(dados.territoriosOcupados))
             || TemItens(dados.perfisMineral)
             || TemItens(dados.estoquesMineral)
             || dados.governoMundial != null
@@ -1513,6 +1515,9 @@ public class SistemaSaveGame : MonoBehaviour
         dadosAtuais.territoriosCapturados = gerente != null
             ? gerente.CopiarProprietariosCapturados()
             : new List<SaveProprietarioTerritorio>();
+        dadosAtuais.territoriosOcupados = gerente != null
+            ? gerente.CopiarOcupacoesTerritoriais()
+            : new List<SaveOcupacaoTerritorial>();
     }
 
     private void CapturarCidadesAbstratas()
@@ -1785,6 +1790,8 @@ public class SistemaSaveGame : MonoBehaviour
         // Version 17 introduced the serialized mutable Neutral field; older
         // JsonUtility snapshots default it to false when absent, so ignore it.
         gerente.RestaurarEstadoPolitico(dadosAtuais.territoriosCapturados, dadosAtuais.saveVersion >= 17);
+        gerente.RestaurarOcupacoesTerritoriais(
+            dadosAtuais.saveVersion >= 28 ? dadosAtuais.territoriosOcupados : null);
     }
 
     private void RestaurarEstadoIA01()

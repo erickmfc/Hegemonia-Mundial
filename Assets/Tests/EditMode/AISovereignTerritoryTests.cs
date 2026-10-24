@@ -419,6 +419,49 @@ public sealed class AISovereignBootstrapperTests
         Assert.That(actual, Is.EqualTo(expected));
     }
 
+    [TestCase(2, 2, true, "Hybrid", true)]
+    [TestCase(2, 2, true, "Full", true)]
+    [TestCase(2, 2, true, "ShadowReadOnly", false)]
+    [TestCase(2, 3, true, "Full", false)]
+    [TestCase(2, 2, false, "Full", false)]
+    public void CommandCapableBrainMasterOwnsOnlyItsActiveTeam(
+        int teamId,
+        int brainTeamId,
+        bool brainIsActive,
+        string integrationMode,
+        bool expected)
+    {
+        Type bootstrapperType = ResolveType("Hegemonia.AI.Sovereign.AISovereignBootstrapper");
+        MethodInfo method = bootstrapperType.GetMethod("BrainMasterCanOwnTeam", StaticMembers);
+        Type integrationModeType = ResolveType("Hegemonia.AI.BrainMaster.IA_BrainMaster+IA_IntegrationMode");
+        Assert.That(method, Is.Not.Null);
+
+        object mode = Enum.Parse(integrationModeType, integrationMode);
+        bool actual = (bool)method.Invoke(null, new object[] { teamId, brainTeamId, brainIsActive, mode });
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    [TestCase(0, 1, false, false)]
+    [TestCase(1, 1, false, false)]
+    [TestCase(2, 1, true, false)]
+    [TestCase(2, 1, false, true)]
+    [TestCase(2, 3, false, true)]
+    public void SovereignBootstrapRunsOnlyForNonPlayerTeamsWithoutCommandBrainMaster(
+        int teamId,
+        int playerTeamId,
+        bool hasCommandCapableBrainMaster,
+        bool expected)
+    {
+        Type bootstrapperType = ResolveType("Hegemonia.AI.Sovereign.AISovereignBootstrapper");
+        MethodInfo method = bootstrapperType.GetMethod("ShouldBootstrapForTeam", StaticMembers);
+        Assert.That(method, Is.Not.Null);
+
+        bool actual = (bool)method.Invoke(null, new object[] { teamId, playerTeamId, hasCommandCapableBrainMaster });
+
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
     private static Type ResolveType(string fullName)
     {
         foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())

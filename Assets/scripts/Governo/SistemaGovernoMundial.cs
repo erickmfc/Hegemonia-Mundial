@@ -116,6 +116,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (Time.unscaledTime < proximoTick) return;
         proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloEconomia);
         ProcessarAcordosTemporarios();
+        ProcessarVotacoesTerritoriais();
         if (SistemaEconomiaImoveis.Instancia != null) SistemaEconomiaImoveis.Instancia.Recalcular();
         SincronizarJogador();
         DescobrirIAsDaCena();
@@ -1715,6 +1716,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             PropostaInternacional proposta = propostas[i];
             if (proposta == null) continue;
+            // Reivindicações são processos multilaterais sem um país-alvo.
+            // Nunca as expire nem consulte ObterRelacao(origem, 0) pelo fluxo bilateral.
+            if (proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial) continue;
             if (proposta.EstaPendente && proposta.expiraEm > 0f && now > proposta.expiraEm)
             {
                 proposta.status = StatusPropostaInternacional.Expirada;
@@ -1729,9 +1733,281 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
     }
 
+    public IEnumerable<RegiaoPolitica> ObterTerritoriosElegiveisParaReivindicacao()
+    {
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+        if (mapa == null || mapa.Regioes == null) yield break;
+
+        for (int i = 0; i < mapa.Regioes.Count; i++)
+        {
+            RegiaoPolitica regiao = mapa.Regioes[i];
+            if (regiao == null || string.IsNullOrWhiteSpace(regiao.territorioId)
+                || regiao.tipo != TipoRegiaoPolitica.Terra || !regiao.capturable)
+            {
+                continue;
+            }
+
+            ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(regiao.territorioId);
+            if (estado.encontrouRegiao && estado.tipo == TipoRegiaoPolitica.Terra
+                && estado.ownerCountryTeamId == 0 && estado.neutral && estado.capturable)
+            {
+                yield return regiao;
+            }
+        }
+    }
+
+    public bool TentarCriarReivindicacaoTerritorial(int origemTeamId, string territorioId, out string mensagem)
+    {
+        mensagem = string.Empty;
+        DadosPaisGoverno origem = ObterPais(origemTeamId);
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        DadosMapaTerritorial mapa = gerente != null ? gerente.MapaPolitico : null;
+        RegiaoPolitica regiao = mapa != null ? mapa.EncontrarRegiao(territorioId) : null;
+        ResultadoConsultaTerritorio estado = gerente != null && !string.IsNullOrWhiteSpace(territorioId)
+            ? gerente.ObterEstadoDaRegiao(territorioId)
+            : ResultadoConsultaTerritorio.NaoDefinido;
+
+        if (origemTeamId <= 0 || origem == null || regiao == null
+            || regiao.tipo != TipoRegiaoPolitica.Terra || !regiao.capturable
+            || !estado.encontrouRegiao || estado.ownerCountryTeamId != 0
+            || !estado.neutral || !estado.capturable)
+        {
+            mensagem = "A região não está disponível para reivindicação pelo Conselho Mundial.";
+            return false;
+        }
+
+        bool jaPendente = propostas != null && propostas.Any(p => p != null && p.EstaPendente
+            && p.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+            && p.origemTeamId == origemTeamId && p.territoriosReivindicados != null
+            && p.territoriosReivindicados.Contains(territorioId));
+        if (jaPendente)
+        {
+            mensagem = "Este país já tem uma reivindicação pendente para a região.";
+            return false;
+        }
+
+        List<VotoTerritorialConselho> votos = paises
+            .Where(p => p != null && p.teamId > 0 && p.teamId != origemTeamId)
+            .OrderBy(p => p.teamId)
+            .Select(p => new VotoTerritorialConselho { teamId = p.teamId })
+            .ToList();
+        if (votos.Count == 0)
+        {
+            mensagem = "O Conselho precisa de ao menos outro país para analisar a reivindicação.";
+            return false;
+        }
+
+        int diaAtual = ObterDiaDeJogoAtual();
+        float now = Time.unscaledTime;
+        PropostaInternacional proposta = new PropostaInternacional
+        {
+            id = "claim-" + origemTeamId + "-" + territorioId + "-" + Mathf.RoundToInt(now * 10f) + "-" + propostas.Count,
+            tipo = TipoPropostaInternacional.ReivindicacaoTerritorial,
+            status = StatusPropostaInternacional.Pendente,
+            origemTeamId = origemTeamId,
+            alvoTeamId = 0,
+            quantidade = 1,
+            prioridade = 75,
+            territoriosReivindicados = new List<string> { territorioId },
+            votosConselho = votos,
+            duracaoDias = 2,
+            terminaEmDiaDeJogo = diaAtual + 2,
+            criadaEm = now,
+            expiraEm = float.MaxValue,
+            motivo = origem.nomePais + " reivindicou " + regiao.nome + " para análise internacional.",
+            dedupKey = "claim:" + origemTeamId + ":" + territorioId
+        };
+
+        propostas.Insert(0, proposta);
+        ApararPropostasSemRemoverAcordosAtivos();
+        RegistrarNoticia(proposta.motivo + " A votação encerra no dia " + proposta.terminaEmDiaDeJogo + ".");
+        OnPropostaCriada?.Invoke(proposta);
+        NotificarGovernoAtualizadoSeguro();
+        mensagem = "Reivindicação registrada; os países podem votar até o fim da análise.";
+        return true;
+    }
+
+    public IEnumerable<PropostaInternacional> ObterReivindicacoesTerritoriaisParaVoto(int teamId)
+    {
+        if (teamId <= 0 || propostas == null) yield break;
+        int diaAtual = ObterDiaDeJogoAtual();
+        for (int i = 0; i < propostas.Count; i++)
+        {
+            PropostaInternacional proposta = propostas[i];
+            if (proposta == null || !proposta.EstaPendente
+                || proposta.tipo != TipoPropostaInternacional.ReivindicacaoTerritorial
+                || (proposta.terminaEmDiaDeJogo > 0 && proposta.terminaEmDiaDeJogo <= diaAtual)
+                || proposta.votosConselho == null)
+            {
+                continue;
+            }
+
+            if (proposta.votosConselho.Any(v => v != null && v.teamId == teamId))
+            {
+                yield return proposta;
+            }
+        }
+    }
+
+    public bool TentarRegistrarVotoTerritorial(string propostaId, int teamId, VotoConselhoMundial voto, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (teamId <= 0)
+        {
+            mensagem = "País inválido para votação.";
+            return false;
+        }
+
+        PropostaInternacional proposta = propostas != null
+            ? propostas.FirstOrDefault(p => p != null && p.id == propostaId)
+            : null;
+        if (proposta == null || !proposta.EstaPendente
+            || proposta.tipo != TipoPropostaInternacional.ReivindicacaoTerritorial)
+        {
+            mensagem = "A votação não está mais aberta.";
+            return false;
+        }
+        if (proposta.terminaEmDiaDeJogo > 0
+            && proposta.terminaEmDiaDeJogo <= ObterDiaDeJogoAtual())
+        {
+            mensagem = "O prazo de votação desta reivindicação terminou.";
+            return false;
+        }
+        if (voto == VotoConselhoMundial.SemVoto || !Enum.IsDefined(typeof(VotoConselhoMundial), voto))
+        {
+            mensagem = "Escolha apoiar, contestar ou se abster.";
+            return false;
+        }
+
+        VotoTerritorialConselho registro = proposta.votosConselho != null
+            ? proposta.votosConselho.FirstOrDefault(v => v != null && v.teamId == teamId)
+            : null;
+        if (registro == null)
+        {
+            mensagem = "Este país não participa da votação desta reivindicação.";
+            return false;
+        }
+
+        registro.voto = voto;
+        string territorioId = proposta.territoriosReivindicados != null
+            ? proposta.territoriosReivindicados.FirstOrDefault()
+            : string.Empty;
+        if (propostas != null && !string.IsNullOrWhiteSpace(territorioId))
+        {
+            // Um país só pode apoiar um requerente por região. O voto anterior
+            // nas candidaturas concorrentes fica como abstenção, sem duplicar apoio.
+            for (int i = 0; i < propostas.Count; i++)
+            {
+                PropostaInternacional concorrente = propostas[i];
+                if (concorrente == null || concorrente == proposta || !concorrente.EstaPendente
+                    || concorrente.tipo != TipoPropostaInternacional.ReivindicacaoTerritorial
+                    || concorrente.territoriosReivindicados == null
+                    || !concorrente.territoriosReivindicados.Contains(territorioId)
+                    || concorrente.votosConselho == null)
+                {
+                    continue;
+                }
+
+                VotoTerritorialConselho votoConcorrente = concorrente.votosConselho
+                    .FirstOrDefault(v => v != null && v.teamId == teamId);
+                if (votoConcorrente != null) votoConcorrente.voto = VotoConselhoMundial.Abster;
+            }
+        }
+
+        RegistrarNoticia(NomePais(teamId) + " registrou voto " + voto + " na reivindicação de "
+            + NomePais(proposta.origemTeamId) + ".");
+        NotificarGovernoAtualizadoSeguro();
+        mensagem = "Voto registrado.";
+        return true;
+    }
+
+    public void ProcessarVotacoesTerritoriais()
+    {
+        if (propostas == null || propostas.Count == 0) return;
+        int diaAtual = ObterDiaDeJogoAtual();
+        List<IGrouping<string, PropostaInternacional>> grupos = propostas
+            .Where(p => p != null && p.EstaPendente
+                && p.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+                && p.territoriosReivindicados != null && p.territoriosReivindicados.Count > 0)
+            .GroupBy(p => p.territoriosReivindicados[0])
+            .ToList();
+        bool alterou = false;
+
+        foreach (IGrouping<string, PropostaInternacional> grupo in grupos)
+        {
+            List<PropostaInternacional> candidaturas = grupo.ToList();
+            if (candidaturas.Any(p => p.terminaEmDiaDeJogo > diaAtual)) continue;
+
+            GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+            ResultadoConsultaTerritorio estado = gerente != null
+                ? gerente.ObterEstadoDaRegiao(grupo.Key)
+                : ResultadoConsultaTerritorio.NaoDefinido;
+            bool regiaoContinuaElegivel = estado.encontrouRegiao
+                && estado.tipo == TipoRegiaoPolitica.Terra
+                && estado.ownerCountryTeamId == 0 && estado.neutral && estado.capturable;
+
+            List<PropostaInternacional> aprovaveis = new List<PropostaInternacional>();
+            if (regiaoContinuaElegivel)
+            {
+                foreach (PropostaInternacional candidatura in candidaturas)
+                {
+                    if (candidatura.votosConselho == null) candidatura.votosConselho = new List<VotoTerritorialConselho>();
+                    int eleitorado = candidatura.votosConselho.Count(v => v != null && v.teamId > 0 && v.teamId != candidatura.origemTeamId);
+                    int quorom = Mathf.Max(1, Mathf.CeilToInt(eleitorado * 0.5f));
+                    int aFavor = candidatura.votosConselho.Count(v => v != null && v.voto == VotoConselhoMundial.AFavor);
+                    int contra = candidatura.votosConselho.Count(v => v != null && v.voto == VotoConselhoMundial.Contra);
+                    if (aFavor >= quorom && aFavor > contra) aprovaveis.Add(candidatura);
+                }
+            }
+
+            PropostaInternacional vencedora = null;
+            if (aprovaveis.Count > 0)
+            {
+                int maiorApoio = aprovaveis.Max(p => p.votosConselho.Count(v => v != null && v.voto == VotoConselhoMundial.AFavor));
+                List<PropostaInternacional> candidatasMaisApoiadas = aprovaveis
+                    .Where(p => p.votosConselho.Count(v => v != null && v.voto == VotoConselhoMundial.AFavor) == maiorApoio)
+                    .ToList();
+                if (candidatasMaisApoiadas.Count == 1) vencedora = candidatasMaisApoiadas[0];
+            }
+
+            if (vencedora != null && !gerente.ReconhecerSoberaniaPorConselho(grupo.Key, vencedora.origemTeamId))
+            {
+                vencedora = null;
+            }
+
+            foreach (PropostaInternacional candidatura in candidaturas)
+            {
+                bool reconhecida = candidatura == vencedora;
+                candidatura.status = reconhecida
+                    ? StatusPropostaInternacional.Executada
+                    : StatusPropostaInternacional.Recusada;
+                candidatura.motivo = reconhecida
+                    ? candidatura.motivo + " Decisão: soberania reconhecida pelo Conselho Mundial."
+                    : candidatura.motivo + (vencedora != null
+                        ? " Decisão: outra reivindicação recebeu maior apoio."
+                        : " Decisão: a região permanece em disputa sem maioria válida.");
+            }
+
+            RegiaoPolitica regiao = gerente != null && gerente.MapaPolitico != null
+                ? gerente.MapaPolitico.EncontrarRegiao(grupo.Key)
+                : null;
+            string nomeRegiao = regiao != null && !string.IsNullOrWhiteSpace(regiao.nome)
+                ? regiao.nome
+                : grupo.Key;
+            RegistrarNoticia(vencedora != null
+                ? "O Conselho Mundial reconheceu a soberania de " + NomePais(vencedora.origemTeamId) + " sobre " + nomeRegiao + "."
+                : "O Conselho Mundial não reconheceu soberania sobre " + nomeRegiao + "; a região permanece em disputa.");
+            alterou = true;
+        }
+
+        if (alterou) NotificarGovernoAtualizadoSeguro();
+    }
+
     public bool TentarCriarProposta(PropostaInternacional proposta)
     {
-        if (proposta == null || proposta.origemTeamId <= 0 || proposta.alvoTeamId <= 0 || proposta.quantidade <= 0)
+        if (proposta == null || proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+            || proposta.origemTeamId <= 0 || proposta.alvoTeamId <= 0 || proposta.quantidade <= 0)
         {
             return false;
         }
@@ -1853,7 +2129,7 @@ public class SistemaGovernoMundial : MonoBehaviour
                     string territorioId = proposta.territoriosConcedidos[territorioIndex];
                     ResultadoConsultaTerritorio estado = gerente.ObterEstadoDaRegiao(territorioId);
                     if (estado.ownerCountryTeamId == proposta.origemTeamId
-                        && !gerente.TentarCapturarTerritorio(territorioId, proposta.alvoTeamId))
+                        && !gerente.TransferirSoberaniaPorTratado(territorioId, proposta.alvoTeamId))
                     {
                         reversaoCompleta = false;
                     }
@@ -1903,7 +2179,11 @@ public class SistemaGovernoMundial : MonoBehaviour
                     && (proposta.tipo == TipoPropostaInternacional.CessaoTerritorialTemporaria
                         || proposta.tipo == TipoPropostaInternacional.Desmilitarizacao)
                     && proposta.terminaEmDiaDeJogo > diaAtual;
-                if (!acordoAtivo)
+                bool votacaoConselhoAtiva = proposta != null
+                    && proposta.status == StatusPropostaInternacional.Pendente
+                    && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+                    && proposta.terminaEmDiaDeJogo > diaAtual;
+                if (!acordoAtivo && !votacaoConselhoAtiva)
                 {
                     indiceRemovivel = i;
                     break;
@@ -1932,6 +2212,12 @@ public class SistemaGovernoMundial : MonoBehaviour
         if (!proposta.EstaPendente)
         {
             mensagem = "Proposta ja foi resolvida.";
+            return false;
+        }
+
+        if (proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial)
+        {
+            mensagem = "Reivindicações territoriais são decididas pelo Conselho Mundial.";
             return false;
         }
 
@@ -2397,42 +2683,68 @@ public class SistemaGovernoMundial : MonoBehaviour
         NotificarGovernoAtualizadoSeguro();
     }
 
-    /// <summary>Registra a agressao e grava o agressor como inimigo do alvo.</summary>
+    /// <summary>Registra impactos hostis e escala a crise antes de declarar guerra.</summary>
     public void RegistrarAgressao(int vitimaTeamId, int agressorTeamId)
     {
         if (vitimaTeamId <= 0 || agressorTeamId <= 0 || vitimaTeamId == agressorTeamId) return;
+
+        RelacaoPaisGoverno relacao = ObterRelacao(vitimaTeamId, agressorTeamId);
+        if (relacao == null || relacao.guerraDeclarada) return;
+
+        const int impactosAntesDeDeclararGuerra = 3;
+        int impactosAnteriores = Mathf.Clamp(relacao.agressoesConfirmadasNaCrise, 0, impactosAntesDeDeclararGuerra);
+        int impactosNaCrise = Mathf.Min(impactosAnteriores + 1, impactosAntesDeDeclararGuerra);
+        relacao.agressoesConfirmadasNaCrise = impactosNaCrise;
+        relacao.cessarFogoAtivo = false;
+        relacao.valor = Mathf.Clamp(
+            relacao.valor - (impactosNaCrise < impactosAntesDeDeclararGuerra ? 5 : 25),
+            -100,
+            100);
 
         DadosPaisGoverno vitima = ObterPais(vitimaTeamId);
         DadosPaisGoverno agressor = ObterPais(agressorTeamId);
         if (vitima != null)
         {
-            vitima.emGuerra = true;
             vitima.rivalTeamId = agressorTeamId;
-            vitima.estabilidade = Mathf.Clamp(vitima.estabilidade - 6f, 0f, 100f);
+            vitima.estabilidade = Mathf.Clamp(vitima.estabilidade - 2f, 0f, 100f);
         }
         if (agressor != null)
         {
-            agressor.emGuerra = true;
             agressor.rivalTeamId = vitimaTeamId;
         }
 
-        RelacaoPaisGoverno relacao = ObterRelacao(vitimaTeamId, agressorTeamId);
-        bool novaGuerra = relacao != null && !relacao.guerraDeclarada;
-        if (relacao != null)
+        if (impactosNaCrise < impactosAntesDeDeclararGuerra)
         {
-            relacao.guerraDeclarada = true;
-            relacao.cessarFogoAtivo = false;
-            relacao.valor = Mathf.Clamp(relacao.valor - 35, -100, 100);
-            relacao.posturaAParaB = PosturaRelacaoPais.Inimigo;
-            relacao.posturaBParaA = PosturaRelacaoPais.Inimigo;
+            if (impactosNaCrise == 1)
+            {
+                RegistrarNoticia("Incidente militar confirmado entre " + NomePais(vitimaTeamId)
+                    + " e " + NomePais(agressorTeamId) + "; a crise diplomatica foi aberta.");
+            }
+            else
+            {
+                RegistrarNoticia("Agressao repetida entre " + NomePais(vitimaTeamId)
+                    + " e " + NomePais(agressorTeamId) + "; a crise diplomatica se agravou.");
+            }
+
+            NotificarGovernoAtualizadoSeguro();
+            return;
         }
-        if (novaGuerra)
+
+        relacao.guerraDeclarada = true;
+        relacao.posturaAParaB = PosturaRelacaoPais.Inimigo;
+        relacao.posturaBParaA = PosturaRelacaoPais.Inimigo;
+        if (vitima != null) vitima.emGuerra = true;
+        if (agressor != null) agressor.emGuerra = true;
+
+        RegistrarNoticia("Guerra declarada apos tres impactos hostis confirmados entre "
+            + NomePais(vitimaTeamId) + " e " + NomePais(agressorTeamId) + ".");
+        UnityEngine.Debug.Log("[Diplomacia] Guerra declarada apos escalada: vitima="
+            + vitimaTeamId + " agressor=" + agressorTeamId);
+        if (isActiveAndEnabled)
         {
-            RegistrarNoticia("Agressao confirmada: " + NomePais(vitimaTeamId) + " identificou " + NomePais(agressorTeamId) + " como inimigo.");
-            UnityEngine.Debug.Log("[Diplomacia] Agressor identificado como inimigo: vitima=" + vitimaTeamId + " agressor=" + agressorTeamId);
+            SistemaMercadoGlobal.Instancia?.SimularMercado();
+            ProcessarEconomia();
         }
-        SistemaMercadoGlobal.Instancia?.SimularMercado();
-        ProcessarEconomia();
         NotificarGovernoAtualizadoSeguro();
     }
 
@@ -2688,6 +3000,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             RelacaoPaisGoverno rel = ObterRelacao(proposta.origemTeamId, proposta.alvoTeamId);
             rel.guerraDeclarada = false;
+            rel.agressoesConfirmadasNaCrise = 0;
             rel.cessarFogoAtivo = true;
             rel.pedidoPendente = false;
             rel.valor = Mathf.Clamp(rel.valor + 25, -100, 100);
@@ -2737,7 +3050,6 @@ public class SistemaGovernoMundial : MonoBehaviour
                 if (string.IsNullOrWhiteSpace(territorioId)
                     || !idsUnicos.Add(territorioId)
                     || regiao == null
-                    || !regiao.capturable
                     || regiao.tipo != TipoRegiaoPolitica.Terra
                     || estado.neutral
                     || estado.ownerCountryTeamId != proposta.alvoTeamId)
@@ -2749,7 +3061,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
             for (int i = 0; i < proposta.territoriosConcedidos.Count; i++)
             {
-                if (!gerente.TentarCapturarTerritorio(proposta.territoriosConcedidos[i], proposta.origemTeamId))
+                if (!gerente.TransferirSoberaniaPorTratado(proposta.territoriosConcedidos[i], proposta.origemTeamId))
                 {
                     mensagem = "Cessão territorial interrompida por uma alteração de propriedade.";
                     return false;
@@ -2782,7 +3094,6 @@ public class SistemaGovernoMundial : MonoBehaviour
                 if (string.IsNullOrWhiteSpace(territorioId)
                     || !idsUnicos.Add(territorioId)
                     || regiao == null
-                    || !regiao.capturable
                     || regiao.tipo != TipoRegiaoPolitica.Terra
                     || estado.neutral
                     || estado.ownerCountryTeamId != proposta.alvoTeamId)
@@ -2794,7 +3105,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
             for (int i = 0; i < proposta.territoriosConcedidos.Count; i++)
             {
-                if (!gerente.TentarCapturarTerritorio(proposta.territoriosConcedidos[i], proposta.origemTeamId))
+                if (!gerente.TransferirSoberaniaPorTratado(proposta.territoriosConcedidos[i], proposta.origemTeamId))
                 {
                     mensagem = "Cessão temporária interrompida por uma alteração de propriedade.";
                     return false;

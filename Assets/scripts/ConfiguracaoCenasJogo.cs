@@ -7,9 +7,13 @@ public static class ConfiguracaoCenasJogo
     // Estes nomes/caminhos sao a fonte oficial usada pelo menu e pelos testes.
     public const string CenaMenuPrincipalCanonica = "Cena menu P";
     public const string CenaMenuFallback = "MenuPrincipal";
-    public const string CenaCampanhaCanonica = "cena19)";
+    // Mantido como alias legado: saves e ferramentas da campanha recuperada ainda
+    // precisam resolver para a cena original, sem confundir o destino de novas partidas.
+    public const string CenaCampanhaLegada = "cena19)";
+    public const string CaminhoCenaCampanhaLegada = "Assets/_Recovery/cena19).unity";
+    public const string CenaCampanhaCanonica = CenaCampanhaLegada;
     public const string CaminhoCenaMenuPrincipalCanonica = "Assets/_Recovery/Cena menu P.unity";
-    public const string CaminhoCenaCampanhaCanonica = "Assets/_Recovery/cena19).unity";
+    public const string CaminhoCenaCampanhaCanonica = CaminhoCenaCampanhaLegada;
     public const string CenaMapaGlobal = "GlobalMapRTS";
     public const string CaminhoCenaMapaGlobal = "Assets/Scenes/GlobalMapRTS.unity";
     public const string CenaEscaramucaCanonica = "Md Historia";
@@ -74,7 +78,8 @@ public static class ConfiguracaoCenasJogo
 
     public static string ResolverCenaCampanhaPadrao()
     {
-        return CenaCampanhaCanonica;
+        // Partidas novas usam o mapa global; o alias antigo continua válido para saves existentes.
+        return CenaMapaGlobal;
     }
 
     public static string NormalizarCenaCampanha(string nomeOuCaminho, string fallback)
@@ -106,12 +111,29 @@ public static class ConfiguracaoCenasJogo
         return aliasesCampanhaLegada.Contains(valor);
     }
 
+    public static bool EhCenaCampanhaRecuperada(string nomeCena, string caminhoCena)
+    {
+        string nomeNormalizado = string.IsNullOrWhiteSpace(nomeCena) ? string.Empty : nomeCena.Trim();
+        string caminhoNormalizado = string.IsNullOrWhiteSpace(caminhoCena)
+            ? string.Empty
+            : caminhoCena.Trim().Replace('\\', '/');
+
+        return string.Equals(nomeNormalizado, CenaCampanhaLegada, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(caminhoNormalizado, CaminhoCenaCampanhaLegada, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(caminhoNormalizado, "Assets/Scenes/cena19).unity", System.StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string ResolverCenaTutorial()
     {
         return ResolverPrimeiraCenaCarregavel(aliasesTutorial);
     }
 
     public static string ResolverCenaEscaramuca()
+    {
+        return CenaMapaGlobal;
+    }
+
+    public static string ResolverCenaEscaramucaLegada()
     {
         return ResolverPrimeiraCenaCarregavel(aliasesEscaramuca);
     }

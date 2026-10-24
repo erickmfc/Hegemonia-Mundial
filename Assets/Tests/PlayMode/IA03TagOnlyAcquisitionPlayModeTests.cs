@@ -155,8 +155,10 @@ public sealed class IA03TagOnlyAcquisitionPlayModeTests
             "O probe não registrou o impacto do projétil.");
         Assert.That(projectileRouteEvents.Any(entry => entry.Contains("[DAMAGE]")), Is.True,
             "O probe não registrou a entrada em SistemaDeDanos.");
-        Assert.That(guerraDepois, Is.True,
-            "O dano cross-team em paz não passou por RegistrarAgressao/transição diplomática existente.");
+        Assert.That(guerraDepois, Is.False,
+            "O primeiro dano cross-team em paz deve abrir uma crise, sem declarar guerra formal.");
+        Assert.That(Convert.ToInt32(GetMember(teamRelation, "agressoesConfirmadasNaCrise")), Is.EqualTo(1),
+            "O impacto cross-team precisa avançar o contador da crise diplomática.");
     }
 
     [UnityTearDown]

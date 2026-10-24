@@ -1136,7 +1136,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaNaval-1
+  id: IA03-KARSOVIA-PatrulhaNaval-1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 1
@@ -1710,7 +1710,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-N3-1
+  id: IA03-KARSOVIA-N3-1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 5
@@ -3396,7 +3396,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-N2-1
+  id: IA03-VALDORIA-N2-1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 6
@@ -3834,7 +3834,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-N1-1
+  id: IA03-KARSOVIA-N1-1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 7
@@ -4063,23 +4063,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.IA03EstrategaNacional
   ativo: 1
-  perfilPais: {fileID: 11400000, guid: cb1ae5be1efdfc54fbf4af289290442c, type: 2}
+  perfilPais: {fileID: 11400000, guid: 9023a27328e947e3b15a7dae1c74d709, type: 2}
   paisAlvoTeamId: 3
   missoesEstrategicas:
-  - {fileID: 11400000, guid: 43e2c8f6e8f9f484282f841f7dcd9933, type: 2}
-  - {fileID: 11400000, guid: 48664abd57a6a334fbbd090bb9339afb, type: 2}
-  - {fileID: 11400000, guid: 1840cc9485aff9447a31d484cb0a78d4, type: 2}
-  - {fileID: 11400000, guid: e8a9e36da4d71264f82af7ded2532e9d, type: 2}
-  - {fileID: 11400000, guid: 2049b7a4953071143b6229d12f89ce9c, type: 2}
-  - {fileID: 11400000, guid: 051942aad798c634fb9103d41697ec0f, type: 2}
-  - {fileID: 11400000, guid: d10ae0ead7bb4c99b815ba334216d8c8, type: 2}
-  - {fileID: 11400000, guid: 7daa5866aac24d6e90bdc30091123404, type: 2}
-  - {fileID: 11400000, guid: 4000e9d2d6ed4e7d8cd295fbbb6792eb, type: 2}
-  - {fileID: 11400000, guid: 939879415e8b4ec8bd8262c71d2b8dc9, type: 2}
-  - {fileID: 11400000, guid: a8edd8ca7bab438d9ba12b138a8e3f92, type: 2}
-  - {fileID: 11400000, guid: 1c5d4c73c9ca413fb9ec4c6b71dd5a80, type: 2}
+  - {fileID: 11400000, guid: 5cb39f23819b4ff189aa3dfbf7b088ef, type: 2}
+  - {fileID: 11400000, guid: c6892bebcf3a4e489a8cc51bbda0d761, type: 2}
+  - {fileID: 11400000, guid: 77d410b4f1b44886af814340e52d55d8, type: 2}
+  - {fileID: 11400000, guid: 1527a2a7a5ee420d8f945ed045fc2b64, type: 2}
+  - {fileID: 11400000, guid: e8fca8cb60a94acf8d710e258ac85ca6, type: 2}
+  - {fileID: 11400000, guid: be48193a378e478cabbf42350229055a, type: 2}
+  - {fileID: 11400000, guid: 62b16301314e428bb8e52a72119d9400, type: 2}
+  - {fileID: 11400000, guid: 98fcb67c4a9345b5992b3b1b9aeb7ac7, type: 2}
+  - {fileID: 11400000, guid: c7960b5b2207481180c8cb02f02a8e4f, type: 2}
+  - {fileID: 11400000, guid: 0677914525834b83840762c3a68e2b05, type: 2}
+  - {fileID: 11400000, guid: 482350d6f1be467b89abb865ba1d78a7, type: 2}
+  - {fileID: 11400000, guid: 54d20c56408b4423a74a28aab152f086, type: 2}
   intervaloRelatorioSegundos: 300
-  debugIA03: 1
+  debugIA03: 0
   nivelDeConflito: 0
   estadoNacional: 0
   ultimaDecisao: aguardando perfil nacional
@@ -4193,7 +4193,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-N2-1
+  id: IA03-KARSOVIA-N2-1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 6
@@ -4474,7 +4474,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaAerea-1
+  id: IA03-KARSOVIA-PatrulhaAerea-1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 2
@@ -5379,7 +5379,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaNaval-1
+  id: IA03-VALDORIA-PatrulhaNaval-1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 1
@@ -6329,7 +6329,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-N4-1
+  id: IA03-KARSOVIA-N4-1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 4
@@ -6667,7 +6667,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaAerea-1
+  id: IA03-VALDORIA-PatrulhaAerea-1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 1
   tipo: 2
@@ -6732,22 +6732,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.IA03EstrategaNacional
   ativo: 1
-  perfilPais: {fileID: 11400000, guid: f988e362d20a44141b1893fa1c6f66c1, type: 2}
+  perfilPais: {fileID: 11400000, guid: a0fe654a983946feaa4df565a5575cc5, type: 2}
   paisAlvoTeamId: 1
   missoesEstrategicas:
-  - {fileID: 11400000, guid: 43e2c8f6e8f9f484282f841f7dcd9933, type: 2}
-  - {fileID: 11400000, guid: 48664abd57a6a334fbbd090bb9339afb, type: 2}
-  - {fileID: 11400000, guid: 1840cc9485aff9447a31d484cb0a78d4, type: 2}
-  - {fileID: 11400000, guid: e8a9e36da4d71264f82af7ded2532e9d, type: 2}
-  - {fileID: 11400000, guid: 2049b7a4953071143b6229d12f89ce9c, type: 2}
-  - {fileID: 11400000, guid: 051942aad798c634fb9103d41697ec0f, type: 2}
-  - {fileID: 11400000, guid: d10ae0ead7bb4c99b815ba334216d8c8, type: 2}
-  - {fileID: 11400000, guid: 7daa5866aac24d6e90bdc30091123404, type: 2}
-  - {fileID: 11400000, guid: 4000e9d2d6ed4e7d8cd295fbbb6792eb, type: 2}
-  - {fileID: 11400000, guid: 939879415e8b4ec8bd8262c71d2b8dc9, type: 2}
-  - {fileID: 11400000, guid: a8edd8ca7bab438d9ba12b138a8e3f92, type: 2}
+  - {fileID: 11400000, guid: 5cb39f23819b4ff189aa3dfbf7b088ef, type: 2}
+  - {fileID: 11400000, guid: c6892bebcf3a4e489a8cc51bbda0d761, type: 2}
+  - {fileID: 11400000, guid: 77d410b4f1b44886af814340e52d55d8, type: 2}
+  - {fileID: 11400000, guid: 1527a2a7a5ee420d8f945ed045fc2b64, type: 2}
+  - {fileID: 11400000, guid: e8fca8cb60a94acf8d710e258ac85ca6, type: 2}
+  - {fileID: 11400000, guid: be48193a378e478cabbf42350229055a, type: 2}
+  - {fileID: 11400000, guid: 62b16301314e428bb8e52a72119d9400, type: 2}
+  - {fileID: 11400000, guid: 98fcb67c4a9345b5992b3b1b9aeb7ac7, type: 2}
+  - {fileID: 11400000, guid: c7960b5b2207481180c8cb02f02a8e4f, type: 2}
+  - {fileID: 11400000, guid: 0677914525834b83840762c3a68e2b05, type: 2}
+  - {fileID: 11400000, guid: 482350d6f1be467b89abb865ba1d78a7, type: 2}
   intervaloRelatorioSegundos: 300
-  debugIA03: 1
+  debugIA03: 0
   nivelDeConflito: 0
   estadoNacional: 0
   ultimaDecisao: aguardando perfil nacional
@@ -8766,7 +8766,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-N1-1
+  id: IA03-VALDORIA-N1-1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 7
@@ -8827,7 +8827,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-N4-1
+  id: IA03-VALDORIA-N4-1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 1
   tipo: 4
@@ -8888,7 +8888,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-N3-1
+  id: IA03-VALDORIA-N3-1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 5
@@ -9010,7 +9010,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N4
+  id: IA03-KARSOVIA-PatrulhaTerrestre_N4
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 0
@@ -9022,7 +9022,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9071,7 +9071,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N4
+  id: IA03-KARSOVIA-PatrulhaSubmarino_N4
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 3
@@ -9083,7 +9083,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9132,7 +9132,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N3
+  id: IA03-KARSOVIA-PatrulhaSubmarino_N3
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 3
@@ -9144,7 +9144,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9193,7 +9193,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N2
+  id: IA03-KARSOVIA-PatrulhaSubmarino_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 3
@@ -9205,7 +9205,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9254,7 +9254,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaSubmarino_N1
+  id: IA03-KARSOVIA-PatrulhaSubmarino_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 3
@@ -9266,7 +9266,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9315,7 +9315,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-ZonaPortaAvioes_N3
+  id: IA03-KARSOVIA-ZonaPortaAvioes_N3
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 8
@@ -9327,7 +9327,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9376,7 +9376,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-ZonaPortaAvioes_N2
+  id: IA03-KARSOVIA-ZonaPortaAvioes_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 8
@@ -9388,7 +9388,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9437,7 +9437,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-ZonaPortaAvioes_N1
+  id: IA03-KARSOVIA-ZonaPortaAvioes_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 8
@@ -9449,7 +9449,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9498,7 +9498,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-EmbarqueTransporte_N2
+  id: IA03-KARSOVIA-EmbarqueTransporte_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 9
@@ -9510,7 +9510,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 3100000102}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9559,7 +9559,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-DesembarqueAnfibio_N2
+  id: IA03-KARSOVIA-DesembarqueAnfibio_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 10
@@ -9571,7 +9571,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9620,7 +9620,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-EmbarqueTransporte_N1
+  id: IA03-KARSOVIA-EmbarqueTransporte_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 9
@@ -9632,7 +9632,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 3100000122}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9681,7 +9681,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-DesembarqueAnfibio_N1
+  id: IA03-KARSOVIA-DesembarqueAnfibio_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 10
@@ -9693,7 +9693,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9742,7 +9742,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-HelipontoDiplomatico_N4
+  id: IA03-KARSOVIA-HelipontoDiplomatico_N4
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 11
@@ -9754,7 +9754,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 3100000142}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9803,7 +9803,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-RecepcaoPresidencial_N4
+  id: IA03-KARSOVIA-RecepcaoPresidencial_N4
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 12
@@ -9815,7 +9815,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9864,7 +9864,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N4
+  id: IA03-VALDORIA-PatrulhaTerrestre_N4
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 0
@@ -9876,7 +9876,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9925,7 +9925,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N4
+  id: IA03-VALDORIA-PatrulhaSubmarino_N4
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 3
@@ -9937,7 +9937,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -9986,7 +9986,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N3
+  id: IA03-VALDORIA-PatrulhaSubmarino_N3
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 3
@@ -9998,7 +9998,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10047,7 +10047,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N2
+  id: IA03-VALDORIA-PatrulhaSubmarino_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 3
@@ -10059,7 +10059,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10108,7 +10108,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaSubmarino_N1
+  id: IA03-VALDORIA-PatrulhaSubmarino_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 3
@@ -10120,7 +10120,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10169,7 +10169,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-ZonaPortaAvioes_N3
+  id: IA03-VALDORIA-ZonaPortaAvioes_N3
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 8
@@ -10181,7 +10181,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10230,7 +10230,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-ZonaPortaAvioes_N2
+  id: IA03-VALDORIA-ZonaPortaAvioes_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 8
@@ -10242,7 +10242,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10291,7 +10291,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-ZonaPortaAvioes_N1
+  id: IA03-VALDORIA-ZonaPortaAvioes_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 8
@@ -10303,7 +10303,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10352,7 +10352,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-EmbarqueTransporte_N2
+  id: IA03-VALDORIA-EmbarqueTransporte_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 9
@@ -10364,7 +10364,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 3100000242}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10413,7 +10413,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-DesembarqueAnfibio_N2
+  id: IA03-VALDORIA-DesembarqueAnfibio_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 10
@@ -10425,7 +10425,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10474,7 +10474,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-EmbarqueTransporte_N1
+  id: IA03-VALDORIA-EmbarqueTransporte_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 9
@@ -10486,7 +10486,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 3100000262}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10535,7 +10535,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-DesembarqueAnfibio_N1
+  id: IA03-VALDORIA-DesembarqueAnfibio_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 10
@@ -10547,7 +10547,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10596,7 +10596,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-HelipontoDiplomatico_N4
+  id: IA03-VALDORIA-HelipontoDiplomatico_N4
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 11
@@ -10608,7 +10608,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 3100000282}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10657,7 +10657,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-RecepcaoPresidencial_N4
+  id: IA03-VALDORIA-RecepcaoPresidencial_N4
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 12
@@ -10669,7 +10669,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10718,7 +10718,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PontoGenerico-Paz
+  id: IA03-KARSOVIA-PontoGenerico-Paz
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 13
@@ -10779,7 +10779,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PontoGenerico-Paz
+  id: IA03-VALDORIA-PontoGenerico-Paz
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 13
@@ -10840,7 +10840,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N3
+  id: IA03-KARSOVIA-PatrulhaTerrestre_N3
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 0
@@ -10852,7 +10852,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10901,7 +10901,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N2
+  id: IA03-KARSOVIA-PatrulhaTerrestre_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 0
@@ -10913,7 +10913,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -10962,7 +10962,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaTerrestre_N1
+  id: IA03-KARSOVIA-PatrulhaTerrestre_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 0
@@ -10974,7 +10974,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11023,7 +11023,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaNaval_N3
+  id: IA03-KARSOVIA-PatrulhaNaval_N3
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 1
@@ -11035,7 +11035,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11084,7 +11084,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaNaval_N2
+  id: IA03-KARSOVIA-PatrulhaNaval_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 1
@@ -11096,7 +11096,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11145,7 +11145,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaNaval_N1
+  id: IA03-KARSOVIA-PatrulhaNaval_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 1
@@ -11157,7 +11157,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11206,7 +11206,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaAerea_N3
+  id: IA03-KARSOVIA-PatrulhaAerea_N3
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 2
@@ -11218,7 +11218,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11267,7 +11267,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaAerea_N2
+  id: IA03-KARSOVIA-PatrulhaAerea_N2
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 2
@@ -11279,7 +11279,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11328,7 +11328,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-KARSOVIA-PatrulhaAerea_N1
+  id: IA03-KARSOVIA-PatrulhaAerea_N1
   paisProprietarioTeamId: 3
   paisAlvoTeamId: 1
   tipo: 2
@@ -11340,7 +11340,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-KARSOVIA
+  grupo: IA03-KARSOVIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11389,7 +11389,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N3
+  id: IA03-VALDORIA-PatrulhaTerrestre_N3
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 0
@@ -11401,7 +11401,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11450,7 +11450,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N2
+  id: IA03-VALDORIA-PatrulhaTerrestre_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 0
@@ -11462,7 +11462,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11511,7 +11511,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaTerrestre_N1
+  id: IA03-VALDORIA-PatrulhaTerrestre_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 0
@@ -11523,7 +11523,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11572,7 +11572,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaNaval_N3
+  id: IA03-VALDORIA-PatrulhaNaval_N3
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 1
@@ -11584,7 +11584,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11633,7 +11633,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaNaval_N2
+  id: IA03-VALDORIA-PatrulhaNaval_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 1
@@ -11645,7 +11645,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11694,7 +11694,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaNaval_N1
+  id: IA03-VALDORIA-PatrulhaNaval_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 1
@@ -11706,7 +11706,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11755,7 +11755,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaAerea_N3
+  id: IA03-VALDORIA-PatrulhaAerea_N3
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 2
@@ -11767,7 +11767,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11816,7 +11816,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaAerea_N2
+  id: IA03-VALDORIA-PatrulhaAerea_N2
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 2
@@ -11828,7 +11828,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0
@@ -11877,7 +11877,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b02b70f791c4ff43b04fc5cd6eeaf06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
-  id: IA03-TEST-VALDORIA-PatrulhaAerea_N1
+  id: IA03-VALDORIA-PatrulhaAerea_N1
   paisProprietarioTeamId: 2
   paisAlvoTeamId: 3
   tipo: 2
@@ -11889,7 +11889,7 @@ MonoBehaviour:
   tempoDeReutilizacaoSegundos: 60
   ativo: 1
   proximoPonto: {fileID: 0}
-  grupo: IA03-TEST-VALDORIA
+  grupo: IA03-VALDORIA
   paisesPermitidos: 
   paisesProibidos: 
   alvoPreferencial: 0

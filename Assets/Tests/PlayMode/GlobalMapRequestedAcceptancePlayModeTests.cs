@@ -90,6 +90,28 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator NewCampaignUsesGlobalMapAndKeepsExistingModeScenesAndLegacySaves()
+    {
+        Type configType = ResolveType("ConfiguracaoCenasJogo");
+        Assert.That(CallStatic(configType, "ResolverCenaCampanhaPadrao"), Is.EqualTo("GlobalMapRTS"),
+            "Campanhas novas devem iniciar no mapa global.");
+        Assert.That(CallStatic(configType, "ResolverCenaEscaramuca"), Is.EqualTo("GlobalMapRTS"),
+            "Escaramuças novas também usam o mapa global.");
+        Assert.That(CallStatic(configType, "ResolverCenaEscaramucaLegada"), Is.EqualTo("Md Historia"),
+            "A cena original da escaramuça permanece disponível pela rota legada.");
+        Assert.That(CallStatic(configType, "ResolverCenaTutorial"), Is.EqualTo("Tutorial"),
+            "O tutorial mantém sua cena dedicada.");
+        Assert.That(CallStatic(configType, "NormalizarCenaCampanha", "cena19)", "GlobalMapRTS"), Is.EqualTo("cena19)"),
+            "Saves que apontam para a campanha recuperada devem continuar abrindo aquela cena.");
+        Assert.That(CallStatic(configType, "NormalizarCenaCampanha", "Md Historia", "GlobalMapRTS"), Is.EqualTo("Md Historia"),
+            "Saves existentes da escaramuça devem continuar abrindo a cena original.");
+        Assert.That(CallStatic(configType, "EhCenaCampanhaRecuperada", "cena19)", "Assets/_Recovery/cena19).unity"), Is.True);
+        Assert.That(CallStatic(configType, "EhCenaCampanhaRecuperada", "GlobalMapRTS", ScenePath), Is.False,
+            "A exceção de inicialização da cena recuperada não pode bloquear o GlobalMapRTS.");
+        yield return null;
+    }
+
+    [UnityTest]
     public IEnumerator GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve()
     {
         Component valdoria = FindBrain(2);
@@ -110,8 +132,14 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         Component strategist = valdoria.GetComponent(strategistType);
         Assert.That(strategist, Is.Not.Null, "A IA estratégica nacional da Valdoria precisa estar no mapa real.");
         Assert.That(((Behaviour)strategist).isActiveAndEnabled, Is.True);
+        Assert.That((bool)Read(strategist, "DebugHabilitado"), Is.False,
+            "A campanha não deve ativar logs experimentais da IA03.");
         Assert.That((bool)Read(strategist, "TemPerfilConfigurado"), Is.True,
             "O perfil estratégico nacional da Valdoria precisa estar ativo.");
+        Component karsoviaStrategist = karsovia.GetComponent(strategistType);
+        Assert.That(karsoviaStrategist, Is.Not.Null, "A IA03 da Karsovia deve continuar configurada no mapa.");
+        Assert.That((bool)Read(karsoviaStrategist, "DebugHabilitado"), Is.False,
+            "A configuração da Karsovia não deve deixar logs experimentais prontos para uma partida real.");
         for (int frame = 0; frame < 240 && Convert.ToSingle(Read(strategist, "UltimaAnaliseEm")) < 0f; frame++)
             yield return null;
         Assert.That(Convert.ToSingle(Read(strategist, "UltimaAnaliseEm")), Is.GreaterThanOrEqualTo(0f),
@@ -1121,6 +1149,14 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         FieldInfo field = type.GetField(name, Members);
         Assert.That(field, Is.Not.Null, "Campo/propriedade estática ausente: " + type.FullName + "." + name);
         return field.GetValue(null);
+    }
+
+    private static object CallStatic(Type type, string name, params object[] args)
+    {
+        MethodInfo method = type.GetMethod(name, Members);
+        Assert.That(method, Is.Not.Null, "Método estático ausente: " + type.FullName + "." + name);
+        Assert.That(method.IsStatic, Is.True, "O método esperado precisa ser estático: " + type.FullName + "." + name);
+        return method.Invoke(null, args);
     }
 
     private static void Write(object target, string name, object value)

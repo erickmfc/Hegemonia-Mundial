@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.Shared;
 using UnityEngine;
@@ -101,6 +102,8 @@ namespace Hegemonia.AI.IA03
         private float proximoRelatorioEm;
         private float proximaDecisaoDeMissaoEm;
         private float proximaReanaliseAntecipadaEm;
+        private float proximaAvaliacaoReivindicacaoTerritorialEm;
+        private float proximaAvaliacaoVotosConselhoEm;
         private long saldoAlvoNoInicio;
         private bool avaliouConflitoLimitado;
         private bool avaliouGuerraTotal;
@@ -261,6 +264,7 @@ namespace Hegemonia.AI.IA03
             if (governoAssinado != null)
             {
                 governoAssinado.OnGovernoAtualizado -= AoAtualizarGoverno;
+                governoAssinado.OnPropostaCriada -= AoCriarPropostaInternacional;
                 governoAssinado = null;
             }
             IA03MarcaPresidencial.PresidenteAbatido -= AoAbaterPresidente;
@@ -270,6 +274,7 @@ namespace Hegemonia.AI.IA03
             if (gerenteTerritorialAssinado != null)
             {
                 gerenteTerritorialAssinado.OnTerritoryCapturedByOccupation -= AoCapturarTerritorioPorOcupacao;
+                gerenteTerritorialAssinado.OnTerritoryOccupationChanged -= AoMudarOcupacaoTerritorial;
                 gerenteTerritorialAssinado = null;
             }
             EncerrarMissao("IA03 desativada");
@@ -325,11 +330,14 @@ namespace Hegemonia.AI.IA03
 
             SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
             VincularEventosGoverno(governo);
+            AvaliarVotosConselho(governo, now);
             DadosPaisGoverno pais = governo != null ? governo.ObterPais(brain.TeamId) : null;
             if (paisAlvoTeamId <= 0 && pais != null && pais.rivalTeamId > 0)
             {
                 paisAlvoTeamId = pais.rivalTeamId;
             }
+
+            AvaliarReivindicacoesTerritoriais(governo, pais, now);
 
 #if UNITY_EDITOR
             if (!nivelDebugForcado)
@@ -344,6 +352,16 @@ namespace Hegemonia.AI.IA03
                 brain.TeamId,
                 nivelDeConflito <= IA03NivelConflito.ConflitoLimitado && nivelDeConflito != IA03NivelConflito.Paz,
                 out economiaAtual);
+            string motivoFinanciamento;
+            if (economia.TentarSolicitarFinanciamento(
+                    governo,
+                    brain.TeamId,
+                    now,
+                    ref economiaAtual,
+                    out motivoFinanciamento))
+            {
+                ultimaDecisao = motivoFinanciamento;
+            }
             AtualizarPosturaBrainMaster();
             AvaliarPrazosDeGuerra(governo, now);
             ProcessarReposicoesPendentes(now);
@@ -3247,12 +3265,14 @@ namespace Hegemonia.AI.IA03
             if (gerenteTerritorialAssinado != null)
             {
                 gerenteTerritorialAssinado.OnTerritoryCapturedByOccupation -= AoCapturarTerritorioPorOcupacao;
+                gerenteTerritorialAssinado.OnTerritoryOccupationChanged -= AoMudarOcupacaoTerritorial;
             }
 
             gerenteTerritorialAssinado = atual;
             if (gerenteTerritorialAssinado != null)
             {
                 gerenteTerritorialAssinado.OnTerritoryCapturedByOccupation += AoCapturarTerritorioPorOcupacao;
+                gerenteTerritorialAssinado.OnTerritoryOccupationChanged += AoMudarOcupacaoTerritorial;
             }
         }
 
@@ -3289,6 +3309,39 @@ namespace Hegemonia.AI.IA03
                 {
                     relatorio.RegistrarObjetivoCapturado(false);
                 }
+                territorioDoObjetivoCapturado = false;
+                territorioDoObjetivoPerdido = true;
+                SolicitarReanaliseAntecipada();
+            }
+        }
+
+        private void AoMudarOcupacaoTerritorial(string territorioId, int ocupanteAnterior, int novoOcupante)
+        {
+            bool exigeCapturaTerritorial = missaoAtiva != null
+                && (missaoAtiva.CondicaoDeSucesso == IA03CondicaoMissao.CapturarTerritorio
+                    || missaoAtiva.CondicaoDeFracasso == IA03CondicaoMissao.CapturarTerritorio);
+            if (!exigeCapturaTerritorial || brain == null || creatyAtivo == null
+                || gerenteTerritorialAssinado == null || string.IsNullOrWhiteSpace(territorioId))
+            {
+                return;
+            }
+
+            ResultadoConsultaTerritorio objetivo = gerenteTerritorialAssinado.ObterTerritorioNaPosicao(creatyAtivo.transform.position);
+            if (!objetivo.encontrouRegiao || !string.Equals(objetivo.territorioId, territorioId, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (novoOcupante == brain.TeamId)
+            {
+                if (!territorioDoObjetivoCapturado) relatorio.RegistrarObjetivoCapturado(true);
+                territorioDoObjetivoCapturado = true;
+                territorioDoObjetivoPerdido = false;
+                SolicitarReanaliseAntecipada();
+            }
+            else if (ocupanteAnterior == brain.TeamId)
+            {
+                if (!territorioDoObjetivoPerdido) relatorio.RegistrarObjetivoCapturado(false);
                 territorioDoObjetivoCapturado = false;
                 territorioDoObjetivoPerdido = true;
                 SolicitarReanaliseAntecipada();
@@ -3383,12 +3436,121 @@ namespace Hegemonia.AI.IA03
             if (governoAssinado != null)
             {
                 governoAssinado.OnGovernoAtualizado -= AoAtualizarGoverno;
+                governoAssinado.OnPropostaCriada -= AoCriarPropostaInternacional;
             }
 
             governoAssinado = governo;
             if (governoAssinado != null)
             {
                 governoAssinado.OnGovernoAtualizado += AoAtualizarGoverno;
+                governoAssinado.OnPropostaCriada += AoCriarPropostaInternacional;
+            }
+        }
+
+        private void AoCriarPropostaInternacional(PropostaInternacional proposta)
+        {
+            if (proposta == null || proposta.tipo != TipoPropostaInternacional.ReivindicacaoTerritorial
+                || brain == null || proposta.origemTeamId == brain.TeamId)
+            {
+                return;
+            }
+
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = governo != null ? governo.ObterPais(brain.TeamId) : null;
+            if (governo == null || pais == null) return;
+
+            RelacaoPaisGoverno relacao = governo.ObterRelacao(brain.TeamId, proposta.origemTeamId);
+            DadosPaisGoverno requerente = governo.ObterPais(proposta.origemTeamId);
+            VotoConselhoMundial voto;
+            if (pais.emGuerra || (relacao != null && (relacao.guerraDeclarada || relacao.sancaoAtiva)))
+            {
+                voto = VotoConselhoMundial.Contra;
+            }
+            else if (requerente != null
+                && !string.IsNullOrWhiteSpace(pais.federacaoGlobal)
+                && string.Equals(pais.federacaoGlobal, requerente.federacaoGlobal, System.StringComparison.Ordinal))
+            {
+                voto = VotoConselhoMundial.AFavor;
+            }
+            else if (relacao != null && relacao.ValorDiplomaticoEstrategico >= 45)
+            {
+                voto = VotoConselhoMundial.AFavor;
+            }
+            else if (relacao != null && (relacao.ValorDiplomaticoEstrategico <= -30
+                || relacao.PosturaDe(brain.TeamId) == PosturaRelacaoPais.Inimigo))
+            {
+                voto = VotoConselhoMundial.Contra;
+            }
+            else
+            {
+                voto = VotoConselhoMundial.Abster;
+            }
+
+            if (governo.TentarRegistrarVotoTerritorial(proposta.id, brain.TeamId, voto, out _))
+            {
+                ultimaDecisao = "voto " + voto + " na reivindicação de " + governo.NomePais(proposta.origemTeamId);
+                RegistrarLogDebugSeNecessario();
+            }
+        }
+
+        private void AvaliarVotosConselho(SistemaGovernoMundial governo, float now)
+        {
+            if (governo == null || brain == null || brain.TeamId <= 0
+                || brain.TeamId == governo.teamJogador
+                || now < proximaAvaliacaoVotosConselhoEm)
+            {
+                return;
+            }
+
+            proximaAvaliacaoVotosConselhoEm = now + 3f + (brain.TeamId % 5) * 0.25f;
+            foreach (PropostaInternacional proposta in governo.ObterReivindicacoesTerritoriaisParaVoto(brain.TeamId))
+            {
+                VotoTerritorialConselho votoAtual = proposta.votosConselho != null
+                    ? proposta.votosConselho.FirstOrDefault(voto => voto != null && voto.teamId == brain.TeamId)
+                    : null;
+                if (votoAtual == null || votoAtual.voto != VotoConselhoMundial.SemVoto) continue;
+                AoCriarPropostaInternacional(proposta);
+            }
+        }
+
+        private void AvaliarReivindicacoesTerritoriais(
+            SistemaGovernoMundial governo,
+            DadosPaisGoverno pais,
+            float now)
+        {
+            if (governo == null || pais == null || perfilPais == null || brain == null
+                || brain.TeamId <= 0 || brain.TeamId == governo.teamJogador
+                || now < proximaAvaliacaoReivindicacaoTerritorialEm)
+            {
+                return;
+            }
+
+            proximaAvaliacaoReivindicacaoTerritorialEm = now + 90f + (brain.TeamId % 17);
+            if (pais.emGuerra || pais.estabilidade < 35f || pais.legitimidadeGlobal < 35f
+                || (pais.nivelDiplomatico < 38 && perfilPais.Diplomacia < 0.60f)
+                || (perfilPais.Agressividade > 0.90f && perfilPais.Diplomacia < 0.30f))
+            {
+                return;
+            }
+
+            foreach (RegiaoPolitica regiao in governo.ObterTerritoriosElegiveisParaReivindicacao())
+            {
+                if (regiao == null || string.IsNullOrWhiteSpace(regiao.territorioId)) continue;
+                bool jaReivindicou = governo.Propostas != null && governo.Propostas.Any(proposta => proposta != null
+                    && proposta.EstaPendente
+                    && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+                    && proposta.origemTeamId == brain.TeamId
+                    && proposta.territoriosReivindicados != null
+                    && proposta.territoriosReivindicados.Contains(regiao.territorioId));
+                if (jaReivindicou) continue;
+
+                if (governo.TentarCriarReivindicacaoTerritorial(brain.TeamId, regiao.territorioId, out _))
+                {
+                    ultimaDecisao = "solicitou reconhecimento internacional para "
+                        + (string.IsNullOrWhiteSpace(regiao.nome) ? regiao.territorioId : regiao.nome);
+                    RegistrarLogDebugSeNecessario();
+                    break;
+                }
             }
         }
 

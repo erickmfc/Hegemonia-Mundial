@@ -17,6 +17,7 @@ public class GerenteDeTerritorio : MonoBehaviour
     [SerializeField] private Bounds limitesMapaExplicitos = new Bounds(Vector3.zero, new Vector3(10000f, 1000f, 10000f));
     private readonly Dictionary<string, int> proprietariosCapturados = new Dictionary<string, int>(StringComparer.Ordinal);
     private readonly Dictionary<string, bool> neutralidadeTerritorial = new Dictionary<string, bool>(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> ocupantesMilitares = new Dictionary<string, int>(StringComparer.Ordinal);
     private sealed class ProgressoCapturaTerritorial
     {
         public int equipe;
@@ -29,6 +30,10 @@ public class GerenteDeTerritorio : MonoBehaviour
     [Tooltip("Tempo contínuo de ocupação terrestre necessário para reivindicar uma região neutra.")]
     [SerializeField, Min(1f)] private float segundosParaCapturarTerritorio = 30f;
     private readonly Dictionary<string, ProgressoCapturaTerritorial> progressoCaptura = new Dictionary<string, ProgressoCapturaTerritorial>(StringComparer.Ordinal);
+    private readonly Dictionary<string, ProgressoCapturaTerritorial> progressoOcupacaoMilitar = new Dictionary<string, ProgressoCapturaTerritorial>(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> equipesInvasorasPresentes = new Dictionary<string, int>(StringComparer.Ordinal);
+    private readonly HashSet<string> invasoesContestadas = new HashSet<string>(StringComparer.Ordinal);
+    private readonly HashSet<string> defensoresPresentes = new HashSet<string>(StringComparer.Ordinal);
     private readonly Dictionary<string, int> equipesPresentesPorTerritorio = new Dictionary<string, int>(StringComparer.Ordinal);
     private readonly HashSet<string> territoriosContestados = new HashSet<string>(StringComparer.Ordinal);
     private readonly List<IdentidadeUnidade> bufferUnidadesCaptura = new List<IdentidadeUnidade>(128);
@@ -40,6 +45,8 @@ public class GerenteDeTerritorio : MonoBehaviour
     public event Action<string, int, int> OnTerritoryOwnerChanged;
     /// <summary>Disparado somente quando a ocupação terrestre conclui a captura no ciclo físico de presença.</summary>
     public event Action<string, int, int> OnTerritoryCapturedByOccupation;
+    /// <summary>Disparado quando o controle militar muda, sem alterar a soberania da região.</summary>
+    public event Action<string, int, int> OnTerritoryOccupationChanged;
 
     public DadosMapaTerritorial MapaPolitico
     {
@@ -102,6 +109,7 @@ public class GerenteDeTerritorio : MonoBehaviour
         if (mapaPolitico == null || mapaPolitico.Regioes == null || mapaPolitico.Regioes.Count == 0)
         {
             progressoCaptura.Clear();
+            progressoOcupacaoMilitar.Clear();
             return;
         }
 
@@ -109,6 +117,9 @@ public class GerenteDeTerritorio : MonoBehaviour
         // como capturáveis. Uma presença de outra equipe contesta a região.
         equipesPresentesPorTerritorio.Clear();
         territoriosContestados.Clear();
+        equipesInvasorasPresentes.Clear();
+        invasoesContestadas.Clear();
+        defensoresPresentes.Clear();
         RegistroEntidadesJogo.FillUnidades(bufferUnidadesCaptura);
 
         for (int i = 0; i < bufferUnidadesCaptura.Count; i++)
@@ -120,10 +131,33 @@ public class GerenteDeTerritorio : MonoBehaviour
             if (!territorio.encontrouRegiao
                 || territorio.aguasInternacionais
                 || territorio.tipo != TipoRegiaoPolitica.Terra
-                || !territorio.capturable
-                || !territorio.neutral
-                || territorio.ownerCountryTeamId > 0
                 || string.IsNullOrEmpty(territorio.territorioId))
+            {
+                continue;
+            }
+
+            if (territorio.ownerCountryTeamId > 0)
+            {
+                if (unidade.teamID == territorio.ownerCountryTeamId)
+                {
+                    defensoresPresentes.Add(territorio.territorioId);
+                }
+                else if (PaisEmGuerra(unidade.teamID, territorio.ownerCountryTeamId))
+                {
+                    int invasorExistente;
+                    if (!equipesInvasorasPresentes.TryGetValue(territorio.territorioId, out invasorExistente))
+                    {
+                        equipesInvasorasPresentes[territorio.territorioId] = unidade.teamID;
+                    }
+                    else if (invasorExistente != unidade.teamID)
+                    {
+                        invasoesContestadas.Add(territorio.territorioId);
+                    }
+                }
+                continue;
+            }
+
+            if (!territorio.capturable || !territorio.neutral)
             {
                 continue;
             }
@@ -142,17 +176,26 @@ public class GerenteDeTerritorio : MonoBehaviour
         for (int i = 0; i < mapaPolitico.Regioes.Count; i++)
         {
             RegiaoPolitica regiao = mapaPolitico.Regioes[i];
-            if (regiao == null || string.IsNullOrEmpty(regiao.territorioId) || !regiao.capturable
+            if (regiao == null || string.IsNullOrEmpty(regiao.territorioId)
                 || regiao.tipo != TipoRegiaoPolitica.Terra)
             {
                 continue;
             }
 
             string territorioId = regiao.territorioId;
+            int donoAtual = ObterDonoDaRegiao(territorioId);
+            if (donoAtual > 0)
+            {
+                progressoCaptura.Remove(territorioId);
+                AtualizarProgressoOcupacaoMilitar(territorioId, donoAtual, intervalo);
+                continue;
+            }
+
+            progressoOcupacaoMilitar.Remove(territorioId);
             bool neutralidadeAtual = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutralidadeSalva)
                 ? neutralidadeSalva
                 : regiao.neutral;
-            if (!neutralidadeAtual || ObterDonoDaRegiao(territorioId) > 0)
+            if (!regiao.capturable || !neutralidadeAtual)
             {
                 progressoCaptura.Remove(territorioId);
                 continue;
@@ -177,13 +220,75 @@ public class GerenteDeTerritorio : MonoBehaviour
             if (progresso.segundos >= Mathf.Max(1f, segundosParaCapturarTerritorio))
             {
                 int donoAnterior = ObterDonoDaRegiao(territorioId);
-                if (TentarCapturarTerritorio(territorioId, equipe))
+                if (TentarOcuparTerritorioNeutro(territorioId, equipe))
                 {
                     progressoCaptura.Remove(territorioId);
                     OnTerritoryCapturedByOccupation?.Invoke(territorioId, donoAnterior, equipe);
                 }
             }
         }
+    }
+
+    private void AtualizarProgressoOcupacaoMilitar(string territorioId, int dono, float intervalo)
+    {
+        int ocupanteAtual = ObterOcupanteDaRegiao(territorioId);
+        if (ocupanteAtual > 0)
+        {
+            if (!defensoresPresentes.Contains(territorioId)
+                || invasoesContestadas.Contains(territorioId)
+                || equipesInvasorasPresentes.ContainsKey(territorioId))
+            {
+                progressoOcupacaoMilitar.Remove(territorioId);
+                return;
+            }
+
+            ProgressoCapturaTerritorial retomada;
+            if (!progressoOcupacaoMilitar.TryGetValue(territorioId, out retomada) || retomada.equipe != dono)
+            {
+                retomada = new ProgressoCapturaTerritorial { equipe = dono, segundos = 0f };
+                progressoOcupacaoMilitar[territorioId] = retomada;
+            }
+
+            retomada.segundos += intervalo;
+            if (retomada.segundos >= Mathf.Max(1f, segundosParaCapturarTerritorio))
+            {
+                DefinirOcupanteTerritorial(territorioId, 0);
+                progressoOcupacaoMilitar.Remove(territorioId);
+            }
+            return;
+        }
+
+        if (defensoresPresentes.Contains(territorioId)
+            || invasoesContestadas.Contains(territorioId)
+            || !equipesInvasorasPresentes.TryGetValue(territorioId, out int invasor)
+            || !PaisEmGuerra(invasor, dono))
+        {
+            progressoOcupacaoMilitar.Remove(territorioId);
+            return;
+        }
+
+        ProgressoCapturaTerritorial progresso;
+        if (!progressoOcupacaoMilitar.TryGetValue(territorioId, out progresso) || progresso.equipe != invasor)
+        {
+            progresso = new ProgressoCapturaTerritorial { equipe = invasor, segundos = 0f };
+            progressoOcupacaoMilitar[territorioId] = progresso;
+        }
+
+        progresso.segundos += intervalo;
+        if (progresso.segundos >= Mathf.Max(1f, segundosParaCapturarTerritorio))
+        {
+            if (TentarOcuparTerritorio(territorioId, invasor))
+            {
+                progressoOcupacaoMilitar.Remove(territorioId);
+            }
+        }
+    }
+
+    private static bool PaisEmGuerra(int teamA, int teamB)
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        RelacaoPaisGoverno relacao = governo != null ? governo.ObterRelacao(teamA, teamB) : null;
+        return relacao != null && relacao.guerraDeclarada;
     }
 
     private static bool UnidadePodeCapturarTerritorio(IdentidadeUnidade unidade)
@@ -362,6 +467,8 @@ public class GerenteDeTerritorio : MonoBehaviour
                     politico.ownerCountryTeamId = proprietario;
                 }
                 if (neutralidadeTerritorial.TryGetValue(politico.territorioId, out bool neutro)) politico.neutral = neutro;
+                politico.occupyingCountryTeamId = ObterOcupanteDaRegiao(politico.territorioId);
+                politico.militarilyOccupied = politico.occupyingCountryTeamId > 0;
                 politico.worldPosition = ponto;
                 return politico;
             }
@@ -458,13 +565,17 @@ public class GerenteDeTerritorio : MonoBehaviour
         bool neutroAnterior = neutralidadeTerritorial.TryGetValue(territorio.territorioId, out bool neutro)
             ? neutro
             : regiao.neutral;
-        // Uma Prefeitura pode fundar tanto uma região neutra quanto uma
-        // região terrestre ainda sem país associado (-1). Territórios já
-        // pertencentes a uma equipe continuam protegidos.
+        // Ilhas neutras e capturáveis exigem reconhecimento do Conselho; uma
+        // Prefeitura não pode converter presença física diretamente em soberania.
+        if (donoAnterior == 0 && neutroAnterior && regiao.capturable) return false;
+
+        // Uma Prefeitura pode fundar regiões terrestres ainda sem país
+        // associado (-1), além de regiões neutras não disputáveis.
         if (donoAnterior > 0 || (donoAnterior == 0 && !neutroAnterior)) return false;
 
         proprietariosCapturados[territorio.territorioId] = novoOwnerTeamId;
         neutralidadeTerritorial[territorio.territorioId] = false;
+        DefinirOcupanteTerritorial(territorio.territorioId, 0, false);
         OnTerritoryOwnerChanged?.Invoke(territorio.territorioId, donoAnterior, novoOwnerTeamId);
         return true;
     }
@@ -478,11 +589,152 @@ public class GerenteDeTerritorio : MonoBehaviour
         bool neutroAnterior = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutro)
             ? neutro
             : regiao.neutral;
+        // Soberania sobre uma região neutra disputável só muda após decisão
+        // formal. O controle físico é registrado separadamente abaixo.
+        if (donoAnterior == 0 && neutroAnterior) return false;
         if (donoAnterior == novoOwnerTeamId && (!neutroAnterior || proprietariosCapturados.ContainsKey(territorioId))) return false;
         proprietariosCapturados[territorioId] = novoOwnerTeamId;
         neutralidadeTerritorial[territorioId] = false;
+        DefinirOcupanteTerritorial(territorioId, 0, false);
         OnTerritoryOwnerChanged?.Invoke(territorioId, donoAnterior, novoOwnerTeamId);
         return true;
+    }
+
+    /// <summary>Reconhece soberania sobre uma região neutra por decisão do Conselho Mundial.</summary>
+    public bool ReconhecerSoberaniaPorConselho(string territorioId, int novoOwnerTeamId)
+    {
+        if (novoOwnerTeamId <= 0) return false;
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra || !regiao.capturable) return false;
+
+        int donoAnterior = ObterDonoDaRegiao(territorioId);
+        bool neutra = neutralidadeTerritorial.TryGetValue(territorioId, out bool salva) ? salva : regiao.neutral;
+        if (donoAnterior != 0 || !neutra) return false;
+
+        proprietariosCapturados[territorioId] = novoOwnerTeamId;
+        neutralidadeTerritorial[territorioId] = false;
+        progressoCaptura.Remove(territorioId);
+        progressoOcupacaoMilitar.Remove(territorioId);
+        if (ObterOcupanteDaRegiao(territorioId) == novoOwnerTeamId)
+        {
+            DefinirOcupanteTerritorial(territorioId, 0);
+        }
+        OnTerritoryOwnerChanged?.Invoke(territorioId, donoAnterior, novoOwnerTeamId);
+        return true;
+    }
+
+    /// <summary>Registra controle militar de uma região neutra sem mudar sua soberania.</summary>
+    public bool TentarOcuparTerritorioNeutro(string territorioId, int occupyingTeamId)
+    {
+        if (occupyingTeamId <= 0) return false;
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra || !regiao.capturable) return false;
+
+        int dono = ObterDonoDaRegiao(territorioId);
+        bool neutra = neutralidadeTerritorial.TryGetValue(territorioId, out bool salva) ? salva : regiao.neutral;
+        if (dono != 0 || !neutra || ObterOcupanteDaRegiao(territorioId) == occupyingTeamId) return false;
+
+        DefinirOcupanteTerritorial(territorioId, occupyingTeamId);
+        return true;
+    }
+
+    /// <summary>Transfere soberania por um acordo já aprovado.</summary>
+    public bool TransferirSoberaniaPorTratado(string territorioId, int novoOwnerTeamId)
+    {
+        if (novoOwnerTeamId <= 0) return false;
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra) return false;
+
+        int donoAnterior = ObterDonoDaRegiao(territorioId);
+        bool neutroAnterior = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutro)
+            ? neutro
+            : regiao.neutral;
+        if (donoAnterior <= 0 || neutroAnterior || donoAnterior == novoOwnerTeamId) return false;
+
+        proprietariosCapturados[territorioId] = novoOwnerTeamId;
+        neutralidadeTerritorial[territorioId] = false;
+        DefinirOcupanteTerritorial(territorioId, 0, false);
+        OnTerritoryOwnerChanged?.Invoke(territorioId, donoAnterior, novoOwnerTeamId);
+        return true;
+    }
+
+    /// <summary>Registra controle militar sem alterar a soberania do território.</summary>
+    public bool TentarOcuparTerritorio(string territorioId, int occupyingTeamId)
+    {
+        if (occupyingTeamId <= 0) return false;
+        RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(territorioId) : null;
+        if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra) return false;
+
+        int dono = ObterDonoDaRegiao(territorioId);
+        if (dono <= 0 || dono == occupyingTeamId || !PaisEmGuerra(occupyingTeamId, dono)) return false;
+        if (ObterOcupanteDaRegiao(territorioId) == occupyingTeamId) return false;
+
+        DefinirOcupanteTerritorial(territorioId, occupyingTeamId);
+        return true;
+    }
+
+    private void DefinirOcupanteTerritorial(string territorioId, int novoOcupante, bool notificar = true)
+    {
+        int ocupanteAnterior = ObterOcupanteDaRegiao(territorioId);
+        if (ocupanteAnterior == novoOcupante) return;
+        if (novoOcupante > 0) ocupantesMilitares[territorioId] = novoOcupante;
+        else ocupantesMilitares.Remove(territorioId);
+        if (notificar) OnTerritoryOccupationChanged?.Invoke(territorioId, ocupanteAnterior, novoOcupante);
+    }
+
+    public int ObterOcupanteDaRegiao(string territorioId)
+    {
+        return !string.IsNullOrEmpty(territorioId) && ocupantesMilitares.TryGetValue(territorioId, out int ocupante)
+            ? ocupante
+            : 0;
+    }
+
+    public List<SaveOcupacaoTerritorial> CopiarOcupacoesTerritoriais()
+    {
+        List<SaveOcupacaoTerritorial> resultado = new List<SaveOcupacaoTerritorial>(ocupantesMilitares.Count);
+        foreach (KeyValuePair<string, int> par in ocupantesMilitares)
+        {
+            RegiaoPolitica regiao = MapaPolitico != null ? MapaPolitico.EncontrarRegiao(par.Key) : null;
+            if (regiao == null || regiao.tipo != TipoRegiaoPolitica.Terra) continue;
+            resultado.Add(new SaveOcupacaoTerritorial
+            {
+                territorioId = par.Key,
+                occupyingCountryTeamId = par.Value
+            });
+        }
+        resultado.Sort((a, b) => string.CompareOrdinal(a.territorioId, b.territorioId));
+        return resultado;
+    }
+
+    public void RestaurarOcupacoesTerritoriais(IList<SaveOcupacaoTerritorial> estados)
+    {
+        GarantirMapaPolitico();
+        ocupantesMilitares.Clear();
+        progressoOcupacaoMilitar.Clear();
+        if (estados == null) return;
+        for (int i = 0; i < estados.Count; i++)
+        {
+            SaveOcupacaoTerritorial estado = estados[i];
+            RegiaoPolitica regiao = estado != null && MapaPolitico != null
+                ? MapaPolitico.EncontrarRegiao(estado.territorioId)
+                : null;
+            if (estado == null || string.IsNullOrWhiteSpace(estado.territorioId)
+                || estado.occupyingCountryTeamId <= 0 || regiao == null
+                || regiao.tipo != TipoRegiaoPolitica.Terra
+                || !PodeRestaurarOcupacaoTerritorial(estado.territorioId, regiao, estado.occupyingCountryTeamId))
+            {
+                continue;
+            }
+            ocupantesMilitares[estado.territorioId] = estado.occupyingCountryTeamId;
+        }
+    }
+
+    private bool PodeRestaurarOcupacaoTerritorial(string territorioId, RegiaoPolitica regiao, int ocupante)
+    {
+        int dono = ObterDonoDaRegiao(territorioId);
+        if (dono > 0) return dono != ocupante;
+        bool neutra = neutralidadeTerritorial.TryGetValue(territorioId, out bool salva) ? salva : regiao.neutral;
+        return dono == 0 && neutra && regiao.capturable;
     }
 
     public int ObterDonoDaRegiao(string territorioId)
@@ -562,6 +814,8 @@ public class GerenteDeTerritorio : MonoBehaviour
             territorioId = regiao.territorioId,
             ownerCountryTeamId = ObterDonoDaRegiao(territorioId),
             neutral = neutralidadeTerritorial.TryGetValue(territorioId, out bool neutro) ? neutro : regiao.neutral,
+            occupyingCountryTeamId = ObterOcupanteDaRegiao(territorioId),
+            militarilyOccupied = ObterOcupanteDaRegiao(territorioId) > 0,
             capturable = regiao.capturable,
             tipo = regiao.tipo,
             fonte = FonteConsultaTerritorial.PoligonoPolitico

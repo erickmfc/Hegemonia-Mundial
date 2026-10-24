@@ -204,12 +204,14 @@ public static class ContextoTerritorialDiplomatico
             || anterior.territorio.encontrouRegiao != atual.encontrouRegiao;
         bool mudouDono = anterior.territorio.ownerCountryTeamId != atual.ownerCountryTeamId
             || anterior.territorio.neutral != atual.neutral;
+        bool mudouOcupante = anterior.territorio.occupyingCountryTeamId != atual.occupyingCountryTeamId
+            || anterior.territorio.militarilyOccupied != atual.militarilyOccupied;
         if (mudouId)
         {
             if (anterior.territorio.encontrouRegiao) OnTerritoryExited?.Invoke(unidade, anterior.territorio);
             if (atual.encontrouRegiao) OnTerritoryEntered?.Invoke(unidade, atual);
         }
-        if (mudouId || mudouDono) OnTerritoryChanged?.Invoke(unidade, atual);
+        if (mudouId || mudouDono || mudouOcupante) OnTerritoryChanged?.Invoke(unidade, atual);
         anterior.territorio = atual;
         return atual;
     }
@@ -320,11 +322,19 @@ public static class ContextoTerritorialDiplomatico
     {
         GerenteDeTerritorio atual = GerenteDeTerritorio.Instancia;
         if (gerenteObservado == atual) return;
-        if (gerenteObservado != null) gerenteObservado.OnTerritoryOwnerChanged -= AoMudarDonoTerritorial;
+        if (gerenteObservado != null)
+        {
+            gerenteObservado.OnTerritoryOwnerChanged -= AoMudarDonoTerritorial;
+            gerenteObservado.OnTerritoryOccupationChanged -= AoMudarOcupacaoTerritorial;
+        }
         territorioConhecidoPorUnidade.Clear();
         violacaoAtualPorUnidade.Clear();
         gerenteObservado = atual;
-        if (gerenteObservado != null) gerenteObservado.OnTerritoryOwnerChanged += AoMudarDonoTerritorial;
+        if (gerenteObservado != null)
+        {
+            gerenteObservado.OnTerritoryOwnerChanged += AoMudarDonoTerritorial;
+            gerenteObservado.OnTerritoryOccupationChanged += AoMudarOcupacaoTerritorial;
+        }
     }
 
     private static void AoMudarDonoTerritorial(string territorioId, int donoAnterior, int novoDono)
@@ -343,6 +353,32 @@ public static class ContextoTerritorialDiplomatico
             ResultadoConsultaTerritorio atualizado = conhecido.territorio;
             atualizado.ownerCountryTeamId = novoDono;
             atualizado.neutral = false;
+            atualizado.occupyingCountryTeamId = gerenteObservado != null
+                ? gerenteObservado.ObterOcupanteDaRegiao(territorioId)
+                : 0;
+            atualizado.militarilyOccupied = atualizado.occupyingCountryTeamId > 0;
+            conhecido.territorio = atualizado;
+            OnTerritoryChanged?.Invoke(conhecido.unidade, atualizado);
+        }
+        if (remover != null) for (int i = 0; i < remover.Count; i++) territorioConhecidoPorUnidade.Remove(remover[i]);
+    }
+
+    private static void AoMudarOcupacaoTerritorial(string territorioId, int ocupanteAnterior, int novoOcupante)
+    {
+        List<int> remover = null;
+        foreach (KeyValuePair<int, UnidadeTerritorioConhecido> par in territorioConhecidoPorUnidade)
+        {
+            UnidadeTerritorioConhecido conhecido = par.Value;
+            if (conhecido == null || conhecido.unidade == null)
+            {
+                if (remover == null) remover = new List<int>();
+                remover.Add(par.Key);
+                continue;
+            }
+            if (conhecido.territorio.territorioId != territorioId) continue;
+            ResultadoConsultaTerritorio atualizado = conhecido.territorio;
+            atualizado.occupyingCountryTeamId = novoOcupante;
+            atualizado.militarilyOccupied = novoOcupante > 0;
             conhecido.territorio = atualizado;
             OnTerritoryChanged?.Invoke(conhecido.unidade, atualizado);
         }

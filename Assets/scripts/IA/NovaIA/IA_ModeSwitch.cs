@@ -177,11 +177,10 @@ namespace Hegemonia.AI.Master
             MonoBehaviour[] all = IA_UnitySearch.FindAll<MonoBehaviour>();
             SetNamespaceEnabled(all, "Hegemonia.AI.Master", false, excludeSelf: true);
 
-            // A cena 19 foi reconstruida a partir de dados recuperados. Nela,
-            // o BrainMaster/DEUSA legado fica deliberadamente bloqueado durante
-            // o bootstrap; reativá-lo automaticamente aqui fazia a cena travar
-            // antes do primeiro frame jogável.
-            if (SceneManager.GetActiveScene().name == ConfiguracaoCenasJogo.CenaCampanhaCanonica)
+            // A campanha recuperada ainda precisa desse bloqueio de bootstrap.
+            // A campanha nova usa GlobalMapRTS e segue o modo BrainMaster normal.
+            Scene cenaAtiva = SceneManager.GetActiveScene();
+            if (ConfiguracaoCenasJogo.EhCenaCampanhaRecuperada(cenaAtiva.name, cenaAtiva.path))
             {
                 SetNamespaceEnabled(all, "Hegemonia.AI.DEUSA", false);
                 SetNamespaceEnabled(all, "Hegemonia.AI.BrainMaster", false);

@@ -255,18 +255,23 @@ public sealed class PoliticoTerritoryEditModeTests
     }
 
     [Test]
-    public void CapturingNeutralIsland_UpdatesQueryAndCanBeSavedAndRestored()
+    public void NeutralIslandRequiresCouncilRecognitionAfterOccupation()
     {
         ScriptableObject referencia = (ScriptableObject)ResolveType("DadosMapaTerritorial")
             .GetMethod("CriarModeloFase", StaticFlags).Invoke(null, new object[] { null });
         SetMember(gerente, "MapaPolitico", referencia);
         try
         {
-            bool capturou = (bool)Invocar(gerente, "TentarCapturarTerritorio", "ilha-central", 4);
+            bool capturouDireto = (bool)Invocar(gerente, "TentarCapturarTerritorio", "ilha-central", 4);
+            bool ocupou = (bool)Invocar(gerente, "TentarOcuparTerritorioNeutro", "ilha-central", 3);
             Vector3 pontoIlha = (Vector3)Invocar(gerente, "MapUvToWorld", new Vector2(0.59f, 0.43f));
+            int ownerDuranteOcupacao = (int)Invocar(gerente, "ObterDonoDaRegiao", "ilha-central");
+            int ocupanteDuranteOcupacao = (int)Invocar(gerente, "ObterOcupanteDaRegiao", "ilha-central");
+            object consultaOcupada = Invocar(gerente, "ObterTerritorioNaPosicao", pontoIlha);
+            bool reconheceu = (bool)Invocar(gerente, "ReconhecerSoberaniaPorConselho", "ilha-central", 4);
+            bool repetiuReconhecimento = (bool)Invocar(gerente, "ReconhecerSoberaniaPorConselho", "ilha-central", 4);
             int owner = (int)Invocar(gerente, "ObterDonoDoPonto", pontoIlha);
             object consultaCapturada = Invocar(gerente, "ObterTerritorioNaPosicao", pontoIlha);
-            bool repetiuCaptura = (bool)Invocar(gerente, "TentarCapturarTerritorio", "ilha-central", 4);
             IList snapshot = (IList)Invocar(gerente, "CopiarProprietariosCapturados");
             Assert.That(snapshot.Count, Is.EqualTo(1));
             object estadoSalvo = snapshot[0];
@@ -279,12 +284,20 @@ public sealed class PoliticoTerritoryEditModeTests
             int ownerRestaurado = (int)Invocar(gerente, "ObterDonoDaRegiao", "ilha-central");
             object consultaRestaurada = Invocar(gerente, "ObterTerritorioNaPosicao", pontoIlha);
 
-            Assert.That(capturou, Is.True);
+            Assert.That(capturouDireto, Is.False,
+                "A captura direta não deve conceder soberania sobre uma ilha neutra disputável.");
+            Assert.That(ocupou, Is.True);
+            Assert.That(ownerDuranteOcupacao, Is.Zero);
+            Assert.That(ocupanteDuranteOcupacao, Is.EqualTo(3));
+            Assert.That(GetField<int>(consultaOcupada, "ownerCountryTeamId"), Is.Zero);
+            Assert.That(GetField<bool>(consultaOcupada, "neutral"), Is.True);
+            Assert.That(reconheceu, Is.True);
+            Assert.That(repetiuReconhecimento, Is.False,
+                "A mesma decisão do Conselho não deve transferir soberania duas vezes.");
             Assert.That(owner, Is.EqualTo(4));
             Assert.That(GetField<int>(consultaCapturada, "ownerCountryTeamId"), Is.EqualTo(4));
             Assert.That(GetField<bool>(consultaCapturada, "neutral"), Is.False);
             Assert.That(GetProperty<object>(consultaCapturada, "estado").ToString(), Is.EqualTo("CountryOwned"));
-            Assert.That(repetiuCaptura, Is.False, "A mesma propriedade não deve disparar outra captura/evento.");
             Assert.That(ownerRestaurado, Is.EqualTo(4));
             Assert.That(GetField<int>(consultaRestaurada, "ownerCountryTeamId"), Is.EqualTo(4));
             Assert.That(GetField<bool>(consultaRestaurada, "neutral"), Is.False);
@@ -331,15 +344,21 @@ public sealed class PoliticoTerritoryEditModeTests
         {
             object estadoInicial = Invocar(gerente, "ObterTerritorioNaPosicao", pontoIlha);
             Assert.That(GetProperty<object>(estadoInicial, "estado").ToString(), Is.EqualTo("NeutralTerritory"));
-            Assert.That((bool)Invocar(gerente, "TentarCapturarTerritorio", "ilha-central", 4), Is.True);
+            Assert.That((bool)Invocar(gerente, "TentarCapturarTerritorio", "ilha-central", 4), Is.False);
+            Assert.That((bool)Invocar(gerente, "TentarOcuparTerritorioNeutro", "ilha-central", 3), Is.True);
+            Assert.That((int)Invocar(gerente, "ObterDonoDaRegiao", "ilha-central"), Is.Zero,
+                "A ocupação física deve manter a soberania neutra até a decisão do Conselho.");
+            Assert.That((bool)Invocar(gerente, "ReconhecerSoberaniaPorConselho", "ilha-central", 4), Is.True);
             Assert.That((int)Invocar(gerente, "ObterDonoDaRegiao", "ilha-central"), Is.EqualTo(4));
 
             InvocarSemArgumentos(save, "SalvarJogo");
             Assert.That(File.Exists(caminhoTemporario), Is.True);
             string json = File.ReadAllText(caminhoTemporario);
             Assert.That(json, Does.Contain("\"territoriosCapturados\""));
-            Assert.That(json, Does.Contain("\"saveVersion\": 22"));
+            Assert.That(json, Does.Contain("\"saveVersion\": 28"));
             Assert.That(json, Does.Contain("\"neutral\": false"));
+            Assert.That(json, Does.Contain("\"ocupacoesTerritoriais\""));
+            Assert.That(json, Does.Contain("\"occupyingCountryTeamId\": 3"));
             Assert.That(json, Does.Not.Contain("\"capturable\""));
             Assert.That(json, Does.Contain("\"uniqueId\": \"" + uniqueId + "\""));
 
@@ -352,6 +371,8 @@ public sealed class PoliticoTerritoryEditModeTests
             Assert.That(GetField<bool>(consulta, "neutral"), Is.False);
             Assert.That(GetField<bool>(consulta, "capturable"), Is.True);
             Assert.That(GetProperty<object>(consulta, "estado").ToString(), Is.EqualTo("CountryOwned"));
+            Assert.That((int)Invocar(gerente, "ObterOcupanteDaRegiao", "ilha-central"), Is.EqualTo(3),
+                "O save deve restaurar a ocupação separada da soberania reconhecida.");
 
             IList entidades = (IList)GetField<object>(save, "dadosAtuais").GetType()
                 .GetField("entidades", InstanceFlags).GetValue(GetField<object>(save, "dadosAtuais"));

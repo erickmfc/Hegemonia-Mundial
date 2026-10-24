@@ -82,7 +82,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private static readonly Dictionary<string, string[]> Secoes = new Dictionary<string, string[]>
     {
         { "Relacoes", new[] { "Resumo", "Nacoes", "Tratados", "Crises" } },
-        { "Aliancas", new[] { "Blocos", "Membros", "Pactos", "Pedidos" } },
+        { "Aliancas", new[] { "Blocos", "Membros", "Pactos", "Pedidos", "Conselho" } },
         { "Sancoes", new[] { "Ativas", "Embargos", "Pressao", "Historico", "Legitimidade", "Emprestimos" } },
         { "Economia", new[] { "Tesouro", "Orcamento", "Gastos", "Producao", "Impostos" } },
         { "Pais", new[] { "Identidade" } },
@@ -1075,6 +1075,136 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         Label rodape = root.Q<Label>("footer-message");
         if (rodape != null) rodape.text = "GOVERNO: " + acao;
+    }
+
+    private void PreencherConselhoMundial(SistemaGovernoMundial governo)
+    {
+        if (governo == null || TeamJogador <= 0)
+        {
+            AdicionarCard(conteudo, "CONSELHO INDISPONIVEL", "Os dados nacionais ainda não foram carregados.");
+            return;
+        }
+
+        GerenteDeTerritorio gerente = GerenteDeTerritorio.Instancia;
+        List<RegiaoPolitica> elegiveis = governo.ObterTerritoriosElegiveisParaReivindicacao()
+            .Where(regiao => regiao != null && !governo.Propostas.Any(proposta => proposta != null
+                && proposta.EstaPendente
+                && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+                && proposta.origemTeamId == TeamJogador
+                && proposta.territoriosReivindicados != null
+                && proposta.territoriosReivindicados.Contains(regiao.territorioId)))
+            .OrderBy(regiao => regiao.nome, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        List<PropostaInternacional> minhas = governo.Propostas
+            .Where(proposta => proposta != null && proposta.EstaPendente
+                && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+                && proposta.origemTeamId == TeamJogador)
+            .ToList();
+        List<PropostaInternacional> paraVotar = governo.ObterReivindicacoesTerritoriaisParaVoto(TeamJogador).ToList();
+
+        LinhaCards(new[]
+        {
+            ("ILHAS DISPONIVEIS", elegiveis.Count.ToString(), "state-info"),
+            ("MINHAS REIVINDICACOES", minhas.Count.ToString(), "state-warn"),
+            ("VOTACOES ABERTAS", paraVotar.Count.ToString(), "state-good"),
+            ("CONSELHO MUNDIAL", "ATIVO", "state-info")
+        });
+        AdicionarCard(conteudo, "COMO FUNCIONA", "Registre uma reivindicação para uma região neutra. A presença militar registra ocupação, mas a soberania só muda após a votação do Conselho Mundial.");
+
+        TabelaCabecalho("REGIÃO", "SITUAÇÃO", "OCUPANTE", "PROPRIETÁRIO", "AÇÃO");
+        if (elegiveis.Count == 0)
+        {
+            TabelaLinha("Nenhuma região neutra disponível", "-", "-", "-", "-", null);
+        }
+        else
+        {
+            foreach (RegiaoPolitica regiao in elegiveis)
+            {
+                ResultadoConsultaTerritorio estado = gerente != null
+                    ? gerente.ObterEstadoDaRegiao(regiao.territorioId)
+                    : ResultadoConsultaTerritorio.NaoDefinido;
+                string ocupante = estado.occupyingCountryTeamId > 0
+                    ? governo.NomePais(estado.occupyingCountryTeamId)
+                    : "Nenhum";
+                string nomeRegiao = string.IsNullOrWhiteSpace(regiao.nome) ? regiao.territorioId : regiao.nome;
+                string idTerritorio = regiao.territorioId;
+                TabelaLinha(nomeRegiao, "Neutra", ocupante, "Sem soberania", "REIVINDICAR",
+                    () => CriarReivindicacaoConselho(governo, idTerritorio));
+            }
+        }
+
+        if (minhas.Count > 0)
+        {
+            TabelaCabecalho("MINHA CANDIDATURA", "PRAZO", "A FAVOR", "CONTRA", "ESTADO");
+            foreach (PropostaInternacional proposta in minhas)
+            {
+                string idTerritorio = proposta.territoriosReivindicados != null
+                    ? proposta.territoriosReivindicados.FirstOrDefault()
+                    : string.Empty;
+                RegiaoPolitica regiao = gerente != null && gerente.MapaPolitico != null
+                    ? gerente.MapaPolitico.EncontrarRegiao(idTerritorio)
+                    : null;
+                string nomeRegiao = regiao != null && !string.IsNullOrWhiteSpace(regiao.nome) ? regiao.nome : idTerritorio;
+                int aFavor = proposta.votosConselho != null
+                    ? proposta.votosConselho.Count(voto => voto != null && voto.voto == VotoConselhoMundial.AFavor)
+                    : 0;
+                int contra = proposta.votosConselho != null
+                    ? proposta.votosConselho.Count(voto => voto != null && voto.voto == VotoConselhoMundial.Contra)
+                    : 0;
+                TabelaLinha(nomeRegiao, "Dia " + proposta.terminaEmDiaDeJogo, aFavor.ToString(), contra.ToString(), "AGUARDANDO", null);
+            }
+        }
+
+        if (paraVotar.Count > 0)
+        {
+            AdicionarCard(conteudo, "VOTAR NAS REIVINDICACOES", "Você pode apoiar, contestar ou se abster. Um voto seu por região será contado.");
+            TabelaCabecalho("REGIÃO", "REQUERENTE", "PRAZO", "SEU VOTO", "DECISÃO");
+            foreach (PropostaInternacional proposta in paraVotar)
+            {
+                string idTerritorio = proposta.territoriosReivindicados != null
+                    ? proposta.territoriosReivindicados.FirstOrDefault()
+                    : string.Empty;
+                RegiaoPolitica regiao = gerente != null && gerente.MapaPolitico != null
+                    ? gerente.MapaPolitico.EncontrarRegiao(idTerritorio)
+                    : null;
+                string nomeRegiao = regiao != null && !string.IsNullOrWhiteSpace(regiao.nome) ? regiao.nome : idTerritorio;
+                VotoTerritorialConselho votoAtual = proposta.votosConselho != null
+                    ? proposta.votosConselho.FirstOrDefault(voto => voto != null && voto.teamId == TeamJogador)
+                    : null;
+                string votoTexto = votoAtual != null ? votoAtual.voto.ToString() : "Sem voto";
+                string prazo = "Dia " + proposta.terminaEmDiaDeJogo;
+                string idProposta = proposta.id;
+                string requerente = governo.NomePais(proposta.origemTeamId);
+                TabelaLinha(nomeRegiao, requerente, prazo, votoTexto, "A FAVOR",
+                    () => RegistrarVotoConselho(governo, idProposta, VotoConselhoMundial.AFavor));
+                TabelaLinha(nomeRegiao, requerente, prazo, votoTexto, "CONTRA",
+                    () => RegistrarVotoConselho(governo, idProposta, VotoConselhoMundial.Contra));
+                TabelaLinha(nomeRegiao, requerente, prazo, votoTexto, "ABSTER",
+                    () => RegistrarVotoConselho(governo, idProposta, VotoConselhoMundial.Abster));
+            }
+        }
+        else
+        {
+            AdicionarCard(conteudo, "SEM VOTACOES ABERTAS", "Não há reivindicações de outros países aguardando seu voto.");
+        }
+    }
+
+    private void CriarReivindicacaoConselho(SistemaGovernoMundial governo, string territorioId)
+    {
+        string mensagem = governo == null ? "Conselho indisponível." : string.Empty;
+        bool criada = governo != null && governo.TentarCriarReivindicacaoTerritorial(
+            TeamJogador, territorioId, out mensagem);
+        MostrarMensagem(criada ? mensagem : "Reivindicação recusada: " + mensagem);
+        MostrarPagina(abaAtual);
+    }
+
+    private void RegistrarVotoConselho(SistemaGovernoMundial governo, string propostaId, VotoConselhoMundial voto)
+    {
+        string mensagem = governo == null ? "Conselho indisponível." : string.Empty;
+        bool registrado = governo != null && governo.TentarRegistrarVotoTerritorial(
+            propostaId, TeamJogador, voto, out mensagem);
+        MostrarMensagem(registrado ? mensagem : "Voto recusado: " + mensagem);
+        MostrarPagina(abaAtual);
     }
 
     private void Acao(string texto, Action callback, string variante = null)
@@ -2517,6 +2647,12 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 if (r == null || (!r.pactoMilitar && !r.tratadoComercial)) continue;
                 TabelaLinha(p.nomePais, r.tratadoComercial ? "SIM" : "NAO", r.pactoMilitar ? "SIM" : "NAO", r.valor.ToString("+0;-0;0"), "SELECIONAR", () => { paisSelecionado = p.teamId; MostrarPagina(abaAtual); });
             }
+            return;
+        }
+
+        if (abaAtual == "Conselho")
+        {
+            PreencherConselhoMundial(g);
             return;
         }
 

@@ -10,6 +10,11 @@ namespace Hegemonia.AI.IA03
     /// </summary>
     public sealed class GestorEconomiaIA03
     {
+        private const float IntervaloTentativaFinanciamentoSegundos = 180f;
+        private const int MaxTentativasReducaoEmprestimo = 8;
+
+        private float proximaTentativaFinanciamentoEm;
+
         public struct Resumo
         {
             public long Saldo;
@@ -341,6 +346,116 @@ namespace Hegemonia.AI.IA03
             brain.ExternalDependencyWeight = Mathf.Clamp01(Mathf.Lerp(0.55f, 0.85f, resumo.EstoqueEssencialBaixo ? 1f : 0f));
             brain.EconomicRiskWeight = Mathf.Clamp01(Mathf.Lerp(0.35f, 0.90f, pressao));
             return true;
+        }
+
+        public bool TentarSolicitarFinanciamento(
+            SistemaGovernoMundial governo,
+            int teamId,
+            float now,
+            ref Resumo resumo,
+            out string motivo)
+        {
+            motivo = string.Empty;
+            if (governo == null || teamId <= 0 || teamId == governo.teamJogador
+                || !resumo.DadosDisponiveis || !resumo.ReservaFinanceiraBaixa)
+            {
+                return false;
+            }
+
+            if (now < proximaTentativaFinanciamentoEm)
+            {
+                return false;
+            }
+
+            proximaTentativaFinanciamentoEm = now + IntervaloTentativaFinanciamentoSegundos;
+            DadosPaisGoverno devedor = governo.ObterPais(teamId);
+            SistemaFederacoesGlobais federacoes = SistemaFederacoesGlobais.Instancia;
+            if (devedor == null || federacoes == null
+                || !SistemaFederacoesGlobais.EhFederacaoValida(devedor.federacaoGlobal))
+            {
+                return false;
+            }
+
+            if (devedor.emprestimos != null)
+            {
+                for (int i = 0; i < devedor.emprestimos.Count; i++)
+                {
+                    if (devedor.emprestimos[i] != null)
+                    {
+                        motivo = "a IA03 aguarda a quitação do empréstimo federativo atual";
+                        return false;
+                    }
+                }
+            }
+
+            double reservaEstrategica = System.Math.Max(0d, resumo.ReservaFinanceiraEstrategica);
+            double reservaOperacional = System.Math.Max(
+                500d,
+                System.Math.Max(0d, devedor.gastosPorSegundo)
+                * Mathf.Max(1f, federacoes.intervaloTick)
+                * 5d);
+            double saldoAlvo = reservaEstrategica + reservaOperacional;
+            double necessidade = System.Math.Max(0d, saldoAlvo - devedor.saldo);
+            if (necessidade <= 0d)
+            {
+                necessidade = System.Math.Max(
+                    0d,
+                    reservaOperacional - System.Math.Max(0L, resumo.SaldoDisponivel));
+            }
+
+            long valorSolicitado = (long)System.Math.Ceiling(
+                System.Math.Min(int.MaxValue, necessidade));
+            if (valorSolicitado <= 0L)
+            {
+                return false;
+            }
+
+            string ultimaRecusa = string.Empty;
+            IReadOnlyList<DadosPaisGoverno> paises = governo.Paises;
+            for (int tentativa = 0;
+                tentativa < MaxTentativasReducaoEmprestimo && valorSolicitado > 0L;
+                tentativa++, valorSolicitado /= 2L)
+            {
+                for (int i = 0; i < paises.Count; i++)
+                {
+                    DadosPaisGoverno credor = paises[i];
+                    if (credor == null || credor.teamId == teamId
+                        || !string.Equals(credor.federacaoGlobal, devedor.federacaoGlobal, System.StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    string resposta;
+                    if (!federacoes.SolicitarEmprestimo(
+                            credor.teamId,
+                            teamId,
+                            valorSolicitado,
+                            false,
+                            out resposta))
+                    {
+                        ultimaRecusa = resposta;
+                        continue;
+                    }
+
+                    resumo.Saldo = devedor.saldo;
+                    resumo.SaldoDisponivel = governo.ObterSaldoDisponivelParaOperacao(teamId);
+                    resumo.ReservaFinanceiraBaixa = devedor.saldo < resumo.ReservaFinanceiraEstrategica
+                        || resumo.SaldoDisponivel <= 0L;
+                    resumo.PressaoEconomica = Mathf.Clamp01(
+                        (resumo.ReservaFinanceiraBaixa ? 0.55f : 0f)
+                        + (resumo.EstoqueEssencialBaixo ? 0.45f : 0f));
+
+                    motivo = "financiamento federativo aprovado por " + credor.nomePais;
+                    governo.RegistrarNoticia(
+                        devedor.nomePais + " recebeu financiamento federativo de " + credor.nomePais + ".");
+                    return true;
+                }
+            }
+
+            motivo = string.IsNullOrWhiteSpace(ultimaRecusa)
+                ? "nenhum integrante do bloco possui crédito compatível"
+                : ultimaRecusa;
+            return false;
         }
 
         private static void CapturarUnidadesOperacionais(IA_WorldState mundo, ref Resumo resumo)

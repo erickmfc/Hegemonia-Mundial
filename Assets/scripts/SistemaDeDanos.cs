@@ -138,15 +138,8 @@ public class SistemaDeDanos : MonoBehaviour
                             this);
                     }
 #endif
+                    // O governo registra cada impacto e decide quando a crise passa a guerra.
                     SistemaGovernoMundial.Instancia.RegistrarAgressao(vitimaID.teamID, agressorID.teamID);
-                    var relacao = SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorID.teamID);
-                    if (relacao != null && !relacao.guerraDeclarada)
-                    {
-                        relacao.guerraDeclarada = true;
-                        SistemaGovernoMundial.Instancia.NotificarGuerra(vitimaID.teamID);
-                        SistemaGovernoMundial.Instancia.NotificarGuerra(agressorID.teamID);
-                        UnityEngine.Debug.Log($"[Diplomacia] GUERRA declarada entre Time {vitimaID.teamID} e Time {agressorID.teamID} devida a agressão!");
-                    }
                 }
             }
         }

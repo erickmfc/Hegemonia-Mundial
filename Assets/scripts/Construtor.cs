@@ -448,6 +448,12 @@ public class Construtor : MonoBehaviour
             bool terraDoJogador = territorio.ownerCountryTeamId == meuTime;
             bool terraNeutra = territorio.ownerCountryTeamId == 0 && territorio.neutral;
             bool terraSemPais = territorio.ownerCountryTeamId == -1;
+            if (terraNeutra && territorio.capturable)
+            {
+                previewLocalInvalido = true;
+                motivoInvalido = "❌ SOBERANIA NÃO RECONHECIDA:\nA ilha precisa ser reconhecida pelo Conselho Mundial antes da fundação.";
+                return;
+            }
             if (!terraNeutra && !terraDoJogador && !terraSemPais)
             {
                 previewLocalInvalido = true;

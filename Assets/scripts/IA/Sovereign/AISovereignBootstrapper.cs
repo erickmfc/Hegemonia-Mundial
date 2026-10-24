@@ -1,4 +1,6 @@
 using System;
+using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.Shared;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -16,6 +18,28 @@ namespace Hegemonia.AI.Sovereign
                 activeScenePath,
                 IA03ValidationScenePath,
                 StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool BrainMasterCanOwnTeam(
+            int teamId,
+            int brainTeamId,
+            bool brainIsActive,
+            IA_BrainMaster.IA_IntegrationMode integrationMode)
+        {
+            return teamId > 0
+                && teamId == brainTeamId
+                && brainIsActive
+                && integrationMode != IA_BrainMaster.IA_IntegrationMode.ShadowReadOnly;
+        }
+
+        internal static bool ShouldBootstrapForTeam(
+            int teamId,
+            int playerTeamId,
+            bool hasCommandCapableBrainMaster)
+        {
+            return teamId > 0
+                && teamId != playerTeamId
+                && !hasCommandCapableBrainMaster;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -43,6 +67,11 @@ namespace Hegemonia.AI.Sovereign
                 return;
             }
 
+            if (!IA_SharedRuntimeSupport.IsBrainMasterMode)
+            {
+                return;
+            }
+
             if (Time.unscaledTime < _nextSyncTime)
             {
                 return;
@@ -65,10 +94,31 @@ namespace Hegemonia.AI.Sovereign
                 return;
             }
 
+            IA_BrainMaster[] brainMasters = IA_UnitySearch.FindAll<IA_BrainMaster>();
             for (int i = 0; i < gov.Paises.Count; i++)
             {
                 DadosPaisGoverno pais = gov.Paises[i];
-                if (pais == null || pais.teamId <= gov.teamJogador || AISovereignRuntime.Instance.HasControllerForTeam(pais.teamId))
+                if (pais == null || AISovereignRuntime.Instance.HasControllerForTeam(pais.teamId))
+                {
+                    continue;
+                }
+
+                bool hasCommandCapableBrainMaster = false;
+                for (int j = 0; j < brainMasters.Length; j++)
+                {
+                    IA_BrainMaster brain = brainMasters[j];
+                    if (brain != null && BrainMasterCanOwnTeam(
+                            pais.teamId,
+                            brain.TeamId,
+                            brain.isActiveAndEnabled,
+                            brain.IntegrationMode))
+                    {
+                        hasCommandCapableBrainMaster = true;
+                        break;
+                    }
+                }
+
+                if (!ShouldBootstrapForTeam(pais.teamId, gov.teamJogador, hasCommandCapableBrainMaster))
                 {
                     continue;
                 }

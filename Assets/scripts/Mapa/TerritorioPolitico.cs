@@ -58,6 +58,8 @@ public struct ResultadoConsultaTerritorio
     public int ownerCountryTeamId;
     public bool neutral;
     public bool capturable;
+    public int occupyingCountryTeamId;
+    public bool militarilyOccupied;
     public TipoRegiaoPolitica tipo;
     public bool aguasInternacionais;
     public FonteConsultaTerritorial fonte;
@@ -85,4 +87,11 @@ public sealed class SaveProprietarioTerritorio
     public string territorioId;
     public int ownerCountryTeamId;
     public bool neutral;
+}
+
+[Serializable]
+public sealed class SaveOcupacaoTerritorial
+{
+    public string territorioId;
+    public int occupyingCountryTeamId;
 }

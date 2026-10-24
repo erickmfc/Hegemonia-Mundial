@@ -65,6 +65,161 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
     }
 
     [Test]
+    public void ImpactosHostisEscalamUmaCriseAntesDaGuerraESaoIdempotentesDuranteAGuerra()
+    {
+        DefinirPaises(1, 2);
+        SetField(governo, "teamJogador", 1);
+
+        Type relacaoType = ResolverTipo("RelacaoPaisGoverno");
+        object relacao = Activator.CreateInstance(relacaoType);
+        SetField(relacao, "teamA", 1);
+        SetField(relacao, "teamB", 2);
+        SetField(relacao, "valor", 60);
+        IList relacoes = (IList)Field(governo, "relacoes");
+        relacoes.Clear();
+        relacoes.Add(relacao);
+
+        IList paises = (IList)Field(governo, "paises");
+        object vitima = paises.Cast<object>().Single(p => (int)Field(p, "teamId") == 2);
+        object agressor = paises.Cast<object>().Single(p => (int)Field(p, "teamId") == 1);
+        SetField(vitima, "estabilidade", 100f);
+        SetField(agressor, "estabilidade", 100f);
+
+        MethodInfo registrar = governoType.GetMethod("RegistrarAgressao", AllInstance);
+        Assert.That(registrar, Is.Not.Null);
+
+        registrar.Invoke(governo, new object[] { 2, 1 });
+        Assert.That(Field(relacao, "guerraDeclarada"), Is.False,
+            "O primeiro impacto deve abrir uma crise, sem declarar guerra.");
+        Assert.That(Field(relacao, "agressoesConfirmadasNaCrise"), Is.EqualTo(1));
+        Assert.That(Field(vitima, "emGuerra"), Is.False);
+        Assert.That(Field(relacao, "valor"), Is.EqualTo(55));
+        Assert.That(Field(vitima, "estabilidade"), Is.EqualTo(98f));
+
+        Type saveType = ResolverTipo("SaveGovernoMundialData");
+        object save = Activator.CreateInstance(saveType);
+        SetField(save, "relacoes", relacoes);
+        object saveRestaurado = JsonUtility.FromJson(JsonUtility.ToJson(save), saveType);
+        IList relacoesRestauradas = (IList)Field(saveRestaurado, "relacoes");
+        object relacaoRestaurada = relacoesRestauradas[0];
+        Assert.That(Field(relacaoRestaurada, "agressoesConfirmadasNaCrise"), Is.EqualTo(1),
+            "O estado da crise deve sobreviver ao ciclo real de serialização do save do governo.");
+        object relacaoLegada = JsonUtility.FromJson(
+            "{\"teamA\":1,\"teamB\":2,\"valor\":60,\"guerraDeclarada\":false}",
+            relacaoType);
+        Assert.That(Field(relacaoLegada, "agressoesConfirmadasNaCrise"), Is.EqualTo(0),
+            "Saves antigos sem o contador devem começar com uma crise limpa.");
+
+        registrar.Invoke(governo, new object[] { 2, 1 });
+        Assert.That(Field(relacao, "guerraDeclarada"), Is.False,
+            "O segundo impacto deve manter a crise abaixo do limiar de guerra.");
+        Assert.That(Field(relacao, "agressoesConfirmadasNaCrise"), Is.EqualTo(2));
+        Assert.That(Field(relacao, "valor"), Is.EqualTo(50));
+        Assert.That(Field(vitima, "estabilidade"), Is.EqualTo(96f));
+
+        registrar.Invoke(governo, new object[] { 2, 1 });
+        Assert.That(Field(relacao, "guerraDeclarada"), Is.True,
+            "A guerra só deve ser declarada ao terceiro impacto confirmado.");
+        Assert.That(Field(relacao, "agressoesConfirmadasNaCrise"), Is.EqualTo(3));
+        int valorAposGuerra = (int)Field(relacao, "valor");
+        float estabilidadeAposGuerra = (float)Field(vitima, "estabilidade");
+        Assert.That(valorAposGuerra, Is.LessThan(50),
+            "A relação deve receber uma penalidade ao declarar a guerra.");
+        Assert.That(Field(vitima, "emGuerra"), Is.True);
+        Assert.That(Field(agressor, "emGuerra"), Is.True);
+
+        registrar.Invoke(governo, new object[] { 2, 1 });
+        Assert.That(Field(relacao, "valor"), Is.EqualTo(valorAposGuerra),
+            "Impactos posteriores durante a guerra não devem reaplicar a penalidade diplomática.");
+        Assert.That(Field(vitima, "estabilidade"), Is.EqualTo(estabilidadeAposGuerra),
+            "Impactos posteriores durante a guerra não devem reaplicar a penalidade de estabilidade.");
+
+        Type propostaType = ResolverTipo("PropostaInternacional");
+        object cessarFogo = Activator.CreateInstance(propostaType);
+        SetField(cessarFogo, "id", "cessar-fogo-crise-teste");
+        SetField(cessarFogo, "origemTeamId", 1);
+        SetField(cessarFogo, "alvoTeamId", 2);
+        SetField(cessarFogo, "tipo", Enum.Parse(ResolverTipo("TipoPropostaInternacional"), "CessarFogo"));
+        SetField(cessarFogo, "status", Enum.Parse(ResolverTipo("StatusPropostaInternacional"), "Pendente"));
+        SetField(cessarFogo, "expiraEm", Time.unscaledTime + 60f);
+        ((IList)Field(governo, "propostas")).Add(cessarFogo);
+
+        object[] resolverArgumentos =
+        {
+            "cessar-fogo-crise-teste",
+            Enum.Parse(ResolverTipo("StatusPropostaInternacional"), "Aceita"),
+            null
+        };
+        bool cessarFogoAceito = (bool)governoType.GetMethod("ResolverProposta", AllInstance)
+            .Invoke(governo, resolverArgumentos);
+        Assert.That(cessarFogoAceito, Is.True, resolverArgumentos[2] as string);
+        Assert.That(Field(relacao, "agressoesConfirmadasNaCrise"), Is.Zero,
+            "Cessar-fogo aceito deve zerar o histórico de impactos da crise anterior.");
+        Assert.That(Field(relacao, "guerraDeclarada"), Is.False);
+        Assert.That(Field(relacao, "cessarFogoAtivo"), Is.True);
+
+        registrar.Invoke(governo, new object[] { 2, 1 });
+        Assert.That(Field(relacao, "agressoesConfirmadasNaCrise"), Is.EqualTo(1),
+            "Um novo incidente após o cessar-fogo precisa começar uma crise nova.");
+        Assert.That(Field(relacao, "cessarFogoAtivo"), Is.False);
+        Assert.That(Field(relacao, "guerraDeclarada"), Is.False);
+    }
+
+    [Test]
+    public void ReivindicacoesDoConselhoAceitamDisputaSalvamVotosEChegamAoPrazo()
+    {
+        AdicionarRegiao("ilha-conselho", 0, capturable: true, neutral: true);
+        DefinirPaises(1, 2, 3, 4);
+        SetField(governo, "teamJogador", 1);
+
+        object[] criarReivindicacao2 = { 2, "ilha-conselho", null };
+        MethodInfo criar = governoType.GetMethod("TentarCriarReivindicacaoTerritorial", AllInstance);
+        Assert.That((bool)criar.Invoke(governo, criarReivindicacao2), Is.True, criarReivindicacao2[2] as string);
+        object[] criarReivindicacao3 = { 3, "ilha-conselho", null };
+        Assert.That((bool)criar.Invoke(governo, criarReivindicacao3), Is.True, criarReivindicacao3[2] as string);
+
+        IList propostas = (IList)Field(governo, "propostas");
+        object candidata2 = propostas.Cast<object>().First(proposta => (int)Field(proposta, "origemTeamId") == 2);
+        object candidata3 = propostas.Cast<object>().First(proposta => (int)Field(proposta, "origemTeamId") == 3);
+        string idCandidata2 = (string)Field(candidata2, "id");
+        string idCandidata3 = (string)Field(candidata3, "id");
+
+        RegistrarVoto(idCandidata2, 1, "AFavor", esperado: true);
+        RegistrarVoto(idCandidata2, 3, "AFavor", esperado: true);
+        RegistrarVoto(idCandidata3, 4, "AFavor", esperado: true);
+
+        Type saveType = ResolverTipo("SaveGovernoMundialData");
+        object save = Activator.CreateInstance(saveType);
+        SetField(save, "teamJogador", 1);
+        SetField(save, "paises", Field(governo, "paises"));
+        SetField(save, "propostas", Field(governo, "propostas"));
+        string json = JsonUtility.ToJson(save);
+        object restaurado = JsonUtility.FromJson(json, saveType);
+        IList propostasRestauradas = (IList)Field(restaurado, "propostas");
+        Assert.That(propostasRestauradas.Count, Is.EqualTo(2));
+        object restaurada2 = propostasRestauradas.Cast<object>()
+            .First(proposta => (string)Field(proposta, "id") == idCandidata2);
+        Assert.That(((IList)Field(restaurada2, "votosConselho")).Cast<object>()
+            .Count(voto => (int)Field(voto, "teamId") > 0), Is.EqualTo(3),
+            "O save durante a votação deve preservar o eleitorado e os votos registrados.");
+        SetField(governo, "propostas", propostasRestauradas);
+
+        clockType.GetField("totalDias", PublicInstance).SetValue(clock, 42);
+        Assert.That(RegistrarVoto(idCandidata2, 4, "AFavor", esperado: false), Is.False,
+            "A API deve rejeitar votos recebidos depois do prazo.");
+        Assert.That(((IEnumerable)Invocar(governo, "ObterReivindicacoesTerritoriaisParaVoto", 1)).Cast<object>().Count(), Is.Zero,
+            "Uma proposta vencida não deve continuar aparecendo como votável.");
+
+        Invocar(governo, "ProcessarVotacoesTerritoriais");
+        Assert.That(Invocar(gerente, "ObterDonoDaRegiao", "ilha-conselho"), Is.EqualTo(2),
+            "A candidatura única acima do quórum deve ser reconhecida pelo Conselho.");
+        Assert.That(Field(restaurada2, "status").ToString(), Is.EqualTo("Executada"));
+        object restaurada3 = propostasRestauradas.Cast<object>()
+            .First(proposta => (string)Field(proposta, "id") == idCandidata3);
+        Assert.That(Field(restaurada3, "status").ToString(), Is.EqualTo("Recusada"));
+    }
+
+    [Test]
     public void DesmilitarizacaoVigoraApenasParaSignatariosEExpiraNoDiaConfigurado()
     {
         AdicionarRegiao("zona", 3, capturable: false);
@@ -329,6 +484,100 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         }
     }
 
+    [Test]
+    public void OcupacaoDeGuerraPreservaSoberaniaSalvaEOTratadoTransfere()
+    {
+        const string territorioId = "ocupacao-guerra-sem-soberania";
+        Vector3 posicao = new Vector3(4321f, 0f, 4321f);
+        GameObject unidadeObject = new GameObject("Unidade invasora de teste");
+        Component identidade = null;
+        object governoAnterior = null;
+        EventInfo eventoOcupacao = gerenteType.GetEvent("OnTerritoryOccupationChanged", PublicInstance);
+        EventInfo eventoProprietario = gerenteType.GetEvent("OnTerritoryOwnerChanged", PublicInstance);
+        int eventosOcupacao = 0;
+        int eventosProprietario = 0;
+        Action<string, int, int> aoMudarOcupacao = (id, anterior, atual) =>
+        {
+            if (id == territorioId) eventosOcupacao++;
+        };
+        Action<string, int, int> aoMudarProprietario = (id, anterior, atual) =>
+        {
+            if (id == territorioId) eventosProprietario++;
+        };
+
+        try
+        {
+            PropertyInfo instanciaGoverno = governoType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public);
+            MethodInfo setInstanciaGoverno = instanciaGoverno.GetSetMethod(true);
+            governoAnterior = instanciaGoverno.GetValue(null, null);
+            setInstanciaGoverno.Invoke(null, new[] { (object)governo });
+
+            AdicionarRegiao(territorioId, 3, capturable: false);
+            ConfigurarGeometriaTerritorial(territorioId, posicao);
+            object relacao = Invocar(governo, "ObterRelacao", 2, 3);
+            SetField(relacao, "guerraDeclarada", true);
+            SetField(gerente, "segundosParaCapturarTerritorio", 1f);
+
+            unidadeObject.transform.position = posicao;
+            identidade = unidadeObject.AddComponent(ResolverTipo("IdentidadeUnidade"));
+            SetField(identidade, "teamID", 2);
+            SetField(identidade, "tipoUnidade", Enum.Parse(ResolverTipo("TipoUnidade"), "Infantaria"));
+            MethodInfo registrarUnidade = ResolverTipo("RegistroEntidadesJogo")
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .FirstOrDefault(metodo => metodo.Name == "Register"
+                    && metodo.GetParameters().Length == 1
+                    && metodo.GetParameters()[0].ParameterType == identidade.GetType());
+            Assert.That(registrarUnidade, Is.Not.Null);
+            registrarUnidade.Invoke(null, new[] { identidade });
+
+            eventoOcupacao.AddEventHandler(gerente, aoMudarOcupacao);
+            eventoProprietario.AddEventHandler(gerente, aoMudarProprietario);
+            Invocar(gerente, "AtualizarCapturasTerritoriais", 1f);
+
+            Assert.That(Invocar(gerente, "ObterDonoDaRegiao", territorioId), Is.EqualTo(3),
+                "A ocupação não deve transferir soberania durante a guerra.");
+            Assert.That(Invocar(gerente, "ObterOcupanteDaRegiao", territorioId), Is.EqualTo(2));
+            Assert.That(eventosOcupacao, Is.EqualTo(1));
+            Assert.That(eventosProprietario, Is.Zero);
+
+            IList ocupacoesSalvas = (IList)Invocar(gerente, "CopiarOcupacoesTerritoriais");
+            object dados = Activator.CreateInstance(ResolverTipo("DadosDoJogo"));
+            SetField(dados, "territoriosOcupados", ocupacoesSalvas);
+            string json = JsonUtility.ToJson(dados);
+            object dadosRestaurados = JsonUtility.FromJson(json, ResolverTipo("DadosDoJogo"));
+            IList ocupacoesRestauradas = (IList)Field(dadosRestaurados, "territoriosOcupados");
+            Invocar(gerente, "RestaurarOcupacoesTerritoriais", ocupacoesRestauradas);
+            Assert.That(Invocar(gerente, "ObterDonoDaRegiao", territorioId), Is.EqualTo(3));
+            Assert.That(Invocar(gerente, "ObterOcupanteDaRegiao", territorioId), Is.EqualTo(2),
+                "O save deve restaurar ocupação e soberania como estados separados.");
+
+            object proposta = CriarProposta("CessaoTerritorial", 2, 3, 0, new[] { territorioId }, false);
+            SetField(proposta, "id", "teste-cessao-regiao-nao-capturavel");
+            SetField(proposta, "status", Enum.Parse(ResolverTipo("StatusPropostaInternacional"), "Pendente"));
+            DefinirPropostas(proposta);
+            object[] argumentos =
+            {
+                "teste-cessao-regiao-nao-capturavel",
+                Enum.Parse(ResolverTipo("StatusPropostaInternacional"), "Aceita"),
+                null
+            };
+            Assert.That((bool)governoType.GetMethod("ResolverProposta", AllInstance).Invoke(governo, argumentos), Is.True,
+                argumentos[2] as string);
+            Assert.That(Invocar(gerente, "ObterDonoDaRegiao", territorioId), Is.EqualTo(2));
+            Assert.That(Invocar(gerente, "ObterOcupanteDaRegiao", territorioId), Is.Zero);
+            Assert.That(eventosProprietario, Is.EqualTo(1));
+            Assert.That(eventosOcupacao, Is.EqualTo(1), "A cessão diplomática não deve ser publicada como ocupação militar.");
+        }
+        finally
+        {
+            eventoOcupacao.RemoveEventHandler(gerente, aoMudarOcupacao);
+            eventoProprietario.RemoveEventHandler(gerente, aoMudarProprietario);
+            UnityEngine.Object.DestroyImmediate(unidadeObject);
+            PropertyInfo instanciaGoverno = governoType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public);
+            instanciaGoverno.GetSetMethod(true).Invoke(null, new[] { governoAnterior });
+        }
+    }
+
     private object CriarProposta(string tipo, int origem, int alvo, int terminaDia, IEnumerable<string> regioes, bool dmz)
     {
         Type propostaType = ResolverTipo("PropostaInternacional");
@@ -436,6 +685,36 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
         SetField(regiao, "tipo", Enum.Parse(ResolverTipo("TipoRegiaoPolitica"), "Terra"));
         IList regioes = (IList)mapa.GetType().GetProperty("Regioes", PublicInstance).GetValue(mapa, null);
         regioes.Add(regiao);
+    }
+
+    private void DefinirPaises(params int[] teams)
+    {
+        Type paisType = ResolverTipo("DadosPaisGoverno");
+        Type listaType = typeof(List<>).MakeGenericType(paisType);
+        IList paises = (IList)Activator.CreateInstance(listaType);
+        foreach (int teamId in teams)
+        {
+            object pais = Activator.CreateInstance(paisType);
+            SetField(pais, "teamId", teamId);
+            SetField(pais, "nomePais", "País " + teamId);
+            paises.Add(pais);
+        }
+        SetField(governo, "paises", paises);
+    }
+
+    private bool RegistrarVoto(string propostaId, int teamId, string voto, bool esperado)
+    {
+        object[] argumentos =
+        {
+            propostaId,
+            teamId,
+            Enum.Parse(ResolverTipo("VotoConselhoMundial"), voto),
+            null
+        };
+        bool registrado = (bool)governoType.GetMethod("TentarRegistrarVotoTerritorial", AllInstance)
+            .Invoke(governo, argumentos);
+        Assert.That(registrado, Is.EqualTo(esperado), argumentos[3] as string);
+        return registrado;
     }
 
     private static Type ResolverTipo(string nome)
