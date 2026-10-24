@@ -98,8 +98,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tema: 0
-  nomeCidade: Egito Imperial
+  nomeCidade: Egito City
   teamId: 1
+  participarProgressaoCidadesGlobais: 1
+  ordemProgressaoGlobal: 1
   capacidadeHospitalarInicial: 400000
   possuiRedeSaudeBasica: 1
   capacidadeHabitacional: 1000000

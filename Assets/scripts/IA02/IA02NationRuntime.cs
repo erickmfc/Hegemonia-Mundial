@@ -2052,9 +2052,9 @@ namespace Hegemonia.AI.IA02
                 return true;
             }
 
-            if (IsEgyptCityResidentialIntent(intent) && TryGetEgyptCityDefinition(out definition))
+            if (IsEgyptCityResidentialIntent(intent) && TryGetEgyptCityDefinition(country != null ? country.teamId : 1, out definition))
             {
-                MarkExact("CidadeModerna residencial (Egito mantido como fallback)", definition);
+                MarkExact("Cidade residencial diversificada (Nova Aurora/Egito City)", definition);
                 return true;
             }
 
@@ -2260,10 +2260,12 @@ namespace Hegemonia.AI.IA02
                 || intent == IA02IntentType.BuildHighApartment;
         }
 
-        private bool TryGetEgyptCityDefinition(out IA02BuildDefinition definition)
+        private bool TryGetEgyptCityDefinition(int teamId, out IA02BuildDefinition definition)
         {
-            if (TryGetCityDefinition("urbana.cidade_moderna", out definition)) return true;
-            return TryGetCityDefinition("urbana.cidade_egito", out definition);
+            string preferred = IA_CityExpansionPolicy.PreferredCityItemId(teamId);
+            if (TryGetCityDefinition(preferred, out definition)) return true;
+            string fallback = preferred == "urbana.cidade_egito" ? "urbana.cidade_moderna" : "urbana.cidade_egito";
+            return TryGetCityDefinition(fallback, out definition);
         }
 
         private bool TryGetCityDefinition(string itemId, out IA02BuildDefinition definition)
@@ -2279,10 +2281,10 @@ namespace Hegemonia.AI.IA02
                 candidate.StrategicRole = IA02StrategicRole.Residential;
                 candidate.MinimumStage = IA02NationStage.Initialization;
                 candidate.MinimumTreasury = 0;
-                candidate.MaximumRecommendedCount = 1;
+                candidate.MaximumRecommendedCount = 5;
                 candidate.CatalogResolution = string.Equals(itemId, "urbana.cidade_moderna", StringComparison.OrdinalIgnoreCase)
-                    ? "CidadeModerna pre-definida no Create"
-                    : "Cidade Egito legada usada como fallback";
+                    ? "Nova Aurora selecionada pela diversidade urbana"
+                    : "Egito City selecionada pela diversidade urbana";
                 definition = candidate;
                 return true;
             }

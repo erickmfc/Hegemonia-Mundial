@@ -39,9 +39,25 @@ public static class IA_RuntimeConstructionIntegration
         }
 
         CidadeComplexoUrbano city = built.GetComponentInChildren<CidadeComplexoUrbano>(true);
-        if (city != null && built.GetComponent<CidadeSaudePopulacional>() == null)
+        if (city != null)
         {
-            built.AddComponent<CidadeSaudePopulacional>();
+            IdentidadeUnidade identity = city.GetComponent<IdentidadeUnidade>();
+            if (identity == null) identity = city.GetComponentInParent<IdentidadeUnidade>();
+            if (identity == null) identity = built.GetComponentInChildren<IdentidadeUnidade>(true);
+            if (identity != null && identity.teamID > 0)
+                city.teamId = identity.teamID;
+
+            // Instâncias da IA são expansões ativas, não etapas pré-posicionadas.
+            city.participarProgressaoCidadesGlobais = false;
+            city.SincronizarEstruturaEconomica();
+            if (Application.isPlaying)
+            {
+                GerenciadorDivisaoTerritorial.GarantirInstancia();
+                GerenciadorDivisaoTerritorial.Instancia?.RegistrarCidadeUrbana(city);
+            }
+
+            if (built.GetComponent<CidadeSaudePopulacional>() == null)
+                built.AddComponent<CidadeSaudePopulacional>();
         }
     }
 

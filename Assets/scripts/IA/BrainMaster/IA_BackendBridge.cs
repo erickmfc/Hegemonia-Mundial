@@ -1211,6 +1211,7 @@ namespace Hegemonia.AI.BrainMaster
 
             IA_BackendBridge.AttachConstructionMetadata(created, data);
             _bridge.EnsureIdentity(created);
+            IA_RuntimeConstructionIntegration.Apply(created, data);
             AtivarDefesasAereas(created);
             Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
             if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;

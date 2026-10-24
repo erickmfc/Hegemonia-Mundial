@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Cidade Nova Aurora
   descricao: "Cidade pr\xE9-montada Nova Aurora, com 100 mil residentes iniciais
-    e capacidade habitacional de 2 milh\xF5es de pessoas."
+    e capacidade habitacional de 5 milh\xF5es de pessoas."
   icone: {fileID: 21300000, guid: fd4ba1eab9191f248843a038d7bea529, type: 3}
   itemId: urbana.cidade_moderna
   aliases: "cidade moderna; Nova Aurora; Nova Metr\xF3pole; megacidade; residencial"

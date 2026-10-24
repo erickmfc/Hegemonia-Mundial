@@ -1278,6 +1278,8 @@ MonoBehaviour:
   tema: 1
   nomeCidade: Nova Aurora
   teamId: 1
+  participarProgressaoCidadesGlobais: 1
+  ordemProgressaoGlobal: 0
   capacidadeHospitalarInicial: 400000
   possuiRedeSaudeBasica: 1
   capacidadeHabitacional: 5000000

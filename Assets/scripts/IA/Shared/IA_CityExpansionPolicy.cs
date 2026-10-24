@@ -59,6 +59,28 @@ public static class IA_CityExpansionPolicy
 
     private static readonly Dictionary<int, PreparationState> States = new Dictionary<int, PreparationState>();
 
+    public static string PreferredCityItemId(int teamId)
+    {
+        List<CidadeComplexoUrbano> cities = new List<CidadeComplexoUrbano>(8);
+        CidadeComplexoUrbano.CopiarCidadesAtivas(cities);
+
+        int egyptCount = 0;
+        int modernCount = 0;
+        for (int i = 0; i < cities.Count; i++)
+        {
+            CidadeComplexoUrbano city = cities[i];
+            if (city == null || city.teamId != Mathf.Max(1, teamId)) continue;
+            if (city.tema == TemaCidade.Egito) egyptCount++;
+            else if (city.tema == TemaCidade.Moderna) modernCount++;
+        }
+
+        if (egyptCount < modernCount) return "urbana.cidade_egito";
+        if (modernCount < egyptCount) return "urbana.cidade_moderna";
+        return (Mathf.Max(1, teamId) & 1) == 0
+            ? "urbana.cidade_egito"
+            : "urbana.cidade_moderna";
+    }
+
     public static bool IsCityConstruction(DadosConstrucao data)
     {
         if (data == null) return false;

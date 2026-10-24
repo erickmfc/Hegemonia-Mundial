@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: Egito
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Egito - Cidade Completa
-  descricao: Cidade completa pré-pronta usada pela IA no primeiro desenvolvimento residencial.
+  nomeItem: Egito City
+  descricao: Egito City pré-montada, com capacidade para 1 milhão de habitantes, usada pela IA na expansão residencial.
   icone: {fileID: 21300000, guid: d1248aedf842b6b48bde2c0bf20d9c5e, type: 3}
   itemId: urbana.cidade_egito
   aliases: egito,egyto,cidade,cidade completa,complexo urbano,moradia,residencial
