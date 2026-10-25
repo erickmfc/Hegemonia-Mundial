@@ -152,8 +152,8 @@ public sealed class IA03EventHookPlayModeTests
             Component targetDamage = target.GetComponent(damageType);
             SetField(targetDamage, "vidaAtual", 100f);
 
-            // Isola a resposta estratégica; o governo e seus dados de partida
-            // permanecem intocados por este teste de callback.
+            // Isola a resposta estratégica ao evento de dano; o governo e seus dados de partida
+            // permanecem intocados durante o teste.
             setGovernmentInstance.Invoke(null, new object[] { null });
             MethodInfo receiveDamage = damageType.GetMethod("ReceberDano", Members);
             Assert.That(receiveDamage, Is.Not.Null);
