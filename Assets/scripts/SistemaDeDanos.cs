@@ -31,8 +31,8 @@ public class SistemaDeDanos : MonoBehaviour
     public Vector3 ajusteDePosicao = Vector3.zero; // Para subir ou descer o fogo
     [Header("Afundamento Naval")]
     public bool habilitarAfundamentoNaval = true;
-    public float anguloAfundamentoX = -46f;
-    [Min(0.1f)] public float duracaoAfundamento = 7f;
+    public float anguloAfundamentoX = -6f;
+    [Min(0.1f)] public float duracaoAfundamento = 55f;
     [Min(0f)] public float atrasoPosAfundamento = 0.6f;
 
     // Referências aos efeitos ativos (para poder desligar depois/trocar)

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -1675,6 +1676,7 @@ public class NavioTransporteTropas : MonoBehaviour
     // ======================================================
     private void ProcessarInputMenu()
     {
+        if (RTSInputBindings.IsTextEntryFocused()) return;
         if (_idNavio != null && _idNavio.teamID != 1) return;
 
         // Alguns prefabs navais antigos recebem ControleUnidade no primeiro
@@ -1811,6 +1813,7 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private void ProcessarOrdemHelicopteroNavio()
     {
+        if (RTSInputBindings.IsTextEntryFocused()) return;
         if (_helicopteroSelecionadoParaMissao == null)
         {
             EncerrarModoHelicopteroNavio();

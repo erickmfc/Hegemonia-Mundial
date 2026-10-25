@@ -133,8 +133,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 5.88
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!1001 &3836893349632319323
 PrefabInstance:
@@ -266,8 +266,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!4 &1422962214779619499 stripped
 Transform:
@@ -300,8 +300,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 4.54
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!1 &4514037083668273105 stripped
 GameObject:
@@ -329,8 +329,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 1
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!1 &5134577472132346367 stripped
 GameObject:
@@ -358,8 +358,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 4.22
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!1 &6225608113228629714 stripped
 GameObject:
@@ -387,6 +387,6 @@ MonoBehaviour:
   tamanhoDoEfeito: 2.56
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6

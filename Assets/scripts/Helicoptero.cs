@@ -46,7 +46,7 @@ public class Helicoptero : MonoBehaviour
     public float raioDoClique = 7.0f; 
 
     [Header("--- VOO ---")]
-    public float altitudeDeVoo = 14f;       
+    public float altitudeDeVoo = 28f;
     public float alturaPouso = 1.33f; 
     public float velocidadeHelice = 1200f;  
     public float velocidadeNavegacao = 30f;

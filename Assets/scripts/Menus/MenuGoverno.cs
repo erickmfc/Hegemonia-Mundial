@@ -6,6 +6,7 @@ using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.IA01;
 using Hegemonia.AI.IA02;
 using Hegemonia.AI.Shared;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -331,7 +332,7 @@ public class MenuGoverno : MonoBehaviour
         if (QuartelMenuUIController.EntradaGlobalBloqueada)
             return;
 
-        if (Input.GetKeyDown(teclaAtalho))
+        if (!RTSInputBindings.IsTextEntryFocused() && Input.GetKeyDown(teclaAtalho))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
             AlternarMenu(!EstaAberto);

@@ -113,6 +113,7 @@ public class GerenciadorEmojis : MonoBehaviour
 
     private void Update()
     {
+        if (Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()) return;
         if (Input.GetKeyDown(teclaAbrir))
         {
             aberto = !aberto;

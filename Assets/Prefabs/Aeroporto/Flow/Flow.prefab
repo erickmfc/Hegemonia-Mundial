@@ -184,7 +184,7 @@ MonoBehaviour:
   controleSempreAtivo: 0
   selecionado: 0
   raioDoClique: 7
-  altitudeDeVoo: 50
+  altitudeDeVoo: 100
   alturaPouso: 1.33
   velocidadeHelice: 1200
   velocidadeNavegacao: 67.5
@@ -275,8 +275,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 1.57
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &9094763604816164930
 MonoBehaviour:

@@ -166,7 +166,8 @@ public class NavioAbastecimento : MonoBehaviour
         // diretamente, desde que esteja selecionado. Assim o comportamento
         // não depende de uma segunda interface e continua sendo Manual <->
         // Automático no próprio controlador logístico.
-        if (controleUnidade != null
+        if (!Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()
+            && controleUnidade != null
             && controleUnidade.selecionado
             && Input.GetKeyDown(KeyCode.I))
         {

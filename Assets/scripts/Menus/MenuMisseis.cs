@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Hegemonia.RTS;
 using System.Collections.Generic;
 
 public class MenuMisseis : MonoBehaviour
@@ -33,6 +34,7 @@ public class MenuMisseis : MonoBehaviour
 
     void Update()
     {
+        if (RTSInputBindings.IsTextEntryFocused()) return;
         if (QuartelMenuUIController.EntradaGlobalBloqueada)
         {
             return;

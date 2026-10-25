@@ -451,8 +451,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 7.7
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -53.5
-  duracaoAfundamento: 15
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!65 &9190535671882853487
 BoxCollider:

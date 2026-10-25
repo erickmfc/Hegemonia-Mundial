@@ -27,6 +27,7 @@ public class MisselCaca : MonoBehaviour
 
     private Vector3 pontoAlvo;
     private Transform alvoTransform;
+    private GameObject agressor;
     private bool lancado = false;
     private bool motorLigado = false;
     private float velocidadeAtual = 0f;
@@ -81,11 +82,12 @@ public class MisselCaca : MonoBehaviour
         _esperaQuedaLivre = new WaitForSeconds(tempoQuedaLivre);
     }
 
-    public void IniciarAtaque(Vector3 alvo, Vector3 velocidadeInicialAviao, Transform alvoT = null)
+    public void IniciarAtaque(Vector3 alvo, Vector3 velocidadeInicialAviao, Transform alvoT = null, GameObject unidadeAgressora = null)
     {
         StopAllCoroutines();
         pontoAlvo = alvo;
         alvoTransform = alvoT;
+        agressor = unidadeAgressora;
         lancado = true;
         jaExplodiu = false;
         motorLigado = false;
@@ -251,7 +253,9 @@ public class MisselCaca : MonoBehaviour
             {
                 int id = alvoVida.GetInstanceID();
                 if (!_alvosJaProcessados.Add(id)) continue;
-                alvoVida.ReceberDano(dano);
+                // Preserve a autoria do impacto para a diplomacia e para a reação
+                // estratégica das IAs que recebem dano do míssil.
+                alvoVida.ReceberDano(dano, agressor != null ? agressor : gameObject);
             }
         }
 
@@ -262,6 +266,7 @@ public class MisselCaca : MonoBehaviour
     {
         pontoAlvo = Vector3.zero;
         alvoTransform = null;
+        agressor = null;
         lancado = false;
         motorLigado = false;
         velocidadeAtual = 0f;

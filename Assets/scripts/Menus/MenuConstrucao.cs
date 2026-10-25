@@ -7,6 +7,7 @@ using Math = System.Math;
 using UnityEngine.AI;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 
 public class MenuConstrucao : MonoBehaviour
 {
@@ -1095,6 +1096,11 @@ public class MenuConstrucao : MonoBehaviour
 
     void Update()
     {
+        if (RTSInputBindings.IsTextEntryFocused())
+        {
+            return;
+        }
+
         if (QuartelMenuUIController.EntradaGlobalBloqueada)
         {
             return;

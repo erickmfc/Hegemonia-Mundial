@@ -26,7 +26,7 @@ public class ControleAviaoComercial : ControleAviao
 
     [Header("=== PARÂMETROS REALISTAS COMERCIAIS ===")]
     public float inerciaAceleracao = 1.5f;
-    public float altitudeCruzeiroComercial = 90f;
+    public float altitudeCruzeiroComercial = 180f;
     public float asaBankingComercial = 25f;
     public float arfagemPitchComercial = 12f;
 

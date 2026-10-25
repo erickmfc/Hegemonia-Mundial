@@ -18,6 +18,16 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     private const BindingFlags Members = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
     private const string ScenePath = "Assets/Scenes/GlobalMapRTS.unity";
     private string previousActiveScenePath;
+    private Camera cameraToRestoreAfterMovementTest;
+    private Vector3 originalCameraPositionBeforeMovementTest;
+    private Component streamerToRestoreAfterMovementTest;
+    private Camera originalStreamerCameraOverride;
+    private GameObject temporaryStreamingCameraObject;
+    private int originalTilesCreatedPerFrame;
+    private int originalTerrainRowsPerFrame;
+    private int originalVegetationRowsPerFrame;
+    private float originalRefreshInterval;
+    private bool originalStreamerEnabled;
 
     [UnitySetUp]
     public IEnumerator LoadRealGlobalMap()
@@ -43,6 +53,31 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     [UnityTearDown]
     public IEnumerator RestorePreviousScene()
     {
+        if (cameraToRestoreAfterMovementTest != null)
+            cameraToRestoreAfterMovementTest.transform.position = originalCameraPositionBeforeMovementTest;
+        cameraToRestoreAfterMovementTest = null;
+        if (streamerToRestoreAfterMovementTest != null)
+        {
+            Behaviour streamerBehaviour = streamerToRestoreAfterMovementTest as Behaviour;
+            if (streamerBehaviour != null && streamerBehaviour.enabled)
+                streamerBehaviour.enabled = false;
+            Write(streamerToRestoreAfterMovementTest, "cameraOverride", originalStreamerCameraOverride);
+            Write(streamerToRestoreAfterMovementTest, "tilesCreatedPerFrame", originalTilesCreatedPerFrame);
+            Write(streamerToRestoreAfterMovementTest, "terrainRowsPerFrame", originalTerrainRowsPerFrame);
+            Write(streamerToRestoreAfterMovementTest, "vegetationRowsPerFrame", originalVegetationRowsPerFrame);
+            Write(streamerToRestoreAfterMovementTest, "refreshInterval", originalRefreshInterval);
+            if (streamerBehaviour != null)
+                streamerBehaviour.enabled = originalStreamerEnabled;
+        }
+        streamerToRestoreAfterMovementTest = null;
+        originalStreamerCameraOverride = null;
+        if (temporaryStreamingCameraObject != null)
+        {
+            UnityEngine.Object.Destroy(temporaryStreamingCameraObject);
+            temporaryStreamingCameraObject = null;
+            yield return null;
+        }
+
         Type menuType = ResolveType("MenuGovernoNovoController");
         Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
         if (menu != null)
@@ -876,6 +911,405 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             for (int index = 0; index < temporaryObjects.Count; index++)
                 if (temporaryObjects[index] != null) UnityEngine.Object.Destroy(temporaryObjects[index]);
         }
+    }
+
+    [UnityTest]
+    public IEnumerator MarketSellButtonPaysAndTransfersEnergyDirectly()
+    {
+        object government = ReadStatic(ResolveType("SistemaGovernoMundial"), "Instancia");
+        object market = ReadStatic(ResolveType("SistemaMercadoGlobal"), "Instancia");
+        Assert.That(government, Is.Not.Null);
+        Assert.That(market, Is.Not.Null);
+
+        object seller = Call(government, "ObterPais", 1);
+        object relation = Call(government, "ObterRelacao", 1, 2);
+        object item = Call(market, "ObterItem", "energia");
+        Assert.That(seller, Is.Not.Null);
+        Assert.That(relation, Is.Not.Null);
+        Assert.That(item, Is.Not.Null);
+
+        Type menuType = ResolveType("MenuGovernoNovoController");
+        Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
+        Assert.That(menu, Is.Not.Null);
+        for (int frame = 0; frame < 120 && !(bool)Read(menu, "Pronto"); frame++)
+            yield return null;
+        Assert.That(Read(menu, "Pronto"), Is.EqualTo(true));
+
+        const int quantityToSell = 10;
+        string resourceId = Convert.ToString(Read(item, "RecursoIdEfetivo"));
+        int sellerStockBefore = Convert.ToInt32(Call(government, "ObterEstoque", 1, resourceId));
+        object buyer = Call(government, "ObterPais", 2);
+        Assert.That(buyer, Is.Not.Null, "A venda precisa encontrar um comprador comercial disponível.");
+        int buyerTeamId = Convert.ToInt32(Read(buyer, "teamId"));
+        int buyerStockBefore = Convert.ToInt32(Call(government, "ObterEstoque", buyerTeamId, resourceId));
+        long sellerBalanceBefore = Convert.ToInt64(Read(seller, "saldo"));
+        long buyerBalanceBefore = Convert.ToInt64(Read(buyer, "saldo"));
+        int globalStockBefore = Convert.ToInt32(Read(item, "estoqueGlobal"));
+        object previousOffer = Read(item, "oferta");
+        object previousDemand = Read(item, "demanda");
+        bool previousSellEnabled = Convert.ToBoolean(Read(item, "podeVender"));
+        bool previousTrade = Convert.ToBoolean(Read(relation, "tratadoComercial"));
+        int previousRelation = Convert.ToInt32(Read(relation, "valor"));
+        bool previousWar = Convert.ToBoolean(Read(relation, "guerraDeclarada"));
+        bool previousSanction = Convert.ToBoolean(Read(relation, "sancaoAtiva"));
+        IList history = Read(market, "historico") as IList;
+        Assert.That(history, Is.Not.Null);
+        int historyCount = history.Count;
+        int total = quantityToSell * Mathf.Max(1, Convert.ToInt32(Read(item, "precoAtual")));
+
+        try
+        {
+            Call(government, "DefinirSaldoNacional", 1, 1_000_000_000L);
+            Call(government, "DefinirSaldoNacional", buyerTeamId, 1_000_000_000L);
+            Call(government, "AdicionarEstoque", 1, resourceId, quantityToSell);
+            Write(relation, "valor", 90);
+            Write(relation, "tratadoComercial", true);
+            Write(relation, "guerraDeclarada", false);
+            Write(relation, "sancaoAtiva", false);
+            Write(item, "podeVender", true);
+            Assert.That(Call(market, "EncontrarMelhorComprador", 1, item, quantityToSell), Is.SameAs(buyer),
+                "Com o tratado ativo e saldo disponível, a página deve selecionar o comprador preparado pelo teste.");
+
+            menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { true });
+            menuType.GetMethod("MostrarSecao", Members).Invoke(menu, new object[] { "Mercado" });
+            menuType.GetMethod("MostrarPagina", Members).Invoke(menu, new object[] { "Vender" });
+            FieldInfo contentField = menuType.GetField("conteudo", Members);
+            Assert.That(contentField, Is.Not.Null);
+            VisualElement content = contentField.GetValue(menu) as VisualElement;
+            VisualElement energyCard = content.Query<VisualElement>(className: "gov-market-card").ToList()
+                .FirstOrDefault(card => card.Query<Label>(className: "gov-card-title").First()?.text
+                    .IndexOf("ENERGIA", StringComparison.OrdinalIgnoreCase) >= 0);
+            Assert.That(energyCard, Is.Not.Null, "Energia precisa aparecer na página Mercado > Vender.");
+
+            IntegerField quantity = energyCard.Query<IntegerField>(className: "gov-quantity").First();
+            Assert.That(quantity, Is.Not.Null);
+            quantity.value = quantityToSell;
+            Button sell = energyCard.Query<Button>().ToList()
+                .FirstOrDefault(button => string.Equals(button.text, "VENDER", StringComparison.OrdinalIgnoreCase));
+            Assert.That(sell, Is.Not.Null);
+            Assert.That(sell.enabledSelf, Is.True,
+                "VENDER precisa ficar habilitado com estoque nacional, comprador aliado e saldo disponíveis.");
+            SimulateClick(sell);
+
+            Assert.That(Read(seller, "saldo"), Is.EqualTo(1_000_000_000L + total),
+                "O clique em VENDER deve creditar o valor ao vendedor.");
+            Assert.That(Read(buyer, "saldo"), Is.EqualTo(1_000_000_000L - total),
+                "A venda direta de energia deve debitar o comprador.");
+            Assert.That(Call(government, "ObterEstoque", 1, resourceId), Is.EqualTo(sellerStockBefore),
+                "As unidades vendidas devem sair do estoque do vendedor.");
+            Assert.That(Call(government, "ObterEstoque", buyerTeamId, resourceId), Is.EqualTo(buyerStockBefore + quantityToSell),
+                "A energia vendida deve entrar no estoque do comprador.");
+            Assert.That(Read(item, "estoqueGlobal"), Is.EqualTo(globalStockBefore + quantityToSell));
+            Assert.That(history.Count, Is.EqualTo(historyCount + 1));
+            Assert.That(Read(history[history.Count - 1], "status"), Is.EqualTo("ENTREGUE"));
+        }
+        finally
+        {
+            menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { false });
+            Call(government, "DefinirSaldoNacional", 1, sellerBalanceBefore);
+            Call(government, "DefinirSaldoNacional", buyerTeamId, buyerBalanceBefore);
+            int sellerStockNow = Convert.ToInt32(Call(government, "ObterEstoque", 1, resourceId));
+            int buyerStockNow = Convert.ToInt32(Call(government, "ObterEstoque", buyerTeamId, resourceId));
+            int sellerDelta = sellerStockBefore - sellerStockNow;
+            int buyerDelta = buyerStockBefore - buyerStockNow;
+            if (sellerDelta > 0) Call(government, "AdicionarEstoque", 1, resourceId, sellerDelta);
+            else if (sellerDelta < 0) Call(government, "RemoverEstoque", 1, resourceId, -sellerDelta);
+            if (buyerDelta > 0) Call(government, "AdicionarEstoque", buyerTeamId, resourceId, buyerDelta);
+            else if (buyerDelta < 0) Call(government, "RemoverEstoque", buyerTeamId, resourceId, -buyerDelta);
+            Write(item, "estoqueGlobal", globalStockBefore);
+            Write(item, "oferta", previousOffer);
+            Write(item, "demanda", previousDemand);
+            Write(item, "podeVender", previousSellEnabled);
+            Write(relation, "valor", previousRelation);
+            Write(relation, "tratadoComercial", previousTrade);
+            Write(relation, "guerraDeclarada", previousWar);
+            Write(relation, "sancaoAtiva", previousSanction);
+            while (history.Count > historyCount) history.RemoveAt(history.Count - 1);
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator CountryNameTextFieldCapturesGameplayShortcuts()
+    {
+        Type menuType = ResolveType("MenuGovernoNovoController");
+        Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
+        Assert.That(menu, Is.Not.Null);
+        for (int frame = 0; frame < 120 && !(bool)Read(menu, "Pronto"); frame++)
+            yield return null;
+        Assert.That(Read(menu, "Pronto"), Is.EqualTo(true));
+
+        menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { true });
+        menuType.GetMethod("MostrarSecao", Members).Invoke(menu, new object[] { "Pais" });
+        menuType.GetMethod("MostrarPagina", Members).Invoke(menu, new object[] { "Identidade" });
+        yield return null;
+
+        FieldInfo rootField = menuType.GetField("root", Members);
+        Assert.That(rootField, Is.Not.Null);
+        VisualElement root = rootField.GetValue(menu) as VisualElement;
+        TextField countryName = root.Query<TextField>(className: "gov-identity-field").First();
+        Assert.That(countryName, Is.Not.Null, "A página de identidade precisa mostrar o campo do nome do país.");
+        countryName.Focus();
+        yield return null;
+        Type inputBindingsType = ResolveType("Hegemonia.RTS.RTSInputBindings");
+        MethodInfo isTextEntryFocused = inputBindingsType.GetMethod("IsTextEntryFocused", Members);
+        Assert.That(isTextEntryFocused, Is.Not.Null);
+        Assert.That(isTextEntryFocused.Invoke(null, null), Is.EqualTo(true),
+            "Ao editar o nome, B e os demais atalhos de gameplay precisam ser consumidos pelo campo.");
+
+        countryName.Blur();
+        yield return null;
+        Assert.That(isTextEntryFocused.Invoke(null, null), Is.EqualTo(false),
+            "Os atalhos de gameplay devem voltar a funcionar depois que o campo perder foco.");
+        menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { false });
+    }
+
+    [UnityTest]
+    public IEnumerator InfantryAndTankMoveOnGeneratedGlobalMapLand()
+    {
+        Time.timeScale = 1f;
+        Type streamerType = ResolveType("GlobalTerrainStreamer");
+        Component streamer = UnityEngine.Object.FindFirstObjectByType(streamerType) as Component;
+        Assert.That(streamer, Is.Not.Null, "O streaming real de terreno do GlobalMap precisa estar ativo.");
+        streamerToRestoreAfterMovementTest = streamer;
+        Behaviour streamerBehaviour = streamer as Behaviour;
+        Assert.That(streamerBehaviour, Is.Not.Null);
+        originalStreamerEnabled = streamerBehaviour.enabled;
+        streamerBehaviour.enabled = true;
+        originalTilesCreatedPerFrame = Convert.ToInt32(Read(streamer, "tilesCreatedPerFrame"));
+        originalTerrainRowsPerFrame = Convert.ToInt32(Read(streamer, "terrainRowsPerFrame"));
+        originalVegetationRowsPerFrame = Convert.ToInt32(Read(streamer, "vegetationRowsPerFrame"));
+        originalRefreshInterval = Convert.ToSingle(Read(streamer, "refreshInterval"));
+
+        Camera camera = Read(streamer, "cameraOverride") as Camera;
+        Assert.That(camera, Is.Not.Null, "O streamer precisa apontar para a câmera ativa do mapa global.");
+        cameraToRestoreAfterMovementTest = camera;
+        originalStreamerCameraOverride = camera;
+        originalCameraPositionBeforeMovementTest = camera.transform.position;
+
+        object world = Read(streamer, "world");
+        Assert.That(world, Is.Not.Null, "A definição geográfica do mapa precisa estar atribuída.");
+        float tileSize = Convert.ToSingle(Read(world, "terrainTileSize"));
+        float minX = Convert.ToSingle(Read(world, "MapMinX"));
+        float minZ = Convert.ToSingle(Read(world, "MapMinZ"));
+        Vector2 worldSize = (Vector2)Read(world, "worldSize");
+        float footprintHeight = Convert.ToSingle(Read(world, "mapFootprintHeight"));
+        MethodInfo isLandAtWorld = world.GetType().GetMethod("IsLandAtWorld", Members);
+        MethodInfo containsLand = world.GetType().GetMethod("ContainsLand", Members);
+        MethodInfo heightAtWorld = world.GetType().GetMethod("HeightAtWorld", Members);
+        Assert.That(isLandAtWorld, Is.Not.Null);
+        Assert.That(containsLand, Is.Not.Null);
+        Assert.That(heightAtWorld, Is.Not.Null);
+
+        Vector3 landCameraPosition = Vector3.zero;
+        bool foundLandTile = false;
+        int maxTileX = Mathf.CeilToInt(worldSize.x / tileSize);
+        int maxTileZ = Mathf.CeilToInt(footprintHeight / tileSize);
+        for (int z = 0; z < maxTileZ && !foundLandTile; z++)
+        {
+            for (int x = 0; x < maxTileX; x++)
+            {
+                float sampleX = minX + (x + 0.5f) * tileSize;
+                float sampleZ = minZ + (z + 0.5f) * tileSize;
+                float tileMinX = minX + x * tileSize;
+                float tileMinZ = minZ + z * tileSize;
+                if (!Convert.ToBoolean(isLandAtWorld.Invoke(world, new object[] { sampleX, sampleZ }))
+                    || !Convert.ToBoolean(containsLand.Invoke(world, new object[]
+                    { tileMinX, tileMinZ, tileMinX + tileSize, tileMinZ + tileSize, 64 })))
+                    continue;
+
+                float terrainHeight = Convert.ToSingle(heightAtWorld.Invoke(world, new object[] { sampleX, sampleZ }));
+                landCameraPosition = new Vector3(sampleX, terrainHeight + 300f, sampleZ);
+                foundLandTile = true;
+                break;
+            }
+        }
+        Assert.That(foundLandTile, Is.True, "A definição do mundo precisa fornecer um tile de terra para testar unidades.");
+
+        // A cena pode iniciar a câmera sobre o oceano; nesse caso, zero tiles
+        // locais é correto. Posicione-a temporariamente sobre terra conhecida
+        // para validar os agentes e restaure o valor no teardown.
+        temporaryStreamingCameraObject = new GameObject("GlobalMap_MovementTest_StreamingCamera_Temporary");
+        Camera streamingCamera = temporaryStreamingCameraObject.AddComponent<Camera>();
+        streamingCamera.enabled = false;
+        streamingCamera.transform.position = landCameraPosition;
+        Write(streamer, "cameraOverride", streamingCamera);
+        cameraToRestoreAfterMovementTest = null;
+        Write(streamer, "tilesCreatedPerFrame", 4);
+        Write(streamer, "terrainRowsPerFrame", 64);
+        Write(streamer, "vegetationRowsPerFrame", 16);
+        Write(streamer, "refreshInterval", 0.1f);
+
+        // StreamContinuously captures camera and world state through its own
+        // coroutine. Restart it after swapping the override so it cannot keep
+        // streaming around the scene's original ocean camera.
+        streamerBehaviour.enabled = false;
+        yield return null;
+        streamerBehaviour.enabled = true;
+
+        object runtimeNavMesh = null;
+        for (int frame = 0; frame < 1800; frame++)
+        {
+            runtimeNavMesh = Read(streamer, "runtimeLocalNavMeshData");
+            if (Convert.ToInt32(Read(streamer, "ActiveTileCount")) > 0 && runtimeNavMesh != null)
+                break;
+            yield return null;
+        }
+        int activeTiles = Convert.ToInt32(Read(streamer, "ActiveTileCount"));
+        Assert.That(activeTiles, Is.GreaterThan(0),
+            "O mapa precisa ter terreno local gerado na região de câmera. Diagnóstico: desejados="
+            + Read(streamer, "DesiredTileCount") + ", cache=" + Read(streamer, "CachedTileCount")
+            + ", macro=" + Read(streamer, "IsMacroTerrainMode") + ", câmera=" + streamingCamera.transform.position);
+        Assert.That(runtimeNavMesh, Is.Not.Null,
+            "O NavMesh local precisa estar construído para as unidades terrestres.");
+
+        Type surfaceRegistryType = ResolveType("RegistroSuperficieMapa");
+        Type surfaceClassificationType = ResolveType("ClassificacaoSuperficieMapa");
+        MethodInfo classifySurface = surfaceRegistryType.GetMethod(
+            "TryClassify", Members, null,
+            new[] { typeof(Vector3), surfaceClassificationType.MakeByRefType(), typeof(float).MakeByRefType(), typeof(float), typeof(float) },
+            null);
+        Assert.That(classifySurface, Is.Not.Null);
+
+        Vector3 start = Vector3.zero;
+        bool foundLand = false;
+        Vector3[] directions = { Vector3.zero, Vector3.forward, Vector3.back, Vector3.right, Vector3.left,
+            (Vector3.forward + Vector3.right).normalized, (Vector3.forward + Vector3.left).normalized,
+            (Vector3.back + Vector3.right).normalized, (Vector3.back + Vector3.left).normalized };
+        for (int ring = 0; ring <= 20 && !foundLand; ring++)
+        {
+            float radius = ring * 100f;
+            for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++)
+            {
+                Vector3 probe = streamingCamera.transform.position + directions[directionIndex] * radius;
+                if (!UnityEngine.AI.NavMesh.SamplePosition(probe, out UnityEngine.AI.NavMeshHit hit, 500f, UnityEngine.AI.NavMesh.AllAreas))
+                    continue;
+                object[] classificationArgs = { hit.position, Activator.CreateInstance(surfaceClassificationType), 0f, 1.5f, 0f };
+                bool classified = Convert.ToBoolean(classifySurface.Invoke(null, classificationArgs));
+                if (classified && string.Equals(Convert.ToString(classificationArgs[1]), "Chao", StringComparison.Ordinal))
+                {
+                    start = hit.position;
+                    foundLand = true;
+                    break;
+                }
+            }
+        }
+        Assert.That(foundLand, Is.True,
+            "O NavMesh gerado precisa fornecer um ponto de partida classificado como chão.");
+
+        GameObject unitRoot = new GameObject("GlobalMap_GroundMovementAcceptance_Temporary");
+        unitRoot.SetActive(false);
+        try
+        {
+            yield return AssertPrefabCanMoveOnGround(
+                "Assets/Prefabs/Soldado_Rifle/Soldier.prefab", "Soldier", start,
+                unitRoot, classifySurface, surfaceClassificationType);
+            yield return AssertPrefabCanMoveOnGround(
+                "Assets/Prefabs/Veiculos/Tank_Ubu/Ubu.prefab", "Ubu", start,
+                unitRoot, classifySurface, surfaceClassificationType);
+        }
+        finally
+        {
+            if (unitRoot != null)
+                UnityEngine.Object.Destroy(unitRoot);
+        }
+    }
+
+    private static IEnumerator AssertPrefabCanMoveOnGround(
+        string prefabPath,
+        string unitLabel,
+        Vector3 groundStart,
+        GameObject unitRoot,
+        MethodInfo classifySurface,
+        Type surfaceClassificationType)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+        Assert.That(prefab, Is.Not.Null, "Prefab de unidade não encontrado: " + prefabPath);
+        GameObject unit = UnityEngine.Object.Instantiate(prefab, groundStart, Quaternion.identity, unitRoot.transform);
+        unit.name = "GlobalMap_MovementTest_" + unitLabel;
+        Component identity = unit.GetComponentInChildren(ResolveType("IdentidadeUnidade"), true);
+        Component control = unit.GetComponentInChildren(ResolveType("ControleUnidade"), true);
+        UnityEngine.AI.NavMeshAgent agent = unit.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>(true);
+        Assert.That(identity, Is.Not.Null, unitLabel + " precisa ter IdentidadeUnidade.");
+        Assert.That(control, Is.Not.Null, unitLabel + " precisa ter ControleUnidade.");
+        Assert.That(agent, Is.Not.Null, unitLabel + " precisa ter NavMeshAgent.");
+        Write(identity, "teamID", 1);
+
+        unitRoot.SetActive(true);
+        yield return null;
+        Assert.That(agent.enabled, Is.True, unitLabel + " precisa habilitar o NavMeshAgent.");
+        if (!agent.isOnNavMesh)
+            agent.Warp(groundStart);
+        Assert.That(agent.isOnNavMesh, Is.True, unitLabel + " precisa iniciar sobre o NavMesh do terreno.");
+
+        Vector3 destination = Vector3.zero;
+        bool foundPath = false;
+        Vector3[] directions = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left,
+            (Vector3.forward + Vector3.right).normalized, (Vector3.forward + Vector3.left).normalized,
+            (Vector3.back + Vector3.right).normalized, (Vector3.back + Vector3.left).normalized };
+        for (int distance = 20; distance <= 120 && !foundPath; distance += 10)
+        {
+            for (int directionIndex = 0; directionIndex < directions.Length; directionIndex++)
+            {
+                Vector3 probe = groundStart + directions[directionIndex] * distance;
+                if (!UnityEngine.AI.NavMesh.SamplePosition(probe, out UnityEngine.AI.NavMeshHit hit, 8f, agent.areaMask)
+                    || Vector3.Distance(groundStart, hit.position) < 12f)
+                    continue;
+
+                object[] classificationArgs = { hit.position, Activator.CreateInstance(surfaceClassificationType), 0f, 1.5f, 0f };
+                bool classified = Convert.ToBoolean(classifySurface.Invoke(null, classificationArgs));
+                if (!classified || !string.Equals(Convert.ToString(classificationArgs[1]), "Chao", StringComparison.Ordinal))
+                    continue;
+
+                var path = new UnityEngine.AI.NavMeshPath();
+                if (!UnityEngine.AI.NavMesh.CalculatePath(groundStart, hit.position, agent.areaMask, path)
+                    || path.status != UnityEngine.AI.NavMeshPathStatus.PathComplete)
+                    continue;
+
+                destination = hit.position;
+                foundPath = true;
+                break;
+            }
+        }
+        Assert.That(foundPath, Is.True,
+            unitLabel + " precisa encontrar um ponto terrestre conectado no NavMesh da região visível.");
+
+        bool orderAccepted = Convert.ToBoolean(Call(control, "EmitirOrdemMover", destination, true));
+        Assert.That(orderAccepted, Is.True,
+            unitLabel + " recusou a ordem terrestre: " + Convert.ToString(Read(control, "ultimoMotivoRecusaOrdem")));
+
+        float startDistance = Vector3.Distance(groundStart, destination);
+        float deadline = Time.realtimeSinceStartup + 8f;
+        while (Time.realtimeSinceStartup < deadline
+            && HorizontalDistance(unit.transform.position, groundStart) < 1f)
+            yield return null;
+        float horizontalMovement = HorizontalDistance(unit.transform.position, groundStart);
+        Assert.That(horizontalMovement, Is.GreaterThan(1f),
+            unitLabel + " aceitou a ordem, mas não saiu do ponto inicial sobre o chão."
+            + " movimentoXZ=" + horizontalMovement.ToString("F2")
+            + " agente=" + agent.transform.position
+            + " velocidade=" + agent.velocity
+            + " destinoAgente=" + agent.destination
+            + " parado=" + agent.isStopped
+            + " temCaminho=" + agent.hasPath
+            + " pathPending=" + agent.pathPending
+            + " remaining=" + (agent.hasPath && !agent.pathPending ? agent.remainingDistance.ToString("F2") : "n/a")
+            + " executor=" + Convert.ToString(Read(control, "executorControleAtual"))
+            + " motivo=" + Convert.ToString(Read(control, "ultimoMotivoRecusaOrdem")));
+        Assert.That(agent.pathStatus, Is.EqualTo(UnityEngine.AI.NavMeshPathStatus.PathComplete),
+            unitLabel + " precisa manter um caminho completo sobre o terreno.");
+        Assert.That(Vector3.Distance(unit.transform.position, destination), Is.LessThan(startDistance),
+            unitLabel + " precisa se aproximar do destino terrestre.");
+
+        UnityEngine.Object.Destroy(unit);
+        yield return null;
+        unitRoot.SetActive(false);
+    }
+
+    private static float HorizontalDistance(Vector3 left, Vector3 right)
+    {
+        left.y = 0f;
+        right.y = 0f;
+        return Vector3.Distance(left, right);
     }
 
     [UnityTest]

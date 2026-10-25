@@ -3490,16 +3490,19 @@ namespace Hegemonia.AI.IA03
 
         private void AoReceberDanoGlobal(SistemaDeDanos alvo, GameObject agressor, float dano)
         {
-            if (alvo == null || !alvo.ehEstrutura || brain == null || dano <= 0f)
+            if (alvo == null || brain == null || dano <= 0f)
             {
                 return;
             }
 
-            // O evento global chega depois de vidaAtual ser subtraída. Reconstruir
-            // a vida anterior limita impactos letais ao dano realmente aplicado,
-            // sem contar o excedente do golpe como prejuízo estrutural.
-            float danoEstruturalEfetivo = CalcularDanoEstruturalEfetivo(dano, alvo.vidaAtual);
-            if (danoEstruturalEfetivo <= 0f)
+            bool danoEstrutural = alvo.ehEstrutura;
+            // O evento global chega depois de vidaAtual ser subtraída. Em
+            // estruturas, contabiliza só o dano efetivamente aplicado. Dano a
+            // unidades também gera resposta, mas não entra no relatório estrutural.
+            float danoEfetivo = danoEstrutural
+                ? CalcularDanoEstruturalEfetivo(dano, alvo.vidaAtual)
+                : Mathf.Min(dano, Mathf.Max(0f, alvo.vidaAtual + dano));
+            if (danoEfetivo <= 0f)
             {
                 return;
             }
@@ -3523,7 +3526,7 @@ namespace Hegemonia.AI.IA03
 
                 if (identidadeAlvo.teamID == paisAlvoTeamId)
                 {
-                    relatorio.RegistrarDanoEstrutural(true, danoEstruturalEfetivo);
+                    if (danoEstrutural) relatorio.RegistrarDanoEstrutural(true, danoEfetivo);
                 }
             }
 
@@ -3536,19 +3539,30 @@ namespace Hegemonia.AI.IA03
 
                 if (identidadeAgressor.teamID != paisAlvoTeamId)
                 {
-                    return;
+                    // O alvo estratégico pré-configurado não é necessariamente
+                    // quem iniciou hostilidades nesta partida. Em paz, o primeiro
+                    // dano confirmado define o agressor real para a resposta da IA03.
+                    if (nivelDeConflito == IA03NivelConflito.Paz)
+                    {
+                        paisAlvoTeamId = identidadeAgressor.teamID;
+                    }
                 }
 
-                relatorio.RegistrarDanoEstrutural(false, danoEstruturalEfetivo);
+                if (danoEstrutural) relatorio.RegistrarDanoEstrutural(false, danoEfetivo);
                 if (nivelDeConflito == IA03NivelConflito.Paz)
                 {
-                    DefinirNivelConflito(IA03NivelConflito.Tensao, "estrutura nacional sob ataque");
+                    DefinirNivelConflito(
+                        IA03NivelConflito.Tensao,
+                        danoEstrutural ? "estrutura nacional sob ataque" : "unidade nacional sob ataque");
                 }
 
-                MissaoEstrategicaSO defesa = SelecionarMissaoDeDefesa(alvo.name);
-                if (defesa != null)
+                if (danoEstrutural)
                 {
-                    SolicitarMissaoEstrategica(defesa, "ataque a " + alvo.name, true);
+                    MissaoEstrategicaSO defesa = SelecionarMissaoDeDefesa(alvo.name);
+                    if (defesa != null)
+                    {
+                        SolicitarMissaoEstrategica(defesa, "ataque a " + alvo.name, true);
+                    }
                 }
             }
 

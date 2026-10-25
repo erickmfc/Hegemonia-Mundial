@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Hegemonia.RTS;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -1435,7 +1436,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
         ProcessarEntradaToolkitFallback();
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyCode.Escape) && !RTSInputBindings.IsTextEntryFocused())
         {
             if (quartel != null)
             {

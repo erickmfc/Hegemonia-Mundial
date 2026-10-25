@@ -72,8 +72,8 @@ public class ConfigurarHRay : MonoBehaviour
         ctrl.tamanhoSelecao = 5f;
 
         // 7. Configura Voo
-        heli.altitudeDeVoo = 15f;
-        heli.altitudeDeVoo = 15f;
+        heli.altitudeDeVoo = 30f;
+        heli.altitudeDeVoo = 30f;
 
         Debug.Log("✨ [Doutor H-Ray] REPARO CONCLUÍDO! ✨");
     }

@@ -104,7 +104,9 @@ public sealed class HUDAjudaRTS : MonoBehaviour
     {
         // F10 sempre fecha o card. F1 alterna entre o card completo e a ajuda
         // rápida, sem deixar o atalho de fechar abrir a ajuda novamente.
-        if (usarPainelAjudaLegado && Input.GetKeyDown(KeyCode.F10))
+        if (usarPainelAjudaLegado
+            && !Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()
+            && Input.GetKeyDown(KeyCode.F10))
         {
             expandido = false;
             recolherAutomaticamenteEm = -1f;
@@ -112,6 +114,7 @@ public sealed class HUDAjudaRTS : MonoBehaviour
             AtualizarVisibilidadePainel(false);
         }
         else if (usarPainelAjudaLegado
+            && !Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()
             && ((Input.GetKeyDown(KeyCode.F1) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.BarraContextualDisponivel))
                 || Input.GetKeyDown(teclaAlternar)
                 || (Input.GetKeyDown(KeyCode.N)

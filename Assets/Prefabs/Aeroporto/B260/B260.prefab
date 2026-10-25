@@ -288,8 +288,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 2.2
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &528291891322567192
 MonoBehaviour:
@@ -316,7 +316,7 @@ MonoBehaviour:
   raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 181
+  altitudeVoo: 362
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -345,7 +345,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AviaoBombardeiro
   modoDeAtaque: 0
-  altitudeDeVoo: 300
+  altitudeDeVoo: 600
   projetilPrefab: {fileID: 3328076729220811044, guid: dbebd4d27cec9d5489b2a750959bdb87, type: 3}
   comportasDeBomba:
   - {fileID: 9069516014634279153}

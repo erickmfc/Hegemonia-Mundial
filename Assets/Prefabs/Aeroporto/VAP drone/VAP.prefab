@@ -131,8 +131,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 1.7
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &5074788994469237824
 MonoBehaviour:
@@ -212,7 +212,7 @@ MonoBehaviour:
   raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 181
+  altitudeVoo: 362
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30

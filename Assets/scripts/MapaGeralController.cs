@@ -487,12 +487,7 @@ public class MapaGeralController : MonoBehaviour
 
     void Update()
     {
-        GameObject campoSelecionado = UnityEngine.EventSystems.EventSystem.current != null
-            ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject
-            : null;
-        if (campoSelecionado != null
-            && (campoSelecionado.GetComponent<UnityEngine.UI.InputField>() != null
-                || campoSelecionado.GetComponent("TMP_InputField") != null))
+        if (RTSInputBindings.IsTextEntryFocused())
         {
             return;
         }

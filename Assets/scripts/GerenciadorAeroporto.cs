@@ -732,7 +732,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
-        if (UnityEngine.EventSystems.EventSystem.current != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null) return;
+        if (Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()) return;
 
         if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Keypad7))
         {

@@ -718,6 +718,9 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
 
+        if (RTSInputBindings.IsTextEntryFocused())
+            return;
+
         ProcessarAtalhosHud();
 
         if (!menuAberto && Time.unscaledTime >= proximaAtualizacaoContextual)
@@ -728,10 +731,13 @@ public class MenuComandoController : MonoBehaviour
             AtualizarBarraComandoContextual();
         }
 
+        KeyCode teclaQuartelConfigurada = RTSInputBindings.GetKey(RTSInputAction.Barracks);
         if (bloquearAberturaAteEntradaDaCompraSerLiberada
             && !Construtor.EmModoConstrucaoAtivo
             && !Input.GetMouseButton(0)
             && !Input.GetKey(KeyCode.C)
+            && !Input.GetKey(KeyCode.B)
+            && (teclaQuartelConfigurada == KeyCode.None || !Input.GetKey(teclaQuartelConfigurada))
             && !Input.GetKey(KeyCode.Alpha1)
             && !Input.GetKey(KeyCode.Keypad1))
         {

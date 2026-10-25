@@ -178,7 +178,7 @@ MonoBehaviour:
   controleSempreAtivo: 0
   selecionado: 1
   raioDoClique: 13
-  altitudeDeVoo: 25
+  altitudeDeVoo: 50
   alturaPouso: 1.33
   velocidadeHelice: 1200
   velocidadeNavegacao: 30
@@ -318,8 +318,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 5.4
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!82 &3225137902799207982
 AudioSource:
@@ -10480,8 +10480,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 2.8
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!4 &2969699705579729559 stripped
 Transform:

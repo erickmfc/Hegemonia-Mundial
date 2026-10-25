@@ -374,7 +374,7 @@ MonoBehaviour:
   raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 90
+  altitudeVoo: 180
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -488,8 +488,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 2.7
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &617087563058528433
 MonoBehaviour:
@@ -518,7 +518,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b3111c5c5b2e754fbb3d1eec33b04da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  altitudeCruzeiro: 350
+  altitudeCruzeiro: 700
   alturaDecolagem: 15
   velocidadeTaxi: 10
   velocidadeCruzeiro: 55
@@ -678,7 +678,7 @@ MonoBehaviour:
   distanciaManterAlvo: 250
   raioPatrulha: 400
   altitudeMinimaVoo: 60
-  altitudeCruzeiro: 90
+  altitudeCruzeiro: 180
 --- !u!1001 &1796690068342040930
 PrefabInstance:
   m_ObjectHideFlags: 0

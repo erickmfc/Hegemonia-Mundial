@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
+using Hegemonia.RTS;
 
 public class TransporteAnfibio : MonoBehaviour
 {
@@ -121,14 +122,15 @@ public class TransporteAnfibio : MonoBehaviour
 
     void Update()
     {
+        bool textoEmEdicao = RTSInputBindings.IsTextEntryFocused();
         // Só processa comandos se estiver selecionado
         if (controleUnidadeCache != null && controleUnidadeCache.selecionado)
         {
-            if (Input.GetKeyDown(KeyCode.O)) AlternarMenuCarga();
+            if (!textoEmEdicao && Input.GetKeyDown(KeyCode.O)) AlternarMenuCarga();
             
             // NOVOS CONTROLES:
-            if (Input.GetKeyDown(KeyCode.U)) IniciarEmbarque(); // U = EMBARCAR
-            if (Input.GetKeyDown(KeyCode.P)) CicloFecharDesembarcar(); // P = FECHAR/DESEMBARCAR
+            if (!textoEmEdicao && Input.GetKeyDown(KeyCode.U)) IniciarEmbarque(); // U = EMBARCAR
+            if (!textoEmEdicao && Input.GetKeyDown(KeyCode.P)) CicloFecharDesembarcar(); // P = FECHAR/DESEMBARCAR
         }
         
         AnimarPorta();

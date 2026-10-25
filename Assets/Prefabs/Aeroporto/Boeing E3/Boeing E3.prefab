@@ -103,8 +103,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 2.44
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &316442482009284323
 MonoBehaviour:
@@ -163,7 +163,7 @@ MonoBehaviour:
   raioOrbitaMissao: 600
   velocidadeOrbitaMissao: 0.35
   margemChegadaMissao: 120
-  altitudeVoo: 350
+  altitudeVoo: 700
   modeloMecanicoVisual: {fileID: 3966095571627074159}
   asaBankingMaximo: 12
   arfagemPitchMaxima: 8
@@ -189,7 +189,7 @@ MonoBehaviour:
   receberInformacoesDeOutrosSensores: 1
   retransmitirParaAliados: 1
   alertarQuartelDoJogador: 1
-  altitudeCruzeiroE3: 350
+  altitudeCruzeiroE3: 700
   velocidadeCruzeiroE3: 145
   velocidadeMinimaEmCurva: 82
   taxaCurvaE3: 10

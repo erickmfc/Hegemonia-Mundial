@@ -17,7 +17,7 @@ public class AviaoBombardeiro : MonoBehaviour
     public ModoAtaque modoDeAtaque = ModoAtaque.AtaqueAoSolo;
     
     [Tooltip("Quão alto ele deve voar para não ser pego facilmente")]
-    public float altitudeDeVoo = 150f;
+    public float altitudeDeVoo = 300f;
     
     [Tooltip("Prefab do Projétil (Míssil ou Bomba) a ser lançado.")]
     public GameObject projetilPrefab;

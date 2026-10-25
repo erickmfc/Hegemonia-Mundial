@@ -151,7 +151,8 @@ public sealed class MenuCombateNaval : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.O))
+        if (!RTSInputBindings.IsTextEntryFocused()
+            && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.O)))
         {
             Fechar();
             return;

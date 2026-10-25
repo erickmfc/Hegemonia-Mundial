@@ -5041,7 +5041,7 @@ MonoBehaviour:
   raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 200
+  altitudeVoo: 400
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 45
   arfagemPitchMaxima: 20
@@ -5070,7 +5070,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   modoDeAtaque: 0
-  altitudeDeVoo: 150
+  altitudeDeVoo: 300
   projetilPrefab: {fileID: 3328076729220811044, guid: dbebd4d27cec9d5489b2a750959bdb87, type: 3}
   comportasDeBomba: []
   intervaloEntreBombas: 0.3
@@ -5105,8 +5105,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 3
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!1 &459352234960253744
 GameObject:

@@ -171,7 +171,7 @@ MonoBehaviour:
   raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 350
+  altitudeVoo: 700
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 75
   arfagemPitchMaxima: 30
@@ -217,7 +217,7 @@ MonoBehaviour:
   velocidadeCruzeiro: 70
   aceleracaoVoo: 42
   giroVoo: 30
-  altitudeCruzeiro: 350
+  altitudeCruzeiro: 700
   distanciaAproximacao: 220
   distanciaDescida: 90
   distanciaRolagem: 45
@@ -341,8 +341,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 1.86
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 0
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &7583833788630706348
 MonoBehaviour:

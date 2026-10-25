@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.SceneManagement;
 using Hegemonia.AI.IA03;
+using Hegemonia.RTS;
 
 /// <summary>
 /// GerenciadorPortaAvioes - Especializado para navios porta-aviões.
@@ -653,7 +654,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         // ==========================================
         // 2. SISTEMA DA TECLA 'O' COM TRAVA DE SEGURANÇA (CORRIGIDO)
         // ==========================================
-        if (Input.GetKeyDown(KeyCode.O))
+        if (!RTSInputBindings.IsTextEntryFocused() && Input.GetKeyDown(KeyCode.O))
         {
             if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto) return;
 

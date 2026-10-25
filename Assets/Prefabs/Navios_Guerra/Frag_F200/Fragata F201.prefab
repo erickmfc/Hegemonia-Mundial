@@ -14927,8 +14927,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 2.48
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!54 &6102549834131431803
 Rigidbody:

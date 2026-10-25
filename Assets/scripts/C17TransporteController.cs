@@ -18,7 +18,7 @@ namespace Hegemonia.Aeronaves.C17
         [SerializeField, Min(1f)] private float velocidadeTaxi = 10f;
         [SerializeField, Min(5f)] private float velocidadePista = 62f;
         [SerializeField, Min(5f)] private float velocidadeCruzeiro = 105f;
-        [SerializeField, Min(20f)] private float altitudeCruzeiro = 300f;
+        [SerializeField, Min(20f)] private float altitudeCruzeiro = 600f;
         [SerializeField, Min(1f)] private float aceleracaoPista = 22f;
         [SerializeField, Min(1f)] private float taxaCurvaSolo = 140f;
         [SerializeField, Min(1f)] private float taxaCurvaVoo = 55f;

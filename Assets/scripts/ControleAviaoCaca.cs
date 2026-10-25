@@ -6,7 +6,7 @@ using System.Collections.Generic;
 public class ControleAviaoCaca : MonoBehaviour
 {
     [Header("Status de Voo")]
-    public float altitudeCruzeiro = ControleAviao.AltitudeMinimaVooMilitar;
+    public float altitudeCruzeiro = ControleAviao.AltitudeMinimaVooMilitar * 2f;
     [Tooltip("Altura para recolher o trem de pouso e considerar 'Voando'.")]
     public float alturaDecolagem = 15f; 
     

@@ -550,7 +550,7 @@ public class LancadorMisselCaca : MonoBehaviour
         if (scriptVoo != null)
         {
             Vector3 velAtual = (_rb != null) ? _rb.linearVelocity : (transform.forward * 40f); 
-            scriptVoo.IniciarAtaque(alvo.position, velAtual, alvo);
+            scriptVoo.IniciarAtaque(alvo.position, velAtual, alvo, gameObject);
             MissileThreatTracker.RegistrarLancamento(missil, this, alvo.position, alvo, Mathf.Max(velAtual.magnitude, MissileThreatTracker.EstimarVelocidade(missil)));
         }
 
@@ -677,8 +677,13 @@ public class LancadorMisselCaca : MonoBehaviour
             }
 
             GUI.enabled = (municaoAtual > 0 && cronometroRecarga <= 0);
-            if (GUI.Button(new Rect(225, slotY + 5, 80, 30), "ATACAR"))
-                Disparar(alvo.transform);
+            if (GUI.Button(new Rect(225, slotY + 5, 80, 30), "ATACAR")
+                && Disparar(alvo.transform))
+            {
+                // A seleção foi consumida pelo disparo; fecha o radar sem
+                // interromper a missão ou a sequência de guiagem do míssil.
+                radarFechado = true;
+            }
             GUI.enabled = true;
         }
 

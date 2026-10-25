@@ -112,7 +112,7 @@ public class ControleAviao : MonoBehaviour
     [Tooltip("Distância para considerar que chegou ao centro inicial da missão.")]
     public float margemChegadaMissao = 65f;
     [Tooltip("Altitude de voo padrão da aeronave (em metros).")]
-    public float altitudeVoo = 120f;
+    public float altitudeVoo = 240f;
 
     [Header("=== ANIMAÇÃO VISUAL ===")]
     public Transform modeloMecanicoVisual; 

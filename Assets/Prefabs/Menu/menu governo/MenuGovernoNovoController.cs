@@ -4,6 +4,7 @@ using System.Linq;
 using System.Globalization;
 using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.IA03;
+using Hegemonia.RTS;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -142,10 +143,14 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         Instancia = this;
         documento = GetComponent<UIDocument>();
+        RTSInputBindings.RegisterTextInputDocument(documento);
     }
 
     private void OnEnable()
     {
+        if (documento == null)
+            documento = GetComponent<UIDocument>();
+        RTSInputBindings.RegisterTextInputDocument(documento);
         InicializarSeNecessario();
         AssinarNotificacoesGoverno();
         if (Pronto)
@@ -175,6 +180,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     private void OnDisable()
     {
         RemoverAssinaturaNotificacoesGoverno();
+        RTSInputBindings.UnregisterTextInputDocument(documento);
     }
 
     private void Update()
@@ -186,7 +192,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
 
         AssinarNotificacoesGoverno();
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyCode.Escape) && !Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused())
         {
             Abrir(false);
             return;
@@ -1521,6 +1527,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         percentualCaixa.AddToClassList("gov-share-slider");
         Label resumoOrcamento = new Label();
         resumoOrcamento.AddToClassList("gov-share-value");
+        resumoOrcamento.AddToClassList("gov-culture-budget-summary");
         Action atualizarResumo = () =>
         {
             long caixa = governo.ObterSaldoDisponivelParaOperacao(TeamJogador);
@@ -2488,6 +2495,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             VisualElement card = new VisualElement(); card.AddToClassList("gov-stat-card");
             Label titulo = new Label(dado.titulo); titulo.AddToClassList("gov-stat-label"); card.Add(titulo);
             Label valor = new Label(dado.valor); valor.AddToClassList("gov-stat-value"); valor.AddToClassList(dado.estado); card.Add(valor);
+            int tamanhoValor = string.IsNullOrEmpty(dado.valor) ? 0 : dado.valor.Length;
+            valor.style.fontSize = tamanhoValor >= 18 ? 12f : tamanhoValor >= 15 ? 13f : 16f;
             linha.Add(card);
         }
         conteudo.Add(linha);

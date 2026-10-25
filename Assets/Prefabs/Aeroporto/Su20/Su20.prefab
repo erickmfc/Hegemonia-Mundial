@@ -422,8 +422,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 3.7
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &5681299324837834987
 MonoBehaviour:
@@ -437,7 +437,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b3111c5c5b2e754fbb3d1eec33b04da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleAviaoCaca
-  altitudeCruzeiro: 181
+  altitudeCruzeiro: 362
   alturaDecolagem: 15
   velocidadeTaxi: 15
   velocidadeCruzeiro: 65
@@ -481,7 +481,7 @@ MonoBehaviour:
   raioOrbitaMissao: 400
   velocidadeOrbitaMissao: 0.9
   margemChegadaMissao: 65
-  altitudeVoo: 181
+  altitudeVoo: 362
   modeloMecanicoVisual: {fileID: 0}
   asaBankingMaximo: 45
   arfagemPitchMaxima: 20

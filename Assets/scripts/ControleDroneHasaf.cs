@@ -21,7 +21,7 @@ public class ControleDroneHasaf : MonoBehaviour
     public float distanciaManterAlvo = 250f;
     public float raioPatrulha = 400f;
     [Min(0f)] public float altitudeMinimaVoo = 60f;
-    [Min(0f)] public float altitudeCruzeiro = 90f;
+    [Min(0f)] public float altitudeCruzeiro = 180f;
     private Transform alvoSeguir;
 
     private void Awake()

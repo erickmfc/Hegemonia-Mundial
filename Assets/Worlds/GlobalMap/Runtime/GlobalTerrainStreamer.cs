@@ -16,6 +16,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private const int LocalNavMeshAgentTypeId = 0;
     private const int LocalNavMeshTileSize = 256;
     private const float LocalNavMeshVoxelSize = 4f;
+    private const int LandTileDetectionSamplesPerAxis = 64;
     private const int MaximumCachedTerrainTiles = 9;
     private const int MaximumTerrainRowsPerFrame = 8;
     private const float AltitudeModeHysteresis = 1000f;
@@ -369,12 +370,11 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 if (x < 0 || x > maxX) continue;
                 float minX = world.MapMinX + x * size;
                 float minZ = world.MapMinZ + z * size;
-                // Coastal and narrow land strips can be missed by 10 samples
-                // across an 8 km tile. Such a tile then falls back to the
-                // coarse terrain and has no local collider/NavMesh. A denser
-                // test keeps visible land represented by streamed gameplay
-                // terrain without changing the tile radius or frame budget.
-                if (!world.ContainsLand(minX, minZ, minX + size, minZ + size, 16))
+                // The coarse map can show narrow coastal land which a sparse
+                // tile test misses. Such a tile has no local collider/NavMesh,
+                // so ground units cannot reach points that visibly look like
+                // land. Sample at 125 m intervals for the 8 km world tiles.
+                if (!world.ContainsLand(minX, minZ, minX + size, minZ + size, LandTileDetectionSamplesPerAxis))
                     continue;
                 Vector2Int coordinate = new Vector2Int(x, z);
                 desiredTiles.Add(coordinate);

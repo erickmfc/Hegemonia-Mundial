@@ -6672,8 +6672,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 3.8
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &6203074195384595765
 MonoBehaviour:
@@ -7149,8 +7149,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 6.6
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -46
-  duracaoAfundamento: 7
+  anguloAfundamentoX: -6
+  duracaoAfundamento: 55
   atrasoPosAfundamento: 0.6
 --- !u!114 &4370470878234283316
 MonoBehaviour:

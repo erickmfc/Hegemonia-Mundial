@@ -462,7 +462,8 @@ public class ControleUnidade : MonoBehaviour
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
 
-        if (selecionado && EhUnidadeNaval()
+        if (!Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()
+            && selecionado && EhUnidadeNaval()
             && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto)
             && !QuartelMenuUIController.EntradaGlobalBloqueada
             && !MenuGoverno.EstaAberto)
@@ -2250,6 +2251,19 @@ public class ControleUnidade : MonoBehaviour
         if (agente == null || !agente.enabled || !agente.isActiveAndEnabled || !agente.isOnNavMesh)
         {
             return;
+        }
+
+        if (!EhUnidadeNaval() && !ehAereo && hovercraftTransporte == null
+            && RegistroSuperficieMapa.TryClassify(destino, out ClassificacaoSuperficieMapa superficieDestino, out _)
+            && superficieDestino == ClassificacaoSuperficieMapa.Chao
+            && NavMesh.SamplePosition(destino, out NavMeshHit destinoNavMesh, 100f, agente.areaMask)
+            && RegistroSuperficieMapa.TryClassify(destinoNavMesh.position, out ClassificacaoSuperficieMapa superficieAjustada, out _)
+            && superficieAjustada == ClassificacaoSuperficieMapa.Chao)
+        {
+            // Mouse clicks near a streamed coastline can land just outside the
+            // baked NavMesh although the selected point is still on visible
+            // land. Keep the destination on the nearest ground polygon.
+            destino = destinoNavMesh.position;
         }
 
         float cooldownBase = EhUnidadeNaval() ? 1.10f : 0.80f;

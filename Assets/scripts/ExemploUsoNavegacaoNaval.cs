@@ -33,6 +33,7 @@ public class ExemploUsoNavegacaoNaval : MonoBehaviour
     
     void Update()
     {
+        if (Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()) return;
         if (navegacao == null) return;
         if (MenuGoverno.EstaAberto) return;
         

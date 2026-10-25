@@ -48,7 +48,7 @@
 .gov-tabs .unity-scroll-view__content-container { flex-direction: row; }
 .gov-navigation .unity-scroll-view__content-container { flex-direction: column; }
 .gov-content .unity-scroll-view__content-container { flex-direction: column; flex-shrink: 0; }
-.gov-actions .unity-scroll-view__content-container { width: 100%; max-width: 100%; min-width: 0; flex-direction: column; align-items: stretch; flex-shrink: 1; }
+.gov-actions .unity-scroll-view__content-container { width: 100%; max-width: 100%; min-width: 0; flex-direction: column; align-items: stretch; flex-shrink: 0; }
 .gov-page { flex-grow: 1; min-width: 0; min-height: 0; margin-top: 12px; flex-direction: row; flex-wrap: nowrap; }
 .gov-content { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; min-height: 0; height: 100%; padding: 16px; background-color: rgb(3,13,21); border-width: 1px; border-color: rgba(90,202,211,0.22); }
 .gov-actions { width: auto; max-width: 410px; min-width: 0; flex-basis: 360px; flex-grow: 0; flex-shrink: 1; min-height: 0; height: 100%; margin-left: 12px; padding: 14px; background-color: rgb(5,18,27); border-width: 1px; border-color: rgba(90,202,211,0.22); }
@@ -66,8 +66,8 @@
 .gov-action-button.buy { color: rgb(136,225,160); border-color: rgba(110,211,111,0.32); border-left-color: rgb(110,211,111); }
 .gov-action-button.warning { color: rgb(248,208,121); border-color: rgba(248,196,84,0.32); border-left-color: rgb(248,196,84); }
 .gov-action-button.danger { color: rgb(255,145,145); border-color: rgba(255,91,91,0.35); border-left-color: rgb(255,91,91); }
-.gov-action-section { width: auto; min-width: 0; align-self: stretch; flex-shrink: 1; margin-bottom: 12px; padding: 12px; background-color: rgba(8,25,36,0.82); border-width: 1px; border-color: rgba(90,202,211,0.22); border-radius: 5px; }
-.gov-action-section-title { margin-bottom: 6px; color: rgb(224,177,74); font-size: 12px; -unity-font-style: bold; letter-spacing: 0.5px; }
+.gov-action-section { width: auto; min-width: 0; align-self: stretch; flex-shrink: 0; margin-bottom: 12px; padding: 12px; background-color: rgba(8,25,36,0.82); border-width: 1px; border-color: rgba(90,202,211,0.22); border-radius: 5px; }
+.gov-action-section-title { min-width: 0; max-width: 100%; white-space: normal; margin-bottom: 6px; color: rgb(224,177,74); font-size: 12px; -unity-font-style: bold; letter-spacing: 0.5px; }
 .gov-action-section-copy { margin-bottom: 8px; color: rgb(159,176,189); font-size: 11px; white-space: normal; }
 .gov-action-grid { width: 100%; min-width: 0; flex-direction: row; align-items: stretch; flex-wrap: wrap; margin-top: 5px; }
 .gov-action-option { width: auto; min-width: 120px; flex-basis: 150px; flex-grow: 1; min-height: 64px; margin: 0 5px 8px 0; padding: 8px; color: rgb(213,235,239); background-image: none; background-color: rgba(10,35,47,0.92); border-width: 1px; border-color: rgba(90,202,211,0.34); border-radius: 4px; font-size: 11px; -unity-font-style: bold; -unity-text-align: middle-center; white-space: normal; }
@@ -83,7 +83,8 @@
 .gov-investment-mode:hover { color: white; background-color: rgba(18,70,82,0.98); }
 .gov-action-wide { width: 100%; min-height: 40px; margin-bottom: 0; font-size: 11px; }
 .gov-action-notice { margin: 3px 0 2px 0; padding: 7px 8px; color: rgb(248,196,84); background-color: rgba(248,196,84,0.07); border-width: 1px; border-color: rgba(248,196,84,0.24); font-size: 10px; white-space: normal; }
-.gov-culture-control { width: 100%; min-width: 0; margin-bottom: 12px; padding: 12px; background-color: rgba(6,23,33,0.9); border-width: 1px; border-color: rgba(54,214,220,0.22); }
+.gov-culture-control { width: 100%; min-width: 0; flex-shrink: 0; margin-bottom: 12px; padding: 12px; background-color: rgba(6,23,33,0.9); border-width: 1px; border-color: rgba(54,214,220,0.22); }
+.gov-culture-control .gov-card-title { min-width: 0; max-width: 100%; white-space: normal; }
 .gov-culture-select { min-height: 42px; margin-bottom: 10px; color: rgb(220,231,238); font-size: 12px; }
 .gov-culture-select .unity-base-field__label { color: rgb(159,176,189); font-size: 10px; -unity-font-style: bold; }
 .gov-culture-select .unity-base-field__input,
@@ -97,6 +98,7 @@
 .gov-share-slider .unity-base-slider__tracker { height: 8px; background-color: rgba(54,214,220,0.2); border-radius: 4px; }
 .gov-share-slider .unity-base-slider__dragger { width: 18px; height: 18px; background-color: rgb(54,214,220); border-width: 2px; border-color: rgb(3,17,25); border-radius: 9px; }
 .gov-share-value { width: 60px; color: rgb(54,214,220); font-size: 22px; -unity-font-style: bold; -unity-text-align: middle-right; }
+.gov-culture-budget-summary { width: 100%; min-width: 0; max-width: 100%; margin-top: 4px; font-size: 12px; white-space: normal; overflow: hidden; -unity-text-align: middle-left; }
 .gov-share-presets { flex-direction: row; margin: 2px 0 9px 0; }
 .gov-share-preset { flex-grow: 1; min-width: 42px; min-height: 32px; margin-right: 6px; color: rgb(205,217,223); background-image: none; background-color: rgba(54,214,220,0.07); border-width: 1px; border-color: rgba(54,214,220,0.28); border-radius: 4px; font-size: 10px; -unity-font-style: bold; }
 .gov-share-preset:hover { color: white; background-color: rgba(54,214,220,0.2); border-color: rgba(54,214,220,0.75); }
@@ -131,9 +133,9 @@
 .gov-heading { margin-bottom: 8px; font-size: 22px; -unity-font-style: bold; color: rgb(245,247,250); }
 .gov-subheading { margin-bottom: 16px; font-size: 13px; color: rgb(159,176,189); white-space: normal; }
 .gov-stat-grid { flex-direction: row; flex-wrap: wrap; margin-bottom: 12px; }
-.gov-stat-card { flex-grow: 1; flex-basis: 160px; min-height: 92px; margin: 0 10px 10px 0; padding: 12px 14px; justify-content: center; background-color: rgba(255,255,255,0.025); border-width: 1px; border-color: rgba(54,214,220,0.18); }
+.gov-stat-card { flex-grow: 1; flex-basis: 160px; min-width: 0; min-height: 92px; margin: 0 10px 10px 0; padding: 12px 14px; justify-content: center; overflow: hidden; background-color: rgba(255,255,255,0.025); border-width: 1px; border-color: rgba(54,214,220,0.18); }
 .gov-stat-label { font-size: 11px; color: rgb(159,176,189); }
-.gov-stat-value { margin-top: 4px; font-size: 24px; -unity-font-style: bold; }
+.gov-stat-value { width: 100%; min-width: 0; max-width: 100%; flex-shrink: 1; margin-top: 4px; font-size: 16px; white-space: normal; overflow: hidden; -unity-font-style: bold; }
 .gov-table-row { flex-direction: row; align-items: center; min-height: 38px; border-bottom-width: 1px; border-bottom-color: rgba(54,214,220,0.12); }
 .gov-table-row.header { background-color: rgba(255,255,255,0.03); border-bottom-color: rgba(224,177,74,0.22); }
 .gov-table-cell { flex-grow: 1; flex-basis: 0; min-width: 0; padding: 9px 10px; font-size: 12px; color: rgb(220,231,238); }

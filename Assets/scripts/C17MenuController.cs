@@ -1,5 +1,6 @@
 using UnityEngine;
 using Hegemonia.Menus;
+using Hegemonia.RTS;
 
 namespace Hegemonia.Aeronaves.C17
 {
@@ -13,6 +14,7 @@ namespace Hegemonia.Aeronaves.C17
 
         private void Update()
         {
+            if (RTSInputBindings.IsTextEntryFocused()) return;
             if (Input.GetKeyDown(KeyCode.O) && controlador != null && controlador.EstaSelecionado()) AlternarMenuO();
         }
 

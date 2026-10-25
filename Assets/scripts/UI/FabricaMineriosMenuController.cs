@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Hegemonia.RTS;
 
 [DisallowMultipleComponent]
 public sealed class FabricaMineriosMenuController : MonoBehaviour
@@ -114,7 +115,7 @@ public sealed class FabricaMineriosMenuController : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyCode.Escape) && !RTSInputBindings.IsTextEntryFocused())
         {
             Fechar();
             return;

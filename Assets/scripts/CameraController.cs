@@ -86,11 +86,8 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        // Bloqueia movimento se estivermos digitando no menu
-        if (UnityEngine.EventSystems.EventSystem.current != null 
-            && UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject != null
-            && (UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null
-                || UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject.GetComponent("TMP_InputField") != null))
+        // Bloqueia movimento e atalhos enquanto campos uGUI/TMP/UI Toolkit recebem texto.
+        if (RTSInputBindings.IsTextEntryFocused())
         {
             return;
         }

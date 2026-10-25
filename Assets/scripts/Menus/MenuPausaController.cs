@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Hegemonia.RTS;
 
 [DefaultExecutionOrder(12000)]
 public class MenuPausaController : MonoBehaviour
@@ -88,6 +89,9 @@ public class MenuPausaController : MonoBehaviour
 
     private void Update()
     {
+        if (RTSInputBindings.IsTextEntryFocused())
+            return;
+
         if (QuartelMenuUIController.EntradaGlobalBloqueada)
         {
             return;

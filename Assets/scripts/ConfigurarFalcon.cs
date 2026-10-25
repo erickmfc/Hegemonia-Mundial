@@ -89,8 +89,8 @@ public class ConfigurarFalcon : MonoBehaviour
         }
 
         // 6. Configura Voo Padrão
-        heli.altitudeDeVoo = 15f;
-        heli.altitudeDeVoo = 3f; // Altura segura para não nascer no chão
+        heli.altitudeDeVoo = 30f;
+        heli.altitudeDeVoo = 6f; // Altura segura para não nascer no chão
 
         Debug.Log("✨ [Doutor Falcon] REPARO CONCLUÍDO! O Pássaro deve voar agora! ✨");
     }

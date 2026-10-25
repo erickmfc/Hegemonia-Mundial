@@ -66,7 +66,7 @@ public class C700TransporteAereo : MonoBehaviour
     public float velocidadeCruzeiro = 130f;
     public float aceleracaoVoo = 42f;
     public float giroVoo = 65f;
-    public float altitudeCruzeiro = 85f;
+    public float altitudeCruzeiro = 170f;
     public float distanciaAproximacao = 220f;
     public float distanciaDescida = 90f;
     public float distanciaRolagem = 45f;
