@@ -115,6 +115,67 @@ public sealed class IA03EventHookPlayModeTests
 
         yield return null;
     }
+
+    [UnityTest]
+    public IEnumerator FirstPlayerAttackRetargetsPeacefulIA03AndRaisesTension()
+    {
+        Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Type brainType = ResolveType("Hegemonia.AI.BrainMaster.IA_BrainMaster");
+        Type damageType = ResolveType("SistemaDeDanos");
+        Type identityType = ResolveType("IdentidadeUnidade");
+        Type governmentType = ResolveType("SistemaGovernoMundial");
+        PropertyInfo governmentInstance = governmentType.GetProperty("Instancia", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        MethodInfo setGovernmentInstance = governmentInstance.GetSetMethod(true);
+        object previousGovernment = governmentInstance.GetValue(null);
+        var objects = new List<GameObject>();
+
+        GameObject observer = new GameObject("IA03 player attack response test");
+        observer.SetActive(false);
+        objects.Add(observer);
+
+        try
+        {
+            Component brain = observer.AddComponent(brainType);
+            SetField(brain, "TeamId", 2);
+            FieldInfo integrationMode = brainType.GetField("IntegrationMode");
+            SetField(brain, "IntegrationMode", Enum.Parse(integrationMode.FieldType, "Hybrid"));
+            ((Behaviour)brain).enabled = false;
+
+            Component strategist = observer.AddComponent(strategistType);
+            SetField(strategist, "brain", brain);
+            SetField(strategist, "paisAlvoTeamId", 3);
+            observer.SetActive(true);
+            yield return null;
+
+            GameObject attacker = CreateEntity(objects, identityType, damageType, 1, false, "Player team 1 attacker");
+            GameObject target = CreateEntity(objects, identityType, damageType, 2, false, "Valdoria team 2 target");
+            Component targetDamage = target.GetComponent(damageType);
+            SetField(targetDamage, "vidaAtual", 100f);
+
+            // Isola a resposta estratégica; o governo e seus dados de partida
+            // permanecem intocados por este teste de callback.
+            setGovernmentInstance.Invoke(null, new object[] { null });
+            MethodInfo receiveDamage = damageType.GetMethod("ReceberDano", Members);
+            Assert.That(receiveDamage, Is.Not.Null);
+            receiveDamage.Invoke(targetDamage, new object[] { 10f, attacker });
+
+            Assert.That((int)ReadField(strategist, "paisAlvoTeamId"), Is.EqualTo(1),
+                "Ao sofrer dano do jogador, a IA03 deve priorizar o agressor real em vez do rival fixo da cena.");
+            Assert.That(strategistType.GetProperty("NivelDeConflito").GetValue(strategist).ToString(), Is.EqualTo("Tensao"),
+                "O primeiro ataque deve abrir uma crise de tensão para a IA03.");
+        }
+        finally
+        {
+            setGovernmentInstance.Invoke(null, new[] { previousGovernment });
+            for (int i = 0; i < objects.Count; i++)
+            {
+                if (objects[i] != null) UnityEngine.Object.Destroy(objects[i]);
+            }
+        }
+
+        yield return null;
+    }
+
     [UnityTest]
     public IEnumerator RealUnitDeathUpdatesConflictReportAndDisableUnsubscribes()
     {

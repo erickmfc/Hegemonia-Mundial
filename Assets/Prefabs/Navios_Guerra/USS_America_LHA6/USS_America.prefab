@@ -28,7 +28,7 @@ Transform:
   m_GameObject: {fileID: 220652820408931639}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.278, y: 0.191, z: 2.112}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: 0.16}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -250,7 +250,7 @@ Transform:
   m_GameObject: {fileID: 1323924338277913574}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.285, y: 0.191, z: -2.16}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: -3.89}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -392,7 +392,7 @@ Transform:
   m_GameObject: {fileID: 1705771829246653091}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.1, y: 1.23, z: 0}
+  m_LocalPosition: {x: 1.6, y: 0.57, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -558,7 +558,7 @@ Transform:
   m_GameObject: {fileID: 2373846354243316518}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.284, y: 0.191, z: -4.55}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: -5.15}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -777,7 +777,7 @@ Transform:
   m_GameObject: {fileID: 3152591349371361936}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.872, z: 0}
+  m_LocalPosition: {x: 0, y: 3.67, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1011,7 +1011,7 @@ Transform:
   m_GameObject: {fileID: 3291155296883930000}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.273, y: 0.191, z: 0.31}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: -1.52}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1122,7 +1122,7 @@ Transform:
   m_GameObject: {fileID: 3557218235807878340}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.308, y: 0.191, z: 6.53}
+  m_LocalPosition: {x: -0.56, y: 0.191, z: 3.32}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1366,8 +1366,8 @@ MonoBehaviour:
   tamanhoDoEfeito: 3.12
   ajusteDePosicao: {x: 0, y: 0, z: 0}
   habilitarAfundamentoNaval: 1
-  anguloAfundamentoX: -6
-  duracaoAfundamento: 55
+  anguloAfundamentoX: -46
+  duracaoAfundamento: 7
   atrasoPosAfundamento: 0.6
 --- !u!54 &2972839992480705651
 Rigidbody:
@@ -1419,7 +1419,7 @@ MonoBehaviour:
   frequenciaOnda: 0.5
   arrastoPassivo: 0.5
   distanciaChegada: 15
-  offsetAlturaAgua: 0
+  offsetAlturaAgua: 5
   profundidadeVisual: 0
   anguloEntradaManobraRe: 120
   anguloSaidaManobraRe: 70
@@ -1898,7 +1898,7 @@ Transform:
   m_GameObject: {fileID: 6776004339751280756}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.32, y: 0.191, z: -9.33}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: -8.2}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2120,7 +2120,7 @@ Transform:
   m_GameObject: {fileID: 7194354721474832471}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.28, y: 0.191, z: -6.89}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: -6.62}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2373,7 +2373,7 @@ Transform:
   m_GameObject: {fileID: 7843344143609708028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.335, y: 0.191, z: 3.95}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: 1.41}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2484,7 +2484,7 @@ Transform:
   m_GameObject: {fileID: 8121512709418944611}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.329, y: 0.191, z: -2.0099998}
+  m_LocalPosition: {x: -1.57, y: 0.191, z: -2.61}
   m_LocalScale: {x: 1, y: 0.074652, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3005,10 +3005,6 @@ PrefabInstance:
     - target: {fileID: -6689036041284674117, guid: cad6fa992f6f60f4b9d123e45498c173, type: 3}
       propertyPath: m_Name
       value: USS America LHA-6 Visual
-      objectReference: {fileID: 0}
-    - target: {fileID: -6689036041284674117, guid: cad6fa992f6f60f4b9d123e45498c173, type: 3}
-      propertyPath: m_IsActive
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: cad6fa992f6f60f4b9d123e45498c173, type: 3}
       propertyPath: m_LocalScale.x
