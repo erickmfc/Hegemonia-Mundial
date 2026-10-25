@@ -561,6 +561,54 @@ public class LancadorMisselCaca : MonoBehaviour
         return true;
     }
 
+    private bool SolicitarAtaquePeloRadar(Transform alvo)
+    {
+        if (alvo == null || _vooModerno == null)
+        {
+            return false;
+        }
+
+        // O botão do radar precisa comandar a interceptação, não apenas soltar
+        // um míssil enquanto o avião continua no pátio ou seguindo outra rota.
+        if (_unidadeBase != null)
+        {
+            bool ordemAceita = _unidadeBase.EmitirMissaoAereaOfensiva(alvo.position, alvo);
+            if (ordemAceita)
+            {
+                modoPassivo = false;
+                if (_alvoIAForcado != alvo)
+                {
+                    DefinirAlvoIA(alvo, alvo.position, DuracaoMinimaAlvoForcado);
+                }
+            }
+            if (!ordemAceita && debugLogs)
+            {
+                Debug.LogWarning(
+                    $"[Radar] Ataque recusado para {name}: {_vooModerno.UltimoMotivoRecusaOrdem}",
+                    this);
+            }
+
+            return ordemAceita;
+        }
+
+        // Compatibilidade com aeronaves antigas sem ControleUnidade.
+        if (!_vooModerno.ReceberOrdemManual(alvo.position))
+        {
+            if (debugLogs)
+            {
+                Debug.LogWarning(
+                    $"[Radar] Ataque recusado para {name}: {_vooModerno.UltimoMotivoRecusaOrdem}",
+                    this);
+            }
+
+            return false;
+        }
+
+        modoPassivo = false;
+        DefinirAlvoIA(alvo, alvo.position, DuracaoMinimaAlvoForcado);
+        return true;
+    }
+
     public void RecarregarCompletoNaBase()
     {
         municaoAtual = municaoMaxima;
@@ -678,10 +726,10 @@ public class LancadorMisselCaca : MonoBehaviour
 
             GUI.enabled = (municaoAtual > 0 && cronometroRecarga <= 0);
             if (GUI.Button(new Rect(225, slotY + 5, 80, 30), "ATACAR")
-                && Disparar(alvo.transform))
+                && SolicitarAtaquePeloRadar(alvo.transform))
             {
-                // A seleção foi consumida pelo disparo; fecha o radar sem
-                // interromper a missão ou a sequência de guiagem do míssil.
+                // A ordem já foi entregue ao controlador. Ele mantém o alvo
+                // durante a decolagem/aproximação e o lançador dispara no alcance.
                 radarFechado = true;
             }
             GUI.enabled = true;

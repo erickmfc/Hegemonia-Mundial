@@ -1282,8 +1282,8 @@ MonoBehaviour:
   ordemProgressaoGlobal: 0
   capacidadeHospitalarInicial: 400000
   possuiRedeSaudeBasica: 1
-  capacidadeHabitacional: 5000000
-  populacaoResidente: 100000
+  capacidadeHabitacional: 1000000
+  populacaoResidente: 5000
   qualidadeVida: 75
   proporcaoComercio: 0.5
   rendaPorTrabalhador: 0.00005
@@ -1322,8 +1322,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89730a05dde902b42b9de586ed275d78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaDeDanos
-  vidaMaxima: 5000000
-  vidaAtual: 5000000
+  vidaMaxima: 50000
+  vidaAtual: 50000
   unidadeBiologica: 0
   ehEstrutura: 1
   prefabDestrocos: {fileID: 0}

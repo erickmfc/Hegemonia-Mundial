@@ -168,7 +168,8 @@ public class C700TransporteAereo : MonoBehaviour
         controleUnidade = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>();
         controleAviaoLegado = GetComponent<ControleAviao>();
-        combustivel = CombustivelUnidade.Garantir(gameObject, true);
+        combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
+        if (combustivel == null) combustivel = CombustivelUnidade.Garantir(gameObject, true);
         landingController = GetComponent<TransportLandingController>();
         if (landingController == null) landingController = gameObject.AddComponent<TransportLandingController>();
         landingController.maxTentativas = maxTentativasPouso;
@@ -202,7 +203,7 @@ public class C700TransporteAereo : MonoBehaviour
     private void Update()
     {
         if (controleAviaoLegado != null && controleAviaoLegado.enabled) controleAviaoLegado.enabled = false;
-        if (combustivel == null) combustivel = GetComponent<CombustivelUnidade>();
+        if (combustivel == null) combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel != null && !combustivel.PodeOperar)
         {
             PararPorFaltaDeCombustivel();

@@ -17,6 +17,8 @@ public class CombustivelUnidade : MonoBehaviour
     private const int VersaoAumentoCapacidadeClasse = 1;
     private const float AumentoCapacidadeAerea = 1.15f;
     private const float AumentoCapacidadeNaval = 1.12f;
+    private const int VersaoPoliticaCapacidadeNaval = 1;
+    private const float CapacidadeMinimaNaval = 7000f;
     // O mundo global usa centenas de quilômetros; o consumo legado do caça
     // foi calibrado para cenários locais e impedia até um voo de ida e volta
     // entre países. A mesma taxa efetiva alimenta a previsão e o gasto real.
@@ -39,6 +41,7 @@ public class CombustivelUnidade : MonoBehaviour
     public bool preencherAoIniciar = true;
     public bool pararAoEsvaziar = true;
     [SerializeField, HideInInspector] private int versaoAumentoCapacidadeClasse;
+    [SerializeField, HideInInspector] private int versaoPoliticaCapacidadeNaval;
 
     [Header("Indicador")]
     public bool mostrarIndicadorMundo = true;
@@ -73,6 +76,7 @@ public class CombustivelUnidade : MonoBehaviour
     public float Percentual => capacidade > 0f ? Mathf.Clamp01(combustivelAtual / capacidade) : 1f;
     public float CombustivelAtual => Mathf.Max(0f, combustivelAtual);
     public float Capacidade => Mathf.Max(0f, capacidade);
+    public bool UnidadeNaval => classe == ClasseCombustivelUnidade.Naval || DetectarClasse() == ClasseCombustivelUnidade.Naval;
     public bool EstaVazio => usaCombustivel && Capacidade > 0f && combustivelAtual <= 0.01f;
     public bool EstaBaixo => usaCombustivel && Capacidade > 0f && Percentual <= limiteBaixoPercentual;
     public bool PodeOperar => combustivelInfinito || !usaCombustivel || !EstaVazio;
@@ -248,13 +252,29 @@ public class CombustivelUnidade : MonoBehaviour
         classe = classeDetectada;
         usaCombustivel = true;
 
-        float multiplicadorCapacidade = MultiplicadorAumentoCapacidade(classe);
+        float multiplicadorCapacidade = classe == ClasseCombustivelUnidade.Aerea ? AumentoCapacidadeAerea : 1f;
         AplicarAumentoCapacidadeConfigurada(multiplicadorCapacidade);
-        float capacidadeIdeal = CapacidadePadrao(classe) * multiplicadorCapacidade;
+        float capacidadeBaseIdeal = CapacidadePadrao(classe);
+        float capacidadeIdeal = classe == ClasseCombustivelUnidade.Naval
+            ? AplicarRegraCapacidadeNaval(capacidadeBaseIdeal)
+            : capacidadeBaseIdeal * multiplicadorCapacidade;
+        if (classe == ClasseCombustivelUnidade.Naval && versaoPoliticaCapacidadeNaval < VersaoPoliticaCapacidadeNaval)
+        {
+            float capacidadeAnterior = capacidade > 0f ? capacidade : capacidadeBaseIdeal;
+            // Converte o aumento naval 1.12x aplicado por versões anteriores
+            // antes de aplicar a regra nova. Mantém a porcentagem do tanque.
+            if (versaoAumentoCapacidadeClasse >= VersaoAumentoCapacidadeClasse && capacidade > 0f)
+            {
+                capacidadeAnterior /= AumentoCapacidadeNaval;
+            }
+            float capacidadeNova = AplicarRegraCapacidadeNaval(capacidadeAnterior);
+            AplicarCapacidadeMantendoPercentual(capacidadeNova);
+            versaoPoliticaCapacidadeNaval = VersaoPoliticaCapacidadeNaval;
+        }
         if ((classe == ClasseCombustivelUnidade.Aerea || classe == ClasseCombustivelUnidade.Naval) && capacidadeIdeal > 0f)
         {
             bool capacidadeAntigaPadrao = classe == ClasseCombustivelUnidade.Naval && capacidade > 0f && capacidade <= 300f;
-            bool precisaAtualizarCapacidade = !preservarCapacidadeConfigurada
+            bool precisaAtualizarCapacidade = (classe == ClasseCombustivelUnidade.Naval || !preservarCapacidadeConfigurada)
                 && (capacidade <= 0f || capacidade < capacidadeIdeal || capacidadeAntigaPadrao);
             if (precisaAtualizarCapacidade)
             {
@@ -335,7 +355,7 @@ public class CombustivelUnidade : MonoBehaviour
         return true;
     }
 
-    internal void RestaurarEstadoPersistido(float capacidadeSalva, float combustivelSalvo, bool aplicarAumentoLegado = false)
+    internal void RestaurarEstadoPersistido(float capacidadeSalva, float combustivelSalvo, bool aplicarAumentoLegado = false, bool aplicarPoliticaNaval = false)
     {
         // O Start de unidades novas pode preencher o tanque por configuração
         // do prefab. Uma restauração deve preservar o snapshot sem nova carga.
@@ -346,12 +366,36 @@ public class CombustivelUnidade : MonoBehaviour
         float multiplicadorSalvo = aplicarAumentoLegado ? MultiplicadorAumentoCapacidade(classe) : 1f;
         capacidade = Mathf.Max(0f, capacidadeSalva) * multiplicadorSalvo;
         combustivelAtual = Mathf.Clamp(combustivelSalvo * multiplicadorSalvo, 0f, capacidade);
+        if (classe == ClasseCombustivelUnidade.Naval && aplicarPoliticaNaval)
+        {
+            float percentual = capacidade > 0f ? Mathf.Clamp01(combustivelAtual / capacidade) : 0f;
+            float baseLegada = aplicarAumentoLegado ? capacidade : capacidade / AumentoCapacidadeNaval;
+            capacidade = AplicarRegraCapacidadeNaval(baseLegada);
+            combustivelAtual = capacidade * percentual;
+            versaoPoliticaCapacidadeNaval = VersaoPoliticaCapacidadeNaval;
+        }
         versaoAumentoCapacidadeClasse = VersaoAumentoCapacidadeClasse;
         configurado = true;
         // A instância recém-restaurada ainda não recebeu a ordem de parada
         // desta sessão, mesmo se o snapshot estiver vazio.
         paradaAplicada = false;
         ultimaPosicao = transform.position;
+    }
+
+    private static float AplicarRegraCapacidadeNaval(float capacidadeBase)
+    {
+        float baseSegura = Mathf.Max(0f, capacidadeBase);
+        return baseSegura <= CapacidadeMinimaNaval ? CapacidadeMinimaNaval : baseSegura * 1.2f;
+    }
+
+    private void AplicarCapacidadeMantendoPercentual(float capacidadeNova)
+    {
+        float percentual = capacidade > 0f ? Mathf.Clamp01(combustivelAtual / capacidade) : 1f;
+        capacidade = Mathf.Max(0f, capacidadeNova);
+        if (combustivelAtual >= 0f)
+        {
+            combustivelAtual = capacidade * percentual;
+        }
     }
 
     public bool Consumir(float delta)
@@ -565,6 +609,20 @@ public class CombustivelUnidade : MonoBehaviour
         return combustivel;
     }
 
+    /// <summary>
+    /// Localiza o tanque pertencente à unidade mesmo quando o controlador
+    /// operacional está em um objeto filho do prefab.
+    /// </summary>
+    public static CombustivelUnidade ObterParaObjeto(GameObject alvo)
+    {
+        if (alvo == null) return null;
+
+        CombustivelUnidade combustivel = alvo.GetComponent<CombustivelUnidade>();
+        if (combustivel == null) combustivel = alvo.GetComponentInParent<CombustivelUnidade>(true);
+        if (combustivel == null) combustivel = alvo.GetComponentInChildren<CombustivelUnidade>(true);
+        return combustivel;
+    }
+
     public static bool PodeOperarObjeto(GameObject alvo)
     {
         if (alvo == null)
@@ -572,7 +630,7 @@ public class CombustivelUnidade : MonoBehaviour
             return true;
         }
 
-        CombustivelUnidade combustivel = alvo.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = ObterParaObjeto(alvo);
         return combustivel == null || combustivel.PodeOperar;
     }
 
@@ -583,7 +641,7 @@ public class CombustivelUnidade : MonoBehaviour
             return "";
         }
 
-        CombustivelUnidade combustivel = componente.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = ObterParaObjeto(componente.gameObject);
         return combustivel != null ? combustivel.TextoStatusCurto() : "";
     }
 

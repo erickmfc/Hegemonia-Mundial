@@ -541,13 +541,8 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         AdicionarRecurso("ACO", EstoqueReal(RecursoMercado.Aco).ToString("N0"));
         AdicionarRecurso("ENERGIA", EstoqueReal(RecursoMercado.Energia).ToString("N0"));
         AdicionarRecurso("COMIDA", EstoqueReal(RecursoMercado.Comida).ToString("N0"));
-        GerenciadorArmazens armazens = GerenciadorArmazens.Instancia;
-        DadosArmazemRecursos armazem = armazens != null ? armazens.armazemRecursos : null;
         int aguaAtual = governoAtual.ObterEstoque(TeamJogador, RecursoMercado.Agua);
-        int capacidadeAgua = armazem != null && armazem.aguaMaximo > 0
-            ? armazem.aguaMaximo
-            : Mathf.Max(0, pais.aguaMaxima);
-        string agua = Mathf.Max(0, aguaAtual).ToString("N0") + "/" + capacidadeAgua.ToString("N0");
+        string agua = Mathf.Max(0, aguaAtual).ToString("N0") + " (ilimitado)";
         AdicionarRecurso("AGUA", agua);
         AdicionarRecurso("POPULACAO", pais.populacaoCivil.ToString("N0"));
         AdicionarRecurso("ESTABILIDADE", pais.estabilidade.ToString("0") + "%");
@@ -1459,10 +1454,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
         int capacidadeLivre = CapacidadeLivreComida(pais, estoque);
         long saldoDisponivel = governo != null ? governo.ObterSaldoDisponivelParaOperacao(TeamJogador) : 0L;
         VisualElement secao = AdicionarSecaoAcoes("ESTOQUE ALIMENTAR", "Compra imediata para repor o estoque nacional.");
-        int capacidade = pais != null ? Mathf.Max(0, pais.capacidadeArmazenamentoAgricola) : 0;
         AdicionarTextoAcao(secao,
-            "Armazenado: " + estoque.ToString("N0") + "/" + capacidade.ToString("N0")
-            + " t | espaço livre: " + capacidadeLivre.ToString("N0") + " t | saldo: " + Moeda(saldoDisponivel));
+            "Armazenado: " + estoque.ToString("N0") + " t (ilimitado)"
+            + " | espaço livre ilimitado | saldo: " + Moeda(saldoDisponivel));
         AdicionarControleCompraAlimentar(secao);
 
         if (governo == null || pais == null)
@@ -1845,19 +1839,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
     {
         if (pais == null) return 0;
         AgriculturaNacional.GarantirCapacidadeArmazenamento(pais, pais.teamId == TeamJogador);
-
-        int capacidadeMaxima = Mathf.Max(0, pais.capacidadeArmazenamentoAgricola);
-        GerenciadorArmazens armazens = GerenciadorArmazens.Instancia;
-        DadosArmazemRecursos armazem = armazens != null ? armazens.armazemRecursos : null;
-        if (armazem != null && armazem.alimentosMaximo > 0)
-            capacidadeMaxima = capacidadeMaxima > 0
-                ? Mathf.Min(capacidadeMaxima, armazem.alimentosMaximo)
-                : armazem.alimentosMaximo;
-
-        if (capacidadeMaxima <= 0) return 0;
-        int livreNacional = Mathf.Max(0, capacidadeMaxima - Mathf.Max(estoqueAtual, pais.comida));
-        if (armazem == null) return livreNacional;
-        return Mathf.Min(livreNacional, Mathf.Max(0, armazem.alimentosMaximo - armazem.alimentos));
+        return Mathf.Max(0, int.MaxValue - Mathf.Max(estoqueAtual, pais.comida));
     }
 
     private void ComprarComidaRapida(int quantidadeSolicitada)
@@ -3587,7 +3569,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                     : string.Empty) +
                 "Saldo diário após consumo: " + saldoLiquidoComidaTexto + (saldoLiquidoComidaDiario < 0f ? " (o estoque diminui)" : " (o estoque cresce ou se mantém)") + "\n" +
                 "Situação da safra: " + situacaoAgricola + "\n" +
-                "Insumos: água " + aguaAgricola.ToString("N0") + "/" + Mathf.Max(0, p.aguaMaxima).ToString("N0") + " t | sementes " + sementesAgricolas.ToString("N0") + " t | fertilizante " + fertilizanteAgricola.ToString("N0") + " t | agrotóxicos " + agrotoxicosAgricolas.ToString("N0") + " t\n" +
+                "Insumos: água " + aguaAgricola.ToString("N0") + " t (ilimitado) | sementes " + sementesAgricolas.ToString("N0") + " t | fertilizante " + fertilizanteAgricola.ToString("N0") + " t | agrotóxicos " + agrotoxicosAgricolas.ToString("N0") + " t\n" +
                 "Nivel de capacidade: " + nivelProducaoAlimentos + "/10\n" +
                 "Proxima ampliacao: " + Moeda(custoProximoInvestimento) + " (+5 t/dia nominais)\n" +
                 "Investimento recorrente: " + (p.investimentoAgricolaPercentualAtivo

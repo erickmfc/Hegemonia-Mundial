@@ -1842,7 +1842,7 @@ public class ControleAviao : MonoBehaviour
             return false;
         }
 
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel == null || !combustivel.usaCombustivel)
         {
             return true;
@@ -1867,7 +1867,7 @@ public class ControleAviao : MonoBehaviour
     {
         consumoNecessario = 0f;
         reserva = 0f;
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel == null || !combustivel.usaCombustivel)
         {
             return EncontrarMelhorBaseRetorno();
@@ -1952,7 +1952,7 @@ public class ControleAviao : MonoBehaviour
 
     private void PlanejarBaseRetornoSegura(Vector3 destino)
     {
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel == null || !combustivel.usaCombustivel || destinoManualDefinido)
         {
             baseDestinoRetornoPendente = null;
@@ -2424,7 +2424,7 @@ public class ControleAviao : MonoBehaviour
 
     private void AvaliarRetornoSeguroAutomatico()
     {
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel == null || !combustivel.usaCombustivel || estadoAtual != EstadoAviao.EmMissao || ordemParaRetorno)
         {
             return;
@@ -2631,7 +2631,7 @@ public class ControleAviao : MonoBehaviour
         // O serviço pode ser solicitado quando o estoque nacional acabou.
         // Nesse caso, preserve a missão pendente e mantenha o avião na base;
         // o aeroporto tentará novamente após cada ciclo de abastecimento.
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (!PodeIgnorarFaltaDeCombustivel()
             && combustivel != null
             && combustivel.usaCombustivel
@@ -3270,7 +3270,7 @@ public class ControleAviao : MonoBehaviour
 
     public void ReabastecerSeAbaixoDe(float percentualMinimo)
     {
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel == null || !combustivel.usaCombustivel || combustivel.Capacidade <= 0f)
         {
             return;

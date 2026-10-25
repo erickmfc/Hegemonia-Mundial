@@ -304,14 +304,13 @@ namespace Hegemonia.AI.BrainMaster
         private bool TryDispatchEconomicAirRaids(Vector3 baseCenter, List<GameObject> source)
         {
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
-            // Threshold reduzido para 3 avioes para permitir raids mais cedo
-            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.Expansao || source == null || source.Count < 2)
+            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.Expansao || source == null || source.Count == 0)
             {
                 return false;
             }
 
             int targetCount = _context.WorldState.FillEnemyStrategicTargets(_strategicTargetsBuffer, baseCenter, 6);
-            if (targetCount < 2)
+            if (targetCount == 0)
             {
                 return false;
             }
@@ -320,7 +319,7 @@ namespace Hegemonia.AI.BrainMaster
             _airRaidB.Clear();
             _airRaidC.Clear();
 
-            int groups = Mathf.Min(3, Mathf.Min(targetCount, Mathf.Max(2, source.Count / 2)));
+            int groups = Mathf.Min(3, Mathf.Min(targetCount, source.Count));
             for (int i = 0; i < source.Count; i++)
             {
                 GameObject unit = source[i];
@@ -346,7 +345,10 @@ namespace Hegemonia.AI.BrainMaster
 
             int launched = 0;
             launched += QueueEconomicRaidIfReady("oil_or_port", _airRaidA, _strategicTargetsBuffer[0], 92, 5.0f) ? 1 : 0;
-            launched += QueueEconomicRaidIfReady("air_or_shipyard", _airRaidB, _strategicTargetsBuffer[1], 89, 5.4f) ? 1 : 0;
+            if (groups >= 2)
+            {
+                launched += QueueEconomicRaidIfReady("air_or_shipyard", _airRaidB, _strategicTargetsBuffer[1], 89, 5.4f) ? 1 : 0;
+            }
             if (groups >= 3 && _strategicTargetsBuffer.Count > 2)
             {
                 launched += QueueEconomicRaidIfReady("third_axis", _airRaidC, _strategicTargetsBuffer[2], 86, 5.8f) ? 1 : 0;

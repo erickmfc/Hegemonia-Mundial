@@ -1897,7 +1897,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             return false;
         }
 
-        CombustivelUnidade combustivel = helicoptero.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(helicoptero.gameObject);
         if (combustivel == null || !combustivel.usaCombustivel || combustivel.Capacidade <= 0f)
         {
             return false;
@@ -1978,7 +1978,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             return "-";
         }
 
-        CombustivelUnidade combustivel = aviao.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(aviao.gameObject);
         LancadorMisselCaca misseis = aviao.GetComponent<LancadorMisselCaca>();
 
         string fuel = combustivel != null && combustivel.usaCombustivel
@@ -1998,7 +1998,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             return;
         }
 
-        CombustivelUnidade combustivel = aviao.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(aviao.gameObject);
         if (combustivel != null && combustivel.usaCombustivel && (forcarCompleto || combustivel.Percentual <= 0.50f))
         {
             ServicoAbastecimento.TentarAbastecer(

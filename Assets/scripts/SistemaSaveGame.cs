@@ -271,6 +271,7 @@ public class SaveEntityData
     public float combustivelAtual;
     public float capacidadeCombustivel;
     public bool capacidadeCombustivelAtualizada;
+    public bool capacidadeNavalAtualizada;
     public OrdemControleUnidade ordemAtual;
     public string ordemMovimentoOwner = string.Empty;
     public string ordemMovimentoId = string.Empty;
@@ -2248,6 +2249,7 @@ public class SistemaSaveGame : MonoBehaviour
             combustivelAtual = combustivel != null ? combustivel.combustivelAtual : 0f,
             capacidadeCombustivel = combustivel != null ? combustivel.capacidade : 0f,
             capacidadeCombustivelAtualizada = true,
+            capacidadeNavalAtualizada = true,
             ordemAtual = controle != null ? controle.OrdemAtual : OrdemControleUnidade.Ociosa,
             modoCombateAtivo = true
         };
@@ -2507,8 +2509,9 @@ public class SistemaSaveGame : MonoBehaviour
             bool migrarCapacidadeAntiga = dadosAtuais != null
                 && dadosAtuais.saveVersion < 24
                 && !data.capacidadeCombustivelAtualizada;
-            combustivel.RestaurarEstadoPersistido(data.capacidadeCombustivel, data.combustivelAtual, migrarCapacidadeAntiga);
-            if (migrarCapacidadeAntiga)
+            bool migrarPoliticaNaval = !data.capacidadeNavalAtualizada && combustivel.UnidadeNaval;
+            combustivel.RestaurarEstadoPersistido(data.capacidadeCombustivel, data.combustivelAtual, migrarCapacidadeAntiga, migrarPoliticaNaval);
+            if (migrarCapacidadeAntiga || migrarPoliticaNaval)
             {
                 // A restauração pode ser repetida após a troca de cena. Grave o
                 // tanque migrado no snapshot em memória para evitar regressão.
@@ -2516,6 +2519,7 @@ public class SistemaSaveGame : MonoBehaviour
                 data.combustivelAtual = combustivel.combustivelAtual;
             }
             data.capacidadeCombustivelAtualizada = true;
+            data.capacidadeNavalAtualizada = true;
         }
 
         AplicarDadosCidade(obj, data);
@@ -2715,13 +2719,15 @@ public class SistemaSaveGame : MonoBehaviour
             bool migrarCapacidadeAntiga = dadosAtuais != null
                 && dadosAtuais.saveVersion < 24
                 && !data.capacidadeCombustivelAtualizada;
-            combustivel.RestaurarEstadoPersistido(data.capacidadeCombustivel, data.combustivelAtual, migrarCapacidadeAntiga);
-            if (migrarCapacidadeAntiga)
+            bool migrarPoliticaNaval = !data.capacidadeNavalAtualizada && combustivel.UnidadeNaval;
+            combustivel.RestaurarEstadoPersistido(data.capacidadeCombustivel, data.combustivelAtual, migrarCapacidadeAntiga, migrarPoliticaNaval);
+            if (migrarCapacidadeAntiga || migrarPoliticaNaval)
             {
                 data.capacidadeCombustivel = combustivel.capacidade;
                 data.combustivelAtual = combustivel.combustivelAtual;
             }
             data.capacidadeCombustivelAtualizada = true;
+            data.capacidadeNavalAtualizada = true;
         }
 
         ControleUnidade controle = obj.GetComponent<ControleUnidade>();

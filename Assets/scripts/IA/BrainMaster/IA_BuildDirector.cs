@@ -523,6 +523,7 @@ namespace Hegemonia.AI.BrainMaster
                 out usinas,
                 out houses,
                 out villages);
+            int usinasNucleares = CountNuclearPlants();
             UpdateProgressTracker(now);
 
             Vector3 baseCenter = _context.WorldState.BaseCenter;
@@ -650,7 +651,8 @@ namespace Hegemonia.AI.BrainMaster
                 barracks,
                 estaleiros,
                 piers,
-                usinas);
+                usinas,
+                usinasNucleares);
             EndTimingScope(
                 "HandleScriptedBootstrap",
                 "handled=" + bootstrapHandled + (_context.Brain != null ? " | stage=" + _context.Brain.BootstrapStage : string.Empty),
@@ -693,7 +695,8 @@ namespace Hegemonia.AI.BrainMaster
 
             bool hasCriticalGap = barracks == 0
                                   || factories == 0
-                                  || warehouses == 0;
+                                  || warehouses == 0
+                                  || airports == 0;
             if (hasCriticalGap
                 && ShouldUseRecovery(now, cityHall))
             {
@@ -709,7 +712,18 @@ namespace Hegemonia.AI.BrainMaster
             int desiredAirports = 1;
             int desiredUsinas = factories > 0 ? 2 : 1;
 
-            if (usinas < desiredUsinas && QueueBuildAtLand("usina", IA_ZoneType.Core, landAnchor, 25f, 220f, mobilizingBase ? 97 : 96, 10f))
+            // A IA precisa garantir ao menos uma fonte nuclear: contar uma
+            // usina solar/carvão como se fosse nuclear deixava energia estável
+            // sem construção apesar da demanda do país.
+            if (usinasNucleares == 0
+                && QueueBuildAtLand("Usina Nuclear", IA_ZoneType.Core, landAnchor, 15f, 180f, mobilizingBase ? 99 : 97, 8f))
+            {
+                return;
+            }
+
+            if (usinasNucleares > 0
+                && usinas < desiredUsinas
+                && QueueBuildAtLand("usina", IA_ZoneType.Core, landAnchor, 25f, 220f, mobilizingBase ? 97 : 96, 10f))
             {
                 return;
             }
@@ -790,7 +804,10 @@ namespace Hegemonia.AI.BrainMaster
                             {
                                 _nextRareNavalExpansionWindowTime = now + 90f;
                             }
-                            return;
+                            if (queuedEstaleiro)
+                            {
+                                return;
+                            }
                         }
 
                         if (piers < targetPiers
@@ -1139,6 +1156,38 @@ namespace Hegemonia.AI.BrainMaster
             {
                 PierMarinha pier = _registeredPierBuffer[i];
                 if (pier != null && _context.Backend.BelongsToTeam(pier))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private int CountNuclearPlants()
+        {
+            int count = 0;
+            List<GameObject> structures = _context.WorldState.OwnStructures;
+            for (int i = 0; i < structures.Count; i++)
+            {
+                GameObject structure = structures[i];
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                Usina usina = structure.GetComponent<Usina>();
+                if (usina != null && usina.tipoUsina == TipoUsina.Nuclear)
+                {
+                    count++;
+                    continue;
+                }
+
+                IA_ConstructionMetadata metadata = structure.GetComponent<IA_ConstructionMetadata>();
+                string identity = metadata != null
+                    ? IA_Text.Normalize(metadata.ItemId + " " + metadata.DisplayName + " " + metadata.Aliases + " " + metadata.SourcePrefabName)
+                    : IA_Text.Normalize(structure.name);
+                if (identity.Contains("usina nuclear") || identity.Contains("nuclear power") || identity.Contains("reator"))
                 {
                     count++;
                 }
@@ -2119,7 +2168,8 @@ namespace Hegemonia.AI.BrainMaster
             int barracks,
             int estaleiros,
             int piers,
-            int usinas)
+            int usinas,
+            int usinasNucleares)
         {
             IA_BrainMaster brain = _context.Brain;
             if (brain == null || !brain.IsBootstrapActive)
@@ -2160,7 +2210,7 @@ namespace Hegemonia.AI.BrainMaster
                         "capital");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildUsina:
-                    if (usinas > 0)
+                    if (usinasNucleares > 0)
                     {
                         return AdvanceBootstrapAfterTime(
                             elapsed,
@@ -2176,25 +2226,18 @@ namespace Hegemonia.AI.BrainMaster
                         return true;
                     }
 
-                    if (brain.GetBootstrapStageElapsed(now) >= 20f)
-                    {
-                        brain.SetBootstrapStage(
-                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
-                            "usina adiada; seguindo bootstrap e retomando depois");
-                        return true;
-                    }
-
                     return TryBootstrapMandatoryLandBuild(
-                        "usina",
+                        "usina nuclear",
                         landAnchor != Vector3.zero ? landAnchor : baseCenter,
                         IA_ZoneType.Core,
                         15f,
                         150f,
-                        990,
-                        2.5f,
-                        "Usina",
-                        "energia",
-                        "usina");
+                        992,
+                        5f,
+                        "Usina Nuclear",
+                        "usina nuclear",
+                        "nuclear",
+                        "reator");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
                     brain.SetBootstrapStage(
@@ -2360,17 +2403,20 @@ namespace Hegemonia.AI.BrainMaster
                     return true;
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildShipyard:
-                    if (estaleiros > 0 || piers > 0)
+                    if (estaleiros > 0)
                     {
                         brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.HoldShipyard, "estaleiro pronto; aguardando 5s antes do navio");
                         return true;
                     }
 
-                    if (brain.GetBootstrapStageElapsed(now) >= 18f || _bootstrapNavalNoCoastFailures >= 5)
+                    // Se a validação costeira impedir o estaleiro, construa o
+                    // píer por seu próprio Creaty e volte a tentar o estaleiro
+                    // depois. Uma falha de um item não deve bloquear o outro.
+                    if (brain.GetBootstrapStageElapsed(now) >= 18f)
                     {
                         brain.SetBootstrapStage(
-                            IA_BrainMaster.IA_BootstrapStage.MobilizeBase,
-                            "estaleiro adiado; mantendo mobilizacao defensiva ate 5min");
+                            IA_BrainMaster.IA_BootstrapStage.BuildPier,
+                            "estaleiro ainda sem posição válida; tentando o píer antes de repetir");
                         return true;
                     }
 
@@ -2392,13 +2438,23 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_BrainMaster.IA_BootstrapStage.BuildPier:
                     if (piers > 0)
                     {
+                        if (estaleiros <= 0)
+                        {
+                            brain.SetBootstrapStage(
+                                IA_BrainMaster.IA_BootstrapStage.BuildShipyard,
+                                "píer pronto; retomando tentativas do estaleiro");
+                            return true;
+                        }
+
                         brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker, "pier pronto; abrindo fase do petroleiro");
                         return true;
                     }
 
-                    if (brain.GetBootstrapStageElapsed(now) >= 40f)
+                    if (estaleiros <= 0 && brain.GetBootstrapStageElapsed(now) >= 40f)
                     {
-                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker, "pier adiado; seguindo bootstrap");
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.BuildShipyard,
+                            "píer sem posição válida; retomando tentativas do estaleiro");
                         return true;
                     }
 
@@ -3545,6 +3601,10 @@ namespace Hegemonia.AI.BrainMaster
             else if (warehouses == 0)
             {
                 built = TryEmergencyBuild(baseCenter, IA_ZoneType.Economy, IA_TerrainType.Land, 90f, 240f, "armazem", "galpao", "refinaria");
+            }
+            else if (airports == 0 && factories > 0 && warehouses > 0)
+            {
+                built = TryEmergencyBuild(baseCenter, IA_ZoneType.Air, IA_TerrainType.Land, 180f, 360f, "aeroporto militar");
             }
             else if (sentries < 1 && (_context.WorldState.VisibleEnemies.Count > 0 || localThreat > 70f))
             {

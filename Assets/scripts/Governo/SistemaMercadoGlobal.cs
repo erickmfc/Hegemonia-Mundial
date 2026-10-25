@@ -1345,16 +1345,16 @@ public class SistemaMercadoGlobal : MonoBehaviour
             switch (item.recurso)
             {
                 case RecursoMercado.Comida:
-                    armazens.armazemRecursos.alimentos = Mathf.Clamp(gr.comida, 0, armazens.armazemRecursos.alimentosMaximo);
+                    armazens.armazemRecursos.alimentos = Mathf.Max(0, gr.comida);
                     break;
                 case RecursoMercado.Petroleo:
-                    armazens.armazemRecursos.petroleo = Mathf.Clamp(gr.petroleo, 0, armazens.armazemRecursos.petroleoMaximo);
+                    armazens.armazemRecursos.petroleo = Mathf.Max(0, gr.petroleo);
                     break;
                 case RecursoMercado.Energia:
-                    armazens.armazemRecursos.energia = Mathf.Clamp(gr.energia, 0, armazens.armazemRecursos.energiaMaximo);
+                    armazens.armazemRecursos.energia = Mathf.Max(0, gr.energia);
                     break;
                 case RecursoMercado.Aco:
-                    armazens.armazemRecursos.metal = Mathf.Clamp(gr.aco, 0, armazens.armazemRecursos.metalMaximo);
+                    armazens.armazemRecursos.metal = Mathf.Max(0, gr.aco);
                     break;
             }
 

@@ -2767,8 +2767,8 @@ MonoBehaviour:
   ordemProgressaoGlobal: 0
   capacidadeHospitalarInicial: 400000
   possuiRedeSaudeBasica: 1
-  capacidadeHabitacional: 5000000
-  populacaoResidente: 100000
+  capacidadeHabitacional: 1000000
+  populacaoResidente: 5000
   qualidadeVida: 75
   proporcaoComercio: 0.5
   rendaPorTrabalhador: 0.00005

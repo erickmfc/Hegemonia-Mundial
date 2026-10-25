@@ -439,6 +439,14 @@ public class TorretaAntiaerea : MonoBehaviour
                     continue;
                 }
 
+                // O alvo pode ter colliders em filhos separados; eles não
+                // podem bloquear a própria linha de tiro da torreta.
+                Transform raizAlvo = alvoAtual.root != null ? alvoAtual.root : alvoAtual;
+                if (collider.transform == alvoAtual || collider.transform.IsChildOf(raizAlvo))
+                {
+                    continue;
+                }
+
                 return false;
             }
         }
@@ -452,13 +460,21 @@ public class TorretaAntiaerea : MonoBehaviour
         
         float tempoEntreTiros = 1f / tirosPorSegundo;
         int disparosFeitos = 0;
+        float prazoDeMira = Time.time + 6f;
 
         while (disparosFeitos < quantidadeDeDisparo && alvoAtual != null)
         {
             while (alvoAtual != null && !MirouComAcerto())
             {
+                if (Time.time >= prazoDeMira)
+                {
+                    // Mira obstruída ou ângulo inalcançável não deve travar o ARES.
+                    break;
+                }
                 yield return null;
             }
+
+            if (Time.time >= prazoDeMira) break;
             
             if (alvoAtual == null) break;
 

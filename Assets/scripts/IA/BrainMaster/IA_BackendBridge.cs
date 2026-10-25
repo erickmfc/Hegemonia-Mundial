@@ -3808,6 +3808,15 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 launcher.DefinirModoIA(LancadorNaval.ModoOperacao.Automatico, false);
+                bool alvoNaval = target != null && IsActualNavalUnit(target);
+                if (alvoNaval && launcher.prefabMissel != null)
+                {
+                    launcher.DefinirTipoMissilHud(LancadorNaval.TipoMissilNaval.Tridente);
+                }
+                else if (target != null && launcher.prefabMisselCruzeiro != null)
+                {
+                    launcher.DefinirTipoMissilHud(LancadorNaval.TipoMissilNaval.Kh23Cruzeiro);
+                }
                 launcher.DefinirAlvoPrioritario(target);
                 armed = true;
             }

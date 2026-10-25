@@ -1183,7 +1183,7 @@ public class Helicoptero : MonoBehaviour
                     || portaHelicopteros.PodeServirHelicoptero(this, vagaAeroporto);
                 if (servicoAutorizado)
                 {
-                    CombustivelUnidade comb = GetComponent<CombustivelUnidade>();
+                    CombustivelUnidade comb = CombustivelUnidade.ObterParaObjeto(gameObject);
                     bool abastecimentoControladoPeloNavio = portaHelicopteros != null
                         && portaHelicopteros.TentarReabastecerHelicoptero(this);
                     if (comb != null && !abastecimentoControladoPeloNavio)
@@ -2026,7 +2026,7 @@ public class Helicoptero : MonoBehaviour
             return;
         }
 
-        CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
         if (combustivel == null || !combustivel.usaCombustivel)
         {
             return;

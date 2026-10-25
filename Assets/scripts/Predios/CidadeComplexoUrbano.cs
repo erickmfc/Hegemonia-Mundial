@@ -17,7 +17,7 @@ public enum TemaCidade
 /// <summary>
 /// Script completo para cidades pré-montadas temáticas (Egito, Moderna, etc.).
 /// Engloba simultaneamente:
-/// 1. Imobiliária (Moradia de 500 mil a 5 milhões de habitantes).
+/// 1. Imobiliária (capacidade configurável; Nova Aurora suporta até 1 milhão de habitantes).
 /// 2. Comércio e Empregos (Metade de cada lugar: 500k moradores -> até 250k comércio/empregos).
 /// 3. Energia elétrica (Consumo idêntico ao que casas e prédios consumiriam para esse montante populacional).
 /// Integra-se transparentemente com o SistemaEconomiaImoveis, GerenciadorRecursos e SistemaGovernoMundial.
@@ -26,6 +26,9 @@ public enum TemaCidade
 [SelectionBase]
 public class CidadeComplexoUrbano : MonoBehaviour
 {
+    public const int CapacidadeMaximaNovaAurora = 1_000_000;
+    public const int PopulacaoInicialNovaAurora = 5_000;
+
     private static readonly HashSet<CidadeComplexoUrbano> CidadesAtivas = new HashSet<CidadeComplexoUrbano>();
     private static readonly List<CidadeComplexoUrbano> BufferCidades = new List<CidadeComplexoUrbano>(16);
     private static readonly List<int> BufferDeltaPopulacional = new List<int>(16);
@@ -50,7 +53,7 @@ public class CidadeComplexoUrbano : MonoBehaviour
     public bool possuiRedeSaudeBasica = true;
 
     [Header("🏠 Imobiliária (Moradia)")]
-    [Tooltip("Capacidade habitacional total suportada pela cidade (500.000 a 5.000.000 moradores)")]
+    [Tooltip("Capacidade habitacional total suportada pela cidade (Nova Aurora: até 1.000.000 moradores)")]
     [Range(500000, 5000000)]
     public int capacidadeHabitacional = 5000000;
 
@@ -454,11 +457,18 @@ public class CidadeComplexoUrbano : MonoBehaviour
     private void ValidarLimites()
     {
         capacidadeHabitacional = Mathf.Clamp(capacidadeHabitacional, 500000, 5000000);
-        if (string.Equals(nomeCidade, "Nova Aurora", StringComparison.OrdinalIgnoreCase))
-            capacidadeHabitacional = 5000000;
+        if (EhNovaAurora(nomeCidade))
+            capacidadeHabitacional = CapacidadeMaximaNovaAurora;
         populacaoResidente = Mathf.Clamp(populacaoResidente, 0, capacidadeHabitacional);
         qualidadeVida = Mathf.Clamp(qualidadeVida, 0, 100);
         proporcaoComercio = 0.5f;
+    }
+
+    public static bool EhNovaAurora(string nome)
+    {
+        return !string.IsNullOrWhiteSpace(nome)
+            && (string.Equals(nome.Trim(), "Nova Aurora", StringComparison.OrdinalIgnoreCase)
+                || nome.Trim().StartsWith("Nova Aurora ", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>

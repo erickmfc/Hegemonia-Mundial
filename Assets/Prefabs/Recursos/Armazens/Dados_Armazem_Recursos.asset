@@ -12,18 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2a48d1103d836af4cbee6fc0088e5972, type: 3}
   m_Name: Dados_Armazem_Recursos
   m_EditorClassIdentifier: Assembly-CSharp::DadosArmazemRecursos
-  capacidadeMaxima: 10000
+  capacidadeMaxima: 2147483647
   alimentos: 0
-  alimentosMaximo: 5000
+  alimentosMaximo: 2147483647
   agua: 0
-  aguaMaximo: 5000
+  aguaMaximo: 2147483647
   petroleo: 0
-  petroleoMaximo: 3000
+  petroleoMaximo: 2147483647
   minerais: 0
-  mineraisMaximo: 2000
+  mineraisMaximo: 2147483647
   metal: 0
-  metalMaximo: 2000
+  metalMaximo: 2147483647
   energia: 0
-  energiaMaximo: 1000
+  energiaMaximo: 2147483647
   descricao: "Armaz\xE9m de recursos civis do pa\xEDs"
   localizacao: Base Principal

@@ -12,19 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d3bee04a271d80f4382ce8b7aef13c5d, type: 3}
   m_Name: Dados_Armazem_Militar
   m_EditorClassIdentifier: Assembly-CSharp::DadosArmazemMilitar
-  capacidadeMaxima: 5000
+  capacidadeMaxima: 2147483647
   municaoLeve: 0
-  municaoLeveMaximo: 10000
+  municaoLeveMaximo: 2147483647
   municaoPesada: 0
-  municaoPesadaMaximo: 1000
+  municaoPesadaMaximo: 2147483647
   misseis: 0
-  misseisMaximo: 100
+  misseisMaximo: 2147483647
   explosivos: 0
-  explosivosMaximo: 500
+  explosivosMaximo: 2147483647
   equipamento: 0
-  equipamentoMaximo: 1000
+  equipamentoMaximo: 2147483647
   blindagem: 0
-  blindagemMaximo: 200
+  blindagemMaximo: 2147483647
   descricao: "Armaz\xE9m militar estrat\xE9gico"
   localizacao: Base Militar Principal
   nivelSeguranca: 5

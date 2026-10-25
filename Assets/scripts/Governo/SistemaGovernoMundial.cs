@@ -1683,7 +1683,7 @@ public class SistemaGovernoMundial : MonoBehaviour
                 DadosArmazemRecursos armazem = GerenciadorArmazens.Instancia != null
                     ? GerenciadorArmazens.Instancia.armazemRecursos : null;
                 if (armazem != null)
-                    armazem.alimentos = Mathf.Clamp(pais.comida, 0, Mathf.Max(0, armazem.alimentosMaximo));
+                    armazem.alimentos = Mathf.Max(0, pais.comida);
             }
         }
         finally
@@ -3713,15 +3713,14 @@ public class SistemaGovernoMundial : MonoBehaviour
         switch (recurso)
         {
             case RecursoMercado.Comida:
-                pais.comida = Mathf.Max(0, pais.comida + delta);
+                pais.comida = SomarEstoqueSemLimite(pais.comida, delta);
                 if (gr != null)
                 {
                     gr.comida = pais.comida;
                 }
                 if (armazens != null && armazens.armazemRecursos != null)
                 {
-                    int alvo = Mathf.Max(0, pais.comida);
-                    armazens.armazemRecursos.alimentos = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.alimentosMaximo);
+                    armazens.armazemRecursos.alimentos = Mathf.Max(0, pais.comida);
                     armazens.NotificarAtualizacaoManual();
                 }
                 break;
@@ -3738,57 +3737,60 @@ public class SistemaGovernoMundial : MonoBehaviour
                 }
                 else
                 {
-                    pais.agua = Mathf.Clamp(pais.agua + delta, 0, Mathf.Max(0, pais.aguaMaxima));
+                    pais.agua = SomarEstoqueSemLimite(pais.agua, delta);
                 }
                 break;
             case RecursoMercado.Petroleo:
-                pais.petroleo = Mathf.Max(0, pais.petroleo + delta);
+                pais.petroleo = SomarEstoqueSemLimite(pais.petroleo, delta);
                 if (gr != null)
                 {
                     gr.petroleo = pais.petroleo;
                 }
                 if (armazens != null && armazens.armazemRecursos != null)
                 {
-                    int alvo = Mathf.Max(0, pais.petroleo);
-                    armazens.armazemRecursos.petroleo = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.petroleoMaximo);
+                    armazens.armazemRecursos.petroleo = Mathf.Max(0, pais.petroleo);
                     armazens.NotificarAtualizacaoManual();
                 }
                 break;
             case RecursoMercado.Energia:
-                pais.energia = Mathf.Max(0, pais.energia + delta);
+                pais.energia = SomarEstoqueSemLimite(pais.energia, delta);
                 if (gr != null)
                 {
                     gr.energia = pais.energia;
                 }
                 if (armazens != null && armazens.armazemRecursos != null)
                 {
-                    int alvo = Mathf.Max(0, pais.energia);
-                    armazens.armazemRecursos.energia = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.energiaMaximo);
+                    armazens.armazemRecursos.energia = Mathf.Max(0, pais.energia);
                     armazens.NotificarAtualizacaoManual();
                 }
                 break;
             case RecursoMercado.Aco:
-                pais.aco = Mathf.Max(0, pais.aco + delta);
+                pais.aco = SomarEstoqueSemLimite(pais.aco, delta);
                 if (gr != null)
                 {
                     gr.aco = pais.aco;
                 }
                 if (armazens != null && armazens.armazemRecursos != null)
                 {
-                    int alvo = Mathf.Max(0, pais.aco);
-                    armazens.armazemRecursos.metal = Mathf.Clamp(alvo, 0, armazens.armazemRecursos.metalMaximo);
+                    armazens.armazemRecursos.metal = Mathf.Max(0, pais.aco);
                     armazens.NotificarAtualizacaoManual();
                 }
                 break;
             case RecursoMercado.Armamentos:
-                pais.armamentos = Mathf.Max(0, pais.armamentos + delta);
+                pais.armamentos = SomarEstoqueSemLimite(pais.armamentos, delta);
                 break;
             case RecursoMercado.Uranio:
-                pais.uranio = Mathf.Max(0, pais.uranio + delta);
+                pais.uranio = SomarEstoqueSemLimite(pais.uranio, delta);
                 break;
         }
 
         NotificarGovernoAtualizadoSeguro();
+    }
+
+    private static int SomarEstoqueSemLimite(int estoqueAtual, int variacao)
+    {
+        long total = (long)estoqueAtual + variacao;
+        return (int)Math.Min(int.MaxValue, Math.Max(0L, total));
     }
 
     private void AlterarEstoque(int teamId, string recursoId, int delta)

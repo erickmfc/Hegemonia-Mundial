@@ -15,7 +15,7 @@ public sealed class AgriculturaNacional : MonoBehaviour
 {
     public const string PesquisaAgrotoxicosId = "pesquisa_tecnologia_agrotoxicos";
     public const int InvestimentoMinimoSemanal = 100; // $100M por semana
-    public const int CapacidadeArmazenamentoPadrao = 5000;
+    public const int CapacidadeArmazenamentoPadrao = int.MaxValue;
     // Uma verba diária de 20 mil financia capacidade para produzir uma unidade
     // de comida por dia. A previsão e a produção usam a mesma conversão.
     public const long VerbaPorUnidadeComidaDiaria = 20_000L;
@@ -85,24 +85,16 @@ public sealed class AgriculturaNacional : MonoBehaviour
     }
 
     /// <summary>
-    /// Corrige saves antigos com capacidade nula ou negativa, preservando toda
-    /// capacidade positiva já configurada pelo jogador.
+    /// Migra saves antigos para estoque ilimitado de comida, água e recursos.
     /// </summary>
     public static bool GarantirCapacidadeArmazenamento(DadosPaisGoverno pais, bool jogador)
     {
         if (pais == null) return false;
 
-        bool alterou = false;
-        if (pais.capacidadeArmazenamentoAgricola <= 0)
-        {
-            pais.capacidadeArmazenamentoAgricola = CapacidadeArmazenamentoPadrao;
-            alterou = true;
-        }
-        if (pais.aguaMaxima <= 0)
-        {
-            pais.aguaMaxima = CapacidadeArmazenamentoPadrao;
-            alterou = true;
-        }
+        bool alterou = pais.capacidadeArmazenamentoAgricola != CapacidadeArmazenamentoPadrao
+            || pais.aguaMaxima != CapacidadeArmazenamentoPadrao;
+        pais.capacidadeArmazenamentoAgricola = CapacidadeArmazenamentoPadrao;
+        pais.aguaMaxima = CapacidadeArmazenamentoPadrao;
 
         if (jogador)
         {
@@ -111,16 +103,27 @@ public sealed class AgriculturaNacional : MonoBehaviour
                 : null;
             if (armazem != null)
             {
-                if (armazem.alimentosMaximo <= 0)
+                if (armazem.capacidadeMaxima != int.MaxValue || armazem.alimentosMaximo != int.MaxValue
+                    || armazem.aguaMaximo != int.MaxValue || armazem.petroleoMaximo != int.MaxValue
+                    || armazem.mineraisMaximo != int.MaxValue || armazem.metalMaximo != int.MaxValue
+                    || armazem.energiaMaximo != int.MaxValue || armazem.ferroMaximo != float.MaxValue
+                    || armazem.cobreMaximo != float.MaxValue || armazem.bauxitaMaximo != float.MaxValue
+                    || armazem.titanioMaximo != float.MaxValue || armazem.uranioMaximo != float.MaxValue)
                 {
-                    armazem.alimentosMaximo = Mathf.Max(CapacidadeArmazenamentoPadrao, pais.capacidadeArmazenamentoAgricola);
                     alterou = true;
                 }
-                if (armazem.aguaMaximo <= 0)
-                {
-                    armazem.aguaMaximo = Mathf.Max(CapacidadeArmazenamentoPadrao, pais.aguaMaxima);
-                    alterou = true;
-                }
+                armazem.capacidadeMaxima = int.MaxValue;
+                armazem.alimentosMaximo = int.MaxValue;
+                armazem.aguaMaximo = int.MaxValue;
+                armazem.petroleoMaximo = int.MaxValue;
+                armazem.mineraisMaximo = int.MaxValue;
+                armazem.metalMaximo = int.MaxValue;
+                armazem.energiaMaximo = int.MaxValue;
+                armazem.ferroMaximo = float.MaxValue;
+                armazem.cobreMaximo = float.MaxValue;
+                armazem.bauxitaMaximo = float.MaxValue;
+                armazem.titanioMaximo = float.MaxValue;
+                armazem.uranioMaximo = float.MaxValue;
             }
         }
 
@@ -401,6 +404,12 @@ public sealed class AgriculturaNacional : MonoBehaviour
 
     public bool InvestirArea(int teamId, AreaInvestimentoAgricola area)
     {
+        if (area == AreaInvestimentoAgricola.Armazenamento
+            || area == AreaInvestimentoAgricola.RecursosHidricos)
+        {
+            return false;
+        }
+
         if (governo == null) governo = SistemaGovernoMundial.Instancia;
         DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
         if (pais == null) return false;
@@ -410,18 +419,6 @@ public sealed class AgriculturaNacional : MonoBehaviour
         long custo = CalcularCobrancaFixaSemanal(100 + pais.niveisInvestimentoAgricola[index] * 50);
         if (!governo.TentarPagar(teamId, custo)) return false;
         pais.niveisInvestimentoAgricola[index]++;
-        if (area == AreaInvestimentoAgricola.RecursosHidricos)
-        {
-            pais.aguaMaxima += 500;
-            if (teamId == governo.teamJogador && GerenciadorArmazens.Instancia != null && GerenciadorArmazens.Instancia.armazemRecursos != null)
-                GerenciadorArmazens.Instancia.armazemRecursos.aguaMaximo += 500;
-        }
-        if (area == AreaInvestimentoAgricola.Armazenamento)
-        {
-            pais.capacidadeArmazenamentoAgricola += 1000;
-            if (teamId == governo.teamJogador && GerenciadorArmazens.Instancia != null && GerenciadorArmazens.Instancia.armazemRecursos != null)
-                GerenciadorArmazens.Instancia.armazemRecursos.alimentosMaximo += 1000;
-        }
         governo.NotificarGovernoAtualizado();
         return true;
     }
@@ -442,7 +439,7 @@ public sealed class AgriculturaNacional : MonoBehaviour
         DadosArmazemRecursos armazem = GerenciadorArmazens.Instancia.armazemRecursos;
         if (jogador != null && !jogador.estoqueHidricoInicializado && armazem.agua <= 0 && jogador.agua > 0)
         {
-            armazem.AdicionarRecurso(TipoRecurso.Agua, Mathf.Min(jogador.agua, armazem.aguaMaximo));
+            armazem.AdicionarRecurso(TipoRecurso.Agua, jogador.agua);
             jogador.agua = armazem.agua;
             GerenciadorArmazens.Instancia.NotificarAtualizacaoManual();
         }
@@ -684,17 +681,8 @@ public sealed class AgriculturaNacional : MonoBehaviour
         // As culturas vivem no armazem industrial; consolide-as antes de
         // calcular o espaco para evitar aceitar uma colheita sobre estoque antigo.
         governo.ReconciliarEstoqueComidaCulturas(pais.teamId);
-        int capacidade = Mathf.Max(0, pais.capacidadeArmazenamentoAgricola);
         int estoque = Mathf.Max(0, governo.ObterEstoque(pais.teamId, RecursoMercado.Comida));
-        int espaco = Mathf.Max(0, capacidade - estoque);
-        if (pais.teamId != governo.teamJogador) return espaco;
-
-        GerenciadorArmazens gerenciador = GerenciadorArmazens.Instancia;
-        DadosArmazemRecursos armazem = gerenciador != null ? gerenciador.armazemRecursos : null;
-        if (armazem == null) return espaco;
-        if (armazem.alimentosMaximo <= 0) return espaco;
-        espaco = Mathf.Min(espaco, Mathf.Max(0, armazem.alimentosMaximo - armazem.alimentos));
-        return espaco;
+        return Mathf.Max(0, int.MaxValue - estoque);
     }
 
     public static float CalcularFatorAgua(float disponivel, float demanda, float eficienciaHidrica)

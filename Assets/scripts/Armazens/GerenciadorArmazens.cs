@@ -256,25 +256,25 @@ public class GerenciadorArmazens : MonoBehaviour
         if (armazemRecursos != null)
         {
             relatorio += "📦 ARMAZÉM DE RECURSOS:\n";
-            relatorio += $"Ocupação: {armazemRecursos.PercentualOcupacao():F1}%\n";
-            relatorio += $"🌾 Alimentos: {armazemRecursos.alimentos}/{armazemRecursos.alimentosMaximo}\n";
-            relatorio += $"💧 Água: {armazemRecursos.agua}/{armazemRecursos.aguaMaximo}\n";
-            relatorio += $"⛽ Petróleo: {armazemRecursos.petroleo}/{armazemRecursos.petroleoMaximo}\n";
-            relatorio += $"💎 Minerais: {armazemRecursos.minerais}/{armazemRecursos.mineraisMaximo}\n";
-            relatorio += $"🔩 Metal: {armazemRecursos.metal}/{armazemRecursos.metalMaximo}\n";
-            relatorio += $"⚡ Energia: {armazemRecursos.energia}/{armazemRecursos.energiaMaximo}\n\n";
+            relatorio += "Capacidade: ilimitada\n";
+            relatorio += $"🌾 Alimentos: {armazemRecursos.alimentos} (ilimitado)\n";
+            relatorio += $"💧 Água: {armazemRecursos.agua} (ilimitado)\n";
+            relatorio += $"⛽ Petróleo: {armazemRecursos.petroleo} (ilimitado)\n";
+            relatorio += $"💎 Minerais: {armazemRecursos.minerais} (ilimitado)\n";
+            relatorio += $"🔩 Metal: {armazemRecursos.metal} (ilimitado)\n";
+            relatorio += $"⚡ Energia: {armazemRecursos.energia} (ilimitado)\n\n";
         }
         
         if (armazemMilitar != null)
         {
             relatorio += "🎖️ ARMAZÉM MILITAR:\n";
-            relatorio += $"Ocupação: {armazemMilitar.PercentualOcupacao():F1}%\n";
-            relatorio += $"🔫 Munição Leve: {armazemMilitar.municaoLeve}/{armazemMilitar.municaoLeveMaximo}\n";
-            relatorio += $"💣 Munição Pesada: {armazemMilitar.municaoPesada}/{armazemMilitar.municaoPesadaMaximo}\n";
-            relatorio += $"🚀 Mísseis: {armazemMilitar.misseis}/{armazemMilitar.misseisMaximo}\n";
-            relatorio += $"💥 Explosivos: {armazemMilitar.explosivos}/{armazemMilitar.explosivosMaximo}\n";
-            relatorio += $"🎖️ Equipamento: {armazemMilitar.equipamento}/{armazemMilitar.equipamentoMaximo}\n";
-            relatorio += $"🛡️ Blindagem: {armazemMilitar.blindagem}/{armazemMilitar.blindagemMaximo}\n";
+            relatorio += "Capacidade: ilimitada\n";
+            relatorio += $"🔫 Munição Leve: {armazemMilitar.municaoLeve} (ilimitado)\n";
+            relatorio += $"💣 Munição Pesada: {armazemMilitar.municaoPesada} (ilimitado)\n";
+            relatorio += $"🚀 Mísseis: {armazemMilitar.misseis} (ilimitado)\n";
+            relatorio += $"💥 Explosivos: {armazemMilitar.explosivos} (ilimitado)\n";
+            relatorio += $"🎖️ Equipamento: {armazemMilitar.equipamento} (ilimitado)\n";
+            relatorio += $"🛡️ Blindagem: {armazemMilitar.blindagem} (ilimitado)\n";
         }
         
         return relatorio;

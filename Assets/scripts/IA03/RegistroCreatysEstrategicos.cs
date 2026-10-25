@@ -182,18 +182,18 @@ namespace Hegemonia.AI.IA03
             for (int i = 0; i < candidatos.Count; i++)
             {
                 CreatyEstrategico creaty = candidatos[i];
-                bool patrolInPeace = paisProprietarioTeamId == 2
-                    && nivel == IA03NivelConflito.Paz
-                    && (tipo == IA03TipoCreaty.PatrulhaTerrestre
-                        || tipo == IA03TipoCreaty.PatrulhaNaval
-                        || tipo == IA03TipoCreaty.PatrulhaAerea
-                        || tipo == IA03TipoCreaty.PatrulhaSubmarino)
+                bool patrolType = tipo == IA03TipoCreaty.PatrulhaTerrestre
+                    || tipo == IA03TipoCreaty.PatrulhaNaval
+                    || tipo == IA03TipoCreaty.PatrulhaAerea
+                    || tipo == IA03TipoCreaty.PatrulhaSubmarino;
+                bool patrolInPeace = nivel == IA03NivelConflito.Paz
+                    && patrolType
                     && creaty != null
                     && creaty.NivelDeConflito == IA03NivelConflito.Tensao;
                 if (creaty == null
                     || !creaty.Ativo
                     || idsDuplicados.Contains(creaty.Id)
-                    || !creaty.PermiteAlvo(paisAlvoTeamId)
+                    || (!creaty.PermiteAlvo(paisAlvoTeamId) && !patrolInPeace)
                     || (creaty.NivelDeConflito != nivel && !patrolInPeace)
                     || (dominio != IA03DominioEstrategico.Combinado && creaty.Dominio != dominio && creaty.Dominio != IA03DominioEstrategico.Combinado))
                 {

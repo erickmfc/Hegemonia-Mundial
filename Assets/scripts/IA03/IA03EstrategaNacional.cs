@@ -1472,8 +1472,7 @@ namespace Hegemonia.AI.IA03
 
         private void TentarIniciarMissao(float now)
         {
-            if ((nivelDeConflito == IA03NivelConflito.Paz && (brain == null || brain.TeamId != 2))
-                || !PodeIniciarMissaoEstrategica())
+            if (!PodeIniciarMissaoEstrategica())
             {
                 return;
             }
@@ -1508,6 +1507,20 @@ namespace Hegemonia.AI.IA03
             ultimaDecisao = string.IsNullOrEmpty(ultimoMotivo)
                 ? "nenhuma missão estratégica pôde ser iniciada"
                 : ultimoMotivo;
+
+            // Missões ofensivas podem permanecer na fila durante a paz. Elas
+            // não devem impedir que a IA continue usando os Creatys de patrulha.
+            string motivoPatrulha = string.Empty;
+            if (nivelDeConflito == IA03NivelConflito.Paz
+                && TentarIniciarMissao(null, now, out motivoPatrulha))
+            {
+                return;
+            }
+
+            if (nivelDeConflito == IA03NivelConflito.Paz && !string.IsNullOrEmpty(motivoPatrulha))
+            {
+                ultimaDecisao = motivoPatrulha;
+            }
         }
 
         private bool TentarIniciarMissao(MissaoEstrategicaSO selecionada, float now, out string motivo)
@@ -1619,7 +1632,14 @@ namespace Hegemonia.AI.IA03
                 }
             }
 
-            if (!ponto.TentarReservar(brain.TeamId, paisAlvoTeamId, unidadesCandidatas.Count))
+            bool pontoEDePatrulha = ponto.Tipo == IA03TipoCreaty.PatrulhaTerrestre
+                || ponto.Tipo == IA03TipoCreaty.PatrulhaNaval
+                || ponto.Tipo == IA03TipoCreaty.PatrulhaAerea
+                || ponto.Tipo == IA03TipoCreaty.PatrulhaSubmarino;
+            int alvoReservaCreaty = nivelDeConflito == IA03NivelConflito.Paz && pontoEDePatrulha
+                ? ponto.PaisAlvoTeamId
+                : paisAlvoTeamId;
+            if (!ponto.TentarReservar(brain.TeamId, alvoReservaCreaty, unidadesCandidatas.Count))
             {
                 motivo = "Creaty ocupado ou em tempo de reutilização: " + ponto.Id;
                 return false;
@@ -1872,13 +1892,9 @@ namespace Hegemonia.AI.IA03
                 tetoDeGuerra,
                 perfilPais != null ? perfilPais.ContingenteMaximoPorMissaoN1 : 0.5f);
 
-            bool patrulhaDeValdoriaEmPaz = brain != null
-                && brain.TeamId == 2
-                && nivelDeConflito == IA03NivelConflito.Paz
-                && missao != null
-                && missao.PermitePatrulhaEmPaz
-                && missao.TipoOrdem == IA03TipoOrdem.Patrulhar;
-            if (patrulhaDeValdoriaEmPaz)
+            bool patrulhaEmPaz = nivelDeConflito == IA03NivelConflito.Paz
+                && (missao == null || (missao.PermitePatrulhaEmPaz && missao.TipoOrdem == IA03TipoOrdem.Patrulhar));
+            if (patrulhaEmPaz)
             {
                 limiteUnidades = Mathf.Min(
                     Mathf.Max(0, capacidadeCreatyDisponivel),
@@ -2365,7 +2381,17 @@ namespace Hegemonia.AI.IA03
         {
             motivo = string.Empty;
             bool exigeDestruicaoDeAlvo = MissaoExigeDestruicaoDeAlvo(missao);
-            IA_CommandType tipoComando = missao != null
+            bool pontoDePatrulha = ponto != null
+                && (ponto.Tipo == IA03TipoCreaty.PatrulhaTerrestre
+                    || ponto.Tipo == IA03TipoCreaty.PatrulhaNaval
+                    || ponto.Tipo == IA03TipoCreaty.PatrulhaAerea
+                    || ponto.Tipo == IA03TipoCreaty.PatrulhaSubmarino);
+            bool patrulhaEmPaz = nivelDeConflito == IA03NivelConflito.Paz
+                && (missao == null || (missao.PermitePatrulhaEmPaz && missao.TipoOrdem == IA03TipoOrdem.Patrulhar))
+                && pontoDePatrulha;
+            IA_CommandType tipoComando = patrulhaEmPaz
+                ? IA_CommandType.Patrol
+                : missao != null
                 && (missao.TipoOrdem == IA03TipoOrdem.Atacar || exigeDestruicaoDeAlvo)
                 ? IA_CommandType.Attack
                 : missao != null && missao.TipoOrdem == IA03TipoOrdem.Patrulhar
@@ -2432,7 +2458,9 @@ namespace Hegemonia.AI.IA03
             }
             else if (tipoComando == IA_CommandType.Patrol)
             {
-                Vector3 pontoB = ponto.ProximoPonto != null ? ponto.ProximoPonto.transform.position : ponto.transform.position;
+                Vector3 pontoB = ponto.ProximoPonto != null
+                    ? ponto.ProximoPonto.transform.position
+                    : ponto.transform.position + ResolverDeslocamentoPatrulha(ponto);
                 payload = new IA_PatrolOrderData
                 {
                     Units = new List<GameObject>(unidades),
@@ -3945,6 +3973,7 @@ namespace Hegemonia.AI.IA03
         {
             switch (nivel)
             {
+                case IA03NivelConflito.Paz:
                 case IA03NivelConflito.Tensao:
                     return dominio == IA03DominioEstrategico.Naval ? IA03TipoCreaty.PatrulhaNaval
                         : dominio == IA03DominioEstrategico.Aereo ? IA03TipoCreaty.PatrulhaAerea
@@ -3954,6 +3983,19 @@ namespace Hegemonia.AI.IA03
                 case IA03NivelConflito.GuerraTotal: return IA03TipoCreaty.GuerraN1;
                 default: return IA03TipoCreaty.PontoGenerico;
             }
+        }
+
+        private static Vector3 ResolverDeslocamentoPatrulha(CreatyEstrategico ponto)
+        {
+            Vector3 direcao = ponto != null ? ponto.transform.forward : Vector3.forward;
+            direcao.y = 0f;
+            if (direcao.sqrMagnitude < 0.01f)
+            {
+                direcao = Vector3.forward;
+            }
+
+            float distancia = ponto != null && ponto.Tipo == IA03TipoCreaty.PatrulhaTerrestre ? 450f : 1800f;
+            return direcao.normalized * distancia;
         }
 
         private IA03TipoCreaty MissaoDefaultCreaty(MissaoEstrategicaSO missao)

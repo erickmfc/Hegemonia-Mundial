@@ -450,7 +450,25 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
                 && c.teamID == teamId
                 && string.Equals(c.nome, nomeNormalizado, StringComparison.OrdinalIgnoreCase));
         }
-        if (existente != null) return existente;
+        if (existente != null)
+        {
+            if (CidadeComplexoUrbano.EhNovaAurora(existente.nome))
+            {
+                existente.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+                existente.populacaoCivil = Mathf.Clamp(
+                    existente.populacaoCivil, 0, CidadeComplexoUrbano.CapacidadeMaximaNovaAurora);
+                AtualizarResumoCidadeAbstrata(existente);
+            }
+            return existente;
+        }
+
+        int capacidadeCidade = Mathf.Max(0, capacidadeHabitacionalInicial);
+        int populacaoCidade = Mathf.Max(0, populacaoInicial);
+        if (CidadeComplexoUrbano.EhNovaAurora(nomeNormalizado))
+        {
+            capacidadeCidade = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+            populacaoCidade = CidadeComplexoUrbano.PopulacaoInicialNovaAurora;
+        }
 
         CidadeEstado nova = new CidadeEstado(
             string.IsNullOrWhiteSpace(idPersistente) ? "cidade-dados-" + Guid.NewGuid().ToString("N") : idPersistente,
@@ -461,12 +479,12 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
         {
             ehCidadeNaoMaterializada = true,
             localizacao = posicao,
-            populacaoCivil = Mathf.Clamp(populacaoInicial, 0, Mathf.Max(0, capacidadeHabitacionalInicial)),
-            capacidadeHabitacional = Mathf.Max(0, capacidadeHabitacionalInicial),
-            empregosTotais = Mathf.Max(0, Mathf.RoundToInt(capacidadeHabitacionalInicial * 0.35f)),
-            desenvolvimento = Mathf.Clamp(populacaoInicial / 10000f, 0f, 100f),
+            populacaoCivil = Mathf.Clamp(populacaoCidade, 0, capacidadeCidade),
+            capacidadeHabitacional = capacidadeCidade,
+            empregosTotais = Mathf.Max(0, Mathf.RoundToInt(capacidadeCidade * 0.35f)),
+            desenvolvimento = Mathf.Clamp(populacaoCidade / 10000f, 0f, 100f),
             importanciaEstrategica = 10f,
-            producaoEconomicaMensal = Mathf.Max(0, populacaoInicial) * 0.01f,
+            producaoEconomicaMensal = Mathf.Max(0, populacaoCidade) * 0.01f,
             atratividade = 50f
         };
 
@@ -835,8 +853,14 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
         {
             CidadeEstado cidade = cidades[i];
             if (cidade == null || !cidade.ehCidadeNaoMaterializada || cidade.teamID != teamId) continue;
+            int capacidadeAnterior = cidade.capacidadeHabitacional;
+            int populacaoAnterior = cidade.populacaoCivil;
+            if (CidadeComplexoUrbano.EhNovaAurora(cidade.nome))
+                cidade.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
             cidade.capacidadeHabitacional = Mathf.Max(0, cidade.capacidadeHabitacional);
             cidade.populacaoCivil = Mathf.Clamp(cidade.populacaoCivil, 0, cidade.capacidadeHabitacional);
+            if (cidade.capacidadeHabitacional != capacidadeAnterior || cidade.populacaoCivil != populacaoAnterior)
+                AtualizarResumoCidadeAbstrata(cidade);
             capacidade += cidade.capacidadeHabitacional;
             populacao += cidade.populacaoCivil;
         }
@@ -958,13 +982,18 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
             string id = string.IsNullOrWhiteSpace(salva.id) ? "cidade-dados-" + Guid.NewGuid().ToString("N") : salva.id;
             if (!idsRestaurados.Add(id)) continue;
 
-            CidadeEstado restaurada = new CidadeEstado(id, salva.nome.Trim(), salva.teamID, false, null)
+            string nomeRestaurado = salva.nome.Trim();
+            int capacidadeRestaurada = Mathf.Max(0, salva.capacidadeHabitacional);
+            if (CidadeComplexoUrbano.EhNovaAurora(nomeRestaurado))
+                capacidadeRestaurada = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+
+            CidadeEstado restaurada = new CidadeEstado(id, nomeRestaurado, salva.teamID, false, null)
             {
                 ehCidadeNaoMaterializada = true,
                 nomePais = salva.nomePais ?? string.Empty,
                 localizacao = salva.localizacao.ToVector3(),
                 populacaoCivil = Mathf.Max(0, salva.populacaoCivil),
-                capacidadeHabitacional = Mathf.Max(0, salva.capacidadeHabitacional),
+                capacidadeHabitacional = capacidadeRestaurada,
                 empregosTotais = Mathf.Max(0, salva.empregosTotais),
                 desenvolvimento = Mathf.Clamp(salva.desenvolvimento, 0f, 100f),
                 importanciaEstrategica = Mathf.Clamp(salva.importanciaEstrategica, 0f, 100f),
@@ -1065,7 +1094,9 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
 
         cidadeVisual.nomeCidade = cidade.nome;
         cidadeVisual.teamId = cidade.teamID;
-        cidadeVisual.capacidadeHabitacional = Mathf.Clamp(cidade.capacidadeHabitacional, 500000, 2000000);
+        cidadeVisual.capacidadeHabitacional = CidadeComplexoUrbano.EhNovaAurora(cidade.nome)
+            ? CidadeComplexoUrbano.CapacidadeMaximaNovaAurora
+            : Mathf.Clamp(cidade.capacidadeHabitacional, 500000, 2000000);
         cidadeVisual.populacaoResidente = Mathf.Clamp(cidade.populacaoCivil, 0, cidadeVisual.capacidadeHabitacional);
         cidadeVisual.qualidadeVida = Mathf.Clamp(Mathf.RoundToInt(cidade.desenvolvimento), 0, 100);
         cidadeVisual.SincronizarEstruturaEconomica();

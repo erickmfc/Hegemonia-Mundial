@@ -126,7 +126,12 @@ public class MarcadorTerritorio : MonoBehaviour
             }
 
             inicial.teamId = grupo.Key;
-            if (inicial.populacaoResidente <= 0)
+            if (CidadeComplexoUrbano.EhNovaAurora(inicial.nomeCidade))
+            {
+                inicial.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+                inicial.populacaoResidente = CidadeComplexoUrbano.PopulacaoInicialNovaAurora;
+            }
+            else if (inicial.populacaoResidente <= 0)
                 inicial.populacaoResidente = 10000;
             IdentidadeUnidade identidade = inicial.GetComponent<IdentidadeUnidade>();
             if (identidade != null) identidade.teamID = grupo.Key;
@@ -196,7 +201,7 @@ public class MarcadorTerritorio : MonoBehaviour
         if (!CidadeGuiaExpansaoPorTime.TryGetValue(timeId, out CidadeComplexoUrbano cidadeAtual)
             || cidadeAtual == null || cidadeAtual.populacaoResidente < cidadeAtual.capacidadeHabitacional)
         {
-            mensagem = "A cidade atual precisa atingir 5 milhões de habitantes antes da expansão.";
+            mensagem = "A cidade atual precisa atingir seu limite de habitantes antes da expansão.";
             return false;
         }
 
@@ -230,7 +235,15 @@ public class MarcadorTerritorio : MonoBehaviour
         if (proximaCidade != null)
         {
             proximaCidade.teamId = timeId;
-            proximaCidade.populacaoResidente = Mathf.Max(10000, proximaCidade.populacaoResidente);
+            if (CidadeComplexoUrbano.EhNovaAurora(proximaCidade.nomeCidade))
+            {
+                proximaCidade.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+                proximaCidade.populacaoResidente = CidadeComplexoUrbano.PopulacaoInicialNovaAurora;
+            }
+            else
+            {
+                proximaCidade.populacaoResidente = Mathf.Max(10000, proximaCidade.populacaoResidente);
+            }
             IdentidadeUnidade identidade = proximaCidade.GetComponent<IdentidadeUnidade>();
             if (identidade != null) identidade.teamID = timeId;
             proximaCidade.gameObject.SetActive(true);
@@ -323,7 +336,8 @@ public class MarcadorTerritorio : MonoBehaviour
                 cidadeObjeto.name = "Nova Aurora";
                 cidade.nomeCidade = "Nova Aurora";
                 cidade.teamId = teamID;
-                cidade.populacaoResidente = 10000;
+                cidade.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+                cidade.populacaoResidente = CidadeComplexoUrbano.PopulacaoInicialNovaAurora;
 
                 IdentidadeUnidade identidade = cidade.GetComponent<IdentidadeUnidade>();
                 if (identidade == null) identidade = cidade.GetComponentInChildren<IdentidadeUnidade>(true);
@@ -357,7 +371,7 @@ public class MarcadorTerritorio : MonoBehaviour
                 RegistrarCidadeGuiaExpansao(teamID, cidade);
                 FinalizarTentativaConstrucaoCidade();
                 Destroy(gameObject);
-                Debug.Log($"[Cidade inicial] Nova Aurora criada para o Team {teamID} com 10.000 habitantes em {cidadeObjeto.transform.position}.", cidadeObjeto);
+                Debug.Log($"[Cidade inicial] Nova Aurora criada para o Team {teamID} com {CidadeComplexoUrbano.PopulacaoInicialNovaAurora:N0} habitantes em {cidadeObjeto.transform.position}.", cidadeObjeto);
                 yield break;
             }
 

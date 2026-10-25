@@ -2439,9 +2439,9 @@ public class MenuGoverno : MonoBehaviour
         CreateInfoBlock(parent,
             "Produção agrícola diária: " + p.producaoAgricolaDiaria + " t"
             + "\nEstoque alimentar nacional: " + p.comida + " t"
-            + "\nÁgua disponível: " + (gov != null ? gov.ObterEstoque(p.teamId, RecursoMercado.Agua) : p.agua) + " / " + p.aguaMaxima + " t"
+            + "\nÁgua disponível: " + (gov != null ? gov.ObterEstoque(p.teamId, RecursoMercado.Agua) : p.agua) + " t (ilimitado)"
             + "\nCapacidade agrícola: " + p.capacidadeAgricola + " t/dia"
-            + "\nCapacidade de armazenamento agrícola: " + p.comida + " / " + p.capacidadeArmazenamentoAgricola + " t"
+            + "\nEstoque de comida: " + p.comida + " t (ilimitado)"
             + "\nInvestimento semanal: $" + FormatNumber(p.investimentoAgricolaSemanal) + "M"
             + "\nEficiência: " + (p.eficienciaAgricola * 100f).ToString("0") + "%"
             + "\nSegurança hídrica: " + (p.eficienciaHidrica * 100f).ToString("0") + "%"
@@ -2466,10 +2466,12 @@ public class MenuGoverno : MonoBehaviour
                 AreaInvestimentoAgricola area = (AreaInvestimentoAgricola)i;
                 int nivel = NivelAreaAgricola(p, area);
                 int custo = 100 + nivel * 50;
+                bool armazenamentoIlimitado = area == AreaInvestimentoAgricola.Armazenamento
+                    || area == AreaInvestimentoAgricola.RecursosHidricos;
                 CreateInfoBlock(parent, AgriculturaNacional.NomeArea(area) + " — nível " + nivel + "/10"
                     + "\nPróximo investimento: $" + custo + "M"
-                    + "\n" + EfeitoAreaAgricola(area));
-                CreateActionButton(parent, "INVESTIR EM " + AgriculturaNacional.NomeArea(area).ToUpperInvariant(), corVerde, () =>
+                    + "\n" + (armazenamentoIlimitado ? "Estoque ilimitado; investimento não necessário." : EfeitoAreaAgricola(area)));
+                if (!armazenamentoIlimitado) CreateActionButton(parent, "INVESTIR EM " + AgriculturaNacional.NomeArea(area).ToUpperInvariant(), corVerde, () =>
                 {
                     if (agricultura.InvestirArea(p.teamId, area)) Notificar("Agricultura", "Investimento aplicado em " + AgriculturaNacional.NomeArea(area) + ".");
                     else Notificar("Agricultura", "Tesouro insuficiente ou nível máximo atingido.");
@@ -2498,8 +2500,8 @@ public class MenuGoverno : MonoBehaviour
             case AreaInvestimentoAgricola.Pesquisa: return "+1,5% de eficiência agrícola por nível.";
             case AreaInvestimentoAgricola.Agroindustria: return "+2 t/dia de capacidade de processamento por nível.";
             case AreaInvestimentoAgricola.Logistica: return "+1% de eficiência logística por nível.";
-            case AreaInvestimentoAgricola.Armazenamento: return "+1.000 t de capacidade de armazenamento agrícola por nível.";
-            case AreaInvestimentoAgricola.RecursosHidricos: return "+500 t de capacidade de água por nível.";
+            case AreaInvestimentoAgricola.Armazenamento: return "Estoque ilimitado; investimento não necessário.";
+            case AreaInvestimentoAgricola.RecursosHidricos: return "Estoque ilimitado; investimento não necessário.";
             default: return "Registra capacidade pecuária para futura integração; esterco só virá de um sistema real.";
         }
     }

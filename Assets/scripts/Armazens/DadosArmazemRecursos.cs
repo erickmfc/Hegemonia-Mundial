@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -9,31 +10,31 @@ public class DadosArmazemRecursos : ScriptableObject
 {
     [Header("📦 Capacidade do Armazém")]
     [Tooltip("Capacidade máxima de armazenamento")]
-    public int capacidadeMaxima = 10000;
+    public int capacidadeMaxima = int.MaxValue;
     
     [Header("🌾 Alimentos")]
     public int alimentos = 0;
-    public int alimentosMaximo = 5000;
+    public int alimentosMaximo = int.MaxValue;
     
     [Header("💧 Água")]
     public int agua = 0;
-    public int aguaMaximo = 5000;
+    public int aguaMaximo = int.MaxValue;
     
     [Header("⛽ Petróleo")]
     public int petroleo = 0;
-    public int petroleoMaximo = 3000;
+    public int petroleoMaximo = int.MaxValue;
     
     [Header("💎 Minerais")]
     public int minerais = 0;
-    public int mineraisMaximo = 2000;
+    public int mineraisMaximo = int.MaxValue;
     
     [Header("🔩 Aço/Metal")]
     public int metal = 0;
-    public int metalMaximo = 2000;
+    public int metalMaximo = int.MaxValue;
     
     [Header("⚡ Energia Armazenada (Baterias)")]
     public int energia = 0;
-    public int energiaMaximo = 1000;
+    public int energiaMaximo = int.MaxValue;
 
     // ──────────────────────────────────────────────
     // ⛏️ MINÉRIOS EXTRAÍDOS (Sistema de Ordens)
@@ -41,23 +42,23 @@ public class DadosArmazemRecursos : ScriptableObject
 
     [Header("⛏️ Ferro (t))")]
     public float ferro = 0f;
-    public float ferroMaximo = 100000f;
+    public float ferroMaximo = float.MaxValue;
 
     [Header("🟠 Cobre (t)")]
     public float cobre = 0f;
-    public float cobreMaximo = 50000f;
+    public float cobreMaximo = float.MaxValue;
 
     [Header("🪶 Bauxita (t)")]
     public float bauxita = 0f;
-    public float bauxitaMaximo = 50000f;
+    public float bauxitaMaximo = float.MaxValue;
 
     [Header("🔵 Titânio (t)")]
     public float titanio = 0f;
-    public float titanioMaximo = 30000f;
+    public float titanioMaximo = float.MaxValue;
 
     [Header("☢️ Urânio (t)")]
     public float uranio = 0f;
-    public float uranioMaximo = 10000f;
+    public float uranioMaximo = float.MaxValue;
 
     [Header("📊 Informações")]
     [TextArea(3, 5)]
@@ -69,8 +70,7 @@ public class DadosArmazemRecursos : ScriptableObject
     /// </summary>
     public int EspacoDisponivel()
     {
-        int ocupado = alimentos + agua + petroleo + minerais + metal + energia;
-        return capacidadeMaxima - ocupado;
+        return int.MaxValue;
     }
 
     // ──────────────────────────────────────────────
@@ -78,51 +78,40 @@ public class DadosArmazemRecursos : ScriptableObject
     // ──────────────────────────────────────────────
 
     /// <summary>
-    /// Adiciona minério ao campo correspondente, respeitando o limite máximo.
-    /// Retorna a quantidade efetivamente adicionada (pode ser menor se o armazém estiver quase cheio).
+    /// Adiciona minério ao campo correspondente sem limite de armazenamento.
+    /// Retorna a quantidade efetivamente adicionada, limitada apenas pela representação numérica.
     /// </summary>
     public float AdicionarMinerio(TipoRecursoExtracao tipo, float quantidade)
     {
-        if (quantidade <= 0f) return 0f;
+        if (quantidade <= 0f || float.IsNaN(quantidade) || float.IsInfinity(quantidade)) return 0f;
 
         switch (tipo)
         {
             case TipoRecursoExtracao.Ferro:
-                float addFerro = Mathf.Min(quantidade, ferroMaximo - ferro);
-                ferro += addFerro;
-                if (addFerro < quantidade)
-                    Debug.LogWarning($"[Armazém] Armazém de Ferro cheio! Perdeu {quantidade - addFerro:N0} t.");
-                return addFerro;
+                return AdicionarMinerioSemLimite(ref ferro, quantidade);
 
             case TipoRecursoExtracao.Cobre:
-                float addCobre = Mathf.Min(quantidade, cobreMaximo - cobre);
-                cobre += addCobre;
-                if (addCobre < quantidade)
-                    Debug.LogWarning($"[Armazém] Armazém de Cobre cheio! Perdeu {quantidade - addCobre:N0} t.");
-                return addCobre;
+                return AdicionarMinerioSemLimite(ref cobre, quantidade);
 
             case TipoRecursoExtracao.Bauxita:
-                float addBauxita = Mathf.Min(quantidade, bauxitaMaximo - bauxita);
-                bauxita += addBauxita;
-                if (addBauxita < quantidade)
-                    Debug.LogWarning($"[Armazém] Armazém de Bauxita cheio! Perdeu {quantidade - addBauxita:N0} t.");
-                return addBauxita;
+                return AdicionarMinerioSemLimite(ref bauxita, quantidade);
 
             case TipoRecursoExtracao.Titanio:
-                float addTitanio = Mathf.Min(quantidade, titanioMaximo - titanio);
-                titanio += addTitanio;
-                if (addTitanio < quantidade)
-                    Debug.LogWarning($"[Armazém] Armazém de Titânio cheio! Perdeu {quantidade - addTitanio:N0} t.");
-                return addTitanio;
+                return AdicionarMinerioSemLimite(ref titanio, quantidade);
 
             case TipoRecursoExtracao.Uranio:
-                float addUranio = Mathf.Min(quantidade, uranioMaximo - uranio);
-                uranio += addUranio;
-                if (addUranio < quantidade)
-                    Debug.LogWarning($"[Armazém] Armazém de Urânio cheio! Perdeu {quantidade - addUranio:N0} t.");
-                return addUranio;
+                return AdicionarMinerioSemLimite(ref uranio, quantidade);
         }
         return 0f;
+    }
+
+    private static float AdicionarMinerioSemLimite(ref float estoque, float quantidade)
+    {
+        double total = Math.Max(0d, estoque) + quantidade;
+        float adicionado = (float)Math.Min(float.MaxValue, total);
+        adicionado = Mathf.Max(0f, adicionado - Mathf.Max(0f, estoque));
+        estoque = Mathf.Min(float.MaxValue, Mathf.Max(0f, estoque) + adicionado);
+        return adicionado;
     }
 
     /// <summary>
@@ -168,8 +157,7 @@ public class DadosArmazemRecursos : ScriptableObject
     /// </summary>
     public float PercentualOcupacao()
     {
-        int ocupado = alimentos + agua + petroleo + minerais + metal + energia;
-        return (float)ocupado / capacidadeMaxima * 100f;
+        return 0f;
     }
 
     /// <summary>
@@ -177,60 +165,41 @@ public class DadosArmazemRecursos : ScriptableObject
     /// </summary>
     public bool AdicionarRecurso(TipoRecurso tipo, int quantidade)
     {
+        if (quantidade <= 0) return false;
+
         switch (tipo)
         {
             case TipoRecurso.Alimentos:
-                if (alimentos + quantidade <= alimentosMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    alimentos += quantidade;
-                    return true;
-                }
-                break;
+                alimentos = AdicionarEstoqueSemLimite(alimentos, quantidade);
+                return true;
                 
             case TipoRecurso.Agua:
-                if (agua + quantidade <= aguaMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    agua += quantidade;
-                    return true;
-                }
-                break;
+                agua = AdicionarEstoqueSemLimite(agua, quantidade);
+                return true;
                 
             case TipoRecurso.Petroleo:
-                if (petroleo + quantidade <= petroleoMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    petroleo += quantidade;
-                    return true;
-                }
-                break;
+                petroleo = AdicionarEstoqueSemLimite(petroleo, quantidade);
+                return true;
                 
             case TipoRecurso.Minerais:
-                if (minerais + quantidade <= mineraisMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    minerais += quantidade;
-                    return true;
-                }
-                break;
+                minerais = AdicionarEstoqueSemLimite(minerais, quantidade);
+                return true;
                 
             case TipoRecurso.Metal:
-                if (metal + quantidade <= metalMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    metal += quantidade;
-                    return true;
-                }
-                break;
+                metal = AdicionarEstoqueSemLimite(metal, quantidade);
+                return true;
                 
             case TipoRecurso.Energia:
-                if (energia + quantidade <= energiaMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    energia += quantidade;
-                    return true;
-                }
-                break;
+                energia = AdicionarEstoqueSemLimite(energia, quantidade);
+                return true;
         }
-        
-        // Removido para evitar spam no console
-        // Debug.LogWarning($"Não foi possível adicionar {quantidade} de {tipo}. Armazém cheio ou limite atingido.");
         return false;
+    }
+
+    private static int AdicionarEstoqueSemLimite(int estoque, int quantidade)
+    {
+        long total = Math.Max(0L, estoque) + quantidade;
+        return (int)Math.Min(int.MaxValue, total);
     }
 
     /// <summary>

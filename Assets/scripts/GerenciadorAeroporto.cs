@@ -538,12 +538,20 @@ public class GerenciadorAeroporto : MonoBehaviour
             {
                 ControleAviao a = avioesNoPatio[i];
                 if (a == null) { avioesNoPatio.RemoveAt(i); continue; }
-                if (a.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio) continue;
+                bool estacionado = !a.estaEmModoVooFisico
+                    && a.estadoAtual != ControleAviao.EstadoAviao.EmMissao
+                    && a.estadoAtual != ControleAviao.EstadoAviao.Decolando;
+                if (!estacionado) continue;
 
-                SistemaDeDanos sd = a.GetComponent<SistemaDeDanos>();
-                if (sd != null && sd.vidaAtual < sd.vidaMaxima) 
-                    sd.Reparar(sd.vidaMaxima * 0.05f); // 5% de vida no pátio
+                if (a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    SistemaDeDanos sd = a.GetComponent<SistemaDeDanos>();
+                    if (sd != null && sd.vidaAtual < sd.vidaMaxima)
+                        sd.Reparar(sd.vidaMaxima * 0.05f); // 5% de vida no pátio
+                }
 
+                // Mantém o abastecimento tentando enquanto a aeronave fica
+                // parada, inclusive depois de o estoque nacional ser reposto.
                 ReabastecerAeronave(a, 2f);
             }
 
@@ -589,7 +597,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
-        CombustivelUnidade combustivel = aeronave.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(aeronave.gameObject);
         if (combustivel == null)
         {
             combustivel = CombustivelUnidade.Garantir(aeronave.gameObject, false);
@@ -2718,7 +2726,7 @@ public class GerenciadorAeroporto : MonoBehaviour
             vidaStr = $" (<color={corVid}>{pct}%</color>)";
         }
 
-        CombustivelUnidade combustivel = aviao.GetComponent<CombustivelUnidade>();
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(aviao.gameObject);
         if (combustivel != null && combustivel.usaCombustivel)
         {
             int pctComb = Mathf.RoundToInt(combustivel.Percentual * 100f);

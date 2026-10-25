@@ -76,8 +76,8 @@ namespace Hegemonia.AI.BrainMaster
             long targetingStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
-            bool pressurePhase = brain != null && brain.StrategicPhase >= IA_StrategicPhase.PressaoEconomica;
-            int strategicTargetCount = pressurePhase
+            bool navalOffensivePhase = brain != null && brain.StrategicPhase >= IA_StrategicPhase.Expansao;
+            int strategicTargetCount = navalOffensivePhase
                 ? _context.WorldState.FillEnemyStrategicTargets(_strategicTargetsBuffer, baseCenter, 4)
                 : 0;
             Transform escortTarget = navalTarget;
@@ -318,13 +318,7 @@ namespace Hegemonia.AI.BrainMaster
             int heavyCount = CountUnits(heavy);
             int subCount = CountUnits(submarine);
             int combatCount = escortCount + heavyCount + subCount;
-            int minCombat = _context.Brain != null && (int)_context.Brain.StrategicPhase >= (int)IA_StrategicPhase.PressaoEconomica ? 4 : 3;
-            if (combatCount < minCombat)
-            {
-                return false;
-            }
-
-            if (heavyCount + subCount <= 0)
+            if (combatCount <= 0)
             {
                 return false;
             }
@@ -332,7 +326,7 @@ namespace Hegemonia.AI.BrainMaster
             int assembled = CountUnitsNear(escort, assemblyCenter, 420f)
                            + CountUnitsNear(heavy, assemblyCenter, 420f)
                            + CountUnitsNear(submarine, assemblyCenter, 460f);
-            int required = Mathf.Clamp(combatCount - 2, 2, combatCount);
+            int required = Mathf.Clamp(combatCount - 2, 1, combatCount);
             bool ready = assembled >= required;
             DiagnosticoDesempenhoJogo.DefinirContadorMetrica("naval_strike_ready", ready ? 1 : 0);
             return ready;

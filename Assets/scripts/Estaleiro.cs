@@ -59,6 +59,13 @@ public class Estaleiro : MonoBehaviour
         public string OrderId;
     }
 
+    private sealed class NavioAguardandoCombustivel
+    {
+        public GameObject Navio;
+        public int TeamId;
+        public Vector3 UltimaPosicao;
+    }
+
     [Header("Estrutura e Vagas")]
     public Transform pontoDeSaida; // Para onde o navio vai depois de pronto
     public SlotConstrucao[] slots; // Configure 2 slots no Inspector
@@ -77,6 +84,8 @@ public class Estaleiro : MonoBehaviour
     private int naviosIniciadosNoLote;
     private int naviosConcluidosNoLote;
     private float liberarProximoLoteEm = -1f;
+    private readonly List<NavioAguardandoCombustivel> naviosAguardandoCombustivel = new List<NavioAguardandoCombustivel>(8);
+    private float proximaTentativaAbastecimento;
 
     public int NaviosNaFila { get { return filaNaval.Count; } }
 
@@ -487,6 +496,7 @@ public class Estaleiro : MonoBehaviour
 
     void Update()
     {
+        ProcessarAbastecimentoDeNaviosParados();
         if (slots == null) return;
         ProcessarProximoLoteSePronto();
         // Processa a construção em cada slot ocupado
@@ -538,6 +548,7 @@ public class Estaleiro : MonoBehaviour
             : (ownerTeam == 1 ? "Hegemonia" : "Nacao " + ownerTeam);
         idNavio.tipoUnidade = TipoUnidade.Naval;
         ServicoAbastecimento.AbastecerUnidadeProduzida(navio);
+        RegistrarNavioAguardandoCombustivel(navio, ownerTeam);
 
         ControleUnidade controle = navio.GetComponent<ControleUnidade>();
         if (controle == null)
@@ -983,6 +994,7 @@ public class Estaleiro : MonoBehaviour
         }
 
         ServicoAbastecimento.AbastecerUnidadeProduzida(navioPronto);
+        RegistrarNavioAguardandoCombustivel(navioPronto, ownerTeam);
 
         var ctrl = navioPronto.GetComponent<ControleUnidade>();
         if (ctrl == null)
@@ -1060,6 +1072,62 @@ public class Estaleiro : MonoBehaviour
         LiberarSlot(slot);
         naviosConcluidosNoLote++;
         ProcessarFimDoLote();
+    }
+
+    private void RegistrarNavioAguardandoCombustivel(GameObject navio, int teamId)
+    {
+        if (navio == null) return;
+        CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(navio);
+        if (combustivel == null || combustivel.Capacidade <= 0f || combustivel.CombustivelAtual >= combustivel.Capacidade - 0.01f) return;
+
+        for (int i = 0; i < naviosAguardandoCombustivel.Count; i++)
+        {
+            if (naviosAguardandoCombustivel[i] != null && naviosAguardandoCombustivel[i].Navio == navio) return;
+        }
+
+        naviosAguardandoCombustivel.Add(new NavioAguardandoCombustivel
+        {
+            Navio = navio,
+            TeamId = Mathf.Max(1, teamId),
+            UltimaPosicao = navio.transform.position
+        });
+    }
+
+    private void ProcessarAbastecimentoDeNaviosParados()
+    {
+        if (Time.time < proximaTentativaAbastecimento) return;
+        proximaTentativaAbastecimento = Time.time + 2f;
+
+        Vector3 referencia = pontoDeSaida != null ? pontoDeSaida.position : transform.position;
+        for (int i = naviosAguardandoCombustivel.Count - 1; i >= 0; i--)
+        {
+            NavioAguardandoCombustivel registro = naviosAguardandoCombustivel[i];
+            if (registro == null || registro.Navio == null)
+            {
+                naviosAguardandoCombustivel.RemoveAt(i);
+                continue;
+            }
+
+            GameObject navio = registro.Navio;
+            CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(navio);
+            IdentidadeUnidade identidade = navio.GetComponent<IdentidadeUnidade>();
+            if (combustivel == null || combustivel.Capacidade <= 0f
+                || combustivel.CombustivelAtual >= combustivel.Capacidade - 0.01f
+                || Vector3.Distance(navio.transform.position, referencia) > 160f
+                || (identidade != null && identidade.teamID != registro.TeamId))
+            {
+                naviosAguardandoCombustivel.RemoveAt(i);
+                continue;
+            }
+
+            Vector3 posicaoAtual = navio.transform.position;
+            bool parado = (posicaoAtual - registro.UltimaPosicao).sqrMagnitude <= 1f;
+            registro.UltimaPosicao = posicaoAtual;
+            if (parado)
+            {
+                ServicoAbastecimento.TentarAbastecer(combustivel, combustivel.Capacidade, out _);
+            }
+        }
     }
 
     private static void DestruirObjetoDeConstrucao(GameObject objeto)

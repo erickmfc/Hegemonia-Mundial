@@ -8,32 +8,32 @@ using UnityEngine;
 public class DadosArmazemMilitar : ScriptableObject
 {
     [Header("📦 Capacidade do Armazém")]
-    [Tooltip("Capacidade máxima de armazenamento militar")]
-    public int capacidadeMaxima = 5000;
+    [Tooltip("Armazenamento militar ilimitado")]
+    public int capacidadeMaxima = int.MaxValue;
     
     [Header("🔫 Munição Leve (Rifles, Pistolas)")]
     public int municaoLeve = 0;
-    public int municaoLeveMaximo = 10000; // Unidades (balas)
+    public int municaoLeveMaximo = int.MaxValue; // Unidades (balas)
     
     [Header("💣 Munição Pesada (Artilharia, Tanques)")]
     public int municaoPesada = 0;
-    public int municaoPesadaMaximo = 1000; // Projéteis
+    public int municaoPesadaMaximo = int.MaxValue; // Projéteis
     
     [Header("🚀 Mísseis")]
     public int misseis = 0;
-    public int misseisMaximo = 100;
+    public int misseisMaximo = int.MaxValue;
     
     [Header("💥 Explosivos (C4, Granadas)")]
     public int explosivos = 0;
-    public int explosivosMaximo = 500;
+    public int explosivosMaximo = int.MaxValue;
     
     [Header("🎖️ Equipamento Militar")]
     public int equipamento = 0;
-    public int equipamentoMaximo = 1000; // Coletes, capacetes, etc
+    public int equipamentoMaximo = int.MaxValue; // Coletes, capacetes, etc
     
     [Header("🛡️ Blindagem (Placas, Reforços)")]
     public int blindagem = 0;
-    public int blindagemMaximo = 200;
+    public int blindagemMaximo = int.MaxValue;
 
     [Header("📊 Informações")]
     [TextArea(3, 5)]
@@ -46,10 +46,7 @@ public class DadosArmazemMilitar : ScriptableObject
     /// </summary>
     public int EspacoDisponivel()
     {
-        // Considera peso diferente para cada tipo
-        int ocupado = (municaoLeve / 100) + municaoPesada + (misseis * 10) + 
-                      explosivos + equipamento + (blindagem * 5);
-        return capacidadeMaxima - ocupado;
+        return int.MaxValue;
     }
 
     /// <summary>
@@ -57,9 +54,7 @@ public class DadosArmazemMilitar : ScriptableObject
     /// </summary>
     public float PercentualOcupacao()
     {
-        int ocupado = (municaoLeve / 100) + municaoPesada + (misseis * 10) + 
-                      explosivos + equipamento + (blindagem * 5);
-        return (float)ocupado / capacidadeMaxima * 100f;
+        return 0f;
     }
 
     /// <summary>
@@ -67,59 +62,42 @@ public class DadosArmazemMilitar : ScriptableObject
     /// </summary>
     public bool AdicionarRecursoMilitar(TipoRecursoMilitar tipo, int quantidade)
     {
+        if (quantidade <= 0) return false;
+
         switch (tipo)
         {
             case TipoRecursoMilitar.MunicaoLeve:
-                if (municaoLeve + quantidade <= municaoLeveMaximo)
-                {
-                    municaoLeve += quantidade;
-                    return true;
-                }
-                break;
+                municaoLeve = AdicionarSemLimite(municaoLeve, quantidade);
+                return true;
                 
             case TipoRecursoMilitar.MunicaoPesada:
-                if (municaoPesada + quantidade <= municaoPesadaMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    municaoPesada += quantidade;
-                    return true;
-                }
-                break;
+                municaoPesada = AdicionarSemLimite(municaoPesada, quantidade);
+                return true;
                 
             case TipoRecursoMilitar.Misseis:
-                if (misseis + quantidade <= misseisMaximo && EspacoDisponivel() >= (quantidade * 10))
-                {
-                    misseis += quantidade;
-                    return true;
-                }
-                break;
+                misseis = AdicionarSemLimite(misseis, quantidade);
+                return true;
                 
             case TipoRecursoMilitar.Explosivos:
-                if (explosivos + quantidade <= explosivosMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    explosivos += quantidade;
-                    return true;
-                }
-                break;
+                explosivos = AdicionarSemLimite(explosivos, quantidade);
+                return true;
                 
             case TipoRecursoMilitar.Equipamento:
-                if (equipamento + quantidade <= equipamentoMaximo && EspacoDisponivel() >= quantidade)
-                {
-                    equipamento += quantidade;
-                    return true;
-                }
-                break;
+                equipamento = AdicionarSemLimite(equipamento, quantidade);
+                return true;
                 
             case TipoRecursoMilitar.Blindagem:
-                if (blindagem + quantidade <= blindagemMaximo && EspacoDisponivel() >= (quantidade * 5))
-                {
-                    blindagem += quantidade;
-                    return true;
-                }
-                break;
+                blindagem = AdicionarSemLimite(blindagem, quantidade);
+                return true;
         }
         
-        Debug.LogWarning($"⚠️ Não foi possível adicionar {quantidade} de {tipo}. Armazém militar cheio ou limite atingido.");
         return false;
+    }
+
+    private static int AdicionarSemLimite(int estoque, int quantidade)
+    {
+        long total = (long)Mathf.Max(0, estoque) + quantidade;
+        return total >= int.MaxValue ? int.MaxValue : (int)total;
     }
 
     /// <summary>
