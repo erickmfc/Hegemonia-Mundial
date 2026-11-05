@@ -300,6 +300,29 @@ namespace Hegemonia.AI.BrainMaster
 
         private void Update()
         {
+            if (TeamId != 2)
+            {
+                UpdateRuntime();
+                return;
+            }
+
+            long allocatedBefore = System.GC.GetAllocatedBytesForCurrentThread();
+            long updateStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+            try
+            {
+                UpdateRuntime();
+            }
+            finally
+            {
+                long allocatedThisUpdate = System.GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+                double updateMilliseconds = (System.Diagnostics.Stopwatch.GetTimestamp() - updateStartedAt)
+                    * (1000d / System.Diagnostics.Stopwatch.Frequency);
+                GlobalWorldDiagnostics.RegisterIA03UpdateSample(allocatedThisUpdate, updateMilliseconds);
+            }
+        }
+
+        private void UpdateRuntime()
+        {
             if (Hegemonia.RTS.RTSGameSession.Instancia != null
                 && Hegemonia.RTS.RTSGameSession.Instancia.Phase == Hegemonia.RTS.RTSSessionPhase.Paused)
             {

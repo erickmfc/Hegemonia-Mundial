@@ -9,10 +9,133 @@ using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.SceneManagement;
+using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.IA03;
 
 /// <summary>Optional local overlay for profiling the map scene.</summary>
 public sealed class GlobalWorldDiagnostics : MonoBehaviour
 {
+    private static int ia03BuildCount;
+    private static int ia03PurchaseCount;
+    private static int ia03CommandAttempts;
+    private static int ia03BuildFailures;
+    private static int ia03PurchaseFailures;
+    private static int ia03PlanningFailures;
+    private static int ia03UniquePlanningFailureCauses;
+    private static int ia03RepeatedPlanningFailures;
+    private static int ia03ErrorCount;
+    private static long ia03LastUpdateAllocatedBytes;
+    private static long ia03PeakUpdateAllocatedBytes;
+    private static long ia03UpdateSampleCount;
+    private static double ia03AverageUpdateAllocatedBytes;
+    private static double ia03LastUpdateCpuMilliseconds;
+    private static double ia03PeakUpdateCpuMilliseconds;
+    private static double ia03AverageUpdateCpuMilliseconds;
+    private static readonly Dictionary<string, int> ia03BuildsByItem = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, int> ia03PurchasesByItem = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> ia03PlanningFailureKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private static string ia03LastAction = "aguardando ordens";
+    private static string ia03LastError = "sem falhas registradas";
+    private static string ia03LastErrorSource = "n/d";
+    private static string ia03LastRetryCondition = "n/d";
+
+    public static void RegisterIA03Attempt(string action, string item, int attempt)
+    {
+        ia03CommandAttempts++;
+        ia03LastAction = action + " " + item + " (tentativa " + Mathf.Max(1, attempt) + ")";
+    }
+
+    public static void RegisterIA03BuildResult(string item, bool success, string reason)
+    {
+        if (success)
+        {
+            ia03BuildCount++;
+            IncrementIA03ItemCount(ia03BuildsByItem, item, 1);
+            ia03LastAction = "construiu " + item;
+            return;
+        }
+
+        ia03BuildFailures++;
+        RegisterIA03Error(
+            "IA_BackendBridge/BuildService",
+            "build " + item + ": " + reason,
+            "corrija o motivo da BuildService; a fila tentará novamente conforme cooldown e orçamento.");
+    }
+
+    public static void RegisterIA03PurchaseResult(string item, int quantity, bool success, string reason)
+    {
+        if (success)
+        {
+            int purchased = Mathf.Max(0, quantity);
+            ia03PurchaseCount += purchased;
+            IncrementIA03ItemCount(ia03PurchasesByItem, item, purchased);
+            ia03LastAction = "comprou " + item + " x" + purchased;
+            return;
+        }
+
+        ia03PurchaseFailures++;
+        RegisterIA03Error(
+            "IA_BackendBridge/Production",
+            "compra " + item + ": " + reason,
+            "corrija o motivo da produção; a fila tentará novamente conforme cooldown e orçamento.");
+    }
+
+    private static void RegisterIA03Error(string source, string reason, string retryCondition)
+    {
+        ia03ErrorCount++;
+        ia03LastErrorSource = string.IsNullOrWhiteSpace(source) ? "n/d" : source;
+        ia03LastError = string.IsNullOrWhiteSpace(reason) ? "motivo nao informado" : reason;
+        ia03LastRetryCondition = string.IsNullOrWhiteSpace(retryCondition) ? "n/d" : retryCondition;
+    }
+
+    public static void RegisterIA03PlanningFailure(string item, string reason)
+    {
+        ia03PlanningFailures++;
+        string key = (item ?? string.Empty).Trim() + "|" + (reason ?? string.Empty).Trim();
+        if (ia03PlanningFailureKeys.Add(key))
+            ia03UniquePlanningFailureCauses++;
+        else
+            ia03RepeatedPlanningFailures++;
+        RegisterIA03Error(
+            "IA_BuildDirector",
+            "planejamento " + item + ": " + reason,
+            ResolveIA03PlanningRetryCondition(item, reason));
+    }
+
+    public static void RegisterIA03UpdateSample(long allocatedBytes, double cpuMilliseconds)
+    {
+        ia03LastUpdateAllocatedBytes = Math.Max(0L, allocatedBytes);
+        ia03PeakUpdateAllocatedBytes = Math.Max(ia03PeakUpdateAllocatedBytes, ia03LastUpdateAllocatedBytes);
+        ia03LastUpdateCpuMilliseconds = Math.Max(0d, cpuMilliseconds);
+        ia03PeakUpdateCpuMilliseconds = Math.Max(ia03PeakUpdateCpuMilliseconds, ia03LastUpdateCpuMilliseconds);
+        ia03UpdateSampleCount++;
+        ia03AverageUpdateAllocatedBytes +=
+            (ia03LastUpdateAllocatedBytes - ia03AverageUpdateAllocatedBytes) / ia03UpdateSampleCount;
+        ia03AverageUpdateCpuMilliseconds +=
+            (ia03LastUpdateCpuMilliseconds - ia03AverageUpdateCpuMilliseconds) / ia03UpdateSampleCount;
+    }
+
+    private static string ResolveIA03PlanningRetryCondition(string item, string reason)
+    {
+        string context = (item ?? string.Empty) + " " + (reason ?? string.Empty);
+        if (context.IndexOf("creaty", StringComparison.OrdinalIgnoreCase) >= 0
+            || context.IndexOf("aeroporto militar", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return "Creaty manual ativo e disponível, Role=ConstrucaoAeroportoMilitar, item alvo correto e área em terra firme.";
+        }
+
+        return "remova o bloqueio indicado; nova tentativa segue o cooldown e o próximo ciclo do BuildDirector.";
+    }
+
+    private static void IncrementIA03ItemCount(Dictionary<string, int> counts, string item, int amount)
+    {
+        if (amount <= 0) return;
+        string key = string.IsNullOrWhiteSpace(item) ? "item sem nome" : item.Trim();
+        int current;
+        counts.TryGetValue(key, out current);
+        counts[key] = current + amount;
+    }
+
     public GlobalTerrainStreamer streamer;
     public bool visible = true;
     [Min(0.1f)] public float sampleInterval = 1f;
@@ -78,6 +201,25 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
     private int activeObjectScanTrailRenderers;
     private float nextActiveObjectScanAt;
     private bool activeObjectScanInProgress;
+    private float nextIA03RefreshAt;
+    private IA_BrainMaster cachedIA03Brain;
+    private IA03EstrategaNacional cachedIA03Strategist;
+    private IA_ForceSnapshot cachedIA03Force;
+    private int cachedIA03Queued;
+    private int cachedIA03AwaitingConfirmation;
+    private float cachedIA03OldestPendingWaitSeconds;
+    private string cachedIA03State = "indisponivel";
+    private IA_CommandRecord cachedIA03LatestOrder;
+    private readonly List<string> cachedIA03HistoryHeaders = new List<string>(128);
+    private readonly List<string> cachedIA03HistoryDetails = new List<string>(128);
+    private readonly List<float> cachedIA03HistoryRowHeights = new List<float>(128);
+    private float cachedIA03HistoryContentHeight;
+    private string cachedIA03NewestHistoryKey = string.Empty;
+    private GUIStyle ia03CompactLabelStyle;
+    private GUIStyle ia03HistoryLabelStyle;
+    private Vector2 ia03BuildCountsScrollPosition;
+    private Vector2 ia03PurchaseCountsScrollPosition;
+    private Vector2 ia03CommandHistoryScrollPosition;
 
     private struct FrameSample
     {
@@ -187,8 +329,8 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         string mainThread = mainThreadRecorder.Valid ? (mainThreadRecorder.LastValue / 1000000f).ToString("F2") + " ms" : "n/a";
         string renderThread = renderThreadRecorder.Valid ? (renderThreadRecorder.LastValue / 1000000f).ToString("F2") + " ms" : "n/a";
         string altitude = camera != null ? (camera.transform.position.y / 1000f).ToString("F1") + " km" : "n/a";
-        const float panelWidth = 330f;
-        const float panelHeight = 262f;
+        const float panelWidth = 440f;
+        const float panelHeight = 700f;
         float panelX = Mathf.Max(12f, Screen.width - panelWidth - 12f);
         float panelY = MiniMapa.OverlayVisivel
             ? 12f
@@ -203,12 +345,321 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
         GUI.Label(new Rect(12f, 140f, 305f, 22f), "GPU frame: " + ToMilliseconds(gpuRecorder));
         GUI.Label(new Rect(12f, 162f, 305f, 22f), "draw / triangles / batches: "
             + ToCount(drawCallsRecorder) + " / " + ToCount(trianglesRecorder) + " / " + ToCount(batchesRecorder));
-        GUI.Label(new Rect(12f, 184f, 305f, 22f), "Unity / Mono memory: " + ToMegabytes(allocatedBytes) + " / " + ToMegabytes(managedBytes));
+        GUI.Label(new Rect(12f, 184f, 305f, 22f), "process Unity / Mono memory: " + ToMegabytes(allocatedBytes) + " / " + ToMegabytes(managedBytes));
         GUI.Label(new Rect(12f, 206f, 305f, 22f), "graphics driver memory: " + ToMegabytes(graphicsBytes));
         GUI.Label(new Rect(12f, 228f, 305f, 22f), benchmarkRecording
             ? "REC  " + benchmarkLabel + "  " + (Time.unscaledTime - benchmarkStartedAt).ToString("F0") + "s · F9 parar"
             : "F9 iniciar/parar CSV · " + benchmarkLabel);
+        DrawIA03Diagnostics();
         GUI.EndGroup();
+    }
+
+    private void DrawIA03Diagnostics()
+    {
+        if (ia03CompactLabelStyle == null)
+        {
+            ia03CompactLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 10,
+                clipping = TextClipping.Clip
+            };
+        }
+        if (ia03HistoryLabelStyle == null)
+        {
+            ia03HistoryLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 9,
+                wordWrap = true,
+                clipping = TextClipping.Clip
+            };
+        }
+
+        if (Time.unscaledTime >= nextIA03RefreshAt)
+        {
+            nextIA03RefreshAt = Time.unscaledTime + 1f;
+            cachedIA03Brain = null;
+            IA_BrainMaster[] brains = FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+            for (int i = 0; i < brains.Length; i++)
+            {
+                if (brains[i] != null && brains[i].TeamId == 2)
+                {
+                    cachedIA03Brain = brains[i];
+                    break;
+                }
+            }
+
+            cachedIA03Strategist = cachedIA03Brain != null
+                ? cachedIA03Brain.GetComponent<IA03EstrategaNacional>()
+                : null;
+            cachedIA03Force = cachedIA03Brain != null && cachedIA03Brain.Context != null
+                && cachedIA03Brain.Context.WorldState != null
+                ? cachedIA03Brain.Context.WorldState.ForceSnapshot
+                : null;
+            IA_CommandQueue queue = cachedIA03Brain != null && cachedIA03Brain.Context != null
+                ? cachedIA03Brain.Context.CommandQueue
+                : null;
+            cachedIA03Queued = queue != null ? queue.PendingCount : 0;
+            cachedIA03AwaitingConfirmation = queue != null ? queue.AwaitingConfirmationCount : 0;
+            cachedIA03OldestPendingWaitSeconds = queue != null
+                ? queue.GetOldestPendingWaitSeconds(Time.time)
+                : 0f;
+            cachedIA03State = cachedIA03Strategist != null
+                ? cachedIA03Strategist.EstadoNacional + "/" + cachedIA03Strategist.EstadoDaMissao
+                : "indisponivel";
+            List<IA_CommandRecord> history = queue != null ? queue.GetRecentHistory(128) : null;
+            RefreshIA03CommandHistory(history);
+            cachedIA03LatestOrder = GetLatestIA03CommandRecord(history);
+        }
+
+        GUI.Label(new Rect(12f, 250f, 415f, 20f), "IA03 total: builds " + ia03BuildCount
+            + " | compras " + ia03PurchaseCount + " | efetivo "
+            + (cachedIA03Force != null ? cachedIA03Force.TotalOwnUnits : 0) + " un / "
+            + (cachedIA03Force != null ? cachedIA03Force.TotalOwnStructures : 0) + " estruturas");
+        GUI.Label(new Rect(12f, 270f, 415f, 18f), "construiu (" + ia03BuildsByItem.Count + " tipos) · role para ver todos", ia03CompactLabelStyle);
+        DrawIA03ItemCountsList(new Rect(12f, 288f, 415f, 36f), ia03BuildsByItem, ref ia03BuildCountsScrollPosition);
+        GUI.Label(new Rect(12f, 326f, 415f, 18f), "comprou (" + ia03PurchasesByItem.Count + " tipos) · role para ver todos", ia03CompactLabelStyle);
+        DrawIA03ItemCountsList(new Rect(12f, 344f, 415f, 36f), ia03PurchasesByItem, ref ia03PurchaseCountsScrollPosition);
+        GUI.Label(new Rect(12f, 384f, 415f, 20f), "tentativas B/P " + ia03CommandAttempts
+            + " | falhas construção/compra " + ia03BuildFailures + "/" + ia03PurchaseFailures,
+            ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 404f, 415f, 20f), "pendentes " + cachedIA03Queued
+            + " | confirma " + cachedIA03AwaitingConfirmation
+            + " | espera mais antiga " + cachedIA03OldestPendingWaitSeconds.ToString("F1", CultureInfo.InvariantCulture) + "s", ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 424f, 415f, 20f), "bloqueios " + ia03PlanningFailures
+            + " | causas " + ia03UniquePlanningFailureCauses
+            + " | repeticoes " + ia03RepeatedPlanningFailures + " | erros " + ia03ErrorCount, ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 444f, 415f, 20f), "IA03 " + cachedIA03State + " | ultima acao: "
+            + TruncateDiagnosticText(ia03LastAction, 44), ia03CompactLabelStyle);
+
+        GUI.Label(new Rect(12f, 464f, 415f, 20f), FormatLatestIA03Order(cachedIA03LatestOrder), ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 484f, 415f, 36f), "ultima falha [" + ia03LastErrorSource + "]: "
+            + ia03LastError, ia03HistoryLabelStyle);
+        GUI.Label(new Rect(12f, 522f, 415f, 36f), "condicao para nova tentativa: "
+            + ia03LastRetryCondition, ia03HistoryLabelStyle);
+        GUI.Label(new Rect(12f, 560f, 415f, 20f), "aloc IA03/Update atual/media/pico: "
+            + ToKilobytes(ia03LastUpdateAllocatedBytes) + "/"
+            + ToKilobytes((long)ia03AverageUpdateAllocatedBytes) + "/"
+            + ToKilobytes(ia03PeakUpdateAllocatedBytes) + " KB", ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 580f, 415f, 20f), "tempo IA03/Update atual/media/pico: "
+            + FormatDiagnosticMilliseconds(ia03LastUpdateCpuMilliseconds) + "/"
+            + FormatDiagnosticMilliseconds(ia03AverageUpdateCpuMilliseconds) + "/"
+            + FormatDiagnosticMilliseconds(ia03PeakUpdateCpuMilliseconds) + " ms", ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 600f, 415f, 20f), "Mono usada pelo processo (nao atribuivel a IA03): "
+            + ToMegabytes(managedBytes) + " MB", ia03CompactLabelStyle);
+        GUI.Label(new Rect(12f, 620f, 415f, 18f), "historico de ordens (mais antigas → recentes; limite 128 eventos)", ia03CompactLabelStyle);
+        DrawIA03CommandHistory(new Rect(12f, 638f, 415f, 48f));
+    }
+
+    private void RefreshIA03CommandHistory(List<IA_CommandRecord> history)
+    {
+        const float viewportHeight = 48f;
+        const float contentWidth = 399f;
+        float previousMaxScroll = Mathf.Max(0f, cachedIA03HistoryContentHeight - viewportHeight);
+        bool wasAtBottom = ia03CommandHistoryScrollPosition.y >= Mathf.Max(0f, previousMaxScroll - 20f);
+        string newestKey = history != null && history.Count > 0
+            ? BuildIA03HistoryKey(history[0])
+            : string.Empty;
+        bool hasNewHistory = !string.Equals(newestKey, cachedIA03NewestHistoryKey, StringComparison.Ordinal);
+
+        cachedIA03HistoryHeaders.Clear();
+        cachedIA03HistoryDetails.Clear();
+        cachedIA03HistoryRowHeights.Clear();
+        cachedIA03HistoryContentHeight = 0f;
+
+        if (history != null)
+        {
+            for (int i = history.Count - 1; i >= 0; i--)
+            {
+                IA_CommandRecord record = history[i];
+                if (record == null) continue;
+
+                string header = FormatIA03HistoryHeader(record);
+                string detail = FormatIA03HistoryDetail(record);
+                float detailHeight = Mathf.Max(18f, ia03HistoryLabelStyle.CalcHeight(new GUIContent(detail), contentWidth));
+                float rowHeight = 18f + detailHeight + 2f;
+                cachedIA03HistoryHeaders.Add(header);
+                cachedIA03HistoryDetails.Add(detail);
+                cachedIA03HistoryRowHeights.Add(rowHeight);
+                cachedIA03HistoryContentHeight += rowHeight;
+            }
+        }
+
+        cachedIA03NewestHistoryKey = newestKey;
+        if (hasNewHistory && wasAtBottom)
+        {
+            ia03CommandHistoryScrollPosition.y = Mathf.Max(0f, cachedIA03HistoryContentHeight - viewportHeight);
+        }
+        else
+        {
+            ia03CommandHistoryScrollPosition.y = Mathf.Min(
+                ia03CommandHistoryScrollPosition.y,
+                Mathf.Max(0f, cachedIA03HistoryContentHeight - viewportHeight));
+        }
+    }
+
+    private void DrawIA03CommandHistory(Rect viewport)
+    {
+        float contentWidth = Mathf.Max(1f, viewport.width - 16f);
+        float contentHeight = Mathf.Max(viewport.height, cachedIA03HistoryContentHeight);
+        ia03CommandHistoryScrollPosition = GUI.BeginScrollView(
+            viewport,
+            ia03CommandHistoryScrollPosition,
+            new Rect(0f, 0f, contentWidth, contentHeight),
+            false,
+            cachedIA03HistoryContentHeight > viewport.height);
+
+        if (cachedIA03HistoryHeaders.Count == 0)
+        {
+            GUI.Label(new Rect(0f, 0f, contentWidth, 18f), "nenhuma ordem registrada", ia03HistoryLabelStyle);
+        }
+        else
+        {
+            float y = 0f;
+            for (int i = 0; i < cachedIA03HistoryHeaders.Count; i++)
+            {
+                float rowHeight = cachedIA03HistoryRowHeights[i];
+                GUI.Label(new Rect(0f, y, contentWidth, 18f), cachedIA03HistoryHeaders[i], ia03HistoryLabelStyle);
+                GUI.Label(new Rect(0f, y + 18f, contentWidth, rowHeight - 18f), cachedIA03HistoryDetails[i], ia03HistoryLabelStyle);
+                y += rowHeight;
+            }
+        }
+
+        GUI.EndScrollView();
+    }
+
+    private static string BuildIA03HistoryKey(IA_CommandRecord record)
+    {
+        if (record == null) return string.Empty;
+        return (record.Id ?? string.Empty) + "|" + record.Timestamp.ToString("F3", CultureInfo.InvariantCulture)
+            + "|" + record.Status + "|" + (record.Message ?? string.Empty);
+    }
+
+    private static string FormatIA03HistoryHeader(IA_CommandRecord record)
+    {
+        string item = TruncateDiagnosticText(record.ItemKey, 30);
+        string type = record.Type == IA_CommandType.Build ? "construcao"
+            : record.Type == IA_CommandType.Produce ? "compra/produce"
+            : record.Type.ToString().ToLowerInvariant();
+        float elapsed = Mathf.Max(0f, record.Timestamp - record.CreatedAt);
+        string header = "t+" + elapsed.ToString("F1", CultureInfo.InvariantCulture) + "s | " + type + " " + item
+            + " | " + FormatIA03CommandStatus(record.Status) + " | x" + record.AttemptCount;
+
+        if (record.AttemptCount > 0 && record.FirstAttemptTime >= record.CreatedAt)
+            header += " | inicio " + (record.FirstAttemptTime - record.CreatedAt).ToString("F1", CultureInfo.InvariantCulture) + "s";
+        if (record.CompletedAt > 0f && record.CompletedAt >= record.CreatedAt)
+            header += " | concluiu " + (record.CompletedAt - record.CreatedAt).ToString("F1", CultureInfo.InvariantCulture) + "s";
+        return header;
+    }
+
+    private static string FormatIA03HistoryDetail(IA_CommandRecord record)
+    {
+        return "origem=" + (record.Origin ?? "n/d")
+            + " | motivo=" + (record.Reason ?? "n/d")
+            + " | retorno=" + (record.Message ?? "n/d");
+    }
+
+    private void DrawIA03ItemCountsList(Rect viewport, Dictionary<string, int> counts, ref Vector2 scrollPosition)
+    {
+        const float rowHeight = 18f;
+        float contentHeight = Mathf.Max(viewport.height, counts.Count * rowHeight);
+        float contentWidth = Mathf.Max(1f, viewport.width - 16f);
+        scrollPosition = GUI.BeginScrollView(
+            viewport,
+            scrollPosition,
+            new Rect(0f, 0f, contentWidth, contentHeight),
+            false,
+            counts.Count * rowHeight > viewport.height);
+
+        if (counts.Count == 0)
+        {
+            GUI.Label(new Rect(0f, 0f, contentWidth, rowHeight), "nenhum", ia03CompactLabelStyle);
+        }
+        else
+        {
+            int row = 0;
+            foreach (KeyValuePair<string, int> entry in counts)
+            {
+                GUI.Label(
+                    new Rect(0f, row * rowHeight, contentWidth, rowHeight),
+                    TruncateDiagnosticText(entry.Key, 64) + " x" + entry.Value,
+                    ia03CompactLabelStyle);
+                row++;
+            }
+        }
+
+        GUI.EndScrollView();
+    }
+
+    private static IA_CommandRecord GetLatestIA03CommandRecord(List<IA_CommandRecord> history)
+    {
+        if (history == null) return null;
+        for (int i = 0; i < history.Count; i++)
+        {
+            IA_CommandRecord record = history[i];
+            if (record == null || (record.Type != IA_CommandType.Build && record.Type != IA_CommandType.Produce))
+                continue;
+
+            if (record.Status == IA_CommandStatus.CoolingDown)
+            {
+                for (int j = i + 1; j < history.Count; j++)
+                {
+                    IA_CommandRecord previous = history[j];
+                    if (previous == null || !string.Equals(previous.Id, record.Id, StringComparison.Ordinal))
+                        continue;
+                    if (previous.Status == IA_CommandStatus.Success || previous.Status == IA_CommandStatus.Failed)
+                        return previous;
+                }
+            }
+
+            return record;
+        }
+
+        return null;
+    }
+
+    private static string FormatLatestIA03Order(IA_CommandRecord record)
+    {
+        if (record == null) return "ordem recente: nenhuma construcao/compra";
+
+        float latency = record.AttemptCount > 0 && record.FirstAttemptTime >= record.CreatedAt
+            ? Mathf.Max(0f, record.FirstAttemptTime - record.CreatedAt)
+            : -1f;
+        string latencyText = latency >= 0f ? " | iniciou " + latency.ToString("F1", CultureInfo.InvariantCulture) + "s" : string.Empty;
+        string completionText = record.CompletedAt > 0f && record.CompletedAt >= record.CreatedAt
+            ? " | concluiu " + (record.CompletedAt - record.CreatedAt).ToString("F1", CultureInfo.InvariantCulture) + "s"
+            : string.Empty;
+        return "ordem: " + (record.Type == IA_CommandType.Build ? "build " : "compra ")
+            + TruncateDiagnosticText(record.ItemKey, 18)
+            + " | " + FormatIA03CommandStatus(record.Status)
+            + " | x" + record.AttemptCount + latencyText + completionText;
+    }
+
+    private static string FormatDiagnosticMilliseconds(double value)
+    {
+        return value.ToString("F2", CultureInfo.InvariantCulture);
+    }
+
+    private static string FormatIA03CommandStatus(IA_CommandStatus status)
+    {
+        switch (status)
+        {
+            case IA_CommandStatus.Queued: return "na fila";
+            case IA_CommandStatus.Running: return "executando";
+            case IA_CommandStatus.AwaitingConfirmation: return "confirma";
+            case IA_CommandStatus.Success: return "concluida";
+            case IA_CommandStatus.Failed: return "falhou";
+            case IA_CommandStatus.CoolingDown: return "cooldown";
+            case IA_CommandStatus.Cancelled: return "cancelada";
+            case IA_CommandStatus.Requested: return "solicitada";
+            default: return status.ToString();
+        }
+    }
+
+    private static string TruncateDiagnosticText(string value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "n/d";
+        string singleLine = value.Replace('\r', ' ').Replace('\n', ' ').Trim();
+        return singleLine.Length <= maxLength ? singleLine : singleLine.Substring(0, maxLength - 1) + "…";
     }
 
     private void StartBenchmark()
@@ -442,6 +893,7 @@ public sealed class GlobalWorldDiagnostics : MonoBehaviour
     }
 
     private static string ToMegabytes(long bytes) => (bytes / (1024f * 1024f)).ToString("F0") + " MB";
+    private static string ToKilobytes(long bytes) => (bytes / 1024f).ToString("F1");
 
     private static string ToMilliseconds(ProfilerRecorder recorder)
     {

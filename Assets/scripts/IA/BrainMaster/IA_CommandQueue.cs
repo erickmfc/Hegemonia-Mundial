@@ -30,6 +30,19 @@ namespace Hegemonia.AI.BrainMaster
             get { return _awaitingConfirmation.Count; }
         }
 
+        public float GetOldestPendingWaitSeconds(float now)
+        {
+            float oldestWait = 0f;
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                IA_CommandRequest request = _pending[i];
+                if (request == null) continue;
+                oldestWait = Mathf.Max(oldestWait, now - request.EnqueueTime);
+            }
+
+            return Mathf.Max(0f, oldestWait);
+        }
+
         public int CompletedSuccessCount { get; private set; }
         public int CompletedFailureCount { get; private set; }
 
@@ -53,8 +66,11 @@ namespace Hegemonia.AI.BrainMaster
                 string.IsNullOrWhiteSpace(request.DedupKey) ? request.Type.ToString() : request.DedupKey,
                 request.Payload);
             request.EnqueueTime = now;
+            request.CreatedAt = now;
             request.AttemptCount = 0;
             request.FirstAttemptTime = 0f;
+            request.CompletedAt = 0f;
+            PushHistory(request, IA_CommandStatus.Requested, now, "solicitada");
 
             if (!string.IsNullOrEmpty(request.DedupKey))
             {
@@ -182,6 +198,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             IA_CommandStatus finalStatus = success ? IA_CommandStatus.Success : IA_CommandStatus.Failed;
+            request.CompletedAt = now;
             if (success) CompletedSuccessCount++;
             else CompletedFailureCount++;
             _awaitingConfirmation.Remove(request.Id);
@@ -219,6 +236,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 _statusById[request.Id] = IA_CommandStatus.Cancelled;
+                request.CompletedAt = now;
                 PushHistory(request, IA_CommandStatus.Cancelled, now, reason ?? "ordem cancelada");
                 IA_RuntimeTextTrace.LogCommand(TraceTeamId, "CommandQueue", "CANCEL_PENDING", request, reason ?? "ordem cancelada");
                 return true;
@@ -291,6 +309,7 @@ namespace Hegemonia.AI.BrainMaster
             _history.Enqueue(new IA_CommandRecord
             {
                 Id = request.Id,
+                ItemKey = ResolveItemKey(request),
                 Origin = request.Origin,
                 Domain = request.Domain,
                 Reason = request.Reason,
@@ -298,6 +317,10 @@ namespace Hegemonia.AI.BrainMaster
                 DedupKey = request.DedupKey,
                 Type = request.Type,
                 Status = status,
+                AttemptCount = request.AttemptCount,
+                CreatedAt = request.CreatedAt,
+                FirstAttemptTime = request.FirstAttemptTime,
+                CompletedAt = request.CompletedAt,
                 Timestamp = now,
                 Message = message
             });
@@ -306,6 +329,17 @@ namespace Hegemonia.AI.BrainMaster
             {
                 _history.Dequeue();
             }
+        }
+
+        private static string ResolveItemKey(IA_CommandRequest request)
+        {
+            if (request == null) return string.Empty;
+
+            IA_BuildOrderData build = request.Payload as IA_BuildOrderData;
+            if (build != null) return build.ItemKey ?? string.Empty;
+
+            IA_ProduceOrderData production = request.Payload as IA_ProduceOrderData;
+            return production != null ? production.ItemKey ?? string.Empty : request.Domain ?? string.Empty;
         }
 
         private static int CompareRequests(IA_CommandRequest a, IA_CommandRequest b)

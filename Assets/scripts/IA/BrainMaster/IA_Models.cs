@@ -43,7 +43,8 @@ namespace Hegemonia.AI.BrainMaster
         Success,
         Failed,
         CoolingDown,
-        Cancelled
+        Cancelled,
+        Requested
     }
 
     public enum IA_SquadRole
@@ -162,14 +163,17 @@ namespace Hegemonia.AI.BrainMaster
         public float CooldownSeconds;
         public object Payload;
         public float EnqueueTime;
+        public float CreatedAt;
         public int AttemptCount;
         public float FirstAttemptTime;
+        public float CompletedAt;
     }
 
     [Serializable]
     public sealed class IA_CommandRecord
     {
         public string Id;
+        public string ItemKey;
         public string Origin;
         public string Domain;
         public string Reason;
@@ -177,6 +181,10 @@ namespace Hegemonia.AI.BrainMaster
         public string DedupKey;
         public IA_CommandType Type;
         public IA_CommandStatus Status;
+        public int AttemptCount;
+        public float CreatedAt;
+        public float FirstAttemptTime;
+        public float CompletedAt;
         public float Timestamp;
         public string Message;
     }
