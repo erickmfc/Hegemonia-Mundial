@@ -1615,7 +1615,7 @@ MonoBehaviour:
   usarPainelQuartelUIToolkit: 1
   recrutamentoAutomatico: 1
   treinamentoAutomatico: 1
-  metaEfetivo: 24
+  metaEfetivo: 501
   tempoFormacaoSegundos: 10
   teamID: 1
   abrirPainelAoIniciarNoPlayMode: 0
@@ -1634,7 +1634,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuartelAdministracaoRuntime
   teamID: 1
-  recrutamentoPorDia: 4
+  recrutamentoPorDia: 40
   tempoFormacaoPadraoSegundos: 10
   custoFolhaPorMilitarDia: 1
   periodoFolhaDias: 15

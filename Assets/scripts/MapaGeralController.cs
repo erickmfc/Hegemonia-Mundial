@@ -28,6 +28,7 @@ public class MapaGeralController : MonoBehaviour
     private Camera cameraPrincipal;
     private Camera cameraMapa;
     private GlobalWorldDefinition definicaoMapaGlobal;
+    private GlobalTerrainStreamer _globalTerrainStreamer;
     private Material materialBaseMilitar;
     private static readonly int TexturaAutoridadeMapaId = Shader.PropertyToID("_AuthorityTex");
     private static readonly int TexturaAparenciaMapaId = Shader.PropertyToID("_AppearanceTex");
@@ -432,6 +433,7 @@ public class MapaGeralController : MonoBehaviour
             if (streamers[i] == null || streamers[i].world == null) continue;
             if (streamers[i].gameObject.scene == gameObject.scene)
             {
+                _globalTerrainStreamer = streamers[i];
                 definicaoMapaGlobal = streamers[i].world;
                 return definicaoMapaGlobal;
             }
@@ -441,6 +443,7 @@ public class MapaGeralController : MonoBehaviour
         {
             if (streamers[i] != null && streamers[i].world != null)
             {
+                _globalTerrainStreamer = streamers[i];
                 definicaoMapaGlobal = streamers[i].world;
                 return definicaoMapaGlobal;
             }
@@ -816,6 +819,9 @@ public class MapaGeralController : MonoBehaviour
         RaycastHit[] hits = Physics.RaycastAll(raio, Mathf.Infinity, mascara, QueryTriggerInteraction.Ignore);
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
+        if (_globalTerrainStreamer == null)
+            ObterDefinicaoMapaGlobal();
+
         for (int i = 0; i < hits.Length; i++)
         {
             Collider collider = hits[i].collider;
@@ -838,7 +844,23 @@ public class MapaGeralController : MonoBehaviour
                 continue;
             }
 
+            if (_globalTerrainStreamer != null
+                && _globalTerrainStreamer.ShouldSkipGlobalTerrainRaycastHit(collider, hits[i].point))
+            {
+                continue;
+            }
+
             destino = hits[i].point;
+            if (_globalTerrainStreamer != null
+                && _globalTerrainStreamer.TryClassifyWorldSurface(
+                    destino,
+                    out ClassificacaoSuperficieMapa surface,
+                    out float surfaceHeight))
+            {
+                destino.y = surface == ClassificacaoSuperficieMapa.Agua
+                    ? _globalTerrainStreamer.world.seaLevel
+                    : surfaceHeight;
+            }
             return true;
         }
 

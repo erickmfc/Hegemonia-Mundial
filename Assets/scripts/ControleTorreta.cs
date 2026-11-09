@@ -192,7 +192,27 @@ public class ControleTorreta : MonoBehaviour
 #endif
 
     // Buffer de colisores privado para não gerar lixo na memória
-    private Collider[] bufferColisores = new Collider[40]; 
+    private Collider[] bufferColisores = new Collider[40];
+    // R3: layer mask calculada uma vez para excluir terreno ("Chao"), oceano ("Water"), "UI" e "TransparentFX"
+    // do OverlapSphereNonAlloc, preservando 100% de compatibilidade com unidades/mísseis em qualquer outra layer.
+    private static int _maskDeteccaoTorreta = 0;
+    private static bool _maskDeteccaoInicializada = false;
+    private static int ObterMaskDeteccao()
+    {
+        if (_maskDeteccaoInicializada) return _maskDeteccaoTorreta;
+        int ignorar = LayerMask.GetMask("Water", "UI", "Chao", "TransparentFX");
+        _maskDeteccaoTorreta = Physics.AllLayers & ~ignorar;
+        if (_maskDeteccaoTorreta == 0) _maskDeteccaoTorreta = Physics.AllLayers;
+        _maskDeteccaoInicializada = true;
+        return _maskDeteccaoTorreta;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetarMaskDeteccaoTorreta()
+    {
+        _maskDeteccaoTorreta = 0;
+        _maskDeteccaoInicializada = false;
+    } 
 
     private AudioSource fonteAudio;
     private Transform alvoAtual;
@@ -528,7 +548,7 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores, ObterMaskDeteccao(), QueryTriggerInteraction.Ignore);
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 

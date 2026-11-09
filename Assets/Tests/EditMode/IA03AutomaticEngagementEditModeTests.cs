@@ -294,7 +294,7 @@ public sealed class IA03AutomaticEngagementEditModeTests
 
         List<GameObject> attackers = new List<GameObject> { attacker };
         object[] targetedArguments = airDirectorCarriesCoordinateTeam
-            ? new object[] { "targeted", attackers, target.transform, target.transform.position, 90, 1f, 0 }
+            ? new object[] { "targeted", attackers, target.transform, target.transform.position, 90, 1f, 0, false }
             : new object[] { "targeted", attackers, target.transform, target.transform.position, 90, 1f };
         queueAttack.Invoke(director, targetedArguments);
         object[] dequeueArguments = { Time.time, null };
@@ -304,7 +304,7 @@ public sealed class IA03AutomaticEngagementEditModeTests
         Assert.That(GetFieldValue(targetedPayload, "TargetTeamId"), Is.EqualTo(3));
 
         object[] coordinateArguments = airDirectorCarriesCoordinateTeam
-            ? new object[] { "coordinate", attackers, null, Vector3.one, 80, 1f, 0 }
+            ? new object[] { "coordinate", attackers, null, Vector3.one, 80, 1f, 0, false }
             : new object[] { "coordinate", attackers, null, Vector3.one, 80, 1f };
         queueAttack.Invoke(director, coordinateArguments);
         dequeueArguments[0] = Time.time;
@@ -316,7 +316,7 @@ public sealed class IA03AutomaticEngagementEditModeTests
 
         if (airDirectorCarriesCoordinateTeam)
         {
-            queueAttack.Invoke(director, new object[] { "known_coordinate", attackers, null, Vector3.one, 80, 1f, 3 });
+            queueAttack.Invoke(director, new object[] { "known_coordinate", attackers, null, Vector3.one, 80, 1f, 3, false });
             dequeueArguments[0] = Time.time;
             dequeueArguments[1] = null;
             Assert.That((bool)tryDequeue.Invoke(queue, dequeueArguments), Is.True);

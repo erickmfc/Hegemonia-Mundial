@@ -149,6 +149,8 @@ MeshRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -170,6 +172,7 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -193,6 +196,7 @@ GameObject:
   - component: {fileID: 116029158839171234}
   - component: {fileID: 531651912743249114}
   - component: {fileID: 7000000000000000003}
+  - component: {fileID: 2475733544502741140}
   m_Layer: 0
   m_Name: B260
   m_TagString: Aereo
@@ -233,12 +237,17 @@ MonoBehaviour:
   aguardandoVisto: 0
   vistoAprovado: 0
   velocidadeVoo: 8
+  pontoRetornoInicial: {x: 0, y: 0, z: 0}
+  possuiPontoRetornoInicial: 0
   dominioControleAtual: 0
   ordemControleAtual: 0
   modoCombateOficialAtivo: 1
   executorControleAtual: NavMeshAgent
   bloqueioControleAtivo: 0
   motivoBloqueioControle: 
+  bloqueioAdministrativoQuartel: 0
+  motivoBloqueioAdministrativoQuartel: 
+  intervaloEntreTentativasOrdem: 2
   tamanhoSelecao: 0
   corSelecao: {r: 1, g: 1, b: 1, a: 0.4}
   linhaAlcance: {fileID: 0}
@@ -264,6 +273,7 @@ MonoBehaviour:
   antygavitiEstabilidade: 5
   tipoUnidade: 3
   militaresConsumidos: 0
+  militaresVinculadosIds: []
   combustivelPorHora: 0
   energiaConsumida: 0
   nomeDeBatismo: 
@@ -305,11 +315,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleAviao
   estadoAtual: 0
   aeroportoOrigem: {fileID: 0}
+  baseEstacionamentoAtual: {fileID: 0}
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
   reservaMinimaRetornoPercentual: 0.22
   reservaRetornoComDanosPercentual: 0.34
+  tempoMinimoNaAreaMissaoDireta: 20
+  timeoutMovimentoWaypoint: 90
+  timeoutFilaPortaAvioes: 45
   velocidadeSolo: 10
   velocidadeMaximaVoo: 90
   taxaDeGiroLeme: 60
@@ -346,7 +360,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AviaoBombardeiro
   modoDeAtaque: 0
   altitudeDeVoo: 600
-  projetilPrefab: {fileID: 3328076729220811044, guid: dbebd4d27cec9d5489b2a750959bdb87, type: 3}
+  projetilPrefab: {fileID: 3743850154261627816, guid: 6ca2cee69450f204c872432921b90362, type: 3}
   comportasDeBomba:
   - {fileID: 9069516014634279153}
   intervaloEntreBombas: 0.5
@@ -396,6 +410,175 @@ MonoBehaviour:
   uniqueId: 
   prefabKey: 
   runtimeSpawned: 1
+--- !u!114 &116029158839171234
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8988326293356594916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc23fc57a22fec84a931072cb1213e9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SomUnidade
+  tipoUnidade: 1
+  somMotor: {fileID: 8300000, guid: 3375e751a9605ec469a16d6bcba85aaa, type: 3}
+  somParado: {fileID: 8300000, guid: 7784e7ab59ab376458c07be56b1a8d6f, type: 3}
+  somTiro: {fileID: 8300000, guid: bb2e2714f962491428dcb0b38598b251, type: 3}
+  somExplosao: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
+  somDano: {fileID: 8300000, guid: a599c94697eb643838997e923d7e7272, type: 3}
+  volumeMotor: 0.5
+  volumeTiro: 0.8
+  volumeExplosao: 1
+  pitchMin: 0.8
+  pitchMax: 1.5
+  registrarTransicoesDeAudio: 0
+  velocidadeParaMaxPitch: 50
+  loopMotor: 1
+--- !u!114 &531651912743249114
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8988326293356594916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 70000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0
+  ativacaoAutomaticaHelicopteroEmVoo: 0
+--- !u!114 &7000000000000000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8988326293356594916}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
+  equipeOverride: 0
+  combateAutorizado: 1
+  exigirEstadoDeGuerra: 1
+  somenteReconhecimento: 0
+  usarDeteccaoPorRaio: 1
+  camadasDeDeteccao:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  raioDeteccaoMetros: 500
+  intervaloVarreduraSegundos: 0.5
+  intervaloReconhecimentoEmPazSegundos: 2
+  tempoMemoriaContatoSegundos: 12
+  distanciaSeguraMetros: 150
+  antecipacaoMovimentoSegundos: 2
+  intervaloReplanejamentoSegundos: 1.25
+  manterAltitudeAtual: 1
+  pontosDePatrulha: []
+  retornarAPatrulhaAoPerderContato: 1
+--- !u!82 &2475733544502741140
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8988326293356594916}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1001 &5687982260204838665
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -530,73 +713,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4465720305584277147, guid: 53451a862f6622240b17946824128d63, type: 3}
   m_PrefabInstance: {fileID: 5687982260204838665}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &116029158839171234
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8988326293356594916}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc23fc57a22fec84a931072cb1213e9d, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::SomUnidade
-  tipoUnidade: 1
-  somMotor: {fileID: 8300000, guid: 3375e751a9605ec469a16d6bcba85aaa, type: 3}
-  somParado: {fileID: 8300000, guid: 7784e7ab59ab376458c07be56b1a8d6f, type: 3}
-  somTiro: {fileID: 8300000, guid: bb2e2714f962491428dcb0b38598b251, type: 3}
-  somExplosao: {fileID: 8300000, guid: 1fd31868d68903d4f9e2c4a3b7ef98f3, type: 3}
-  somDano: {fileID: 8300000, guid: a599c94697eb643838997e923d7e7272, type: 3}
-  volumeMotor: 0.5
-  volumeTiro: 0.8
-  volumeExplosao: 1
-  pitchMin: 0.8
-  pitchMax: 1.5
-  registrarTransicoesDeAudio: 0
-  velocidadeParaMaxPitch: 50
-  loopMotor: 1
---- !u!114 &531651912743249114
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8988326293356594916}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 70000
-  alcanceConfiguradoNoPrefab: 1
-  radarLigado: 0
---- !u!114 &7000000000000000003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8988326293356594916}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0f2d12645e3c4ce7b7c6aa4d0a3e58f1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::PatrulhaCombateSegura
-  equipeOverride: 0
-  combateAutorizado: 1
-  exigirEstadoDeGuerra: 1
-  somenteReconhecimento: 0
-  usarDeteccaoPorRaio: 1
-  camadasDeDeteccao:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  raioDeteccaoMetros: 500
-  intervaloVarreduraSegundos: 0.5
-  tempoMemoriaContatoSegundos: 12
-  distanciaSeguraMetros: 150
-  antecipacaoMovimentoSegundos: 2
-  intervaloReplanejamentoSegundos: 1.25
-  manterAltitudeAtual: 1
-  pontosDePatrulha: []
-  retornarAPatrulhaAoPerderContato: 1

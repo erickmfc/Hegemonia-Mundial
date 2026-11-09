@@ -127,10 +127,10 @@ public class Fabrica : MonoBehaviour
         
         // Escolhe o próximo ponto de saída (Round Robin entre os 5 disponíveis)
         Transform saidaAlvo = pontoSaida;
-        if (pontosSaidaExtras != null && pontosSaidaExtras.Count > 0)
+        bool usarSaidaExtra = pontosSaidaExtras != null && pontosSaidaExtras.Count > 0;
+        if (usarSaidaExtra)
         {
             saidaAlvo = pontosSaidaExtras[indiceSaidaGlobal % pontosSaidaExtras.Count];
-            indiceSaidaGlobal++;
         }
 
         if (saidaAlvo == null) saidaAlvo = transform;
@@ -153,9 +153,9 @@ public class Fabrica : MonoBehaviour
         }
 
         // Calcula slot na fila para o ponto escolhido
-        if (!_contadorSlot.ContainsKey(saidaAlvo)) _contadorSlot[saidaAlvo] = 0;
-        _contadorSlot[saidaAlvo]++;
-        int slotIdx = _contadorSlot[saidaAlvo] - 1;
+        if (!_contadorSlot.TryGetValue(saidaAlvo, out int slotsUsados))
+            slotsUsados = 0;
+        int slotIdx = slotsUsados;
 
         Vector3 posSlot = baseSaida + (direcaoSaida * (5f + slotIdx * espacamento));
         bool destinoValidado = false;
@@ -179,6 +179,21 @@ public class Fabrica : MonoBehaviour
             spawnValidado = true;
         }
         RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
+
+        // Terrenos dinâmicos só mantêm NavMesh na região carregada. Não crie
+        // agentes terrestres fora dela: a instância nasceria sem executor e a
+        // ordem seria confirmada mesmo sem poder movimentar a unidade.
+        UnityEngine.AI.NavMeshAgent prefabAgent = prefab.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>(true);
+        if (prefabAgent != null && !spawnValidado)
+        {
+            return null;
+        }
+
+        // Só consome a vaga de saída depois que sabemos que a unidade pode
+        // nascer. Tentativas enquanto o tile/NavMesh carrega não empurram a fila.
+        _contadorSlot[saidaAlvo] = slotsUsados + 1;
+        if (usarSaidaExtra)
+            indiceSaidaGlobal++;
 
         // Instancia no spawn interno
         GameObject unidade = Instantiate(prefab, posSpawnFinal, spawn.rotation);
@@ -294,10 +309,6 @@ public class Fabrica : MonoBehaviour
                             {
                                 agente.Warp(hitDest.position);
                             }
-                            else
-                            {
-                                agente.Warp(destino);
-                            }
                         }
                         RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
                     }
@@ -329,10 +340,6 @@ public class Fabrica : MonoBehaviour
                                 if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDest, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
                                 {
                                     nav.Warp(hitDest.position);
-                                }
-                                else
-                                {
-                                    nav.Warp(destino);
                                 }
                             }
                             RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);

@@ -21,7 +21,18 @@ public static class TutorialCoastSceneBuilder
         EditorApplication.delayCall += () =>
         {
             if (EditorPrefs.GetBool("Hegemonia_TutorialCoastScene_Built_v6", false)) return;
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                Debug.LogWarning("A cena Tutorial Coast não foi criada: aguarde o fim do Play Mode.");
+                return;
+            }
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null)
+            {
+                EditorPrefs.SetBool("Hegemonia_TutorialCoastScene_Built_v6", true);
+                return;
+            }
             BuildTutorialCoastScene();
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             EditorPrefs.SetBool("Hegemonia_TutorialCoastScene_Built_v6", true);
         };
     }
@@ -32,16 +43,24 @@ public static class TutorialCoastSceneBuilder
         if (EditorPrefs.GetBool("Hegemonia_TutorialCoastScene_Finalized_v4", false)) return;
         EditorApplication.delayCall += () =>
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+            Scene active = SceneManager.GetActiveScene();
+            if (!active.IsValid() || active.path != ScenePath) return;
             FinalizeTutorialCoastCamera();
-            EditorPrefs.SetBool("Hegemonia_TutorialCoastScene_Finalized_v4", true);
+            if (!EditorApplication.isPlayingOrWillChangePlaymode && SceneManager.GetActiveScene().path == ScenePath)
+                EditorPrefs.SetBool("Hegemonia_TutorialCoastScene_Finalized_v4", true);
         };
     }
 
     [MenuItem("Tools/Hegemonia/Build Tutorial Coast Scene")]
     public static void BuildTutorialCoastScene()
     {
-        Scene active = SceneManager.GetActiveScene();
-        if (active.IsValid() && string.IsNullOrEmpty(active.path)) EditorSceneManager.CloseScene(active, true);
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            Debug.LogWarning("Saia do Play Mode antes de criar a cena Tutorial Coast.");
+            return;
+        }
+
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
         SceneManager.SetActiveScene(scene);
 
@@ -81,7 +100,19 @@ public static class TutorialCoastSceneBuilder
     [MenuItem("Tools/Hegemonia/Finalize Tutorial Coast Camera")]
     public static void FinalizeTutorialCoastCamera()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            Debug.LogWarning("Saia do Play Mode antes de finalizar a cena Tutorial Coast.");
+            return;
+        }
+
         Scene active = SceneManager.GetActiveScene();
+        if (!active.IsValid() || active.path != ScenePath)
+        {
+            Debug.LogWarning("Abra a cena Tutorial Coast antes de finalizar sua câmera.");
+            return;
+        }
+
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
             Scene loaded = SceneManager.GetSceneAt(i);

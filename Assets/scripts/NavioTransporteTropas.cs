@@ -1591,12 +1591,7 @@ public class NavioTransporteTropas : MonoBehaviour
             nav.enabled = carga.navAgentEnabledAntes;
             if (nav.enabled)
             {
-                Vector3 alvo = destinoFinal;
-                if (NavMesh.SamplePosition(destinoFinal, out NavMeshHit hit, 20f, NavMesh.AllAreas))
-                {
-                    alvo = hit.position;
-                }
-                try { nav.Warp(alvo); nav.isStopped = false; } catch { }
+                try { nav.Warp(destinoFinal); nav.isStopped = false; } catch { }
             }
         }
     }
@@ -2401,9 +2396,22 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private bool PontoTemTerra(Vector3 pos)
     {
-        if (RegistroSuperficieMapa.TryClassify(pos, out ClassificacaoSuperficieMapa classificacao, out _, 1.75f, 0.5f))
+        return TryObterAlturaSuperficieTerrestre(pos, out _);
+    }
+
+    private bool TryObterAlturaSuperficieTerrestre(Vector3 pos, out float alturaSuperficie)
+    {
+        alturaSuperficie = pos.y;
+
+        if (RegistroSuperficieMapa.TryClassify(pos, out ClassificacaoSuperficieMapa classificacao, out float alturaMarcada, 1.75f, 0.5f))
         {
-            return classificacao == ClassificacaoSuperficieMapa.Chao || classificacao == ClassificacaoSuperficieMapa.Costa;
+            if (classificacao != ClassificacaoSuperficieMapa.Chao && classificacao != ClassificacaoSuperficieMapa.Costa)
+            {
+                return false;
+            }
+
+            alturaSuperficie = alturaMarcada;
+            return true;
         }
 
         Vector3 origem = new Vector3(pos.x, pos.y + 600f, pos.z);
@@ -2426,7 +2434,11 @@ public class NavioTransporteTropas : MonoBehaviour
 
         if (melhorIndice >= 0)
         {
-            return !EhAgua(_hitsTerraBuffer[melhorIndice].collider);
+            if (!EhAgua(_hitsTerraBuffer[melhorIndice].collider))
+            {
+                alturaSuperficie = _hitsTerraBuffer[melhorIndice].point.y;
+                return true;
+            }
         }
 
         return false;
@@ -2645,8 +2657,23 @@ public class NavioTransporteTropas : MonoBehaviour
 
     private Vector3 AjustarParaNavMeshSePossivel(Vector3 destinoBruto)
     {
-        if (NavMesh.SamplePosition(destinoBruto, out NavMeshHit hit, 18f, NavMesh.AllAreas)) return hit.position;
-        return destinoBruto;
+        if (!TryObterAlturaSuperficieTerrestre(destinoBruto, out float alturaSuperficie))
+        {
+            return NavMesh.SamplePosition(destinoBruto, out NavMeshHit hitSemSuperficie, 18f, NavMesh.AllAreas)
+                ? hitSemSuperficie.position
+                : destinoBruto;
+        }
+
+        Vector3 destinoNaSuperficie = destinoBruto;
+        destinoNaSuperficie.y = alturaSuperficie;
+
+        if (NavMesh.SamplePosition(destinoNaSuperficie, out NavMeshHit hit, 18f, NavMesh.AllAreas)
+            && Mathf.Abs(hit.position.y - alturaSuperficie) <= 2f)
+        {
+            return hit.position;
+        }
+
+        return destinoNaSuperficie;
     }
 
     // ======================================================

@@ -7,7 +7,7 @@ using Hegemonia.AI.BrainMaster;
 public class SistemaGovernoMundial : MonoBehaviour
 {
     public const string MoedaMestreNome = "Dolar Hegemonico (DH)";
-    public const long SaldoInicialNacionalPorIAEmPartidaNova = 10000000000L;
+    public const long SaldoInicialNacionalPorIAEmPartidaNova = 35000000000L;
     public const int ComidaInicialNacionalPorIAEmPartidaNova = 10000;
     public const int ComidaInicialValdoriaPorIAEmPartidaNova = 50000;
     public const int CapacidadeAgricolaInicialValdoria = 100000;
@@ -1188,6 +1188,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         int civisConvertidos = quantidade - recrutados;
         pais.populacaoCivil = Mathf.Max(0, pais.populacaoCivil - civisConvertidos);
         pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva) + quantidade;
+        SistemaMilitar.GarantirCadastroMilitar(pais);
         NotificarGovernoAtualizadoSeguro();
         return true;
     }
@@ -1269,6 +1270,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         // baixa quando a unidade for destruída.
         identidade.teamID = teamId;
         identidade.militaresConsumidos = quantidade;
+        SistemaMilitar.VincularEfetivoAUnidade(ObterPais(teamId), identidade);
         return true;
     }
 
@@ -1297,6 +1299,8 @@ public class SistemaGovernoMundial : MonoBehaviour
 
         pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva - quantidade);
         pais.alistaveis = Mathf.Max(0, pais.alistaveis + quantidade);
+        for (int i = 0; i < identidades.Length; i++)
+            SistemaMilitar.LiberarVinculos(pais, identidades[i]);
         pais.populacao = Mathf.Clamp(
             pais.populacaoCivil + pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis,
             0,

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-05 02:38:35Z" end-time="2026-11-05 02:42:33Z" duration="238,8749847">
+  <test-suite type="TestSuite" id="1315" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-05 02:38:35Z" end-time="2026-11-05 02:42:33Z" duration="238.874985" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1311" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-05 02:38:35Z" end-time="2026-11-05 02:42:33Z" duration="238.762177" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13072" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1097" name="GlobalMapRequestedAcceptancePlayModeTests" fullname="GlobalMapRequestedAcceptancePlayModeTests" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-11-05 02:38:35Z" end-time="2026-11-05 02:42:33Z" duration="238.672606" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1110" name="TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater" fullname="GlobalMapRequestedAcceptancePlayModeTests.TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater" methodname="TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" seed="929870275" result="Passed" start-time="2026-11-05 02:38:35Z" end-time="2026-11-05 02:42:33Z" duration="238.607427" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="Timeout" value="360000" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[NovoJogo][Valdoria] DEUSA ativada em modo autônomo; autoridade de construção permanece no BrainMaster.
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); comida inicial de 1 IA(s) definida para 10000; estoques de combustíveis iniciais aplicados aos times 1,2.
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[DEUSA][Team 2] modoObservadorDebug=False | escopo=desligado | execucao DEUSA liberada.
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity nem componente coletado pelo save em runtime
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+[DEUSA][Team 2] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=104 erros=0 avisos=50 cena=GlobalMapRTS avisosConsoleSuprimidos=46
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[DEUSA][Team 2] estagio -> OrganizacaoEconomica | motivo=deficit de comida | politica=OrganizacaoEconomica | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=Agricultura Nacional
+[Cidade inicial] Nova Aurora criada para o Team 1 com 5.000 habitantes em (-200643.40, 61.12, 86398.66).
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: military airport | motivo=IA03 exige o Creaty manual próprio do aeroporto militar; busca geral bloqueada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: military airport | motivo=IA03 exige o Creaty manual próprio do aeroporto militar; busca geral bloqueada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-141425.6, 5.0, -124000.0) agente=(-141425.6, 5.0, -124000.0) velocidade=(5.22, 0.00, 0.00) restante=824,3 distanciaCosta=875,6
+[DEUSA][Team 2] estagio -> MilitarizacaoDefensiva | motivo=progressao por infraestrutura: MilitarizacaoDefensiva | politica=MilitarizacaoDefensiva | eco=0,35 mil=0,40 def=0,55 atk=0,10 | alvo=Monitorar fronteira | build=Radar
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Nenhuma | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+✅ [Armazem_Recursos(Clone)] Galpão de Recursos ativado: Armazém Central
+Progresso costeiro: tanque=(-141350.9, 5.0, -124000.0) agente=(-141350.9, 5.0, -124000.0) velocidade=(4.78, 0.00, 0.00) restante=749,6 distanciaCosta=800,9
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: imovel | motivo=item de construção ausente do catálogo nacional
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Estaleiro Naval | motivo=intencao duplicada
+[DEUSA][Team 2] estagio -> ProjecaoRegional | motivo=deficit de comida | politica=ProjecaoRegional | eco=0,55 mil=0,55 def=0,55 atk=0,10 | alvo=Monitorar fronteira | build=Nenhuma
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+Progresso costeiro: tanque=(-141275.4, 5.0, -124000.0) agente=(-141275.4, 5.0, -124000.0) velocidade=(5.49, 0.00, 0.00) restante=674,1 distanciaCosta=725,4
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: imovel | motivo=item de construção ausente do catálogo nacional
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Estaleiro Naval | motivo=intencao duplicada
+Progresso costeiro: tanque=(-141200.3, 5.0, -124000.0) agente=(-141200.3, 5.0, -124000.0) velocidade=(4.59, 0.00, 0.00) restante=599,0 distanciaCosta=650,3
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+Progresso costeiro: tanque=(-141125.0, 5.0, -124000.0) agente=(-141125.0, 5.0, -124000.0) velocidade=(5.26, 0.00, 0.00) restante=523,7 distanciaCosta=575,0
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: imovel | motivo=item de construção ausente do catálogo nacional
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+Progresso costeiro: tanque=(-141050.0, 5.0, -124000.0) agente=(-141050.0, 5.0, -124000.0) velocidade=(5.53, 0.00, 0.00) restante=448,7 distanciaCosta=500,0
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+Progresso costeiro: tanque=(-140975.1, 5.0, -124000.0) agente=(-140975.1, 5.0, -124000.0) velocidade=(5.13, 0.00, 0.00) restante=373,8 distanciaCosta=425,1
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: imovel | motivo=item de construção ausente do catálogo nacional
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+Progresso costeiro: tanque=(-140899.5, 5.0, -124000.0) agente=(-140899.5, 5.0, -124000.0) velocidade=(4.68, 0.00, 0.00) restante=298,2 distanciaCosta=349,5
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: imovel | motivo=item de construção ausente do catálogo nacional
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+Progresso costeiro: tanque=(-140824.2, 5.0, -124000.0) agente=(-140824.2, 5.0, -124000.0) velocidade=(5.12, 0.00, 0.00) restante=222,9 distanciaCosta=274,2
+[IA03][Valdoria] construção aguardando: Estaleiro Naval | motivo=intencao duplicada
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+Progresso costeiro: tanque=(-140749.1, 5.0, -124000.0) agente=(-140749.1, 5.0, -124000.0) velocidade=(4.97, 0.00, 0.00) restante=147,8 distanciaCosta=199,1
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: imovel | motivo=item de construção ausente do catálogo nacional
+Progresso costeiro: tanque=(-140674.0, 5.0, -124000.0) agente=(-140674.0, 5.0, -124000.0) velocidade=(5.55, 0.00, 0.00) restante=72,7 distanciaCosta=124,0
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirAeroporto (86) Abrir projeção aerea em terra livre. | proximaConstrucao=Aeroporto Militar | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: Estaleiro Naval | motivo=intencao duplicada
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[IA03][Valdoria] construção aguardando: PLataforma | motivo=intencao duplicada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: Quartel General | motivo=busca legada interrompida pelo orçamento acumulado do tick
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+Progresso costeiro: tanque=(-140601.5, 5.0, -124000.0) agente=(-140601.5, 5.0, -124000.0) velocidade=(1.47, 0.00, 0.00) restante=0,3 distanciaCosta=51,5
+Teste costeiro: origem=(-141500.0, 5.0, -124000.0) água=(-140500.0, 5.0, -124000.0) destino=(-140601.3, 5.0, -124000.0) deslocamento=898,7 distanciaCostaInicial=950,0 distanciaCostaFinal=51,3 velocidadeFinal=(0.00, 0.00, 0.00) árvores=0 direção=(1.00, 0.00, 0.00)
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

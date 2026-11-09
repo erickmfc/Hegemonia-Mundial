@@ -7,6 +7,8 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.SceneManagement;
 using Hegemonia.Cartel;
+using Hegemonia.AI.BrainMaster;
+using Hegemonia.AI.IA03;
 
 [DefaultExecutionOrder(-1000)]
 public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
@@ -194,6 +196,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private string _overlayLine5 = string.Empty;
     private string _overlayLine6 = string.Empty;
     private string _overlayLine7 = string.Empty;
+    private string _overlayLine8 = string.Empty;
     private string _ultimoBlocoEventos = "Nenhum evento marcado.";
     private float _proximoRefreshOverlay;
     private int _proximoFrameTiming;
@@ -575,6 +578,11 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             GUILayout.Label(_overlayLine7, _textoStyle);
         }
 
+        if (!string.IsNullOrEmpty(_overlayLine8))
+        {
+            GUILayout.Label(_overlayLine8, _textoStyle);
+        }
+
         if (!string.IsNullOrEmpty(_csvPath))
         {
             GUILayout.Label("CSV: " + _csvPath, _textoStyle);
@@ -853,6 +861,49 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                 + " candidatos=" + (string.IsNullOrEmpty(ia01CatalogCandidates) ? "0" : ia01CatalogCandidates)
                 + " fisica=" + (string.IsNullOrEmpty(ia01PhysicsChecks) ? "0" : ia01PhysicsChecks);
         }
+
+        IA_BrainMaster[] brains = FindObjectsByType<IA_BrainMaster>(FindObjectsSortMode.None);
+        IA_BrainMaster brainIA03 = null;
+        for (int i = 0; i < brains.Length; i++)
+        {
+            if (brains[i] != null && brains[i].TeamId == 2)
+            {
+                brainIA03 = brains[i];
+                break;
+            }
+        }
+
+        if (brainIA03 == null || brainIA03.Context == null || brainIA03.Context.WorldState == null)
+        {
+            _overlayLine8 = "IA03: BrainMaster/estado do mundo indisponivel.";
+            return;
+        }
+
+        IA_ForceSnapshot ia03Forca = brainIA03.Context.WorldState.ForceSnapshot;
+        IA03EstrategaNacional estrategaIA03 = brainIA03.GetComponent<IA03EstrategaNacional>();
+        string estadoIA03 = estrategaIA03 != null
+            ? (string.IsNullOrEmpty(ObterTextoMetrica("ia03_state"))
+                ? estrategaIA03.EstadoNacional + " / " + estrategaIA03.EstadoDaMissao
+                : ObterTextoMetrica("ia03_state"))
+            : "estrategista nao encontrado";
+        string decisaoIA03 = estrategaIA03 != null
+            ? (string.IsNullOrEmpty(ObterTextoMetrica("ia03_decision"))
+                ? estrategaIA03.UltimaDecisao
+                : ObterTextoMetrica("ia03_decision"))
+            : string.Empty;
+        _overlayLine8 = string.Format(
+            CultureInfo.InvariantCulture,
+            "IA03 (team 2): construcoes {0} (falhas {1}) | compras/unidades {2} (falhas {3}) | tentativas exec {4} | em fila {5} | efetivo {6} un / {7} estruturas | {8} | {9}",
+            ObterContadorMetrica("ia03_build_success") + ObterContadorMetrica("ia03_built_placements"),
+            ObterContadorMetrica("ia03_build_failure"),
+            ObterContadorMetrica("ia03_purchase_success_units") + ObterContadorMetrica("ia03_produce_success_units"),
+            ObterContadorMetrica("ia03_produce_failure"),
+            brainIA03.Context.CommandQueue != null ? brainIA03.Context.CommandQueue.CompletedSuccessCount + brainIA03.Context.CommandQueue.CompletedFailureCount : 0,
+            brainIA03.Context.CommandQueue != null ? brainIA03.Context.CommandQueue.PendingCount : 0,
+            ia03Forca != null ? ia03Forca.TotalOwnUnits : 0,
+            ia03Forca != null ? ia03Forca.TotalOwnStructures : 0,
+            estadoIA03,
+            string.IsNullOrEmpty(decisaoIA03) ? "sem decisao publicada" : decisaoIA03);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)

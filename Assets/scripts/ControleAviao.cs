@@ -177,6 +177,32 @@ public class ControleAviao : MonoBehaviour
     protected SistemaDeDanos _sistemaDanos;
     protected LancadorMisselCaca _lancadorCaca;
     protected float _tempoUltimoDanoRecebido = -100f;
+    // R4: evita GetComponent<C17TransporteController>() todo frame
+    private bool _ehC17CacheFeito;
+    private bool _ehC17;
+    // R5: evita GetComponent<KamikazeDrone>() múltiplas vezes por frame
+    protected KamikazeDrone _kamikazeDroneCache;
+    private bool _kamikazeDroneCacheFeito;
+
+    protected bool EhC17Transporte()
+    {
+        if (!_ehC17CacheFeito)
+        {
+            _ehC17 = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null;
+            _ehC17CacheFeito = true;
+        }
+        return _ehC17;
+    }
+
+    protected KamikazeDrone ObterKamikazeDrone()
+    {
+        if (!_kamikazeDroneCacheFeito)
+        {
+            _kamikazeDroneCache = GetComponent<KamikazeDrone>();
+            _kamikazeDroneCacheFeito = true;
+        }
+        return _kamikazeDroneCache;
+    }
 
     protected ControleUnidade ObterControleUnidadeAtual()
     {
@@ -227,6 +253,12 @@ public class ControleAviao : MonoBehaviour
             ?? GetComponentInParent<ControleUnidade>();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _lancadorCaca = GetComponent<LancadorMisselCaca>();
+        // R4: cache do C17 — evita GetComponent todo frame no Update
+        _ehC17 = GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null;
+        _ehC17CacheFeito = true;
+        // R5: cache do KamikazeDrone — evita 4× GetComponent por frame
+        _kamikazeDroneCache = GetComponent<KamikazeDrone>();
+        _kamikazeDroneCacheFeito = true;
 
         if (_sistemaDanos != null)
         {
@@ -438,7 +470,8 @@ public class ControleAviao : MonoBehaviour
         // antigos, mas simulação, combustível e ordens só podem rodar durante
         // o Play Mode. Isso evita mover uma aeronave enquanto a cena é editada.
         if (!Application.isPlaying) return;
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
+        // R4: usa cache em vez de GetComponent<C17TransporteController>() todo frame
+        if (_ehC17CacheFeito ? _ehC17 : GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
         if (!estaEmModoVooFisico) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
@@ -471,7 +504,8 @@ public class ControleAviao : MonoBehaviour
             {
                 multiplicadorDanos = 0.5f;
                 // Drones Kamikaze não retornam à base por danos, eles continuam até o fim
-                bool isKamikaze = GetComponent<KamikazeDrone>() != null;
+                // R5: usa cache em vez de GetComponent<KamikazeDrone>() por frame
+                bool isKamikaze = (_kamikazeDroneCacheFeito ? _kamikazeDroneCache : GetComponent<KamikazeDrone>()) != null;
                 if (estadoAtual == EstadoAviao.EmMissao && !ordemParaRetorno && !isKamikaze)
                 {
                     if (selecionado)
@@ -511,7 +545,8 @@ public class ControleAviao : MonoBehaviour
             || estadoAtual == EstadoAviao.Decolando
             || estadoAtual == EstadoAviao.Pousando
             || ordemParaRetorno;
-        bool heroico = GetComponent<KamikazeDrone>() != null
+        // R5: usa cache em vez de GetComponent<KamikazeDrone>() por frame
+        bool heroico = (_kamikazeDroneCacheFeito ? _kamikazeDroneCache : GetComponent<KamikazeDrone>()) != null
             || alvoPrioritarioIA
             || emAtaqueMergulho;
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, heroico, 180f, 420f);
@@ -520,7 +555,8 @@ public class ControleAviao : MonoBehaviour
     protected virtual void ManobraVooRealista(float multDano = 1f)
     {
         alvoGPSVoo = LimitarPosicaoAosLimitesDoMapa(alvoGPSVoo);
-        KamikazeDrone kd = GetComponent<KamikazeDrone>();
+        // R5: usa cache em vez de GetComponent<KamikazeDrone>() todo frame
+        KamikazeDrone kd = _kamikazeDroneCacheFeito ? _kamikazeDroneCache : GetComponent<KamikazeDrone>();
         bool isKamikazeDiving = kd != null && kd.kamikazeAtivo;
         bool exigeAfastamentoDoSolo = estadoAtual != EstadoAviao.Pousando
             && !isKamikazeDiving
@@ -552,7 +588,8 @@ public class ControleAviao : MonoBehaviour
         float multiplicadorPatrulha = 1f;
         if (estadoAtual == EstadoAviao.EmMissao && !alvoPrioritarioIA && !emAtaqueMergulho)
         {
-            KamikazeDrone kdTemp = GetComponent<KamikazeDrone>();
+            // R5: usa cache em vez de GetComponent<KamikazeDrone>() por frame
+            KamikazeDrone kdTemp = _kamikazeDroneCacheFeito ? _kamikazeDroneCache : GetComponent<KamikazeDrone>();
             if (kdTemp == null || !kdTemp.kamikazeAtivo)
             {
                 bool sobAtaqueOuEngajado = (_lancadorCaca != null && _lancadorCaca.TemInimigosDetectados) 
@@ -1135,7 +1172,7 @@ public class ControleAviao : MonoBehaviour
 
     public void IniciarMissaoCompleta(Vector3 alvoFinalGPS)
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        if (EhC17Transporte())
         {
             Debug.LogWarning($"[C17] Ordem generica ignorada em {name}; use o aeroporto/C17TransporteController.");
             return;
@@ -1244,7 +1281,7 @@ public class ControleAviao : MonoBehaviour
     /// </summary>
     public void AssumirVooAposDecolagem(Vector3 destino, bool emPatrulha)
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        if (EhC17Transporte())
         {
             return;
         }
@@ -1567,7 +1604,7 @@ public class ControleAviao : MonoBehaviour
     public bool ReceberOrdemManual(Vector3 destino)
     {
         ultimoMotivoRecusaOrdem = string.Empty;
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        if (EhC17Transporte())
         {
             ultimoMotivoRecusaOrdem = "transporte C-17 deve receber ordem pelo aeroporto";
             return false;
@@ -1666,7 +1703,7 @@ public class ControleAviao : MonoBehaviour
     public bool ReceberOrdemPatrulha(IList<Vector3> rota)
     {
         ultimoMotivoRecusaOrdem = string.Empty;
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        if (EhC17Transporte())
         {
             ultimoMotivoRecusaOrdem = "transporte C-17 deve receber ordem pelo aeroporto";
             return false;
@@ -1986,7 +2023,7 @@ public class ControleAviao : MonoBehaviour
 
     public void ComandoRetornarBase()
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
+        if (EhC17Transporte()) return;
 
         // Se a aeronave ainda está no hangar ou taxiando, não existe voo para
         // "retornar". O comando deve cancelar uma decolagem pendente; caso
@@ -2081,7 +2118,7 @@ public class ControleAviao : MonoBehaviour
 
     public void DefinirBaseAlternativaEIniciarRetorno(GerenciadorAeroporto novaBase)
     {
-        if (GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null) return;
+        if (EhC17Transporte()) return;
         if (novaBase == null)
         {
             return;
@@ -2874,7 +2911,7 @@ public class ControleAviao : MonoBehaviour
         }
 
         // Loop de patrulha
-        KamikazeDrone droneScript = GetComponent<KamikazeDrone>();
+        KamikazeDrone droneScript = ObterKamikazeDrone();
 
         // Fallback da patrulha automatica: circuito retangular historico.
         // A rota desenhada pelo jogador continua tendo prioridade no bloco

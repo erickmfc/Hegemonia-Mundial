@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 29;
+    public int saveVersion = 30;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -76,7 +76,7 @@ public sealed class SaveQuartelStateData
     public bool treinamentoPassivo = true;
     public bool recrutamentoAutomatico = true;
     public bool treinamentoAutomatico = true;
-    public int metaEfetivo = 24;
+    public int metaEfetivo = GerenciadorQuartel.MetaEfetivoInicial;
     public float tempoFormacaoSegundos = 10f;
     public int periodoFolhaDias = 15;
     public int misseisArmazenados;
@@ -103,6 +103,17 @@ public sealed class SaveQuartelStateData
 public sealed class SaveQuartelRecrutaData
 {
     public string id;
+    public string nomeCompleto;
+    public string nacionalidade;
+    public int teamId;
+    public int idade;
+    public string patente;
+    public string especialidade;
+    public float experiencia;
+    public int diaInicioServico;
+    public long salarioDiario;
+    public string postoAtual;
+    public string instalacaoId;
     public int forca;
     public int estado;
     public float progressoSegundos;
@@ -264,6 +275,7 @@ public class SaveEntityData
     public TipoUnidade tipoUnidade;
     public bool possuiMilitaresConsumidos;
     public int militaresConsumidos;
+    public List<string> militaresVinculadosIds = new List<string>();
     public bool possuiVida;
     public float vidaAtual;
     public float vidaMaxima;
@@ -628,7 +640,7 @@ public class SistemaSaveGame : MonoBehaviour
         GarantirColecoesIA01();
         GarantirColecoesIA02();
         GarantirColecoesCidadesAbstratas();
-        dadosAtuais.saveVersion = 29;
+        dadosAtuais.saveVersion = 30;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -2080,7 +2092,12 @@ public class SistemaSaveGame : MonoBehaviour
             quartel.treinamentoPassivo = salvo.treinamentoPassivo;
             quartel.recrutamentoAutomatico = salvo.recrutamentoAutomatico;
             quartel.treinamentoAutomatico = salvo.treinamentoAutomatico;
-            quartel.metaEfetivo = Mathf.Max(1, salvo.metaEfetivo);
+            int metaEfetivoRestaurada = Mathf.Max(1, salvo.metaEfetivo);
+            // A versao 30 eleva somente o valor padrao antigo. Metas que o
+            // jogador já havia alterado continuam valendo ao carregar saves.
+            if (dadosAtuais.saveVersion < 30 && metaEfetivoRestaurada == 24)
+                metaEfetivoRestaurada = GerenciadorQuartel.MetaEfetivoInicial;
+            quartel.metaEfetivo = metaEfetivoRestaurada;
             quartel.tempoFormacaoSegundos = Mathf.Max(1f, salvo.tempoFormacaoSegundos);
             quartel.misseisArmazenados = Mathf.Max(0, salvo.misseisArmazenados);
             quartel.municaoArmazenada = Mathf.Max(0, salvo.municaoArmazenada);
@@ -2242,6 +2259,9 @@ public class SistemaSaveGame : MonoBehaviour
             tipoUnidade = identidade != null ? identidade.tipoUnidade : TipoUnidade.Estrutura,
             possuiMilitaresConsumidos = identidade != null,
             militaresConsumidos = identidade != null ? Mathf.Max(0, identidade.militaresConsumidos) : 0,
+            militaresVinculadosIds = identidade != null && identidade.militaresVinculadosIds != null
+                ? new List<string>(identidade.militaresVinculadosIds)
+                : new List<string>(),
             possuiVida = danos != null,
             vidaAtual = danos != null ? danos.vidaAtual : 0f,
             vidaMaxima = danos != null ? danos.vidaMaxima : 0f,
@@ -2494,6 +2514,9 @@ public class SistemaSaveGame : MonoBehaviour
             identidade.militaresConsumidos = data.possuiMilitaresConsumidos
                 ? Mathf.Max(0, data.militaresConsumidos)
                 : SistemaGovernoMundial.ObterEfetivoNecessario(obj, data.tipoUnidade);
+            identidade.militaresVinculadosIds = data.militaresVinculadosIds != null
+                ? new List<string>(data.militaresVinculadosIds)
+                : new List<string>();
         }
 
         SistemaDeDanos danos = obj.GetComponent<SistemaDeDanos>();

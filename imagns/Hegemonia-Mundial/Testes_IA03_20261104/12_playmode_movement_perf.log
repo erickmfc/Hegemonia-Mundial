@@ -1,0 +1,2029 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.2/staging' branch; Version is '6000.2.15f1 (0707b6d1e918) revision 460726'; Using compiler version '194234433'; Build Type 'Release'
+[Licensing::IpcConnector] Channel LicenseClient-Mathe doesn't exist
+OS: 'Windows 11  (10.0.22621) 64bit Professional' Language: 'pt' Physical Memory: 16315 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-11-05T00:02:17Z
+[Licensing::Module] Successfully launched the LicensingClient (PId: 7512)
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Unity.exe
+-batchmode
+-automated
+-projectPath
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial
+-runTests
+-testPlatform
+PlayMode
+-assemblyNames
+Hegemonia.PlayMode.Tests
+-testFilter
+GlobalMapRequestedAcceptancePlayModeTests\.(GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve|GlobalMapRecordsLiveFrameTimingAndRenderCounters|InfantryAndTankMoveOnGeneratedGlobalMapLand)
+-testResults
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\12_playmode_movement_perf.xml
+-logFile
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\12_playmode_movement_perf.log
+Successfully changed project path to: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial
+C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [12524]  Target information:
+
+Player connection [12524]  * "[IP] 10.0.10.239 [Port] 55504 [Flags] 2 [Guid] 1203486150 [EditorId] 1203486150 [Version] 1048832 [Id] WindowsEditor(7,DESKTOP-KER79B4) [Debug] 1 [PackageName] WindowsEditor [ProjectName] Editor" 
+
+Player connection [12524] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [12524] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe" at "2026-11-05T00:02:18.3509076Z"
+[Package Manager] Connected to IPC stream "Upm-22024" after 1.1 seconds.
+Library Redirect Path: Library/
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Refreshing native plugins compatible for Editor in 1.49 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 6000.2.15f1 (0707b6d1e918)
+[Subsystems] Discovering subsystems at path C:/Program Files/Unity/Hub/Editor/6000.2.15f1/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial/Assets
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.1]
+    Renderer: AMD Radeon RX 580 2048SP (ID=0x6fdf)
+    Vendor:   ATI
+    VRAM:     8170 MB
+    Driver:   31.0.12027.9001
+Initialize mono
+Mono path[0] = 'C:/Program Files/Unity/Hub/Editor/6000.2.15f1/Editor/Data/Managed'
+Mono path[1] = 'C:/Program Files/Unity/Hub/Editor/6000.2.15f1/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-win32'
+Mono config path = 'C:/Program Files/Unity/Hub/Editor/6000.2.15f1/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56024
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: C:/Program Files/Unity/Hub/Editor/6000.2.15f1/Editor/Data/PlaybackEngines/WindowsStandaloneSupport/UnityEditor.WindowsStandalone.Extensions.dll
+Registered in 0.005568 seconds.
+- Loaded All Assemblies, in  1.359 seconds
+Native extension for WindowsStandalone target not found
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.17.4+4293ba1
+  Session Id:              dd577e8c062a4d5da26c48cd37b87158
+  Correlation Id:          5a6a6ad33881ef2442c266b7dc3a7ad2
+  External correlation Id: 3336172174280651844
+  Machine Id:              ORvsSti6k5KwE4/hKn9y1/3EL04=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-Mathe" (connect: 0.85s, validation: 0.19s, handshake: 3.40s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe-notifications" at "2026-11-05T00:02:21.9413859Z"
+[Licensing::Module] Connected to LicensingClient (PId: 7512, launch time: 0.01, total connection time: 4.44s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 4673433101100-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.03
+[Licensing::Module] Licensing Background thread has ended after 4.55s
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  1.217 seconds
+Domain Reload Profiling: 2569ms
+	BeginReloadAssembly (485ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (0ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (2ms)
+	RebuildCommonClasses (166ms)
+	RebuildNativeTypeToScriptingClass (63ms)
+	initialDomainReloadingComplete (149ms)
+	LoadAllAssembliesAndSetupDomain (488ms)
+		LoadAssemblies (474ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (480ms)
+			TypeCache.Refresh (476ms)
+				TypeCache.ScanAssembly (441ms)
+			BuildScriptInfoCaches (0ms)
+			ResolveRequiredComponents (1ms)
+	FinalizeReload (1219ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (1104ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (167ms)
+			SetLoadedEditorAssemblies (11ms)
+			BeforeProcessingInitializeOnLoad (301ms)
+			ProcessInitializeOnLoadAttributes (421ms)
+			ProcessInitializeOnLoadMethodAttributes (204ms)
+			AfterProcessingInitializeOnLoad (0ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (0ms)
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+Package Manager log level set to [2]
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 71 packages:
+  Packages from [https://packages.unity.com]:
+    com.unity.ai.navigation@2.0.12 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.ai.navigation@734c2c4c5591)
+    com.unity.cinemachine@3.1.5 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.cinemachine@5342685532bb)
+    com.unity.cloud.gltfast@6.19.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.cloud.gltfast@92828f845157)
+    com.unity.collab-proxy@2.12.4 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.collab-proxy@0b1559bcd34e)
+    com.unity.ide.rider@3.0.39 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.ide.rider@4504839d03f7)
+    com.unity.ide.visualstudio@2.0.27 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.ide.visualstudio@dc1ddd4f09b6)
+    com.unity.inputsystem@1.19.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.inputsystem@21a28c3a6c83)
+    com.unity.pipeline@0.7.0-exp.1 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.pipeline@ab05e9cd7f74)
+    com.unity.postprocessing@3.5.4 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.postprocessing@141166b789e3)
+    com.unity.settings-manager@2.1.1 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.settings-manager@0b8638c5ce86)
+    com.unity.terrain-tools@5.3.2 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.terrain-tools@bcd5ab3144b8)
+    com.unity.testtools.codecoverage@1.3.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.testtools.codecoverage@19a841221620)
+    com.unity.timeline@1.8.10 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.timeline@7f8b2fb101b6)
+    com.unity.visualscripting@1.9.11 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.visualscripting@8bed5ad90189)
+    com.unity.nuget.mono-cecil@1.11.6 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.nuget.mono-cecil@ecb9724e46ff)
+    com.unity.nuget.newtonsoft-json@3.2.1 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.nuget.newtonsoft-json@74deb55db2a0)
+    com.unity.editorcoroutines@1.1.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.editorcoroutines@87a15ed012c2)
+    com.unity.performance.profile-analyzer@1.3.4 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.performance.profile-analyzer@418130329099)
+    com.unity.burst@1.8.29 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.burst@6bb9aca3ef38)
+    com.unity.collections@2.6.6 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.collections@9796e5ee0d9e)
+    com.unity.mathematics@1.3.3 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.mathematics@19a9377c4ffa)
+    com.unity.splines@2.8.2 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.splines@1cb7d86fc7ff)
+    com.unity.searcher@4.9.3 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.searcher@1e17ce91558d)
+    com.unity.test-framework.performance@3.2.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.test-framework.performance@0840f58e4562)
+  Built-in packages:
+    com.unity.2d.sprite@1.0.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.2d.sprite@331abd9a1e2f)
+    com.unity.2d.tilemap@1.0.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.2d.tilemap@0b99f08c0204)
+    com.unity.ext.nunit@2.0.5 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.ext.nunit@031a54704bff)
+    com.unity.feature.development@1.0.2 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.feature.development@767aadbc6eb7)
+    com.unity.render-pipelines.universal@17.2.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.render-pipelines.universal@65a6875fdfbc)
+    com.unity.test-framework@1.6.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.test-framework@40e262928427)
+    com.unity.ugui@2.0.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.ugui@3ed76cad4655)
+    com.unity.modules.accessibility@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.accessibility)
+    com.unity.modules.ai@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.director)
+    com.unity.modules.hierarchycore@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.hierarchycore)
+    com.unity.modules.imageconversion@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.screencapture)
+    com.unity.modules.subsystems@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.subsystems)
+    com.unity.modules.terrain@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vehicles@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\Resources\PackageManager\BuiltInPackages\com.unity.modules.xr)
+    com.unity.render-pipelines.core@17.2.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.render-pipelines.core@205f2b8ecf0f)
+    com.unity.shadergraph@17.2.0 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.shadergraph@bb4ad9d6ddac)
+    com.unity.render-pipelines.universal-config@17.0.3 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.render-pipelines.universal-config@8dc1aab4af1d)
+    com.unity.rendering.light-transport@1.0.1 (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.unity.rendering.light-transport@2c9279f90d7c)
+  Embedded packages:
+    com.tripo3d.unitybridge@file:C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Packages\com.tripo3d.unitybridge (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Packages\com.tripo3d.unitybridge)
+  Git packages:
+    com.coplaydev.unity-mcp@https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main (location: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Library\PackageCache\com.coplaydev.unity-mcp@da7b9ae4aeeb)
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.07 seconds
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Refreshing native plugins compatible for Editor in 5.66 ms, found 4 plugins.
+Starting: C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Data\bee_backend.exe --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial
+DisplayProgressbar: Compiling Scripts
+ExitCode: 0 Duration: 1s9ms
+[ 917/1194  0s] ILPP-Configuration Library/ilpp-configuration.nevergeneratedoutput
+*** Tundra build success (0.91 seconds), 1 items updated, 1194 evaluated
+AssetDatabase: script compilation time: 2.626708s
+Begin MonoManager ReloadAssembly
+Total cache size 46918796
+Total cache size after purge 46918796, took 00:00:00.1604710
+- Loaded All Assemblies, in  3.912 seconds
+'Packages/com.unity.cinemachine/Editor/Editors/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+'Packages/com.unity.cinemachine/Editor/Obsolete/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+Refreshing native plugins compatible for Editor in 10.53 ms, found 4 plugins.
+Shader Hidden/ProbeVolume/VoxelizeScene is not supported: GPU does not support conservative rasterization
+Native extension for WindowsStandalone target not found
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Refreshing native plugins compatible for Editor in 6.22 ms, found 4 plugins.
+Start HTTP server: port:7800
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in 14.935 seconds
+Domain Reload Profiling: 18827ms
+	BeginReloadAssembly (544ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (38ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (95ms)
+	RebuildCommonClasses (110ms)
+	RebuildNativeTypeToScriptingClass (43ms)
+	initialDomainReloadingComplete (211ms)
+	LoadAllAssembliesAndSetupDomain (2983ms)
+		LoadAssemblies (1540ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (1745ms)
+			TypeCache.Refresh (1345ms)
+				TypeCache.ScanAssembly (1292ms)
+			BuildScriptInfoCaches (314ms)
+			ResolveRequiredComponents (71ms)
+	FinalizeReload (14937ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (14006ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (70ms)
+			SetLoadedEditorAssemblies (13ms)
+			BeforeProcessingInitializeOnLoad (595ms)
+			ProcessInitializeOnLoadAttributes (12862ms)
+			ProcessInitializeOnLoadMethodAttributes (447ms)
+			AfterProcessingInitializeOnLoad (19ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (32ms)
+Asset Pipeline Refresh (id=38e7b48b612dad64caf2016780741527): Total: 24.320 seconds - Initiated by InitialRefreshV2(ForceSynchronousImport)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=17223 ms
+		Asset DB Callback time: managed=194 ms, native=86 ms
+		Scripting: domain reloads=1, domain reload time=3914 ms, compile time=2631 ms, other=269 ms
+		Project Asset Count: scripts=2823, non-scripts=9422
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokeCustomDependenciesCallbacks: 0.002ms
+	InvokePackagesCallback: 94.402ms
+	ApplyChangesToAssetFolders: 2.080ms
+	Scan: 743.372ms
+	OnSourceAssetsModified: 0.004ms
+	CategorizeAssetsWithTransientArtifact: 230.327ms
+	ProcessAssetsWithTransientArtifactChanges: 416.792ms
+	CategorizeAssets: 379.754ms
+	ImportOutOfDateAssets: 14985.770ms (12343.657ms without children)
+		CompileScripts: 2631.030ms
+		ReloadNativeAssets: 0.082ms
+		UnloadImportedAssets: 2.678ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 5.795ms
+		InitializingProgressBar: 0.001ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.002ms
+		OnDemandSchedulerStart: 2.526ms
+	PostProcessAllAssets: 194.507ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.007ms
+	UnloadStreamsBegin: 1.155ms
+	PersistCurrentRevisions: 1.044ms
+	UnloadStreamsEnd: 0.003ms
+	GenerateScriptTypeHashes: 23.384ms
+	Untracked: 7270.726ms
+
+Application.AssetDatabase Initial Refresh End
+Shader 'WFX/Transparent Specular': fallback shader 'Particles/Alpha Blended' not found
+Shader 'WFX/Transparent Diffuse': fallback shader 'Particles/Alpha Blended' not found
+Launched and connected shader compiler UnityShaderCompiler.exe after 0.03 seconds
+Scanning for USB devices : 5.105ms
+Initializing Unity extensions:
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-Hegemonia Global
+Unloading 192 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 9225 unused Assets / (31.6 MB). Loaded Objects now: 9869.
+Memory consumption went from 298.9 MB to 267.3 MB.
+Total: 69.391100 ms (FindLiveObjects: 2.679000 ms CreateObjectMapping: 3.507700 ms MarkObjects: 25.060800 ms  DeleteObjects: 38.140500 ms)
+
+D3D11 device created for Microsoft Media Foundation video decoding.
+[Project] Loading completed in 33.251 seconds
+	Project init time: 				31.825 seconds
+		Template init time: 		0.000 seconds
+		Package Manager init time: 		1.101 seconds
+		Asset Database init time: 		0.798 seconds
+		Global illumination init time: 	0.008 seconds
+		Assemblies load time: 			2.640 seconds
+		Unity extensions init time: 	0.050 seconds
+		Asset Database refresh time: 	24.320 seconds
+	Scene opening time: 			1.250 seconds
+##utp:{"type":"ProjectInfo","version":2,"phase":"Immediate","time":1793836970704,"processId":22024,"projectLoad":33.2506938,"projectInit":31.8247326,"templateInit":0.0,"packageManagerInit":1.1012636,"assetDatabaseInit":0.7984796,"globalIlluminationInit":0.0076796,"assembliesLoad":2.6404352,"unityExtensionsInit":0.0503125,"assetDatabaseRefresh":24.3203096,"sceneOpening":1.249506}
+##utp:{"type":"EditorInfo","version":2,"phase":"Immediate","time":1793836970704,"processId":22024,"editorVersion":"6000.2.15f1 (0707b6d1e918)","branch":"6000.2/staging","buildType":"Release","platform":"Windows"}
+Asset Pipeline Refresh (id=33bb634a36d53b64ca0df459eb83c1a8): Total: 0.306 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=305 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=2823, non-scripts=9422
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokeCustomDependenciesCallbacks: 0.002ms
+	InvokePackagesCallback: 0.002ms
+	ApplyChangesToAssetFolders: 0.840ms
+	Scan: 0.002ms
+	OnSourceAssetsModified: 0.002ms
+	CategorizeAssetsWithTransientArtifact: 0.014ms
+	ProcessAssetsWithTransientArtifactChanges: 0.385ms
+	CategorizeAssets: 229.225ms
+	ImportOutOfDateAssets: 8.579ms (1.976ms without children)
+		ReloadNativeAssets: 0.077ms
+		UnloadImportedAssets: 0.005ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 4.271ms
+		InitializingProgressBar: 0.001ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.003ms
+		OnDemandSchedulerStart: 2.246ms
+	GatherAllCurrentPrimaryArtifactRevisions: 1.473ms
+	UnloadStreamsBegin: 4.713ms
+	PersistCurrentRevisions: 1.101ms
+	UnloadStreamsEnd: 0.003ms
+	Untracked: 59.210ms
+
+Shader Hidden/ProbeVolume/VoxelizeScene is not supported: GPU does not support conservative rasterization
+Running tests for ExecutionSettings with details:
+targetPlatform = 
+playerHeartbeatTimeout = 600
+filters[0] = 
+   Filter with settings:
+   testMode = PlayMode
+   targetPlatform = 
+   testNames = null
+   groupNames = GlobalMapRequestedAcceptancePlayModeTests\.(GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve|GlobalMapRecordsLiveFrameTimingAndRenderCounters|InfantryAndTankMoveOnGeneratedGlobalMapLand)
+   categoryNames = null
+   assemblyNames = Hegemonia.PlayMode.Tests
+ignoreTests = {}
+featureFlags = null
+
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+UnityEditor.TestTools.TestRunner.CommandLineTest.Executer:InitializeAndExecuteRun (string[]) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/CommandLineTest/Executer.cs:53)
+UnityEditor.TestTools.TestRunner.CommandLineTest.TestStarter:InitializeAndExecuteRun () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/CommandLineTest/TestStarter.cs:64)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+(Filename: ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/CommandLineTest/Executer.cs Line: 53)
+
+Loaded scene 'Library/Unused/1fecfb27f9e48a4478b1a3c2ceef5ed1'
+	Deserialize:            33.559 ms
+	Integration:            64.707 ms
+	Integration of assets:  0.014 ms
+	Thread Wait Time:       0.042 ms
+	Total Operation Time:   98.323 ms
+[MissingScriptLocator] Nenhum script faltando encontrado nas cenas abertas.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MissingScriptLocator:ScanOpenScenes () (at Assets/scripts/Editor/MissingScriptLocator.cs:46)
+UnityEditor.EditorApplication:Internal_CallDelayFunctions ()
+
+(Filename: Assets/scripts/Editor/MissingScriptLocator.cs Line: 46)
+
+[UnityConnectServicesConfig] config is NOT valid, switching to default
+Created GICache directory at C:/Users/Mathe/AppData/LocalLow/Unity/Caches/GiCache. Took: 0.044s, timestamps: [33.284 - 33.327]
+Unloading 24 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 192 unused Assets / (461.2 KB). Loaded Objects now: 9909.
+Memory consumption went from 292.7 MB to 292.2 MB.
+Total: 34.786700 ms (FindLiveObjects: 1.372000 ms CreateObjectMapping: 0.611400 ms MarkObjects: 31.886000 ms  DeleteObjects: 0.914300 ms)
+
+Start importing Assets/InitTestScene1cb65ac8-eceb-4821-8a4f-e2eb109d1cb2.unity using Guid(30907b1ed4072324285d02290c1a86f9) (DefaultImporter) -> (artifact id: '76a98c9add8eb6528dfd5fa406dace1c') in 0.0171908 seconds
+Refreshing native plugins compatible for Editor in 5.83 ms, found 4 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=8cc89ff7934faf0409162489569bc5b5): Total: 0.941 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=6 ms, native=167 ms
+		Asset DB Callback time: managed=750 ms, native=16 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=2823, non-scripts=9423
+		Asset File Changes: new=1, changed=1, moved=0, deleted=0
+		Scan Filter Count: 2
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.585ms
+	Scan: 60.422ms
+	OnSourceAssetsModified: 2.127ms
+	CategorizeAssetsWithTransientArtifact: 0.042ms
+	ProcessAssetsWithTransientArtifactChanges: 0.145ms
+	CategorizeAssets: 62.397ms
+	ImportOutOfDateAssets: 32.962ms (2.698ms without children)
+		ImportManagerImport: 22.820ms (4.022ms without children)
+			ImportInProcess: 18.752ms
+			UpdateCategorizedAssets: 0.046ms
+		ReloadNativeAssets: 0.094ms
+		UnloadImportedAssets: 0.722ms
+		ReloadImportedAssets: 0.000ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 4.849ms
+		InitializingProgressBar: 0.012ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 1.765ms
+	PostProcessAllAssets: 753.786ms
+	Hotreload: 11.350ms
+	GatherAllCurrentPrimaryArtifactRevisions: 1.273ms
+	UnloadStreamsBegin: 0.006ms
+	PersistCurrentRevisions: 1.377ms
+	UnloadStreamsEnd: 0.087ms
+	Untracked: 14.248ms
+
+Executing IPrebuildSetup for: Unity.PerformanceTesting.Editor.TestRunBuilder.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+UnityEditor.TestTools.TestRunner.TestRun.Tasks.BuildActionTaskBase`1/<ExecuteMethods>d__8<UnityEngine.TestTools.IPrebuildSetup>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/Tasks/BuildActionTaskBase.cs:48)
+UnityEditor.TestTools.TestRunner.TestRun.Tasks.BuildActionTaskBase`1/<Execute>d__7<UnityEngine.TestTools.IPrebuildSetup>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/Tasks/BuildActionTaskBase.cs:34)
+UnityEditor.TestTools.TestRunner.TestRun.TestJobRunner:ExecuteStep () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/TestJobRunner.cs:173)
+UnityEditor.TestTools.TestRunner.TestRun.TestJobRunner:ExecuteCallback () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/TestJobRunner.cs:108)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+(Filename: ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/Tasks/BuildActionTaskBase.cs Line: 48)
+
+Reloading assemblies for play mode.
+Reloading assemblies after forced synchronous recompile.
+Begin MonoManager ReloadAssembly
+- Loaded All Assemblies, in  3.892 seconds
+Refreshing native plugins compatible for Editor in 6.13 ms, found 4 plugins.
+Native extension for WindowsStandalone target not found
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Start HTTP server: port:7800
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  5.610 seconds
+Domain Reload Profiling: 9491ms
+	BeginReloadAssembly (1906ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (74ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (1246ms)
+	RebuildCommonClasses (132ms)
+	RebuildNativeTypeToScriptingClass (52ms)
+	initialDomainReloadingComplete (218ms)
+	LoadAllAssembliesAndSetupDomain (1571ms)
+		LoadAssemblies (571ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (1304ms)
+			TypeCache.Refresh (29ms)
+				TypeCache.ScanAssembly (0ms)
+			BuildScriptInfoCaches (1180ms)
+			ResolveRequiredComponents (78ms)
+	FinalizeReload (5612ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (4225ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (68ms)
+			SetLoadedEditorAssemblies (12ms)
+			BeforeProcessingInitializeOnLoad (628ms)
+			ProcessInitializeOnLoadAttributes (2662ms)
+			ProcessInitializeOnLoadMethodAttributes (838ms)
+			AfterProcessingInitializeOnLoad (16ms)
+			EditorAssembliesLoaded (1ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (95ms)
+Asset Pipeline Refresh (id=e0a74aa6639849b46846b161f5254d18): Total: 10.356 seconds - Initiated by StopAssetImportingV2(ForceSynchronousImport | ForceDomainReload)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=6246 ms
+		Asset DB Callback time: managed=140 ms, native=1 ms
+		Scripting: domain reloads=1, domain reload time=3962 ms, compile time=5 ms, other=0 ms
+		Project Asset Count: scripts=2823, non-scripts=9423
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 0
+	InvokeCustomDependenciesCallbacks: 0.003ms
+	InvokePackagesCallback: 10.957ms
+	ApplyChangesToAssetFolders: 1.252ms
+	Scan: 0.003ms
+	OnSourceAssetsModified: 0.005ms
+	CategorizeAssetsWithTransientArtifact: 0.017ms
+	ProcessAssetsWithTransientArtifactChanges: 15.400ms
+	CategorizeAssets: 446.661ms
+	ImportOutOfDateAssets: 5649.142ms (5625.310ms without children)
+		CompileScripts: 5.444ms
+		CollectScriptTypesHashes: 5.095ms
+		ReloadNativeAssets: 3.198ms
+		UnloadImportedAssets: 0.333ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 7.497ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.003ms
+		OnDemandSchedulerStart: 2.260ms
+	PostProcessAllAssets: 140.321ms
+	GatherAllCurrentPrimaryArtifactRevisions: 1.498ms
+	UnloadStreamsBegin: 0.231ms
+	PersistCurrentRevisions: 1.646ms
+	UnloadStreamsEnd: 0.003ms
+	GenerateScriptTypeHashes: 37.467ms
+	Untracked: 4088.587ms
+
+[SistemaIndustrial] Perfil geológico gerado para team 1: Ferro=Abundante Cobre=Alto Bauxita=Baixo Titânio=Medio Urânio=MuitoEscasso Mod=1,25
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+PerfilMineralPais:GerarPerfil (int) (at Assets/scripts/Governo/PerfilMineralPais.cs:170)
+SistemaIndustrialNacional:GarantirPerfil (int) (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:194)
+SistemaIndustrialNacional:GarantirPaisExistentes () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:181)
+SistemaIndustrialNacional:Awake () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:95)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaIndustrialNacional> ()
+SistemaGovernoMundial:GarantirSistemaIndustrial () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:4231)
+SistemaGovernoMundial:Awake () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:90)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaGovernoMundial> ()
+SistemaGovernoMundial:GarantirInstancia () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:71)
+Hegemonia.RTS.RTSRuntimeBootstrap:EnsureRuntime () (at Assets/scripts/RTS/RTSRuntimeBootstrap.cs:20)
+
+(Filename: Assets/scripts/Governo/PerfilMineralPais.cs Line: 170)
+
+[SistemaIndustrial] Perfil geológico gerado para team 2: Ferro=Medio Cobre=Escasso Bauxita=Alto Titânio=Alto Urânio=MuitoEscasso Mod=1,16
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+PerfilMineralPais:GerarPerfil (int) (at Assets/scripts/Governo/PerfilMineralPais.cs:170)
+SistemaIndustrialNacional:GarantirPerfil (int) (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:194)
+SistemaIndustrialNacional:GarantirPaisExistentes () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:181)
+SistemaIndustrialNacional:Awake () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:95)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaIndustrialNacional> ()
+SistemaGovernoMundial:GarantirSistemaIndustrial () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:4231)
+SistemaGovernoMundial:Awake () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:90)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaGovernoMundial> ()
+SistemaGovernoMundial:GarantirInstancia () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:71)
+Hegemonia.RTS.RTSRuntimeBootstrap:EnsureRuntime () (at Assets/scripts/RTS/RTSRuntimeBootstrap.cs:20)
+
+(Filename: Assets/scripts/Governo/PerfilMineralPais.cs Line: 170)
+
+[SistemaIndustrial] Perfil geológico gerado para team 3: Ferro=Medio Cobre=Baixo Bauxita=Alto Titânio=Alto Urânio=MuitoEscasso Mod=1,25
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+PerfilMineralPais:GerarPerfil (int) (at Assets/scripts/Governo/PerfilMineralPais.cs:170)
+SistemaIndustrialNacional:GarantirPerfil (int) (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:194)
+SistemaIndustrialNacional:GarantirPaisExistentes () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:181)
+SistemaIndustrialNacional:Awake () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:95)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaIndustrialNacional> ()
+SistemaGovernoMundial:GarantirSistemaIndustrial () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:4231)
+SistemaGovernoMundial:Awake () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:90)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaGovernoMundial> ()
+SistemaGovernoMundial:GarantirInstancia () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:71)
+Hegemonia.RTS.RTSRuntimeBootstrap:EnsureRuntime () (at Assets/scripts/RTS/RTSRuntimeBootstrap.cs:20)
+
+(Filename: Assets/scripts/Governo/PerfilMineralPais.cs Line: 170)
+
+[SistemaIndustrial] Perfil geológico gerado para team 4: Ferro=Escasso Cobre=Abundante Bauxita=Abundante Titânio=Medio Urânio=Escasso Mod=1,25
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+PerfilMineralPais:GerarPerfil (int) (at Assets/scripts/Governo/PerfilMineralPais.cs:170)
+SistemaIndustrialNacional:GarantirPerfil (int) (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:194)
+SistemaIndustrialNacional:GarantirPaisExistentes () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:181)
+SistemaIndustrialNacional:Awake () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:95)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaIndustrialNacional> ()
+SistemaGovernoMundial:GarantirSistemaIndustrial () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:4231)
+SistemaGovernoMundial:Awake () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:90)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaGovernoMundial> ()
+SistemaGovernoMundial:GarantirInstancia () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:71)
+Hegemonia.RTS.RTSRuntimeBootstrap:EnsureRuntime () (at Assets/scripts/RTS/RTSRuntimeBootstrap.cs:20)
+
+(Filename: Assets/scripts/Governo/PerfilMineralPais.cs Line: 170)
+
+[SistemaIndustrial] Perfil geológico gerado para team 5: Ferro=Escasso Cobre=Medio Bauxita=Abundante Titânio=Abundante Urânio=Baixo Mod=1,15
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+PerfilMineralPais:GerarPerfil (int) (at Assets/scripts/Governo/PerfilMineralPais.cs:170)
+SistemaIndustrialNacional:GarantirPerfil (int) (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:194)
+SistemaIndustrialNacional:GarantirPaisExistentes () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:181)
+SistemaIndustrialNacional:Awake () (at Assets/scripts/Governo/SistemaIndustrialNacional.cs:95)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaIndustrialNacional> ()
+SistemaGovernoMundial:GarantirSistemaIndustrial () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:4231)
+SistemaGovernoMundial:Awake () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:90)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<SistemaGovernoMundial> ()
+SistemaGovernoMundial:GarantirInstancia () (at Assets/scripts/Governo/SistemaGovernoMundial.cs:71)
+Hegemonia.RTS.RTSRuntimeBootstrap:EnsureRuntime () (at Assets/scripts/RTS/RTSRuntimeBootstrap.cs:20)
+
+(Filename: Assets/scripts/Governo/PerfilMineralPais.cs Line: 170)
+
+Refreshing native plugins compatible for Editor in 5.71 ms, found 4 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+[MenuConstrucao] Instancia ausente na cena. Criado bootstrap automatico.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MenuConstrucao:GarantirInstanciaRuntime () (at Assets/scripts/Menus/MenuConstrucao.cs:161)
+
+(Filename: Assets/scripts/Menus/MenuConstrucao.cs Line: 161)
+
+Loaded scene 'Temp/__Backupscenes/0.backup'
+	Deserialize:            2.463 ms
+	Integration:            12009.613 ms
+	Integration of assets:  0.007 ms
+	Thread Wait Time:       0.018 ms
+	Total Operation Time:   12012.101 ms
+[AuditoriaConteudo] Estaleiro Naval: unidade militar sem SistemaDeDanos (Ignorado)
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:424)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[AuditoriaConteudo] Navio Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:442)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[Licensing::Client] Successfully resolved entitlement details
+[AuditoriaConteudo] UH-60 Guarda Costeira: unidade de combate sem arma/sistema de tiro detectado
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:442)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[AuditoriaConteudo] Aeroporto Temporario C400: prefab sem SistemaDeDanos
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:435)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+TrimDiskCacheJob: Current cache size 0mb
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=23 erros=0 avisos=4 cena=InitTestScene1cb65ac8-eceb-4821-8a4f-e2eb109d1cb2
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+AuditoriaConteudoJogo:FinalizarAuditoria (int,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:240)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:195)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 240)
+
+
+##utp:{"type":"TestPlan","time":1793837008107,"version":2,"phase":"Immediate","processId":22024,"tests":["GlobalMapRequestedAcceptancePlayModeTests.GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve","GlobalMapRequestedAcceptancePlayModeTests.GlobalMapRecordsLiveFrameTimingAndRenderCounters","GlobalMapRequestedAcceptancePlayModeTests.InfantryAndTankMoveOnGeneratedGlobalMapLand"]}
+
+##utp:{"type":"ScreenSettings","time":1793837008114,"version":2,"phase":"Immediate","processId":22024,"ScreenSettings":{"ScreenWidth":1920,"ScreenHeight":1080,"ScreenRefreshRate":60,"Fullscreen":false}}
+
+##utp:{"type":"PlayerSettings","time":1793837008120,"version":2,"phase":"Immediate","processId":22024,"PlayerSettings":{"ScriptingBackend":"Mono2x","MtRendering":true,"GraphicsJobs":true,"GpuSkinning":true,"GraphicsApi":"","Batchmode":"True","StereoRenderingPath":"MultiPass","RenderThreadingMode":"GraphicsJobs","AndroidMinimumSdkVersion":"AndroidApiLevel25","AndroidTargetSdkVersion":"AndroidApiLevelAuto","ScriptingRuntimeVersion":"","AndroidTargetArchitecture":"","StripEngineCode":false}}
+
+##utp:{"type":"BuildSettings","time":1793837008127,"version":2,"phase":"Immediate","processId":22024,"BuildSettings":{"Platform":"WindowsEditor","BuildTarget":"StandaloneWindows64","DevelopmentPlayer":false,"AndroidBuildSystem":"Gradle"}}
+
+##utp:{"type":"PlayerSystemInfo","time":1793837008131,"version":2,"phase":"Immediate","processId":22024,"PlayerSystemInfo":{"OperatingSystem":"Windows 11  (10.0.22621) 64bit","DeviceModel":"To Be Filled By O.E.M. (To Be Filled By O.E.M.)","DeviceName":"DESKTOP-KER79B4","ProcessorType":"AMD Ryzen 5 1600 Six-Core Processor ","ProcessorCount":12,"GraphicsDeviceName":"AMD Radeon RX 580 2048SP","SystemMemorySize":16315,"XrModel":"","XrDevice":""}}
+
+##utp:{"type":"QualitySettings","time":1793837008223,"version":2,"phase":"Immediate","processId":22024,"QualitySettings":{"Vsync":1,"AntiAliasing":0,"ColorSpace":"Linear","AnisotropicFiltering":"ForceEnable","BlendWeights":"FourBones"}}
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Applied No Throttling for test run.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MCPForUnity.Editor.Helpers.McpLog:Info (string,bool) (at ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Helpers/McpLog.cs:40)
+MCPForUnity.Editor.Services.TestRunnerNoThrottle:ApplyNoThrottling () (at ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Services/TestRunnerNoThrottle.cs:101)
+MCPForUnity.Editor.Services.TestRunnerNoThrottle/TestCallbacks:RunStarted (UnityEditor.TestTools.TestRunner.Api.ITestAdaptor) (at ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Services/TestRunnerNoThrottle.cs:138)
+UnityEditor.TestTools.TestRunner.Api.CallbacksDelegator/<>c__DisplayClass7_0:<RunStarted>b__0 (UnityEditor.TestTools.TestRunner.Api.ICallbacks) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/Api/CallbacksDelegator.cs:42)
+UnityEditor.TestTools.TestRunner.Api.CallbacksDelegator:TryInvokeAllCallbacks (System.Action`1<UnityEditor.TestTools.TestRunner.Api.ICallbacks>) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/Api/CallbacksDelegator.cs:135)
+UnityEditor.TestTools.TestRunner.Api.CallbacksDelegator:RunStarted (NUnit.Framework.Interfaces.ITest) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/Api/CallbacksDelegator.cs:42)
+UnityEngine.Events.InvokableCall`1<NUnit.Framework.Interfaces.ITest>:Invoke (NUnit.Framework.Interfaces.ITest)
+UnityEngine.Events.UnityEvent`1<NUnit.Framework.Interfaces.ITest>:Invoke (NUnit.Framework.Interfaces.ITest)
+UnityEngine.Events.InvokableCall`1<NUnit.Framework.Interfaces.ITest>:Invoke (NUnit.Framework.Interfaces.ITest)
+UnityEngine.Events.UnityEvent`1<NUnit.Framework.Interfaces.ITest>:Invoke (NUnit.Framework.Interfaces.ITest)
+UnityEngine.TestTools.TestRunner.PlaymodeTestsController/<Run>d__25:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/TestRunner/PlaymodeTestsController.cs:137)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Helpers/McpLog.cs Line: 40)
+
+
+##utp:{"type":"TestStatus","time":1793837008501,"version":2,"phase":"Begin","processId":22024,"name":"GlobalMapRequestedAcceptancePlayModeTests.GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve","state":0}
+Unloading 1161 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 27.020800 ms
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogInicialSeNecessario (bool) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:772)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:BindRuntime (Hegemonia.AI.BrainMaster.IA_BrainMaster,Hegemonia.AI.BrainMaster.IA_Context) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:152)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:RebuildRuntimeGraph () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2041)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:EnsureRuntimeGraph (bool,bool) (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2211)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Awake () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:270)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 772)
+
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FluxoInicialJogo:GarantirSistemasDeCampanha (string) (at Assets/scripts/Menus/FluxoInicialJogo.cs:165)
+FluxoInicialJogo:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Menus/FluxoInicialJogo.cs:83)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Menus/FluxoInicialJogo.cs Line: 165)
+
+[NovoJogo][Valdoria] DEUSA ativada em modo autônomo; autoridade de construção permanece no BrainMaster.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+SistemaSaveGame:AtivarAutonomiaDeValdoriaEmPartidaNova () (at Assets/scripts/SistemaSaveGame.cs:1035)
+SistemaSaveGame:InicializarEconomiaDePartidaNova () (at Assets/scripts/SistemaSaveGame.cs:966)
+SistemaSaveGame:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/SistemaSaveGame.cs:941)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/SistemaSaveGame.cs Line: 1035)
+
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); comida inicial de 1 IA(s) definida para 10000; estoques de combustíveis iniciais aplicados aos times 1,2.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SistemaSaveGame:InicializarEconomiaDePartidaNova () (at Assets/scripts/SistemaSaveGame.cs:999)
+SistemaSaveGame:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/SistemaSaveGame.cs:941)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/SistemaSaveGame.cs Line: 999)
+
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+InicializadorSuperficiesMapa:CorrigirCenaAtual () (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:180)
+InicializadorSuperficiesMapa:OnSceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:49)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs Line: 180)
+
+Loaded scene 'Assets/Scenes/GlobalMapRTS.unity'
+	Deserialize:            4628.252 ms
+	Integration:            2102.360 ms
+	Integration of assets:  1887.778 ms
+	Thread Wait Time:       577.324 ms
+	Total Operation Time:   9195.715 ms
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MenuComandoController:AtualizarLimitesMapa () (at Assets/scripts/UI/MenuComandoController.cs:570)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:476)
+
+(Filename: Assets/scripts/UI/MenuComandoController.cs Line: 570)
+
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:InicializarDocumento () (at Assets/scripts/UI/QuartelMenuUIController.cs:1812)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1413)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1812)
+
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1416)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1416)
+
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:322)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/GerenciadorQuartel.cs Line: 322)
+
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MapaGeralController:AtualizarLimitesMapa () (at Assets/scripts/MapaGeralController.cs:293)
+MapaGeralController:Start () (at Assets/scripts/MapaGeralController.cs:214)
+
+(Filename: Assets/scripts/MapaGeralController.cs Line: 293)
+
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Hegemonia.AI.IA01.IA01Manager:ReportWorldNotReady (string) (at Assets/scripts/IA01/IA01Manager.cs:681)
+Hegemonia.AI.IA01.IA01Manager:ExecuteTick (single,single,single) (at Assets/scripts/IA01/IA01Manager.cs:415)
+Hegemonia.AI.IA01.IA01Manager:ExecutarTickGlobal (single) (at Assets/scripts/IA01/IA01Manager.cs:292)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:ExecutarCamada (Hegemonia.RTS.CamadaSimulacao,single,single,bool) (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:400)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:Update () (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:239)
+
+(Filename: Assets/scripts/IA01/IA01Manager.cs Line: 681)
+
+Unloading 1676 unused Assets / (54.0 MB). Loaded Objects now: 103853.
+Memory consumption went from 2.32 GB to 2.26 GB.
+Total: 113.034600 ms (FindLiveObjects: 15.070200 ms CreateObjectMapping: 17.773500 ms MarkObjects: 71.652100 ms  DeleteObjects: 8.535500 ms)
+
+[DEUSA][Team 2] modoObservadorDebug=False | escopo=desligado | execucao DEUSA liberada.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogsDiagnosticos (single) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:801)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:Tick (single,single) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:245)
+Hegemonia.AI.BrainMaster.IA_PerformanceScheduler:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_PerformanceScheduler.cs:133)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:UpdateRuntime () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:413)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Update () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:312)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 801)
+
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Hegemonia.AI.BrainMaster.IA_BackendBridge:RefreshCatalog () (at Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs:117)
+Hegemonia.AI.BrainMaster.IA_BackendBridge:TryResolveItem (string,DadosConstrucao&) (at Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs:142)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:HasManualBuildOverrideForItem (string) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:1450)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:560)
+Hegemonia.AI.BrainMaster.IA_PerformanceScheduler:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_PerformanceScheduler.cs:133)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:UpdateRuntime () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:413)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Update () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:312)
+
+(Filename: Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs Line: 117)
+
+[DEUSA][Team 2] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogsDiagnosticos (single) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:816)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:Tick (single,single) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:245)
+Hegemonia.AI.BrainMaster.IA_PerformanceScheduler:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_PerformanceScheduler.cs:133)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:UpdateRuntime () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:413)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Update () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:312)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 816)
+
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=nenhum local válido dentro da área manual; a construção foi mantida dentro da área configurada | último bloqueio: territorio inimigo
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:ReportValdoriaBuildBlock (string,string) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:1374)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:TryFindValidatedCandidate (string,Hegemonia.AI.BrainMaster.IA_ZoneType,UnityEngine.Vector3,Hegemonia.AI.BrainMaster.IA_TerrainType,single,single,UnityEngine.Vector3&,string&) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:1945)
+System.Reflection.RuntimeMethodInfo:Invoke (object,System.Reflection.BindingFlags,System.Reflection.Binder,object[],System.Globalization.CultureInfo)
+System.Reflection.MethodBase:Invoke (object,object[])
+GlobalMapRequestedAcceptancePlayModeTests/<GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve>d__25:MoveNext () (at Assets/Tests/PlayMode/GlobalMapRequestedAcceptancePlayModeTests.cs:362)
+UnityEngine.TestTools.TestEnumerator/<Execute>d__7:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Attributes/TestEnumerator.cs:44)
+UnityEngine.TestTools.EnumerableTestMethodCommand/<ExecuteEnumerableAndRecordExceptions>d__4:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/EnumerableTestMethodCommand.cs:79)
+UnityEngine.TestTools.EnumerableTestMethodCommand:AdvanceEnumerator (System.Collections.IEnumerator) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/EnumerableTestMethodCommand.cs:64)
+UnityEngine.TestTools.EnumerableTestMethodCommand/<ExecuteEnumerable>d__2:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/EnumerableTestMethodCommand.cs:47)
+UnityEngine.TestRunner.NUnitExtensions.Runner.UnityLogCheckDelegatingCommand/<ExecuteEnumerable>d__3:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Runner/UnityLogCheckDelegatingCommand.cs:48)
+UnityEngine.TestTools.BeforeAfterTestCommandBase`1/<ExecuteEnumerable>d__16<NUnit.Framework.ITestAction>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/BeforeAfterTestCommandBase.cs:212)
+UnityEngine.TestTools.BeforeAfterTestCommandBase`1/<ExecuteEnumerable>d__16<System.Reflection.MethodInfo>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/BeforeAfterTestCommandBase.cs:212)
+UnityEngine.TestTools.BeforeAfterTestCommandBase`1/<ExecuteEnumerable>d__16<System.Reflection.MethodInfo>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/BeforeAfterTestCommandBase.cs:212)
+UnityEngine.TestTools.BeforeAfterTestCommandBase`1/<ExecuteEnumerable>d__16<UnityEngine.TestTools.IOuterUnityTestAction>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/BeforeAfterTestCommandBase.cs:212)
+UnityEngine.TestTools.RetryCommand/<ExecuteEnumerable>d__2:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/RetryCommand.cs:37)
+UnityEngine.TestTools.RepeatCommand/<ExecuteEnumerable>d__2:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/RepeatCommand.cs:36)
+UnityEngine.TestTools.IgnoreTestCommand/<ExecuteEnumerable>d__3:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/IgnoreTestCommand.cs:42)
+UnityEngine.TestTools.StrictCheckCommand/<ExecuteEnumerable>d__2:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/NUnitExtensions/Commands/StrictCheckCommand.cs:29)
+UnityEngine.TestTools.Utils.CoroutineRunner/<WrapEnumeratorForChecks>d__8:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/Utils/CoroutineRunner.cs:58)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs Line: 1374)
+
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SistemaLogisticaMercado:ProcessarViagens () (at Assets/scripts/Governo/SistemaLogisticaMercado.cs:447)
+SistemaLogisticaMercado:Update () (at Assets/scripts/Governo/SistemaLogisticaMercado.cs:128)
+
+(Filename: Assets/scripts/Governo/SistemaLogisticaMercado.cs Line: 447)
+
+Unloading 37 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 70.293700 ms
+Loaded scene 'Assets/InitTestScene1cb65ac8-eceb-4821-8a4f-e2eb109d1cb2.unity'
+	Deserialize:            3.183 ms
+	Integration:            1060.437 ms
+	Integration of assets:  0.004 ms
+	Thread Wait Time:       17.031 ms
+	Total Operation Time:   1080.655 ms
+
+##utp:{"type":"TestStatus","time":1793837022717,"version":2,"phase":"End","processId":22024,"name":"GlobalMapRequestedAcceptancePlayModeTests.GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve","state":4,"message":"","duration":13996,"durationMicroseconds":13995590,"stackTrace":"","fileName":"Assets\\Tests\\PlayMode\\GlobalMapRequestedAcceptancePlayModeTests.cs","lineNumber":198,"iteration":0}
+
+##utp:{"type":"TestStatus","time":1793837022725,"version":2,"phase":"Begin","processId":22024,"name":"GlobalMapRequestedAcceptancePlayModeTests.GlobalMapRecordsLiveFrameTimingAndRenderCounters","state":0}
+Unloading 86 unused Assets / (52.3 KB). Loaded Objects now: 102621.
+Memory consumption went from 2.31 GB to 2.31 GB.
+Total: 129.669200 ms (FindLiveObjects: 13.470800 ms CreateObjectMapping: 20.780900 ms MarkObjects: 93.598300 ms  DeleteObjects: 1.816400 ms)
+
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Hegemonia.AI.IA01.IA01Manager:ReportWorldNotReady (string) (at Assets/scripts/IA01/IA01Manager.cs:681)
+Hegemonia.AI.IA01.IA01Manager:ExecuteTick (single,single,single) (at Assets/scripts/IA01/IA01Manager.cs:415)
+Hegemonia.AI.IA01.IA01Manager:ExecutarTickGlobal (single) (at Assets/scripts/IA01/IA01Manager.cs:292)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:ExecutarCamada (Hegemonia.RTS.CamadaSimulacao,single,single,bool) (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:400)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:Update () (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:239)
+
+(Filename: Assets/scripts/IA01/IA01Manager.cs Line: 681)
+
+Unloading 79 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 8.309900 ms
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogInicialSeNecessario (bool) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:772)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:BindRuntime (Hegemonia.AI.BrainMaster.IA_BrainMaster,Hegemonia.AI.BrainMaster.IA_Context) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:152)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:RebuildRuntimeGraph () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2041)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:EnsureRuntimeGraph (bool,bool) (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2211)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Awake () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:270)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 772)
+
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FluxoInicialJogo:GarantirSistemasDeCampanha (string) (at Assets/scripts/Menus/FluxoInicialJogo.cs:165)
+FluxoInicialJogo:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Menus/FluxoInicialJogo.cs:83)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Menus/FluxoInicialJogo.cs Line: 165)
+
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+InicializadorSuperficiesMapa:CorrigirCenaAtual () (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:180)
+InicializadorSuperficiesMapa:OnSceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:49)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs Line: 180)
+
+Loaded scene 'Assets/Scenes/GlobalMapRTS.unity'
+	Deserialize:            362.835 ms
+	Integration:            1755.319 ms
+	Integration of assets:  126.252 ms
+	Thread Wait Time:       88.783 ms
+	Total Operation Time:   2333.188 ms
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MenuComandoController:AtualizarLimitesMapa () (at Assets/scripts/UI/MenuComandoController.cs:570)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:476)
+
+(Filename: Assets/scripts/UI/MenuComandoController.cs Line: 570)
+
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:InicializarDocumento () (at Assets/scripts/UI/QuartelMenuUIController.cs:1812)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1413)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1812)
+
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1416)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1416)
+
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:322)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/GerenciadorQuartel.cs Line: 322)
+
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MapaGeralController:AtualizarLimitesMapa () (at Assets/scripts/MapaGeralController.cs:293)
+MapaGeralController:Start () (at Assets/scripts/MapaGeralController.cs:214)
+
+(Filename: Assets/scripts/MapaGeralController.cs Line: 293)
+
+Unloading 352 unused Assets / (7.2 MB). Loaded Objects now: 105235.
+Memory consumption went from 2.34 GB to 2.33 GB.
+Total: 116.527500 ms (FindLiveObjects: 14.548100 ms CreateObjectMapping: 17.671300 ms MarkObjects: 81.520800 ms  DeleteObjects: 2.784400 ms)
+
+Unloading 80 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 15.057100 ms
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogInicialSeNecessario (bool) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:772)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:BindRuntime (Hegemonia.AI.BrainMaster.IA_BrainMaster,Hegemonia.AI.BrainMaster.IA_Context) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:152)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:RebuildRuntimeGraph () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2041)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:EnsureRuntimeGraph (bool,bool) (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2211)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Awake () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:270)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 772)
+
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FluxoInicialJogo:GarantirSistemasDeCampanha (string) (at Assets/scripts/Menus/FluxoInicialJogo.cs:165)
+FluxoInicialJogo:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Menus/FluxoInicialJogo.cs:83)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Menus/FluxoInicialJogo.cs Line: 165)
+
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+InicializadorSuperficiesMapa:CorrigirCenaAtual () (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:180)
+InicializadorSuperficiesMapa:OnSceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:49)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs Line: 180)
+
+Loaded scene 'Assets/Scenes/GlobalMapRTS.unity'
+	Deserialize:            124.551 ms
+	Integration:            1348.161 ms
+	Integration of assets:  25.266 ms
+	Thread Wait Time:       30.467 ms
+	Total Operation Time:   1528.445 ms
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MenuComandoController:AtualizarLimitesMapa () (at Assets/scripts/UI/MenuComandoController.cs:570)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:476)
+
+(Filename: Assets/scripts/UI/MenuComandoController.cs Line: 570)
+
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:InicializarDocumento () (at Assets/scripts/UI/QuartelMenuUIController.cs:1812)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1413)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1812)
+
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1416)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1416)
+
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:322)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/GerenciadorQuartel.cs Line: 322)
+
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MapaGeralController:AtualizarLimitesMapa () (at Assets/scripts/MapaGeralController.cs:293)
+MapaGeralController:Start () (at Assets/scripts/MapaGeralController.cs:214)
+
+(Filename: Assets/scripts/MapaGeralController.cs Line: 293)
+
+Unloading 358 unused Assets / (12.9 MB). Loaded Objects now: 105233.
+Memory consumption went from 2.34 GB to 2.32 GB.
+Total: 183.518300 ms (FindLiveObjects: 16.417200 ms CreateObjectMapping: 18.244700 ms MarkObjects: 146.965800 ms  DeleteObjects: 1.887900 ms)
+
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Hegemonia.AI.IA01.IA01Manager:ReportWorldNotReady (string) (at Assets/scripts/IA01/IA01Manager.cs:681)
+Hegemonia.AI.IA01.IA01Manager:ExecuteTick (single,single,single) (at Assets/scripts/IA01/IA01Manager.cs:415)
+Hegemonia.AI.IA01.IA01Manager:ExecutarTickGlobal (single) (at Assets/scripts/IA01/IA01Manager.cs:292)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:ExecutarCamada (Hegemonia.RTS.CamadaSimulacao,single,single,bool) (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:400)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:Update () (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:239)
+
+(Filename: Assets/scripts/IA01/IA01Manager.cs Line: 681)
+
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Hegemonia.AI.BrainMaster.IA_BackendBridge:RefreshCatalog () (at Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs:117)
+Hegemonia.AI.BrainMaster.IA_BackendBridge:TryResolveItem (string,DadosConstrucao&) (at Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs:142)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:HasManualBuildOverrideForItem (string) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:1450)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:560)
+Hegemonia.AI.BrainMaster.IA_PerformanceScheduler:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_PerformanceScheduler.cs:133)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:UpdateRuntime () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:413)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Update () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:312)
+
+(Filename: Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs Line: 117)
+
+Unloading 3 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 15.533400 ms
+Loaded scene 'Assets/InitTestScene1cb65ac8-eceb-4821-8a4f-e2eb109d1cb2.unity'
+	Deserialize:            1.401 ms
+	Integration:            1033.476 ms
+	Integration of assets:  0.005 ms
+	Thread Wait Time:       8.202 ms
+	Total Operation Time:   1043.084 ms
+Unloading 97 unused Assets / (55.9 KB). Loaded Objects now: 102613.
+Memory consumption went from 2.31 GB to 2.31 GB.
+Total: 125.039900 ms (FindLiveObjects: 13.683000 ms CreateObjectMapping: 16.940400 ms MarkObjects: 92.449900 ms  DeleteObjects: 1.963800 ms)
+
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Hegemonia.AI.IA01.IA01Manager:ReportWorldNotReady (string) (at Assets/scripts/IA01/IA01Manager.cs:681)
+Hegemonia.AI.IA01.IA01Manager:ExecuteTick (single,single,single) (at Assets/scripts/IA01/IA01Manager.cs:415)
+Hegemonia.AI.IA01.IA01Manager:ExecutarTickGlobal (single) (at Assets/scripts/IA01/IA01Manager.cs:292)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:ExecutarCamada (Hegemonia.RTS.CamadaSimulacao,single,single,bool) (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:400)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:Update () (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:239)
+
+(Filename: Assets/scripts/IA01/IA01Manager.cs Line: 681)
+
+Unloading 2 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 8.505900 ms
+Loaded scene 'Assets/InitTestScene1cb65ac8-eceb-4821-8a4f-e2eb109d1cb2.unity'
+	Deserialize:            1.577 ms
+	Integration:            998.521 ms
+	Integration of assets:  0.005 ms
+	Thread Wait Time:       8.419 ms
+	Total Operation Time:   1008.522 ms
+Unloading 3 unused Assets / (3.2 KB). Loaded Objects now: 102612.
+Memory consumption went from 2.19 GB to 2.19 GB.
+Total: 149.563300 ms (FindLiveObjects: 17.298600 ms CreateObjectMapping: 23.496200 ms MarkObjects: 108.277100 ms  DeleteObjects: 0.488900 ms)
+
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Hegemonia.AI.IA01.IA01Manager:ReportWorldNotReady (string) (at Assets/scripts/IA01/IA01Manager.cs:681)
+Hegemonia.AI.IA01.IA01Manager:ExecuteTick (single,single,single) (at Assets/scripts/IA01/IA01Manager.cs:415)
+Hegemonia.AI.IA01.IA01Manager:ExecutarTickGlobal (single) (at Assets/scripts/IA01/IA01Manager.cs:292)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:ExecutarCamada (Hegemonia.RTS.CamadaSimulacao,single,single,bool) (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:400)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:Update () (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:239)
+
+(Filename: Assets/scripts/IA01/IA01Manager.cs Line: 681)
+
+Unloading 93 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 4.392500 ms
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogInicialSeNecessario (bool) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:772)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:BindRuntime (Hegemonia.AI.BrainMaster.IA_BrainMaster,Hegemonia.AI.BrainMaster.IA_Context) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:152)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:RebuildRuntimeGraph () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2041)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:EnsureRuntimeGraph (bool,bool) (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2211)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Awake () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:270)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 772)
+
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FluxoInicialJogo:GarantirSistemasDeCampanha (string) (at Assets/scripts/Menus/FluxoInicialJogo.cs:165)
+FluxoInicialJogo:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Menus/FluxoInicialJogo.cs:83)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Menus/FluxoInicialJogo.cs Line: 165)
+
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+InicializadorSuperficiesMapa:CorrigirCenaAtual () (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:180)
+InicializadorSuperficiesMapa:OnSceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:49)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs Line: 180)
+
+Loaded scene 'Assets/Scenes/GlobalMapRTS.unity'
+	Deserialize:            282.012 ms
+	Integration:            1545.645 ms
+	Integration of assets:  131.556 ms
+	Thread Wait Time:       57.911 ms
+	Total Operation Time:   2017.124 ms
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MenuComandoController:AtualizarLimitesMapa () (at Assets/scripts/UI/MenuComandoController.cs:570)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:476)
+
+(Filename: Assets/scripts/UI/MenuComandoController.cs Line: 570)
+
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:InicializarDocumento () (at Assets/scripts/UI/QuartelMenuUIController.cs:1812)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1413)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1812)
+
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1416)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1416)
+
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:322)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/GerenciadorQuartel.cs Line: 322)
+
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MapaGeralController:AtualizarLimitesMapa () (at Assets/scripts/MapaGeralController.cs:293)
+MapaGeralController:Start () (at Assets/scripts/MapaGeralController.cs:214)
+
+(Filename: Assets/scripts/MapaGeralController.cs Line: 293)
+
+Unloading 352 unused Assets / (12.6 MB). Loaded Objects now: 105240.
+Memory consumption went from 2.34 GB to 2.33 GB.
+Total: 131.516700 ms (FindLiveObjects: 14.836900 ms CreateObjectMapping: 17.254400 ms MarkObjects: 97.633900 ms  DeleteObjects: 1.789300 ms)
+
+Unloading 80 Unused Serialized files (Serialized files now loaded: 0)
+UnloadTime: 18.925200 ms
+[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogInicialSeNecessario (bool) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:772)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:BindRuntime (Hegemonia.AI.BrainMaster.IA_BrainMaster,Hegemonia.AI.BrainMaster.IA_Context) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:152)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:RebuildRuntimeGraph () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2041)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:EnsureRuntimeGraph (bool,bool) (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:2211)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Awake () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:270)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 772)
+
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+FluxoInicialJogo:GarantirSistemasDeCampanha (string) (at Assets/scripts/Menus/FluxoInicialJogo.cs:165)
+FluxoInicialJogo:AoCarregarCena (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Menus/FluxoInicialJogo.cs:83)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Menus/FluxoInicialJogo.cs Line: 165)
+
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+InicializadorSuperficiesMapa:CorrigirCenaAtual () (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:180)
+InicializadorSuperficiesMapa:OnSceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode) (at Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs:49)
+UnityEngine.SceneManagement.SceneManager:Internal_SceneLoaded (UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.LoadSceneMode)
+
+(Filename: Assets/scripts/Ambiente/InicializadorSuperficiesMapa.cs Line: 180)
+
+Loaded scene 'Assets/Scenes/GlobalMapRTS.unity'
+	Deserialize:            115.216 ms
+	Integration:            1554.512 ms
+	Integration of assets:  20.189 ms
+	Thread Wait Time:       29.024 ms
+	Total Operation Time:   1718.941 ms
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MenuComandoController:AtualizarLimitesMapa () (at Assets/scripts/UI/MenuComandoController.cs:570)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:476)
+
+(Filename: Assets/scripts/UI/MenuComandoController.cs Line: 570)
+
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:InicializarDocumento () (at Assets/scripts/UI/QuartelMenuUIController.cs:1812)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1413)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1812)
+
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+QuartelMenuUIController:Awake () (at Assets/scripts/UI/QuartelMenuUIController.cs:1416)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<QuartelMenuUIController> ()
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:308)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/UI/QuartelMenuUIController.cs Line: 1416)
+
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+GerenciadorQuartel:Awake () (at Assets/scripts/GerenciadorQuartel.cs:322)
+UnityEngine.GameObject:Internal_AddComponentWithType (System.Type)
+UnityEngine.GameObject:AddComponent (System.Type)
+UnityEngine.GameObject:AddComponent<GerenciadorQuartel> ()
+MenuComandoController:GarantirControladorMenuQuartelGlobal () (at Assets/scripts/UI/MenuComandoController.cs:529)
+MenuComandoController:Start () (at Assets/scripts/UI/MenuComandoController.cs:501)
+
+(Filename: Assets/scripts/GerenciadorQuartel.cs Line: 322)
+
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MapaGeralController:AtualizarLimitesMapa () (at Assets/scripts/MapaGeralController.cs:293)
+MapaGeralController:Start () (at Assets/scripts/MapaGeralController.cs:214)
+
+(Filename: Assets/scripts/MapaGeralController.cs Line: 293)
+
+
+##utp:{"type":"TestStatus","time":1793837034904,"version":2,"phase":"Begin","processId":22024,"name":"GlobalMapRequestedAcceptancePlayModeTests.InfantryAndTankMoveOnGeneratedGlobalMapLand","state":0}
+Unloading 358 unused Assets / (14.6 MB). Loaded Objects now: 105238.
+Memory consumption went from 2.34 GB to 2.32 GB.
+Total: 152.191800 ms (FindLiveObjects: 15.135000 ms CreateObjectMapping: 19.018000 ms MarkObjects: 115.480100 ms  DeleteObjects: 2.555900 ms)
+
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+Hegemonia.AI.BrainMaster.IA_BackendBridge:RefreshCatalog () (at Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs:117)
+Hegemonia.AI.BrainMaster.IA_BackendBridge:TryResolveItem (string,DadosConstrucao&) (at Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs:142)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:HasManualBuildOverrideForItem (string) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:1450)
+Hegemonia.AI.BrainMaster.IA_BuildDirector:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_BuildDirector.cs:560)
+Hegemonia.AI.BrainMaster.IA_PerformanceScheduler:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_PerformanceScheduler.cs:133)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:UpdateRuntime () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:413)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Update () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:312)
+
+(Filename: Assets/scripts/IA/BrainMaster/IA_BackendBridge.cs Line: 117)
+
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Hegemonia.AI.IA01.IA01Manager:ReportWorldNotReady (string) (at Assets/scripts/IA01/IA01Manager.cs:681)
+Hegemonia.AI.IA01.IA01Manager:ExecuteTick (single,single,single) (at Assets/scripts/IA01/IA01Manager.cs:415)
+Hegemonia.AI.IA01.IA01Manager:ExecutarTickGlobal (single) (at Assets/scripts/IA01/IA01Manager.cs:292)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:ExecutarCamada (Hegemonia.RTS.CamadaSimulacao,single,single,bool) (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:400)
+Hegemonia.RTS.OrquestradorGlobalSimulacao:Update () (at Assets/scripts/RTS/OrquestradorGlobalSimulacao.cs:239)
+
+(Filename: Assets/scripts/IA01/IA01Manager.cs Line: 681)
+
+[DEUSA][Team 2] estagio -> FundacaoNacional | motivo=deficit de comida | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura | observador
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:EmitirLogsDiagnosticos (single) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:816)
+Hegemonia.AI.DEUSA.IA_DeusaBrain:Tick (single,single) (at Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs:245)
+Hegemonia.AI.BrainMaster.IA_PerformanceScheduler:Tick (single,single) (at Assets/scripts/IA/BrainMaster/IA_PerformanceScheduler.cs:133)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:UpdateRuntime () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:413)
+Hegemonia.AI.BrainMaster.IA_BrainMaster:Update () (at Assets/scripts/IA/BrainMaster/IA_BrainMaster.cs:312)
+
+(Filename: Assets/scripts/IA/DEUSA/IA_DeusaBrain.cs Line: 816)
+
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:382)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity nem componente coletado pelo save em runtime
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:400)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:408)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:LogWarning (object,UnityEngine.Object)
+AuditoriaConteudoJogo:Emitir (string,string,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:619)
+AuditoriaConteudoJogo:AuditarFicha (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:424)
+AuditoriaConteudoJogo:AuditarFichaOuRegistrarNula (DadosConstrucao,int&,int&,int&,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:218)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:188)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 619)
+
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=104 erros=0 avisos=50 cena=GlobalMapRTS avisosConsoleSuprimidos=46
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object,UnityEngine.Object)
+UnityEngine.Debug:Log (object,UnityEngine.Object)
+AuditoriaConteudoJogo:FinalizarAuditoria (int,int) (at Assets/scripts/AuditoriaConteudoJogo.cs:240)
+AuditoriaConteudoJogo/<RodarAuditoriaEmEtapas>d__30:MoveNext () (at Assets/scripts/AuditoriaConteudoJogo.cs:195)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: Assets/scripts/AuditoriaConteudoJogo.cs Line: 240)
+
+
+##utp:{"type":"TestStatus","time":1793837039192,"version":2,"phase":"End","processId":22024,"name":"GlobalMapRequestedAcceptancePlayModeTests.InfantryAndTankMoveOnGeneratedGlobalMapLand","state":4,"message":"","duration":4268,"durationMicroseconds":4268434,"stackTrace":"","fileName":"Assets\\Tests\\PlayMode\\GlobalMapRequestedAcceptancePlayModeTests.cs","lineNumber":1611,"iteration":0}
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+MCPForUnity.Editor.Helpers.McpLog:Info (string,bool) (at ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Helpers/McpLog.cs:40)
+MCPForUnity.Editor.Services.TestRunnerNoThrottle:RestoreThrottling () (at ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Services/TestRunnerNoThrottle.cs:114)
+MCPForUnity.Editor.Services.TestRunnerNoThrottle/TestCallbacks:RunFinished (UnityEditor.TestTools.TestRunner.Api.ITestResultAdaptor) (at ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Services/TestRunnerNoThrottle.cs:143)
+UnityEditor.TestTools.TestRunner.Api.CallbacksDelegator/<>c__DisplayClass9_0:<RunFinished>b__0 (UnityEditor.TestTools.TestRunner.Api.ICallbacks) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/Api/CallbacksDelegator.cs:55)
+UnityEditor.TestTools.TestRunner.Api.CallbacksDelegator:TryInvokeAllCallbacks (System.Action`1<UnityEditor.TestTools.TestRunner.Api.ICallbacks>) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/Api/CallbacksDelegator.cs:135)
+UnityEditor.TestTools.TestRunner.Api.CallbacksDelegator:RunFinished (NUnit.Framework.Interfaces.ITestResult) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/Api/CallbacksDelegator.cs:55)
+UnityEngine.Events.InvokableCall`1<NUnit.Framework.Interfaces.ITestResult>:Invoke (NUnit.Framework.Interfaces.ITestResult)
+UnityEngine.Events.UnityEvent`1<NUnit.Framework.Interfaces.ITestResult>:Invoke (NUnit.Framework.Interfaces.ITestResult)
+UnityEngine.Events.InvokableCall`1<NUnit.Framework.Interfaces.ITestResult>:Invoke (NUnit.Framework.Interfaces.ITestResult)
+UnityEngine.Events.UnityEvent`1<NUnit.Framework.Interfaces.ITestResult>:Invoke (NUnit.Framework.Interfaces.ITestResult)
+UnityEngine.TestTools.TestRunner.PlaymodeTestsController/<TestRunnerCoroutine>d__24:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEngine.TestRunner/TestRunner/PlaymodeTestsController.cs:109)
+UnityEngine.SetupCoroutine:InvokeMoveNext (System.Collections.IEnumerator,intptr)
+
+(Filename: ./Library/PackageCache/com.coplaydev.unity-mcp@da7b9ae4aeeb/Editor/Helpers/McpLog.cs Line: 40)
+
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+Saving results to: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\12_playmode_movement_perf.xml
+Unloading 3 Unused Serialized files (Serialized files now loaded: 0)
+Loaded scene 'Temp/__Backupscenes/0.backup'
+	Deserialize:            1.467 ms
+	Integration:            1112.381 ms
+	Integration of assets:  0.006 ms
+	Thread Wait Time:       0.011 ms
+	Total Operation Time:   1113.865 ms
+Unloading 87 unused Assets / (57.8 KB). Loaded Objects now: 101364.
+Memory consumption went from 2.31 GB to 2.31 GB.
+Total: 277.947900 ms (FindLiveObjects: 15.726700 ms CreateObjectMapping: 21.273000 ms MarkObjects: 238.958200 ms  DeleteObjects: 1.986700 ms)
+
+[Licensing::Client] Successfully resolved entitlement details
+Loaded scene 'Library/Unused/6d6872e72f181e94cbc224870457f911'
+	Deserialize:            23.462 ms
+	Integration:            4.084 ms
+	Integration of assets:  0.011 ms
+	Thread Wait Time:       0.027 ms
+	Total Operation Time:   27.584 ms
+Executing IPostBuildCleanup for: Unity.PerformanceTesting.Editor.TestRunBuilder.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+UnityEditor.TestTools.TestRunner.TestRun.Tasks.BuildActionTaskBase`1/<ExecuteMethods>d__8<UnityEngine.TestTools.IPostBuildCleanup>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/Tasks/BuildActionTaskBase.cs:48)
+UnityEditor.TestTools.TestRunner.TestRun.Tasks.BuildActionTaskBase`1/<Execute>d__7<UnityEngine.TestTools.IPostBuildCleanup>:MoveNext () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/Tasks/BuildActionTaskBase.cs:34)
+UnityEditor.TestTools.TestRunner.TestRun.TestJobRunner:ExecuteStep () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/TestJobRunner.cs:173)
+UnityEditor.TestTools.TestRunner.TestRun.TestJobRunner:ExecuteCallback () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/TestJobRunner.cs:108)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+(Filename: ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/TestRun/Tasks/BuildActionTaskBase.cs Line: 48)
+
+Asset Pipeline Refresh (id=dc35cdd8819ae954f89b7545a5b9531c): Total: 0.079 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+Unloading 0 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 1 unused Assets / (0 B). Loaded Objects now: 101365.
+Memory consumption went from 2.16 GB to 2.16 GB.
+Total: 168.803200 ms (FindLiveObjects: 14.695000 ms CreateObjectMapping: 18.848000 ms MarkObjects: 134.763600 ms  DeleteObjects: 0.494000 ms)
+
+Refreshing native plugins compatible for Editor in 7.17 ms, found 4 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=5b30da2f4d87ba243aea6579336fa46a): Total: 0.408 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=171 ms
+		Asset DB Callback time: managed=181 ms, native=54 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=2823, non-scripts=9422
+		Asset File Changes: new=0, changed=0, moved=0, deleted=1
+		Scan Filter Count: 2
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.002ms
+	ApplyChangesToAssetFolders: 0.677ms
+	Scan: 47.153ms
+	OnSourceAssetsModified: 2.097ms
+	CategorizeAssetsWithTransientArtifact: 0.053ms
+	ProcessAssetsWithTransientArtifactChanges: 0.532ms
+	UnregisterDeletedAssets: 0.007ms
+	CategorizeAssets: 82.974ms
+	ImportOutOfDateAssets: 9.576ms (1.923ms without children)
+		ReloadNativeAssets: 1.197ms
+		UnloadImportedAssets: 0.441ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 4.334ms
+		InitializingProgressBar: 0.001ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 1.679ms
+	PostProcessAllAssets: 188.388ms
+	Hotreload: 45.758ms
+	GatherAllCurrentPrimaryArtifactRevisions: 1.148ms
+	UnloadStreamsBegin: 0.008ms
+	PersistCurrentRevisions: 1.439ms
+	UnloadStreamsEnd: 0.002ms
+	Untracked: 27.735ms
+
+DisplayProgressbar: Undo
+Test run completed. Exiting with code 0 (Ok). Run completed.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace ()
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+UnityEditor.TestTools.TestRunner.CommandLineTest.Executer:ExitApplication (UnityEditor.TestTools.TestRunner.CommandLineTest.Executer/ReturnCodes,string) (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/CommandLineTest/Executer.cs:81)
+UnityEditor.TestTools.TestRunner.CommandLineTest.Executer:ExitIfRunIsCompleted () (at ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/CommandLineTest/Executer.cs:74)
+UnityEditor.EditorApplication:Internal_CallUpdateFunctions ()
+
+(Filename: ./Library/PackageCache/com.unity.test-framework@40e262928427/UnityEditor.TestRunner/CommandLineTest/Executer.cs Line: 81)
+
+Pipeline Server stopped
+Start importing Assets/Worlds/GlobalMap/Data/GlobalMap_CoarseTerrain_VisualGate_Rebaked.asset using Guid(aeee62594fd50de4d9700b3606a84ff6) (NativeFormatImporter) -> (artifact id: '3d116e99a3d926e1c0d33dfcb148894d') in 0.0219901 seconds
+Refreshing native plugins compatible for Editor in 8.89 ms, found 4 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b5ed9fb9efed61d45b2e69a74e0a8bd7): Total: 0.352 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=4 ms, native=290 ms
+		Asset DB Callback time: managed=13 ms, native=42 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=2823, non-scripts=9422
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.513ms
+	Scan: 31.164ms
+	OnSourceAssetsModified: 0.001ms
+	CategorizeAssetsWithTransientArtifact: 0.024ms
+	ProcessAssetsWithTransientArtifactChanges: 0.154ms
+	CategorizeAssets: 11.282ms
+	ImportOutOfDateAssets: 239.474ms (1.733ms without children)
+		ImportManagerImport: 230.169ms (207.106ms without children)
+			ImportInProcess: 22.998ms
+			UpdateCategorizedAssets: 0.065ms
+		ReloadNativeAssets: 1.037ms
+		UnloadImportedAssets: 0.566ms
+		ReloadImportedAssets: 0.000ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 4.327ms
+		InitializingProgressBar: 0.017ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 1.623ms
+	PostProcessAllAssets: 15.449ms
+	Hotreload: 40.548ms
+	GatherAllCurrentPrimaryArtifactRevisions: 1.287ms
+	UnloadStreamsBegin: 0.114ms
+	PersistCurrentRevisions: 1.195ms
+	UnloadStreamsEnd: 0.154ms
+	Untracked: 10.262ms
+
+[Physics::Module] Cleanup current backend.
+[Physics::Module] Id: 0xf2b8ea05
+Input System module state changed to: ShutdownInProgress.
+Input System polling thread exited.
+Input System module state changed to: Shutdown.
+[Licensing::IpcConnector] LicenseClient-Mathe-notifications channel disconnected successfully.
+[Licensing::IpcConnector] LicenseClient-Mathe channel disconnected successfully.
+AcceleratorClientConnectionCallback - disconnected - :0
+Cleanup mono
+Checking for leaked weakptr:
+  Found no leaked weakptrs.
+[Package Manager] Server process was shutdown
+##utp:{"type":"MemoryLeaks","version":2,"phase":"Immediate","time":1793837046069,"processId":22024,"allocatedMemory":27578269,"memoryLabels":[{"Default":14265},{"Permanent":15468},{"NewDelete":68681},{"Thread":4230344},{"Manager":28346},{"VertexData":248},{"Geometry":816},{"VFX":-104},{"Texture":296},{"Shader":78823},{"Material":24},{"GfxDevice":55441},{"Animation":392},{"Audio":4040},{"FontEngine":256},{"Physics":2050},{"Serialization":624},{"Input":14824},{"JobScheduler":33024},{"TextLib":160},{"Mono":32},{"MonoCode":64},{"ScriptingNativeRuntime":155060},{"BaseObject":1622496},{"Resource":1304},{"Renderer":2928},{"Transform":4685},{"File":15669},{"WebCam":616},{"Culling":32},{"Terrain":11394},{"Wind":24},{"STL":40},{"String":9849},{"DynamicArray":162515},{"HashMap":95416},{"Utility":2659958},{"Curl":48},{"PoolAlloc":2200},{"AI":40},{"TypeTree":5005},{"ScriptManager":512},{"RuntimeInitializeOnLoadManager":64},{"SpriteAtlas":112},{"GI":7824},{"Director":8240},{"WebRequest":808},{"VR":46114},{"SceneManager":496},{"Video":208},{"LazyScriptCache":32},{"Camera":17},{"Secure":2113},{"SerializationCache":1576},{"APIUpdating":10320},{"Subsystems":336},{"VirtualTexturing":57888},{"StaticSafetyDebugInfo":278528},{"Analytics":256},{"Hierarchy":272},{"CoreStats":12424},{"Identifiers":12384},{"Gui":80},{"EditorUtility":132122},{"VersionControl":4},{"Undo":947},{"AssetDatabase":17666497},{"EditorGi":328},{"UnityConnect":24552},{"Upm":1896},{"DrivenProperties":72},{"LocalIPC":211},{"ProfilerEditor":9746},{"CoreBusinessMetrics":2601},{"Licensing":1232},{"AssetReference":32},{"IPCStream":32}]}

@@ -66,6 +66,15 @@ public class MovimentoRealTerrestre : MonoBehaviour
     {
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         if (agente == null) return;
+
+        // 1. Sincronia Agente <> Veículo antes da leitura de steeringTarget
+        // Mantém o agente preso ao carro para calcular caminhos a partir da posição real
+        // e evitar que steeringTarget fique atrasado em timeScale 4x (efeito elástico).
+        if (agente.enabled && agente.isOnNavMesh)
+        {
+            agente.nextPosition = transform.position;
+        }
+
         AtualizarEstadoOtimizacao();
         AtualizarCacheNavMeshSeNecessario();
 
@@ -88,10 +97,6 @@ public class MovimentoRealTerrestre : MonoBehaviour
             AnimarRodas(0f);
             return;
         }
-
-        // 1. Sincronia Agente <> Veículo
-        // Mantém o agente preso ao carro para calcular caminhos a partir da posição real
-        agente.nextPosition = transform.position;
 
         // 2. Cálculo de Destino com preferência de faixa (mão de ida e volta) se estiver na rua
         Vector3 proximoPonto = agenteLeituraValidaCache ? steeringTargetCache : transform.position;
@@ -214,7 +219,13 @@ public class MovimentoRealTerrestre : MonoBehaviour
     private void AtualizarCacheNavMeshSeNecessario()
     {
         float intervalo = InfraPerformanceGameplay.ResolverIntervalo(0.12f, estadoOtimizacao, true, true);
-        if (!InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickPath, intervalo) && agenteLeituraValidaCache)
+        bool pertoDoCorner = agenteLeituraValidaCache
+            && (transform.position - steeringTargetCache).sqrMagnitude <= 16f;
+        bool acelerado = Time.timeScale > 1.2f;
+        if (!acelerado
+            && !pertoDoCorner
+            && !InfraPerformanceGameplay.DeveExecutar(this, ref estadoOtimizacao.proximoTickPath, intervalo)
+            && agenteLeituraValidaCache)
         {
             return;
         }

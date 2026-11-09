@@ -189,7 +189,8 @@ namespace Hegemonia.AI.IA03
                 bool patrolInPeace = nivel == IA03NivelConflito.Paz
                     && patrolType
                     && creaty != null
-                    && creaty.NivelDeConflito == IA03NivelConflito.Tensao;
+                    && (creaty.NivelDeConflito == IA03NivelConflito.Paz
+                        || creaty.NivelDeConflito == IA03NivelConflito.Tensao);
                 if (creaty == null
                     || !creaty.Ativo
                     || idsDuplicados.Contains(creaty.Id)

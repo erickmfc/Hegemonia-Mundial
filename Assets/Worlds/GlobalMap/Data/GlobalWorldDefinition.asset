@@ -20,7 +20,7 @@ MonoBehaviour:
   globalHeightResolution: 2049
   localHeightResolution: 513
   alphamapResolution: 512
-  localAlphamapResolution: 512
+  localAlphamapResolution: 256
   seaLevel: 0
   minimumLandClearance: 4
   terrainBaseY: -200
@@ -41,4 +41,4 @@ MonoBehaviour:
   - {fileID: 8299649049716483077, guid: 96e93abcb76d54448a9ff8ff6a67db85, type: 3}
   forestClusterPrototypeCount: 0
   treeCandidateSpacing: 48
-  forestTreesPerSquareKilometre: 800
+  forestTreesPerSquareKilometre: 0

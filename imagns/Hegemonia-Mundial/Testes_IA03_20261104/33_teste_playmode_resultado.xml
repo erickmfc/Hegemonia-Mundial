@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Failed(Child)" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-05 02:00:32Z" end-time="2026-11-05 02:01:21Z" duration="48,6078331">
+  <test-suite type="TestSuite" id="1315" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="260" result="Failed" site="Child" start-time="2026-11-05 02:00:32Z" end-time="2026-11-05 02:01:21Z" duration="48.607833" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1311" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="260" result="Failed" site="Child" start-time="2026-11-05 02:00:32Z" end-time="2026-11-05 02:01:21Z" duration="48.528038" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13072" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestFixture" id="1097" name="GlobalMapRequestedAcceptancePlayModeTests" fullname="GlobalMapRequestedAcceptancePlayModeTests" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" testcasecount="15" result="Failed" site="Child" start-time="2026-11-05 02:00:32Z" end-time="2026-11-05 02:01:21Z" duration="48.514387" total="1" passed="0" failed="1" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-case id="1103" name="ValdoriaBuildsManualShipyardAndPierThroughTheRuntimeQueue" fullname="GlobalMapRequestedAcceptancePlayModeTests.ValdoriaBuildsManualShipyardAndPierThroughTheRuntimeQueue" methodname="ValdoriaBuildsManualShipyardAndPierThroughTheRuntimeQueue" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" seed="330515387" result="Failed" start-time="2026-11-05 02:00:32Z" end-time="2026-11-05 02:01:21Z" duration="48.326860" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="Timeout" value="900000" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <failure>
+            <message><![CDATA[  A Valdoria precisa concluir a plataforma na sua área manual. Diagnóstico: bootstrap= | naval=Bootstrap do estaleiro | estaleiro manual aceito pela fila de construcao
+- item resolvido=Estaleiros navais
+- ponto manual do estaleiro encontrado; pulando busca costeira
+- manual exato | item=Estaleiros navais | pos=(-136778.50, 0.00, -59639.44)
+- fila ok | item=Estaleiros navais
+- estaleiro manual enfileirado; aguardando confirmacao da construcao
+- ponto manual | item=Pier | marcador=Construcao de Pier: pier, cais, doca, porto
+- manual exato | item=Pier | pos=(-136126.50, 0.00, -59165.32)
+- fila ok | item=Pier
+Pontos: 10 | fila=AI=PaisA_Valdoria_Team2 | Team=2 | Own=0 | Combat=0 | Struct=5 | EnemyVisible=0 | Queue=0 | Cooldowns=5 | Confirming=0 | Intents=1 | TraceTxt=ia_partida_2026-11-04_23-00-34_team_2.txt | IA_WorldState:0,02ms | IA_MapAnalyzer:0,01ms | IA_PlayerProfileMemory:0,00ms | IA_ThreatAnalyzer:0,00ms | IA_SemanticMapPlanner:2,36ms | IA_ZonePlanner:0,60ms | IA_LotPlanner:0,00ms | IA_ConstructionPlanner:0,02ms | IA_GrandStrategy:0,00ms | IA_DeusaBrain:0,38ms | IA03EstrategaNacional:1,43ms | IA_EconomyDirector:0,03ms | IA_SyncNetwork:0,07ms | IA_MarketDirector:0,08ms | IA_DiplomacyDirector:0,24ms | IA_LawDirector:0,00ms | IA_LogisticsDirector:0,00ms | IA_WarDirector:0,00ms | IA_BuildDirector:49,98ms | IA_ProductionDirector:0,13ms | IA_SquadDirector:0,09ms | IA_TacticalDirector:0,00ms | IA_NavalDirector:0,07ms | IA_AirDirector:0,00ms | IA_DefenseDirector:0,00ms | IA_TaskForceCoordinator:0,00ms | IA_DebugMonitor:0,12ms | BuildProfile=HandleScriptedBootstrap=48,34ms | handled=True | stage=BuildUsina | Credits=1299960519 | Dificuldade=medio | PlanoPais=ConstruirEnergia | Need=Energia | Surplus=Comida | QV=83 | DeficitEco=Energia | ProdEco=Comida | PressPop=0,00 | Propostas=1 | Ofertas=18 | BloqMercado=32 | BootstrapLabel=Construir Usina | DEUSA=ProjecaoRegional | Construction=blueprint=brainmaster_default item=Energia sector=Industrial anchor=(-136158.00, 270.60, -62253.00) terrain=Unknown fallback=lot | Imperial=LogisticaPetroleo fechar plataforma-pier-petroleiro | BootstrapStage=BuildUsina | BootstrapStatus=aguardando janela para usina nuclear | Authority=autoridade brainmaster ativa | QueuePending=0 | QueueAwaiting=0 | QueueOk=5 | QueueFail=106 | Governor=Critico | TraceTxt=ia_partida_2026-11-04_23-00-34_team_2.txt | falhas recentes=Construtor de Veiculos: distancia minima violada || Energia: distancia minima violada || Corveta Fortaleza: ordem automatica equivalente ou meta atendida || Aeroporto Militar: credito insuficiente || Lancador ICBM: terreno invalido || Quartel General: footprint ocupado || Corveta Fortaleza: ordem automatica equivalente ou meta atendida || Energia: distancia minima violada || Construtor de Veiculos: distancia minima violada || Corveta Fortaleza: ordem automatica equivalente ou meta atendida
+  Expected: not null
+  But was:  null
+]]></message>
+            <stack-trace><![CDATA[at GlobalMapRequestedAcceptancePlayModeTests+<ValdoriaBuildsManualShipyardAndPierThroughTheRuntimeQueue>d__28.MoveNext () [0x006c4] in C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\Assets\Tests\PlayMode\GlobalMapRequestedAcceptancePlayModeTests.cs:742
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in .\Library\PackageCache\com.unity.test-framework@40e262928427\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:44
+]]></stack-trace>
+          </failure>
+          <output><![CDATA[[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[NovoJogo][Valdoria] DEUSA ativada em modo autônomo; autoridade de construção permanece no BrainMaster.
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); comida inicial de 1 IA(s) definida para 10000; estoques de combustíveis iniciais aplicados aos times 1,2.
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+Velocidade da simulação IA03: solicitada=6,75x; efetiva=6,75x
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+Tentativa imediata da plataforma: retorno=True; erro=plataforma: falha de posicionamento (falha naval recente em cooldown | terreno invalido); naval=Bootstrap do estaleiro | estaleiro manual aceito pela fila de construcao
+- inicio tentativa naval | land=(-136158.00, 270.60, -62253.00) | naval=(-136158.00, 270.60, -62253.00)
+- item resolvido=Estaleiros navais
+- ponto manual do estaleiro encontrado; pulando busca costeira
+- manual exato | item=Estaleiros navais | pos=(-136778.50, 0.00, -59639.44)
+- fila ok | item=Estaleiros navais
+- estaleiro manual enfileirado; aguardando confirmacao da construcao
+Pontos: 6
+[DEUSA][Team 2] modoObservadorDebug=False | escopo=desligado | execucao DEUSA liberada.
+[DEUSA][Team 2] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity nem componente coletado pelo save em runtime
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=104 erros=0 avisos=50 cena=GlobalMapRTS avisosConsoleSuprimidos=46
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[DEUSA][Team 2] estagio -> ProjecaoRegional | motivo=deficit de energia | politica=ProjecaoRegional | eco=0,55 mil=0,55 def=0,55 atk=0,10 | alvo=Monitorar fronteira | build=Energia
+[Cidade inicial] Nova Aurora criada para o Team 1 com 5.000 habitantes em (-200643.40, 61.12, 86398.66).
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirEnergia (99) Deficit energetico bloqueando crescimento. | proximaConstrucao=Energia | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=ConstruirEnergia (99) Deficit energetico bloqueando crescimento. | proximaConstrucao=Energia | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: Usina Nuclear | motivo=intencao duplicada
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

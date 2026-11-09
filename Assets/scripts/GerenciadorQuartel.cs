@@ -8,6 +8,7 @@ using Random = UnityEngine.Random;
 
 public class GerenciadorQuartel : MonoBehaviour
 {
+    public const int MetaEfetivoInicial = 501;
     // Mantém o arquivo marcado para recompilação após alterações externas.
     [Serializable]
     public sealed class ContatoMilitarQuartelV2
@@ -163,7 +164,7 @@ public class GerenciadorQuartel : MonoBehaviour
     [Tooltip("Permite apenas o protocolo administrativo de recrutamento; a criacao de unidades continua no sistema de producao existente.")]
     public bool recrutamentoAutomatico = true;
     public bool treinamentoAutomatico = true;
-    [Min(1)] public int metaEfetivo = 24;
+    [Min(1)] public int metaEfetivo = MetaEfetivoInicial;
     [Min(1f)] public float tempoFormacaoSegundos = 10f;
     [Min(1)] public int teamID = 1;
     [Tooltip("Somente para cenas de teste: abre o painel V2 ao iniciar o Play Mode sem alterar o prefab padrão.")]

@@ -1775,14 +1775,14 @@ public sealed class FuelNationalInventoryPlayModeTests
         Assert.That(Convert.ToSingle(Read(aircraftFuel, "capacidade")), Is.EqualTo(115f).Within(0.01f));
         Assert.That(Convert.ToSingle(Read(aircraftFuel, "combustivelAtual")), Is.EqualTo(57.5f).Within(0.01f));
         Assert.That(Convert.ToSingle(Read(aircraftFuel, "consumoPorSegundoMovendo")), Is.EqualTo(2.5f).Within(0.001f));
-        Assert.That(Convert.ToSingle(Read(shipFuel, "capacidade")), Is.EqualTo(112f).Within(0.01f));
-        Assert.That(Convert.ToSingle(Read(shipFuel, "combustivelAtual")), Is.EqualTo(44.8f).Within(0.01f));
+        Assert.That(Convert.ToSingle(Read(shipFuel, "capacidade")), Is.EqualTo(7000f).Within(0.01f));
+        Assert.That(Convert.ToSingle(Read(shipFuel, "combustivelAtual")), Is.EqualTo(2800f).Within(0.01f));
         Assert.That(Convert.ToSingle(Read(shipFuel, "consumoPorSegundoMovendo")), Is.EqualTo(3f).Within(0.001f));
 
         Invoke(aircraftFuel, "ConfigurarSeNecessario", false);
         Invoke(shipFuel, "ConfigurarSeNecessario", false);
         Assert.That(Convert.ToSingle(Read(aircraftFuel, "capacidade")), Is.EqualTo(115f).Within(0.01f));
-        Assert.That(Convert.ToSingle(Read(shipFuel, "capacidade")), Is.EqualTo(112f).Within(0.01f));
+        Assert.That(Convert.ToSingle(Read(shipFuel, "capacidade")), Is.EqualTo(7000f).Within(0.01f));
     }
 
     private GameObject CriarCaminhaoProduzidoDeTeste()

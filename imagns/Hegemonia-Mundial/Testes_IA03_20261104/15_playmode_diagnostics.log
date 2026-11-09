@@ -1,0 +1,27 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.2/staging' branch; Version is '6000.2.15f1 (0707b6d1e918) revision 460726'; Using compiler version '194234433'; Build Type 'Release'
+OS: 'Windows 11  (10.0.22621) 64bit Professional' Language: 'pt' Physical Memory: 16315 MB
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe" at "2026-11-05T00:09:17.485455Z"
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-11-05T00:09:17Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Unity.exe
+-batchmode
+-nographics
+-projectPath
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial
+-runTests
+-testPlatform
+PlayMode
+-assemblyNames
+Hegemonia.PlayMode.Tests
+-testFilter
+GlobalMapRequestedAcceptancePlayModeTests.GlobalMapRecordsLiveFrameTimingAndRenderCounters
+-testResults
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\15_playmode_diagnostics.xml
+-logFile
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\15_playmode_diagnostics.log
+Successfully changed project path to: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial
+C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial
+Exiting without the bug reporter. Application will terminate with return code 1

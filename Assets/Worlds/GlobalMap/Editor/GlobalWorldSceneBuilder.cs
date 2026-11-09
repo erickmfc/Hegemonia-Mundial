@@ -15,7 +15,9 @@ public static class GlobalWorldSceneBuilder
     private const string DataFolder = RootFolder + "/Data";
     private const string ScenePath = "Assets/Scenes/GlobalMapRTS.unity";
     private const string DefinitionPath = DataFolder + "/GlobalWorldDefinition.asset";
-    private const string TerrainDataPath = DataFolder + "/GlobalMap_CoarseTerrain_VisualGate.asset";
+    // Keep the original TerrainData asset untouched for recovery. The rebake
+    // and future scene builds use a fresh, independently imported data asset.
+    private const string TerrainDataPath = DataFolder + "/GlobalMap_CoarseTerrain_VisualGate_Rebaked.asset";
     private const string MacroBiomeTexturePath = DataFolder + "/GlobalMap_MacroBiomes.png";
     private const string MacroBiomeLayerPath = DataFolder + "/GlobalMap_MacroBiomes.terrainlayer";
     private const string ForestGroundTexturePath = DataFolder + "/GlobalMap_ForestGround_512m.png";
@@ -84,11 +86,12 @@ public static class GlobalWorldSceneBuilder
             // Keep the previously modified TerrainData asset available for
             // recovery. Build the refreshed data under a new path, then update
             // only the existing Terrain and TerrainCollider references.
-            GlobalWorldDefinition world = BuildDefinition();
+            GlobalWorldDefinition world = AssetDatabase.LoadAssetAtPath<GlobalWorldDefinition>(DefinitionPath);
+            if (world == null)
+                throw new InvalidOperationException("A definição existente do mundo global não pôde ser carregada.");
             world.ResetRuntimeData();
             world.InitializeRuntimeData();
             ValidateReferenceMask(world);
-            ValidateTreePrefabs(world);
             TerrainData data = BuildGlobalTerrainData(world);
             AssetDatabase.SaveAssets();
             AssetDatabase.ImportAsset(TerrainDataPath, ImportAssetOptions.ForceSynchronousImport);
@@ -200,7 +203,7 @@ public static class GlobalWorldSceneBuilder
         world.globalHeightResolution = 2049;
         world.localHeightResolution = 513;
         world.alphamapResolution = 512;
-        world.localAlphamapResolution = 512;
+        world.localAlphamapResolution = 256;
         world.seaLevel = 0f;
         world.minimumLandClearance = 4f;
         world.terrainBaseY = -200f;
@@ -240,9 +243,9 @@ public static class GlobalWorldSceneBuilder
         world.treePrefabs = GlobalTreeLodBuilder.BuildTreePrefabs(sourceTreePrefabs);
         world.forestClusterPrototypeCount = 0;
         world.treeCandidateSpacing = 48f;
-        // The runtime converts forest-mask area to an instance budget, using
-        // this target density only inside suitable, non-arid forest regions.
-        world.forestTreesPerSquareKilometre = 800f;
+        // Keep the biome ground layer, but do not create heavy tree instances
+        // in the streamed map tiles.
+        world.forestTreesPerSquareKilometre = 0f;
         EditorUtility.SetDirty(world);
         return world;
     }

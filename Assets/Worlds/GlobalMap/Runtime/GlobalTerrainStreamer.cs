@@ -53,6 +53,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     [Min(0.1f)] public float refreshInterval = 0.5f;
     [Range(1, 4)] public int tilesCreatedPerFrame = 1;
     [Range(1, 64)] public int terrainRowsPerFrame = 2;
+    [Range(1, 64)] public int alphamapRowsPerFrame = 1;
     [Range(1, 16)] public int vegetationRowsPerFrame = 1;
     public bool showDiagnostics = true;
 
@@ -69,12 +70,15 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private int lastGenerationMilliseconds;
     private int lastLocalNavMeshBuildMilliseconds;
     private PackageNavMeshSurface localNavMeshSurface;
+    private TerrainCollider globalTerrainCollider;
     private NavMeshData runtimeLocalNavMeshData;
     private string committedNavMeshTileSet = string.Empty;
     private string failedNavMeshTileSet;
     private bool altitudeModeInitialized;
     private bool macroTerrainMode;
     private bool localTerrainSuspended;
+    private GerenteSelecao gerenteSelecaoCache;
+    private float proximaBuscaGerenteSelecao;
 
     public int ActiveTileCount
     {
@@ -124,6 +128,76 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     }
     public int LastGenerationMilliseconds => lastGenerationMilliseconds;
     public int LastLocalNavMeshBuildMilliseconds => lastLocalNavMeshBuildMilliseconds;
+
+    /// <summary>
+    /// Classifies the global map from its authoritative land mask instead of
+    /// comparing the overlapping ocean collider and terrain heights.
+    /// </summary>
+    public bool TryClassifyWorldSurface(
+        Vector3 position,
+        out ClassificacaoSuperficieMapa classification,
+        out float surfaceHeight,
+        float coastTolerance = 1.5f)
+    {
+        classification = ClassificacaoSuperficieMapa.Desconhecida;
+        surfaceHeight = position.y;
+        if (world == null
+            || position.x < world.MapMinX || position.x > world.MapMaxX
+            || position.z < world.MapMinZ || position.z > world.MapMaxZ)
+        {
+            return false;
+        }
+
+        float coastDistance = world.SignedCoastDistanceAtWorld(position.x, position.z);
+        if (coastDistance < 0f)
+            classification = ClassificacaoSuperficieMapa.Agua;
+        else if (coastDistance <= Mathf.Max(0f, coastTolerance))
+            classification = ClassificacaoSuperficieMapa.Costa;
+        else
+            classification = ClassificacaoSuperficieMapa.Chao;
+
+        surfaceHeight = world.HeightAtWorld(position.x, position.z);
+        return true;
+    }
+
+    /// <summary>
+    /// Tells map click handling to ignore the hidden coarse Terrain collider
+    /// when a visible streamed tile covers the same world point. The coarse
+    /// collider remains available as a fallback outside the local tile set.
+    /// </summary>
+    public bool ShouldSkipGlobalTerrainRaycastHit(Collider collider, Vector3 worldPoint)
+    {
+        if (world == null || globalTerrain == null || collider == null || globalTerrain.enabled)
+            return false;
+
+        if (globalTerrainCollider == null || globalTerrainCollider.gameObject != globalTerrain.gameObject)
+            globalTerrainCollider = globalTerrain.GetComponent<TerrainCollider>();
+
+        if (globalTerrainCollider == null || collider != globalTerrainCollider)
+            return false;
+
+        foreach (Vector2Int coordinate in desiredTiles)
+        {
+            if (!loadedTiles.TryGetValue(coordinate, out Terrain localTerrain)
+                || localTerrain == null || !localTerrain.enabled || !localTerrain.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            TerrainCollider localCollider = localTerrain.GetComponent<TerrainCollider>();
+            if (localCollider == null || !localCollider.enabled)
+                continue;
+
+            Bounds bounds = localCollider.bounds;
+            if (worldPoint.x >= bounds.min.x && worldPoint.x <= bounds.max.x
+                && worldPoint.z >= bounds.min.z && worldPoint.z <= bounds.max.z)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private void OnEnable()
     {
@@ -184,6 +258,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             return;
         }
 
+        // The visual camera may be away from the selected moving unit whose
+        // nearby tiles are currently streamed for navigation.
+        AtualizarVisibilidadeTerrenoGlobal(camera);
         AtualizarDistanciaVegetacaoLocal(camera);
 
         if (farClipCamera != camera)
@@ -312,8 +389,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
             if (Time.unscaledTime >= nextRefresh)
             {
+                Vector3 streamingAnchor = ResolverAncoraDeStreaming(camera);
                 using (BuildDesiredSetMarker.Auto())
-                    BuildDesiredSet(camera.transform.position);
+                    BuildDesiredSet(streamingAnchor);
                 nextRefresh = Time.unscaledTime + refreshInterval;
             }
 
@@ -342,7 +420,10 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             }
 
             if (AllDesiredTilesLoaded())
+            {
                 yield return CommitVisibleSet();
+                AtualizarVisibilidadeTerrenoGlobal(camera);
+            }
             else
             {
                 globalTerrain.gameObject.SetActive(true);
@@ -440,7 +521,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         // The streamed tiles now provide the local visual and colliders.
         // TerrainCollider is a separate component, so hiding this coarse
         // Terrain renderer avoids two overlapping surfaces while NavMesh builds.
-        globalTerrain.enabled = false;
+        AtualizarVisibilidadeTerrenoGlobal(cameraOverride != null ? cameraOverride : Camera.main);
 
         bool navMeshReady = false;
         yield return BuildLocalNavMeshAsync(tileSet, ready => navMeshReady = ready);
@@ -448,7 +529,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         {
             committedNavMeshTileSet = tileSet;
             failedNavMeshTileSet = null;
-            globalTerrain.enabled = false;
+            AtualizarVisibilidadeTerrenoGlobal(cameraOverride != null ? cameraOverride : Camera.main);
         }
         else
         {
@@ -486,6 +567,66 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         // produced a 12 s build for the same loaded area in the runtime smoke test.
         localNavMeshSurface.overrideVoxelSize = true;
         localNavMeshSurface.voxelSize = LocalNavMeshVoxelSize;
+    }
+
+    private Vector3 ResolverAncoraDeStreaming(Camera camera)
+    {
+        Vector3 cameraPosition = camera.transform.position;
+        if (world == null)
+            return cameraPosition;
+
+        if (gerenteSelecaoCache == null || Time.unscaledTime >= proximaBuscaGerenteSelecao)
+        {
+            gerenteSelecaoCache = FindFirstObjectByType<GerenteSelecao>();
+            proximaBuscaGerenteSelecao = Time.unscaledTime + 1f;
+        }
+
+        if (gerenteSelecaoCache == null || gerenteSelecaoCache.unidadesSelecionadas == null)
+            return cameraPosition;
+
+        for (int i = 0; i < gerenteSelecaoCache.unidadesSelecionadas.Count; i++)
+        {
+            ControleUnidade unidade = gerenteSelecaoCache.unidadesSelecionadas[i];
+            if (unidade == null || !unidade.isActiveAndEnabled || !unidade.PossuiOrdemMovimentoAtiva)
+                continue;
+
+            NavMeshAgent agent = unidade.GetComponent<NavMeshAgent>();
+            if (agent == null || agent.agentTypeID != LocalNavMeshAgentTypeId)
+                continue;
+
+            Vector3 unitPosition = unidade.transform.position;
+            if (!world.IsLandAtWorld(unitPosition.x, unitPosition.z))
+                continue;
+
+            // Keep local ground and NavMesh tiles under a selected moving unit
+            // even when the player leaves the camera in a different area.
+            return unitPosition;
+        }
+
+        return cameraPosition;
+    }
+
+    private void AtualizarVisibilidadeTerrenoGlobal(Camera camera)
+    {
+        if (globalTerrain == null)
+            return;
+
+        if (camera == null || world == null)
+        {
+            globalTerrain.enabled = true;
+            return;
+        }
+
+        float size = Mathf.Max(100f, world.terrainTileSize);
+        int cameraX = Mathf.FloorToInt((camera.transform.position.x - world.MapMinX) / size);
+        int cameraZ = Mathf.FloorToInt((camera.transform.position.z - world.MapMinZ) / size);
+        Vector2Int cameraTile = new Vector2Int(cameraX, cameraZ);
+        bool localTerrainVisible = desiredTiles.Contains(cameraTile)
+            && loadedTiles.TryGetValue(cameraTile, out Terrain terrain)
+            && terrain != null
+            && terrain.enabled
+            && terrain.gameObject.activeInHierarchy;
+        globalTerrain.enabled = !localTerrainVisible;
     }
 
     private string BuildDesiredTileSetSignature()
@@ -580,8 +721,16 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         if (world == null || desiredTiles.Count == 0)
             return false;
 
+        // Most tile sets contain broad land, so retain the cheap center grid
+        // first. If it misses a narrow shoreline, pick a raster-aligned land
+        // point in each streamed tile rather than rejecting the whole set.
+        return HasNavigableLandAtResolution(5)
+            || HasNavigableLandAtRasterPoint();
+    }
+
+    private bool HasNavigableLandAtResolution(int samplesPerAxis)
+    {
         float size = Mathf.Max(100f, world.terrainTileSize);
-        const int samplesPerAxis = 5;
         foreach (Vector2Int coordinate in desiredTiles)
         {
             float minX = world.MapMinX + coordinate.x * size;
@@ -592,6 +741,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 {
                     float worldX = minX + (x + 0.5f) * size / samplesPerAxis;
                     float worldZ = minZ + (z + 0.5f) * size / samplesPerAxis;
+                    if (!world.IsLandAtWorld(worldX, worldZ))
+                        continue;
+
                     float height = world.HeightAtWorld(worldX, worldZ);
                     if (height <= world.seaLevel + 2f)
                         continue;
@@ -601,6 +753,55 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                         return true;
                 }
             }
+        }
+
+        return false;
+    }
+
+    private bool HasNavigableLandAtRasterPoint()
+    {
+        Texture2D mask = world != null ? world.authorityMap : null;
+        if (mask == null || mask.width < 2 || mask.height < 2
+            || world.worldSize.x <= 0f || world.mapFootprintHeight <= 0f)
+        {
+            return false;
+        }
+
+        float size = Mathf.Max(100f, world.terrainTileSize);
+        float pixelsPerWorldX = (mask.width - 1f) / world.worldSize.x;
+        float pixelsPerWorldZ = (mask.height - 1f) / world.mapFootprintHeight;
+        foreach (Vector2Int coordinate in desiredTiles)
+        {
+            float minX = world.MapMinX + coordinate.x * size;
+            float minZ = world.MapMinZ + coordinate.y * size;
+            int minPixelX = Mathf.Clamp(Mathf.CeilToInt((minX - world.MapMinX) * pixelsPerWorldX), 0, mask.width - 1);
+            int maxPixelX = Mathf.Clamp(Mathf.FloorToInt((minX + size - world.MapMinX) * pixelsPerWorldX), 0, mask.width - 1);
+            int minPixelZ = Mathf.Clamp(Mathf.CeilToInt((minZ - world.MapMinZ) * pixelsPerWorldZ), 0, mask.height - 1);
+            int maxPixelZ = Mathf.Clamp(Mathf.FloorToInt((minZ + size - world.MapMinZ) * pixelsPerWorldZ), 0, mask.height - 1);
+
+            Vector3 bestLandPoint = Vector3.zero;
+            float bestCoastDistance = 0f;
+            for (int pixelZ = minPixelZ; pixelZ <= maxPixelZ; pixelZ++)
+            {
+                float worldZ = world.MapMinZ + pixelZ / (float)(mask.height - 1) * world.mapFootprintHeight;
+                for (int pixelX = minPixelX; pixelX <= maxPixelX; pixelX++)
+                {
+                    float worldX = world.MapMinX + pixelX / (float)(mask.width - 1) * world.worldSize.x;
+                    float coastDistance = world.SignedCoastDistanceAtWorld(worldX, worldZ);
+                    if (coastDistance <= bestCoastDistance)
+                        continue;
+
+                    bestCoastDistance = coastDistance;
+                    bestLandPoint = new Vector3(worldX, 0f, worldZ);
+                }
+            }
+
+            if (bestCoastDistance <= 0f)
+                continue;
+
+            bestLandPoint.y = world.HeightAtWorld(bestLandPoint.x, bestLandPoint.z);
+            if (NavMesh.SamplePosition(bestLandPoint, out _, 20f, NavMesh.AllAreas))
+                return true;
         }
 
         return false;
@@ -725,9 +926,11 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
             int alphaResolution = data.alphamapResolution;
             int layerCount = world.terrainLayers.Length;
-            for (int rowStart = 0; rowStart < alphaResolution; rowStart += rowsPerFrame)
+            int alphaRowsPerFrame = Mathf.Clamp(alphamapRowsPerFrame, 1, MaximumTerrainRowsPerFrame);
+            for (int rowStart = 0; rowStart < alphaResolution; rowStart += alphaRowsPerFrame)
             {
-                int rowCount = Mathf.Min(rowsPerFrame, alphaResolution - rowStart);
+
+                int rowCount = Mathf.Min(alphaRowsPerFrame, alphaResolution - rowStart);
                 float[,,] alphaRows;
                 using (AllocateAlphamapRowBufferMarker.Auto())
                     alphaRows = new float[rowCount, alphaResolution, layerCount];

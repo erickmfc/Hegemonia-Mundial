@@ -90,7 +90,7 @@ public sealed class IACommandQueueDedupEditModeTests
             Assert.That(produceDataType.GetField("PrefabName", PublicInstance).GetValue(payload),
                 Is.EqualTo("Boeing_E3_Reconhecimento"));
 
-            var ownUnits = (List<GameObject>)worldType.GetField("OwnUnits", PublicInstance).GetValue(world);
+            var ownUnits = (List<GameObject>)worldType.GetProperty("OwnUnits", PublicInstance).GetValue(world);
             spawnedAircraft = new GameObject("Boeing_E3_Reconhecimento(Clone)");
             ownUnits.Add(spawnedAircraft);
             MethodInfo countMatching = confirmationType.GetMethod("CountMatching", BindingFlags.Static | BindingFlags.NonPublic);

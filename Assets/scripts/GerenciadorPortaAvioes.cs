@@ -102,6 +102,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     private readonly List<Vector3> _rotaPatrulhaContinua = new List<Vector3>(8);
     private readonly HashSet<ControleAviao> _aeronavesAlaContinua = new HashSet<ControleAviao>();
     private float _proximaReposicaoAerea;
+    // R1: HashSet reusado em vez de new a cada ciclo em AtualizarOperacaoAereaContinua
+    private readonly HashSet<ControleAviao> _emOperacaoCache = new HashSet<ControleAviao>(16);
+    // R2: cache de resultado de GetComponent<Helicoptero>() por instância de aeronave
+    private readonly Dictionary<ControleAviao, bool> _cacheIsHelicoptero = new Dictionary<ControleAviao, bool>(32);
+    // R6: cache de ControleAviao por AeronaveEmbarcadaV2 para evitar GetComponent repetido no loop
+    private readonly Dictionary<AeronaveEmbarcadaV2, ControleAviao> _cacheControlePorEmbarcada = new Dictionary<AeronaveEmbarcadaV2, ControleAviao>(32);
 
     // ======================================================
     // Cache UI (IMGUI): evita queda grande de FPS ao listar muitas unidades por frame
@@ -2667,36 +2673,22 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (v2 == null || !v2.usarSistemaOperacoesV2) return;
 
         _aeronavesAlaContinua.Clear();
+        _emOperacaoCache.Clear();
         AdicionarAeronavesAla(avioesNoPatio);
         AdicionarAeronavesAla(avioesNoHangar);
+
+        // R6: único loop sobre v2.Aeronaves que popula tanto _aeronavesAlaContinua quanto _emOperacaoCache
         foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in v2.Aeronaves)
         {
             AeronaveEmbarcadaV2 registro = par.Value;
             if (registro == null || registro.Registro == null) continue;
-            ControleAviao aviao = registro.GetComponent<ControleAviao>();
-            if (aviao != null && aviao.GetComponent<Helicoptero>() == null) _aeronavesAlaContinua.Add(aviao);
-        }
+            ControleAviao aviao = ObterControleAviaoCache(registro);
+            if (aviao == null || IsHelicopteroCache(aviao)) continue;
 
-        int total = _aeronavesAlaContinua.Count;
-        if (total == 0) return;
-        int alvoNoAr = ObterMetaAereaContinua(total);
-        HashSet<ControleAviao> emOperacao = new HashSet<ControleAviao>();
-        foreach (ControleAviao aviao in _aeronavesAlaContinua)
-        {
-            if (aviao == null) continue;
-            if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
-                || aviao.estadoAtual == ControleAviao.EstadoAviao.Decolando
-                || aviao.estadoAtual == ControleAviao.EstadoAviao.Pousando
-                || aviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga)
-                emOperacao.Add(aviao);
-        }
+            _aeronavesAlaContinua.Add(aviao);
 
-        // O controlador legado pode permanecer em ProntoNoPatio durante a
-        // decolagem V2; a fonte autoritativa nesse intervalo é o registro V2.
-        foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in v2.Aeronaves)
-        {
-            AeronaveEmbarcadaV2 registro = par.Value;
-            if (registro == null || registro.Registro == null) continue;
+            // O controlador legado pode permanecer em ProntoNoPatio durante a
+            // decolagem V2; a fonte autoritativa nesse intervalo é o registro V2.
             EstadoOperacaoPortaAvioesV2 estado = registro.Registro.estado;
             bool ocupadaAereaOuFila = estado == EstadoOperacaoPortaAvioesV2.AguardandoCatapulta
                 || estado == EstadoOperacaoPortaAvioesV2.TaxiandoParaCatapulta
@@ -2717,16 +2709,30 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 || estado == EstadoOperacaoPortaAvioesV2.TaxiandoParaVaga;
             if (ocupadaAereaOuFila)
             {
-                ControleAviao controle = registro.GetComponent<ControleAviao>();
-                if (controle != null && controle.GetComponent<Helicoptero>() == null) emOperacao.Add(controle);
+                _emOperacaoCache.Add(aviao);
             }
         }
-        int faltam = alvoNoAr - emOperacao.Count;
+
+        int total = _aeronavesAlaContinua.Count;
+        if (total == 0) return;
+        int alvoNoAr = ObterMetaAereaContinua(total);
+        foreach (ControleAviao aviao in _aeronavesAlaContinua)
+        {
+            if (aviao == null) continue;
+            if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.Decolando
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.Pousando
+                || aviao.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga)
+                _emOperacaoCache.Add(aviao);
+        }
+
+        int faltam = alvoNoAr - _emOperacaoCache.Count;
         if (faltam <= 0) return;
         foreach (ControleAviao aviao in _aeronavesAlaContinua)
         {
+            // R2: consulta cache de Helicoptero em vez de GetComponent
             if (aviao == null || aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio
-                || aviao.GetComponent<Helicoptero>() != null) continue;
+                || IsHelicopteroCache(aviao)) continue;
             PrepararAeronaveNoPatioV2(aviao);
             if (v2.TrySolicitarPatrulha(aviao, _rotaPatrulhaContinua[_rotaPatrulhaContinua.Count - 1], _rotaPatrulhaContinua))
             {
@@ -2735,6 +2741,32 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 break;
             }
         }
+    }
+
+    // R6: retorna e cacheia ControleAviao associado a uma AeronaveEmbarcadaV2
+    private ControleAviao ObterControleAviaoCache(AeronaveEmbarcadaV2 embarcada)
+    {
+        if (embarcada == null) return null;
+        ControleAviao controle;
+        if (!_cacheControlePorEmbarcada.TryGetValue(embarcada, out controle) || controle == null)
+        {
+            controle = embarcada.GetComponent<ControleAviao>();
+            _cacheControlePorEmbarcada[embarcada] = controle;
+        }
+        return controle;
+    }
+
+    // R2: retorna e cacheia resultado de GetComponent<Helicoptero>() por instância de avião
+    private bool IsHelicopteroCache(ControleAviao aviao)
+    {
+        if (aviao == null) return false;
+        bool resultado;
+        if (!_cacheIsHelicoptero.TryGetValue(aviao, out resultado))
+        {
+            resultado = aviao.GetComponent<Helicoptero>() != null;
+            _cacheIsHelicoptero[aviao] = resultado;
+        }
+        return resultado;
     }
 
     private int ObterMetaAereaContinua()
@@ -2748,8 +2780,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             foreach (KeyValuePair<string, AeronaveEmbarcadaV2> par in v2.Aeronaves)
             {
                 if (par.Value == null) continue;
-                ControleAviao aviao = par.Value.GetComponent<ControleAviao>();
-                if (aviao != null && aviao.GetComponent<Helicoptero>() == null) _aeronavesAlaContinua.Add(aviao);
+                ControleAviao aviao = ObterControleAviaoCache(par.Value);
+                if (aviao != null && !IsHelicopteroCache(aviao)) _aeronavesAlaContinua.Add(aviao);
             }
         }
         return ObterMetaAereaContinua(_aeronavesAlaContinua.Count);
@@ -2783,7 +2815,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     {
         if (aeronaves == null) return;
         foreach (ControleAviao aviao in aeronaves)
-            if (aviao != null && aviao.GetComponent<Helicoptero>() == null) _aeronavesAlaContinua.Add(aviao);
+            if (aviao != null && !IsHelicopteroCache(aviao)) _aeronavesAlaContinua.Add(aviao);
     }
 
     private void PrepararAeronaveNoPatioV2(ControleAviao aviao)

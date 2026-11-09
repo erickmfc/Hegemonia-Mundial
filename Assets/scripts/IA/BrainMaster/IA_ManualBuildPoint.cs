@@ -239,6 +239,7 @@ namespace Hegemonia.AI.BrainMaster
                 case OperationalRole.ConstrucaoPier: return "Construcao de Pier";
                 case OperationalRole.ConstrucaoEstaleiro: return "Construcao de Estaleiro";
                 case OperationalRole.ConstrucaoPlataforma: return "Construcao de Plataforma";
+                case OperationalRole.ConstrucaoAeroportoMilitar: return "Construcao de Aeroporto Militar";
                 default: return "Sem papel";
             }
         }

@@ -111,6 +111,10 @@ public sealed class GlobalWorldRuntimeSmokeTests
         FieldInfo worldField = streamer.GetType().GetField("world");
         object world = worldField.GetValue(streamer);
         Assert.That(world, Is.Not.Null);
+        FieldInfo treeDensityField = worldType.GetField("forestTreesPerSquareKilometre");
+        Assert.That(treeDensityField, Is.Not.Null,
+            "A definição global precisa expor a densidade de árvores usada pelo streamer.");
+        float configuredTreeDensity = (float)treeDensityField.GetValue(world);
         MethodInfo heightAtWorld = worldType.GetMethod("HeightAtWorld", BindingFlags.Instance | BindingFlags.Public);
         MethodInfo coastDistanceAtWorld = worldType.GetMethod("SignedCoastDistanceAtWorld", BindingFlags.Instance | BindingFlags.Public);
         Vector2 worldSize = (Vector2)worldType.GetField("worldSize").GetValue(world);
@@ -368,9 +372,17 @@ public sealed class GlobalWorldRuntimeSmokeTests
         Assert.That(desiredTiles, Is.GreaterThan(0), "O ponto de câmera precisa intersectar uma ilha da fase.png.");
         Assert.That(activeTiles, Is.EqualTo(desiredTiles), "Todos os tiles de alta resolução desejados devem carregar.");
         int activeTrees = (int)activeTreeCountProperty.GetValue(streamer);
-        Assert.That(activeTrees, Is.GreaterThan(0),
-            "Os protótipos de Terrain devem instanciar árvores renderizáveis nos tiles florestais. "
-            + "forestWeight=" + maximumForestWeight.ToString("F2") + " probe=" + forestProbe);
+        if (configuredTreeDensity <= 0f)
+        {
+            Assert.That(activeTrees, Is.EqualTo(0),
+                "Com a densidade de árvores configurada em zero, o streamer não deve criar árvores.");
+        }
+        else
+        {
+            Assert.That(activeTrees, Is.GreaterThan(0),
+                "Com densidade maior que zero, os protótipos de Terrain devem instanciar árvores nos tiles florestais. "
+                + "forestWeight=" + maximumForestWeight.ToString("F2") + " probe=" + forestProbe);
+        }
 
         const int performanceFrames = 180;
         float[] frameMilliseconds = new float[performanceFrames];

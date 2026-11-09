@@ -8,17 +8,19 @@ namespace Hegemonia.AI.BrainMaster
 {
     public sealed class IA_ProductionDirector : IIAUpdateModule
     {
+        private const int MinimumTankTargetPerCountry = 4;
+        private const int MaxBombersPerAirport = 1;
         private const bool EnableHelicopterProduction = true;
         // A força pode crescer com a capacidade do país, mas nunca apenas
         // porque o relógio avançou. Estes são os pisos de uma nação média;
         // a capacidade adicional vem de economia, indústria, território e
         // infraestrutura militar.
-        private const int BaseAircraftCapacity = 20;
-        private const int BaseNavalCapacity = 15;
-        private const float CapacityRefreshInterval = 2f;
-        private const float TimedAirKickoffSeconds = 8f;
-        private const float TimedNavalKickoffSeconds = 9f;
-        private const float StructureStabilitySeconds = 2.5f;
+        private const int BaseAircraftCapacity = 10;
+        private const int BaseNavalCapacity = 10;
+        private const float CapacityRefreshInterval = 2.5f;
+        private const float TimedAirKickoffSeconds = 12f;
+        private const float TimedNavalKickoffSeconds = 15f;
+        private const float StructureStabilitySeconds = 3.5f;
         private const int TimedAirKickoffTarget = 1;
         private const int TimedNavalMinArmy = 0;
         private readonly IA_Context _context;
@@ -28,6 +30,8 @@ namespace Hegemonia.AI.BrainMaster
         private bool _timedAirKickoffTriggered;
         private bool _timedNavalKickoffTriggered;
         private string _lastPreferredAircraftVariant = string.Empty;
+        private int _groundUnitRotationIndex;
+        private int _infantryRotationIndex;
         private IA_BrainMaster.IA_BootstrapStage _lastBootstrapStage = IA_BrainMaster.IA_BootstrapStage.Disabled;
         private int _bootstrapShipGoalCount = -1;
         private float _nextRuntimeProductionQueueTime;
@@ -52,7 +56,7 @@ namespace Hegemonia.AI.BrainMaster
 
         public float Interval
         {
-            get { return 0.65f; }
+            get { return 1.85f; }
         }
 
         public float BudgetMs
@@ -183,13 +187,13 @@ namespace Hegemonia.AI.BrainMaster
                 bool shouldPauseGroundMass = ShouldPauseOffensiveGroundMass(transportPlan, infantryCount, tankCount, artyCount, decision);
                 ResolveProductionCapacities(now, snapshot, out int aircraftCapacity, out int navalCapacity);
 
-                int infantryTarget = 12 + (counter.AntiRush ? 8 : 0) + Mathf.RoundToInt(counter.LandWeight * 8f);
-                int tankTarget = 5 + Mathf.RoundToInt(counter.LandWeight * 6f);
+                int infantryTarget = 6 + (counter.AntiRush ? 4 : 0) + Mathf.RoundToInt(counter.LandWeight * 4f);
+                int tankTarget = 3 + Mathf.RoundToInt(counter.LandWeight * 4f);
                 int artyTarget = 1 + (counter.ReinforceCenter ? 1 : 0);
                 int helicopterTarget = EnableHelicopterProduction && hasHeliport
-                    ? Mathf.Clamp(2 + Mathf.RoundToInt(counter.AirWeight * 4f), 2, 6)
+                    ? Mathf.Clamp(1 + Mathf.RoundToInt(counter.AirWeight * 3f), 1, 4)
                     : 0;
-                int fighterBaseline = 2 + Mathf.RoundToInt(counter.AirWeight * 4f);
+                int fighterBaseline = 2 + Mathf.RoundToInt(counter.AirWeight * 3f);
                 int fighterTarget = hasMilitaryAirport ? Mathf.Max(2, fighterBaseline) : 0;
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalBaseline = 1 + Mathf.RoundToInt(counter.NavalWeight * 4f);
@@ -263,6 +267,16 @@ namespace Hegemonia.AI.BrainMaster
                     tankTarget = Mathf.Min(tankTarget, transportPlan.AvailableCapacity >= 8 ? 2 : 1);
                     artyTarget = Mathf.Min(artyTarget, transportPlan.AvailableCapacity >= 10 ? 1 : 0);
                 }
+
+                // A meta de blindados cresce gradualmente conforme o estágio da partida
+                // (4 inicial -> 8 após 6 min -> 12 após 12 min), evitando criar 100 tanques de imediato.
+                if (hasFactory && !mustPrepareTransport)
+                {
+                    int stagedTankFloor = now >= 720f ? 12 : (now >= 360f ? 8 : MinimumTankTargetPerCountry);
+                    tankTarget = Mathf.Clamp(Mathf.Max(tankTarget, stagedTankFloor), 2, 16);
+                }
+                infantryTarget = Mathf.Clamp(infantryTarget, 4, now >= 600f ? 18 : 10);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("tank_target", tankTarget);
 
                 if (!_timedAirKickoffTriggered && now >= TimedAirKickoffSeconds && hasMilitaryAirport && fighterCount >= TimedAirKickoffTarget)
                 {
@@ -339,17 +353,17 @@ namespace Hegemonia.AI.BrainMaster
                 }
 
                 // Avioes tem prioridade quando a frota aerea esta abaixo do minimo
-                if (hasMilitaryAirport && fighterCount < 6 && QueuePreferredAircraft(95, 2.0f))
+                if (hasMilitaryAirport && fighterCount < 4 && QueuePreferredAircraft(95, 5.5f))
                 {
                     return;
                 }
 
-                if (hasBarracks && infantryCount < 6 && QueueProduceBest(94, 3.8f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
+                if (hasBarracks && infantryCount < 4 && QueueVariedInfantry(94, 5.5f))
                 {
                     return;
                 }
 
-                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 3.6f))
+                if (hasNavalBase && navalCount < 2 && QueueSurfaceFleetStep(navalCount, 91, 6.0f))
                 {
                     return;
                 }
@@ -361,22 +375,22 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                // Garante que o aeroporto NUNCA fique vazio, reposição constante com alta prioridade
-                if (hasMilitaryAirport && fighterCount < 8 && QueuePreferredAircraft(93, 2.2f))
+                // Garante que o aeroporto NUNCA fique vazio, reposição cadenciada
+                if (hasMilitaryAirport && fighterCount < 6 && QueuePreferredAircraft(93, 6.5f))
                 {
                     return;
                 }
 
                 if (hasNavalBase
                     && oilTankerCount < oilTankerTarget
-                    && QueueOilTanker(89, 7.0f))
+                    && QueueOilTanker(89, 8.0f))
                 {
                     return;
                 }
 
                 if (shouldPauseGroundMass)
                 {
-                    if (truckCount < truckTarget && hasFactory && QueueProduceBest(80, 10f, "caminhao de transporte", "transporte", "truck"))
+                    if (truckCount < truckTarget && hasFactory && QueueProduceBest(80, 12f, "caminhao de transporte", "transporte", "truck"))
                     {
                         return;
                     }
@@ -384,17 +398,17 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasBarracks && infantryCount < infantryTarget && QueueProduceBest(90, 2.4f, "tropa navy", "soldado rifle", "soldado", "infantaria", "rifle"))
+                if (hasBarracks && infantryCount < infantryTarget && QueueVariedInfantry(90, 6.0f))
                 {
                     return;
                 }
 
-                if (hasFactory && tankCount < tankTarget && QueueProduceBest(86, 2.8f, "tank mbt", "mbt", "tank south", "tank c1", "tank arthur"))
+                if (hasFactory && tankCount < tankTarget && QueueVariedGroundVehicle(86, 6.5f))
                 {
                     return;
                 }
 
-                if (hasFactory && artyCount < artyTarget && QueueProduceBest(82, 4.5f, "hack", "artilharia", "lancador"))
+                if (hasFactory && artyCount < artyTarget && QueueProduceBest(82, 8.5f, "hack", "artilharia", "lancador"))
                 {
                     return;
                 }
@@ -679,6 +693,65 @@ namespace Hegemonia.AI.BrainMaster
             return QueueProduceBest(priority, cooldown, "petroleiro", "navio petroleiro", "navio petrolifero", "oil tanker", "tanker");
         }
 
+        private bool QueueVariedInfantry(int priority, float cooldown)
+        {
+            int slot = Mathf.Abs(_infantryRotationIndex++) % 3;
+            switch (slot)
+            {
+                case 0:
+                    return QueueProduceBest(priority, cooldown, "soldado rifle", "tropa navy", "soldado", "infantaria", "rifle");
+                case 1:
+                    return QueueProduceBest(priority, cooldown, "tropa navy", "soldado bazuca", "soldado rifle", "infantaria");
+                default:
+                    return QueueProduceBest(priority, cooldown, "soldado", "soldado rifle", "tropa navy", "infantaria", "rifle");
+            }
+        }
+
+        private bool QueueVariedGroundVehicle(int priority, float cooldown)
+        {
+            int slot = Mathf.Abs(_groundUnitRotationIndex++) % 5;
+            switch (slot)
+            {
+                case 0:
+                    return QueueProduceBest(priority, cooldown, "tank arthur", "arthur", "tank c1", "tank south", "tank mbt", "mbt");
+                case 1:
+                    return QueueProduceBest(priority, cooldown, "tank c1", "c1", "tank south", "tank arthur", "tank mbt", "mbt");
+                case 2:
+                    return QueueProduceBest(priority, cooldown, "tank south", "south", "tank leonc", "leonc", "tank mbt", "tank arthur");
+                case 3:
+                    return QueueProduceBest(priority, cooldown, "tank mbt", "mbt", "king", "leon", "tank arthur", "tank c1");
+                default:
+                    return QueueProduceBest(priority, cooldown, "leonc", "blindado", "apc", "tank south", "tank c1", "tank arthur", "mbt");
+            }
+        }
+
+        private int CountExistingBombers()
+        {
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnCombatUnits == null)
+            {
+                return 0;
+            }
+
+            int bombers = 0;
+            List<GameObject> units = _context.WorldState.OwnCombatUnits;
+            for (int i = 0; i < units.Count; i++)
+            {
+                GameObject unit = units[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                string name = IA_Text.Normalize(unit.name);
+                if (name.Contains("b260") || name.Contains("b-260") || name.Contains("b 260") || name.Contains("bombardeiro"))
+                {
+                    bombers++;
+                }
+            }
+
+            return bombers;
+        }
+
         private bool QueuePreferredAircraft(int priority, float cooldown)
         {
             if (_context != null && _context.Brain != null && _context.Brain.TeamId == 2)
@@ -702,7 +775,7 @@ namespace Hegemonia.AI.BrainMaster
             if (data == null)
             {
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "AIR_PROD_VARIANT_FALLBACK", "variante preferida nao encontrada");
-                return QueueProduceBest(priority, cooldown, "b260", "supra", "su11", "a_20", "a10", "warthog", "g15", "super tuk", "g_18m", "g18m", "fa1", "caca", "fighter");
+                return QueueProduceBest(priority, cooldown, "fa1", "g_18m", "g18m", "su11", "supra", "a_20", "a10", "warthog", "g15", "super tuk", "caca", "fighter", "b260");
             }
 
             int teamId = _context.Brain != null ? _context.Brain.TeamId : 0;

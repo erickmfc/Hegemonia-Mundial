@@ -20,7 +20,7 @@ public sealed class GlobalWorldDefinition : ScriptableObject
     [Min(33)] public int globalHeightResolution = 2049;
     [Min(33)] public int localHeightResolution = 513;
     [Min(16)] public int alphamapResolution = 512;
-    [Min(16)] public int localAlphamapResolution = 512;
+    [Min(16)] public int localAlphamapResolution = 256;
 
     [Header("Mar e relevo")]
     public float seaLevel = 0f;
@@ -38,7 +38,7 @@ public sealed class GlobalWorldDefinition : ScriptableObject
     public GameObject[] treePrefabs = Array.Empty<GameObject>();
     [Min(0)] public int forestClusterPrototypeCount = 4;
     [Min(20f)] public float treeCandidateSpacing = 48f;
-    [Min(100f)] public float forestTreesPerSquareKilometre = 800f;
+    [Min(0f)] public float forestTreesPerSquareKilometre = 0f;
 
     [NonSerialized] private bool initialized;
     [NonSerialized] private int mapWidth;
@@ -166,6 +166,41 @@ public sealed class GlobalWorldDefinition : ScriptableObject
     public bool ContainsLand(float minX, float minZ, float maxX, float maxZ, int samplesPerAxis = 12)
     {
         EnsureInitialized();
+
+        float left = Mathf.Min(minX, maxX);
+        float right = Mathf.Max(minX, maxX);
+        float bottom = Mathf.Min(minZ, maxZ);
+        float top = Mathf.Max(minZ, maxZ);
+        if (right < MapMinX || left > MapMaxX || top < MapMinZ || bottom > MapMaxZ)
+            return false;
+
+        // Resolve tile occupancy from the same raster that defines the coast.
+        // The one-pixel margin is conservative at tile seams, preventing a
+        // narrow coastal strip from being shown by the coarse Terrain while
+        // its local collider and NavMesh tile are skipped by point sampling.
+        float minU = Mathf.Clamp01((left - MapMinX) / worldSize.x);
+        float maxU = Mathf.Clamp01((right - MapMinX) / worldSize.x);
+        // GetPixels32 and SignedCoastDistanceAtWorld both address the raster
+        // from its bottom row. Keep tile occupancy in that same orientation;
+        // TryWorldToMapUv is a separate top-left convention for map UI data.
+        float minV = Mathf.Clamp01((bottom - MapMinZ) / mapFootprintHeight);
+        float maxV = Mathf.Clamp01((top - MapMinZ) / mapFootprintHeight);
+        int minPixelX = Mathf.Clamp(Mathf.FloorToInt(minU * (mapWidth - 1)) - 1, 0, mapWidth - 1);
+        int maxPixelX = Mathf.Clamp(Mathf.CeilToInt(maxU * (mapWidth - 1)) + 1, 0, mapWidth - 1);
+        int minPixelY = Mathf.Clamp(Mathf.FloorToInt(minV * (mapHeight - 1)) - 1, 0, mapHeight - 1);
+        int maxPixelY = Mathf.Clamp(Mathf.CeilToInt(maxV * (mapHeight - 1)) + 1, 0, mapHeight - 1);
+        for (int y = minPixelY; y <= maxPixelY; y++)
+        {
+            int row = y * mapWidth;
+            for (int x = minPixelX; x <= maxPixelX; x++)
+            {
+                if (landMask[row + x])
+                    return true;
+            }
+        }
+
+        // Preserve the signed-distance fallback for land transitions that
+        // interpolate positively between raster samples.
         samplesPerAxis = Mathf.Max(2, samplesPerAxis);
         for (int z = 0; z < samplesPerAxis; z++)
         {

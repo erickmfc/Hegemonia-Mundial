@@ -364,6 +364,8 @@ public static class RegistroSuperficieMapa
 {
     private static readonly List<MarcadorSuperficieMapa> _agua = new List<MarcadorSuperficieMapa>();
     private static readonly List<MarcadorSuperficieMapa> _chao = new List<MarcadorSuperficieMapa>();
+    private static GlobalTerrainStreamer _globalMapStreamerCache;
+    private static float _proximaBuscaGlobalMapStreamer;
 
     public static void Registrar(MarcadorSuperficieMapa marcador)
     {
@@ -468,6 +470,11 @@ public static class RegistroSuperficieMapa
 
     public static bool TryClassify(Vector3 position, out ClassificacaoSuperficieMapa classificacao, out float height, float coastTolerance = 1.5f, float padding = 0f)
     {
+        if (TryClassifyGlobalMap(position, coastTolerance, out classificacao, out height))
+        {
+            return true;
+        }
+
         bool temAgua = TryGetAltura(position, TipoSuperficieMapa.Agua, out float alturaAgua, padding);
         bool temChao = TryGetAltura(position, TipoSuperficieMapa.Chao, out float alturaChao, padding);
 
@@ -509,6 +516,30 @@ public static class RegistroSuperficieMapa
         classificacao = ClassificacaoSuperficieMapa.Desconhecida;
         height = position.y;
         return false;
+    }
+
+    private static bool TryClassifyGlobalMap(
+        Vector3 position,
+        float coastTolerance,
+        out ClassificacaoSuperficieMapa classificacao,
+        out float height)
+    {
+        classificacao = ClassificacaoSuperficieMapa.Desconhecida;
+        height = position.y;
+
+        if (_globalMapStreamerCache == null && Time.unscaledTime >= _proximaBuscaGlobalMapStreamer)
+        {
+            _globalMapStreamerCache = Object.FindFirstObjectByType<GlobalTerrainStreamer>();
+            _proximaBuscaGlobalMapStreamer = Time.unscaledTime + 1f;
+        }
+
+        return _globalMapStreamerCache != null
+            && _globalMapStreamerCache.isActiveAndEnabled
+            && _globalMapStreamerCache.TryClassifyWorldSurface(
+                position,
+                out classificacao,
+                out height,
+                coastTolerance);
     }
 
     public static bool TryGetBounds(TipoSuperficieMapa tipo, out Bounds bounds)

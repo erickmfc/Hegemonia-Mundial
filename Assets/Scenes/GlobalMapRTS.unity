@@ -119,6 +119,75 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &17158241
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 17158242}
+  - component: {fileID: 17158243}
+  m_Layer: 0
+  m_Name: IA01 Create - Construtor de Veiculos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &17158242
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 17158241}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 493.00006, y: 0, z: -36.99951}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1066447323}
+  - {fileID: 1374357225}
+  - {fileID: 516231601}
+  - {fileID: 566492437}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &17158243
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 17158241}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.construtor_veiculos
+  slotGroupId: abertura_inicial
+  allowedRole: 9
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 17158242}
+  unitSpawnPoint: {fileID: 1066447323}
+  exitDirection: {fileID: 1374357225}
+  reservedFootprint: {x: 28, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!4 &19694937 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
@@ -220,6 +289,267 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 19886388}
   m_CullTransparentMesh: 1
+--- !u!1 &33343847
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 33343848}
+  - component: {fileID: 33343849}
+  m_Layer: 0
+  m_Name: CasaSlot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &33343848
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 33343847}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -24.999939, y: 0, z: 245.00049}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &33343849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 33343847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: casa_01
+  slotGroupId: residencial
+  allowedRole: 1
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 1
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 33343848}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 10, y: 10}
+  safetyMargin: 1
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &36965225
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 36965226}
+  - component: {fileID: 36965227}
+  m_Layer: 0
+  m_Name: IA01 Create - Plataforma Offshore C
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &36965226
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 36965225}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3015, y: 1, z: 1959.0005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 445235376}
+  - {fileID: 1111901762}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &36965227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 36965225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.plataforma.c
+  slotGroupId: plataformas_offshore
+  allowedRole: 11
+  allowedDomain: 1
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 36965226}
+  unitSpawnPoint: {fileID: 445235376}
+  exitDirection: {fileID: 1111901762}
+  reservedFootprint: {x: 75, y: 55}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &45443995
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 45443996}
+  m_Layer: 0
+  m_Name: Pista_Fim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &45443996
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 45443995}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1297498813}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &49785309
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 49785310}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &49785310
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 49785309}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 120}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &57709342
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 57709343}
+  - component: {fileID: 57709344}
+  m_Layer: 0
+  m_Name: IA01 Create - Apartamento Medio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &57709343
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57709342}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 85.00006, y: 0, z: -615.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1308001189}
+  - {fileID: 1261110478}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &57709344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 57709342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.apartamento_medio
+  slotGroupId: abertura_inicial
+  allowedRole: 1
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 57709343}
+  unitSpawnPoint: {fileID: 1308001189}
+  exitDirection: {fileID: 1261110478}
+  reservedFootprint: {x: 28, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &68161523
 GameObject:
   m_ObjectHideFlags: 0
@@ -250,6 +580,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1277943858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &76213583
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 76213584}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &76213584
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 76213583}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1157402475}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &77172051
 PrefabInstance:
@@ -321,6 +682,122 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8362449112991946844, guid: f7b14804196071e41b50717bd952653a, type: 3}
   m_PrefabInstance: {fileID: 77172051}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &83234852
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 83234853}
+  - component: {fileID: 83234854}
+  m_Layer: 0
+  m_Name: FazendaSlot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &83234853
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 83234852}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 212.00006, y: 0, z: -1016.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &83234854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 83234852}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: fazenda_01
+  slotGroupId: agricola
+  allowedRole: 2
+  allowedDomain: 0
+  required: 1
+  exactPosition: 1
+  allowAlternativeSlot: 1
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 83234853}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 18, y: 18}
+  safetyMargin: 1
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &99790555
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 99790556}
+  - component: {fileID: 99790557}
+  m_Layer: 0
+  m_Name: Create Patrulha Aerea 01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &99790556
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99790555}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -620, y: 0, z: 460}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 124237670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &99790557
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 99790555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be48778a38d58954c882b3342080ceb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
+  raio: 260
+  largura: 520
+  profundidade: 360
+  altitude: 120
+  intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &100287161
 GameObject:
   m_ObjectHideFlags: 0
@@ -596,6 +1073,175 @@ MonoBehaviour:
   estruturas: 0
   casas: 0
   pesquisasMilitares: 0
+--- !u!1 &124237669
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 124237670}
+  m_Layer: 0
+  m_Name: IA01 Creates Patrulha Aerea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &124237670
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 124237669}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 99790556}
+  - {fileID: 1730061015}
+  - {fileID: 1618027942}
+  - {fileID: 434335391}
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &131750467
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 131750468}
+  - component: {fileID: 131750469}
+  m_Layer: 0
+  m_Name: IA01 Create - Plataforma Offshore A
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &131750468
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 131750467}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2795, y: 1, z: 1739.0005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1945413124}
+  - {fileID: 1443863201}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &131750469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 131750467}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.plataforma.a
+  slotGroupId: plataformas_offshore
+  allowedRole: 11
+  allowedDomain: 1
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 131750468}
+  unitSpawnPoint: {fileID: 1945413124}
+  exitDirection: {fileID: 1443863201}
+  reservedFootprint: {x: 75, y: 55}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &149143914
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 149143915}
+  - component: {fileID: 149143916}
+  m_Layer: 0
+  m_Name: IA01 Create - Armazenamento 02
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &149143915
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 149143914}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.000061035156, y: 0, z: 66.00049}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1485907494}
+  - {fileID: 592977490}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &149143916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 149143914}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.armazenamento.02
+  slotGroupId: infraestrutura_estrategica
+  allowedRole: 4
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 149143915}
+  unitSpawnPoint: {fileID: 1485907494}
+  exitDirection: {fileID: 592977490}
+  reservedFootprint: {x: 34, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &157409951
 GameObject:
   m_ObjectHideFlags: 0
@@ -904,6 +1550,86 @@ Transform:
   m_Children: []
   m_Father: {fileID: 803649418}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &175971952
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 175971953}
+  - component: {fileID: 175971954}
+  m_Layer: 0
+  m_Name: IA01 WarAdvanceZone Aerea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &175971953
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 175971952}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 100, z: 320}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &175971954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 175971952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3dbadf14bf3a61b47851ae1919b34b07, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
+  teamId: 2
+  dominio: 1
+  tipoZona: 0
+  donoDaRegiao: 0
+  raio: 260
+  pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &177210666
 GameObject:
   m_ObjectHideFlags: 0
@@ -995,7 +1721,7 @@ Terrain:
   m_GameObject: {fileID: 205787056}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: 97207dbd46ba0f841b54328e5ef6af19, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: aeee62594fd50de4d9700b3606a84ff6, type: 2}
   m_TreeDistance: 0
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -1044,7 +1770,7 @@ TerrainCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: 97207dbd46ba0f841b54328e5ef6af19, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: aeee62594fd50de4d9700b3606a84ff6, type: 2}
   m_EnableTreeColliders: 1
 --- !u!4 &205787059
 Transform:
@@ -1153,6 +1879,53 @@ MonoBehaviour:
   paisesProibidos: 
   alvoPreferencial: 0
   tamanhoGizmo: 15000
+--- !u!1 &221451060
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 221451061}
+  - component: {fileID: 221451062}
+  m_Layer: 0
+  m_Name: IA01 ExtractionZone Naval
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &221451061
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 221451060}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -40, y: 0, z: 150}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &221451062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 221451060}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a1b8b6c5cd605a4180c2f6180dfa5db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01ExtractionZone
+  teamId: 2
+  raio: 80
+  vagas: 6
 --- !u!1001 &237691167
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1214,6 +1987,37 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5b7a0b939d2128d4295d009ab13ccb17, type: 3}
+--- !u!1 &246484297
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 246484298}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &246484298
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246484297}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1804353802}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &263666330
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1276,6 +2080,86 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5390122096497819642, guid: f6f4236f904e0244b97d896a6186a714, type: 3}
   m_PrefabInstance: {fileID: 263666330}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &294686858
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 294686859}
+  - component: {fileID: 294686860}
+  m_Layer: 0
+  m_Name: IA01 WarAdvanceZone Naval B
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &294686859
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 294686858}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -220, y: 0, z: 300}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &294686860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 294686858}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3dbadf14bf3a61b47851ae1919b34b07, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
+  teamId: 2
+  dominio: 0
+  tipoZona: 0
+  donoDaRegiao: 0
+  raio: 180
+  pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
 --- !u!1 &320449060
 GameObject:
   m_ObjectHideFlags: 0
@@ -1428,6 +2312,167 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 320449060}
   m_CullTransparentMesh: 1
+--- !u!1 &341444784
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 341444785}
+  - component: {fileID: 341444787}
+  - component: {fileID: 341444786}
+  m_Layer: 0
+  m_Name: IA01 Create - Aeroporto Militar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &341444785
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 341444784}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 424.00006, y: 0, z: -418.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 799069539}
+  - {fileID: 1446662779}
+  - {fileID: 1817975820}
+  - {fileID: 2093539648}
+  - {fileID: 1859319330}
+  - {fileID: 124237670}
+  - {fileID: 175971953}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &341444786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 341444784}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cc1ad2cd0aec124b9137d194d9b1e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
+  buildSlot: {fileID: 341444787}
+  runwayStart: {fileID: 1817975820}
+  runwayEnd: {fileID: 2093539648}
+  aircraftSpawn: {fileID: 799069539}
+  approachDirection: {fileID: 1446662779}
+  minimumRunwayLength: 70
+  cachedValid: 0
+  cachedReason: "Ainda n\xE3o validado."
+  cachedLayoutVersion: -1
+--- !u!114 &341444787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 341444784}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.aeroporto_militar
+  slotGroupId: abertura_inicial
+  allowedRole: 10
+  allowedDomain: 3
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 341444785}
+  unitSpawnPoint: {fileID: 799069539}
+  exitDirection: {fileID: 1446662779}
+  reservedFootprint: {x: 110, y: 60}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &348852473
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 348852474}
+  - component: {fileID: 348852475}
+  m_Layer: 0
+  m_Name: IA01 Create - Armazenamento 01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &348852474
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 348852473}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -47.99994, y: 0, z: 52.00049}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1161475702}
+  - {fileID: 653495917}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &348852475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 348852473}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.armazenamento.01
+  slotGroupId: infraestrutura_estrategica
+  allowedRole: 4
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 348852474}
+  unitSpawnPoint: {fileID: 1161475702}
+  exitDirection: {fileID: 653495917}
+  reservedFootprint: {x: 34, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &352967764
 GameObject:
   m_ObjectHideFlags: 0
@@ -1666,6 +2711,37 @@ MonoBehaviour:
   prefabMarcadorPatrulha: {fileID: 0}
   espacamento: 2.5
   unidadesSelecionadas: []
+--- !u!1 &409662068
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 409662069}
+  m_Layer: 0
+  m_Name: Pista_Fim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &409662069
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 409662068}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1040724796}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &431328338
 GameObject:
   m_ObjectHideFlags: 0
@@ -1727,6 +2803,57 @@ MonoBehaviour:
   paisesProibidos: 
   alvoPreferencial: 0
   tamanhoGizmo: 5000
+--- !u!1 &434335390
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 434335391}
+  - component: {fileID: 434335392}
+  m_Layer: 0
+  m_Name: Create Patrulha Aerea 04
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &434335391
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 434335390}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -620, y: 0, z: -460}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 124237670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &434335392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 434335390}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be48778a38d58954c882b3342080ceb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
+  raio: 260
+  largura: 520
+  profundidade: 360
+  altitude: 120
+  intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &437497743
 GameObject:
   m_ObjectHideFlags: 0
@@ -1789,6 +2916,126 @@ Transform:
   m_Children:
   - {fileID: 1451157271}
   m_Father: {fileID: 1232395131}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &442228683
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 442228684}
+  - component: {fileID: 442228686}
+  - component: {fileID: 442228685}
+  m_Layer: 0
+  m_Name: IA01 Create - Pier Naval
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &442228684
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 442228683}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0.71196467, z: 0, w: 0.70221525}
+  m_LocalPosition: {x: -3015, y: 1, z: 1739.0005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1279900928}
+  - {fileID: 1715073027}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: -90.79, z: 0}
+--- !u!114 &442228685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 442228683}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 488dbb675be1aa44b9d43b1415adafc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalBuildSlot
+  buildSlot: {fileID: 442228686}
+  navalSpawnPoint: {fileID: 1279900928}
+  exitDirection: {fileID: 1715073027}
+  minimumWaterDepth: 4
+  minimumExitWidth: 18
+  maritimeRegionId: 
+  cachedValid: 0
+  cachedReason: Ainda nao validado.
+  cachedLayoutVersion: -1
+--- !u!114 &442228686
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 442228683}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.pier
+  slotGroupId: infraestrutura_estrategica
+  allowedRole: 17
+  allowedDomain: 1
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 442228684}
+  unitSpawnPoint: {fileID: 1279900928}
+  exitDirection: {fileID: 1715073027}
+  reservedFootprint: {x: 75, y: 55}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &445235375
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 445235376}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &445235376
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 445235375}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 36965226}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &457433680
 GameObject:
@@ -1967,11 +3214,138 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
   m_PrefabInstance: {fileID: 1322116961}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &473527737
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 473527738}
+  - component: {fileID: 473527739}
+  m_Layer: 0
+  m_Name: ArmazemSlot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &473527738
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 473527737}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 85.00006, y: 0, z: -832.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &473527739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 473527737}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: armazem_01
+  slotGroupId: logistica
+  allowedRole: 4
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 1
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 473527738}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 16, y: 16}
+  safetyMargin: 1
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &482855553
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 482855554}
+  m_Layer: 0
+  m_Name: Pista_Inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &482855554
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 482855553}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1040724796}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &510116485 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
   m_PrefabInstance: {fileID: 941414447}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &516231600
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 516231601}
+  m_Layer: 0
+  m_Name: Pista_Inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &516231601
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516231600}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 17158242}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &537939191
 GameObject:
   m_ObjectHideFlags: 0
@@ -2145,6 +3519,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 537939191}
   m_CullTransparentMesh: 1
+--- !u!1 &538613782
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 538613783}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &538613783
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 538613782}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1950525443}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!134 &555643247
 PhysicsMaterial:
   m_ObjectHideFlags: 0
@@ -2158,6 +3563,99 @@ PhysicsMaterial:
   m_Bounciness: 0
   m_FrictionCombine: 0
   m_BounceCombine: 0
+--- !u!1 &566492436
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 566492437}
+  m_Layer: 0
+  m_Name: Pista_Fim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &566492437
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 566492436}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 17158242}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &580498477
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 580498478}
+  m_Layer: 0
+  m_Name: Pista_Inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &580498478
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 580498477}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &592977489
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 592977490}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &592977490
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 592977489}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 149143915}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &601573247
 GameObject:
   m_ObjectHideFlags: 0
@@ -2528,6 +4026,195 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 652061721}
   m_CullTransparentMesh: 1
+--- !u!1 &653495916
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 653495917}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &653495917
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 653495916}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 348852474}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &680953141
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 680953142}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &680953142
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 680953141}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 120}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1297498813}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &723411263
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 723411264}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &723411264
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 723411263}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1327741823}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &723759975
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 723759976}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &723759976
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 723759975}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1157402475}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &752573469
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 752573470}
+  - component: {fileID: 752573471}
+  m_Layer: 0
+  m_Name: PrefeituraSlot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &752573470
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 752573469}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -159.99994, y: 0, z: -85.99951}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &752573471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 752573469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: prefeitura_01
+  slotGroupId: capital
+  allowedRole: 15
+  allowedDomain: 0
+  required: 1
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 752573470}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 12, y: 12}
+  safetyMargin: 1
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &756648829
 GameObject:
   m_ObjectHideFlags: 0
@@ -2882,6 +4569,37 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &799069538
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 799069539}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &799069539
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 799069538}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &803649417
 GameObject:
   m_ObjectHideFlags: 0
@@ -2950,6 +4668,54 @@ Transform:
   - {fileID: 3100000391}
   m_Father: {fileID: 1683863950}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &804386804
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 804386805}
+  - component: {fileID: 804386806}
+  m_Layer: 0
+  m_Name: "IA01 Patrulha Naval - \xC1rea B"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &804386805
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 804386804}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 592, y: 0, z: 1213}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &804386806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 804386804}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1f0ad0d1f61ac44a63c5eb901dc16b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
+  raio: 400
+  intervaloDias: 3
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &852996025
 GameObject:
   m_ObjectHideFlags: 0
@@ -3352,6 +5118,37 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
+--- !u!1 &904206270
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 904206271}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &904206271
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 904206270}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 120}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1040724796}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &913498675
 GameObject:
   m_ObjectHideFlags: 0
@@ -3441,13 +5238,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 925739428}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.008422459, y: 0.8757104, z: 0.0152856205, w: 0.48252112}
+  m_LocalRotation: {x: 0.11888637, y: 0.84791476, z: -0.21447669, w: 0.4700068}
   m_LocalPosition: {x: -198492, y: 768, z: 78948.34}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1232395131}
-  m_LocalEulerAnglesHint: {x: -2, y: 122.29, z: 0}
+  m_LocalEulerAnglesHint: {x: 28.39, y: 122, z: 0}
 --- !u!114 &925739430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3578,6 +5375,37 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &930810208
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 930810209}
+  m_Layer: 0
+  m_Name: Pista_Fim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &930810209
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930810208}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1157402475}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &941414447
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3691,6 +5519,37 @@ MonoBehaviour:
   BootstrapStage: 0
   GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
   GizmoRadius: 5
+--- !u!1 &948901199
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 948901200}
+  m_Layer: 0
+  m_Name: Pista_Inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &948901200
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 948901199}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1297498813}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &965361532
 GameObject:
   m_ObjectHideFlags: 0
@@ -3721,6 +5580,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &965664245
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 965664246}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &965664246
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 965664245}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 36}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &969145735
 GameObject:
@@ -3851,6 +5741,102 @@ MonoBehaviour:
   paisesProibidos: 
   alvoPreferencial: 0
   tamanhoGizmo: 2000
+--- !u!1 &978254138
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 978254139}
+  - component: {fileID: 978254140}
+  m_Layer: 0
+  m_Name: "IA01 Patrulha Naval - \xC1rea C"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &978254139
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 978254138}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 4140, y: 0, z: 1040}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &978254140
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 978254138}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1f0ad0d1f61ac44a63c5eb901dc16b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
+  raio: 250
+  intervaloDias: 15
+  tipoSetor: 0
+  naviosDesejados: 1
+--- !u!1 &988821056
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 988821057}
+  - component: {fileID: 988821058}
+  m_Layer: 0
+  m_Name: "IA01 Patrulha Naval - \xC1rea A"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &988821057
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 988821056}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -2336, y: 0, z: 757}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &988821058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 988821056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1f0ad0d1f61ac44a63c5eb901dc16b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalPatrolZone
+  raio: 492.1
+  intervaloDias: 6
+  tipoSetor: 0
+  naviosDesejados: 1
 --- !u!1 &1006435692
 GameObject:
   m_ObjectHideFlags: 0
@@ -3916,6 +5902,97 @@ Transform:
   - {fileID: 205787059}
   m_Father: {fileID: 1232395131}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1040724795
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1040724796}
+  - component: {fileID: 1040724798}
+  - component: {fileID: 1040724797}
+  m_Layer: 0
+  m_Name: IA01 Create - Aeroporto Comercial
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1040724796
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040724795}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 118.00006, y: 0, z: -1445.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1899927099}
+  - {fileID: 904206271}
+  - {fileID: 482855554}
+  - {fileID: 409662069}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1040724797
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040724795}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cc1ad2cd0aec124b9137d194d9b1e99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirportBuildSlot
+  buildSlot: {fileID: 1040724798}
+  runwayStart: {fileID: 482855554}
+  runwayEnd: {fileID: 409662069}
+  aircraftSpawn: {fileID: 1899927099}
+  approachDirection: {fileID: 904206271}
+  minimumRunwayLength: 70
+  cachedValid: 0
+  cachedReason: "Ainda n\xE3o validado."
+  cachedLayoutVersion: -1
+--- !u!114 &1040724798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1040724795}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.aeroporto_comercial
+  slotGroupId: abertura_inicial
+  allowedRole: 10
+  allowedDomain: 3
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1040724796}
+  unitSpawnPoint: {fileID: 1899927099}
+  exitDirection: {fileID: 904206271}
+  reservedFootprint: {x: 110, y: 60}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &1042338958
 GameObject:
   m_ObjectHideFlags: 0
@@ -3946,6 +6023,68 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 803649418}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1051628833
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1051628834}
+  m_Layer: 0
+  m_Name: Pista_Inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1051628834
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1051628833}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1157402475}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1066447322
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1066447323}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1066447323
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1066447322}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 17158242}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1068792857
 GameObject:
@@ -4149,6 +6288,219 @@ MonoBehaviour:
   WeakEmpireRecoveryActive: 0
   ActiveStrategicTarget: 
   ImperialPlanSummary: 
+--- !u!1 &1111901761
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1111901762}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1111901762
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1111901761}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 36965226}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1118805666
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: rodas.Array.size
+      value: 13
+      objectReference: {fileID: 0}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1118805667}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[1]'
+      value: 
+      objectReference: {fileID: 1118805676}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1118805677}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1118805679}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[4]'
+      value: 
+      objectReference: {fileID: 1118805678}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[5]'
+      value: 
+      objectReference: {fileID: 1118805672}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[6]'
+      value: 
+      objectReference: {fileID: 1118805673}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[7]'
+      value: 
+      objectReference: {fileID: 1118805675}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[8]'
+      value: 
+      objectReference: {fileID: 1118805674}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[9]'
+      value: 
+      objectReference: {fileID: 1118805668}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[10]'
+      value: 
+      objectReference: {fileID: 1118805669}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[11]'
+      value: 
+      objectReference: {fileID: 1118805671}
+    - target: {fileID: -4626155820240208281, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: 'rodas.Array.data[12]'
+      value: 
+      objectReference: {fileID: 1118805670}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -197503.11
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 5.212078
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 77746.66
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1943493835094120426, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2470324322742162747, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_Name
+      value: Su11
+      objectReference: {fileID: 0}
+    - target: {fileID: 3434556077122680229, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+      propertyPath: m_IsKinematic
+      value: 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+--- !u!4 &1118805667 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8038173892852654233, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805668 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6909032589588672573, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805669 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6909032589588606675, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805670 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6909032589588623245, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805671 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6909032589588652085, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805672 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5272202015684936986, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805673 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5272202015684877300, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805674 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5272202015684860586, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805675 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5272202015684891922, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805676 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6137953197287502545, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805677 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6137953197287435327, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805678 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6137953197287419233, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1118805679 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6137953197287514841, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  m_PrefabInstance: {fileID: 1118805666}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1123574298
 GameObject:
   m_ObjectHideFlags: 0
@@ -4399,6 +6751,75 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1150063742}
   m_CullTransparentMesh: 1
+--- !u!1 &1157402474
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1157402475}
+  - component: {fileID: 1157402476}
+  m_Layer: 0
+  m_Name: IA01 Create - Casa
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1157402475
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157402474}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -64.99994, y: 0, z: -463.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 723759976}
+  - {fileID: 76213584}
+  - {fileID: 1051628834}
+  - {fileID: 930810209}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1157402476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1157402474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.casa
+  slotGroupId: abertura_inicial
+  allowedRole: 1
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: urbana.cidade_moderna
+  buildingPoint: {fileID: 1157402475}
+  unitSpawnPoint: {fileID: 723759976}
+  exitDirection: {fileID: 76213584}
+  reservedFootprint: {x: 220, y: 220}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &1158554035
 GameObject:
   m_ObjectHideFlags: 0
@@ -4430,6 +6851,237 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2010727219}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1161475701
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1161475702}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1161475702
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1161475701}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 348852474}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1165099146
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1165099147}
+  - component: {fileID: 1165099148}
+  m_Layer: 0
+  m_Name: IA01 WarAdvanceZone Naval A
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1165099147
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1165099146}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 180, y: 0, z: 220}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1165099148
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1165099146}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3dbadf14bf3a61b47851ae1919b34b07, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01WarAdvanceZone
+  teamId: 2
+  dominio: 0
+  tipoZona: 0
+  donoDaRegiao: 0
+  raio: 180
+  pontos: 4
+  incidentesMantidos: 8
+  duracaoBaixa: 60
+  duracaoMedia: 120
+  duracaoAlta: 240
+  duracaoCritica: 600
+  janelaAgregacaoSegundos: 180
+  responderAtaques: 1
+  prioridadeBase: 50
+  tempoMemoria: 180
+  raioInvestigacao: 3000
+  escaladaObservacao: 1
+  escaladaInterceptacao: 2
+  escaladaCombate: 4
+  reforcoMaximo: 8
+  percentualPatrulhaPreservada: 0.33
+  percentualProtecaoEstrategica: 0.16
+  reservaMinimaAeronaves: 2
+  investigarPrimeiro: 1
+  confirmarHostilidade: 1
+  atualizarUltimaPosicao: 1
+  permitirReforcos: 1
+  permitirRecuo: 1
+  retornarPatrulhaDepois: 1
+  naviosObservacao: 1
+  naviosInterceptacao: 2
+  naviosCombate: 4
+  reforcoNavalMaximo: 6
+  percentualPatrulhaNavalPreservada: 0.33
+  percentualProtecaoNaval: 0.16
+  reservaMinimaNavios: 1
+--- !u!1 &1195098060
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1195098061}
+  - component: {fileID: 1195098062}
+  m_Layer: 0
+  m_Name: IA01Controller
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1195098061
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1195098060}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -1, z: -0, w: 0}
+  m_LocalPosition: {x: 46.28058, y: 0.00001474121, z: 42.236816}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1856837727}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1195098062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1195098060}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4455273ea80249f2af233e3f243c8521, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01Controller
+  nationId: 2
+  teamId: 2
+  matchSeed: 1
+  nationNameOverride: Over
+  presidentNameOverride: Nascir
+  currencyNameOverride: 
+  currencySymbolOverride: 
+  countryProfileOverride: 
+  difficultyProfileOverride: 
+  profileAsset: {fileID: 0}
+  createRuntimeProfileWhenMissing: 1
+  executionModeOverride: 3
+  nationModeOverride: 1
+  stageOverride: 0
+  postureOverride: 0
+  prefeituraAnchor: {fileID: 0}
+  capitalBlueprint: {fileID: 11400000, guid: 4934db4bcc5643c46853021a6667ef68, type: 2}
+  constructionAnchors: {fileID: 0}
+  buildPlan: {fileID: 11400000, guid: 18ef412d087cc9447a43ca34c614b666, type: 2}
+  cityLayout: {fileID: 2143834480}
+  fichasDeConstrucao:
+  - {fileID: 11400000, guid: 4934db4bcc5643c46853021a6667ef68, type: 2}
+  - {fileID: 11400000, guid: fd0ea3b7d5c1d3442958d74b1be146c6, type: 2}
+  - {fileID: 11400000, guid: e6baa00834f418749a76f99fb04f3e85, type: 2}
+  - {fileID: 11400000, guid: e4c3d65f2425e654d955a5e0b0a24467, type: 2}
+  - {fileID: 11400000, guid: 67f78e06014bf0746bf59dc44dda8e15, type: 2}
+  - {fileID: 11400000, guid: b9abb8cd25535964988af08ef685b9fb, type: 2}
+  fichasMilitaresPermitidas:
+  - {fileID: 11400000, guid: 80d62c9132dade74889dc96868aceeb3, type: 2}
+  - {fileID: 11400000, guid: 69f98666ec5ecb04eb3a82a2fea937f3, type: 2}
+  - {fileID: 11400000, guid: 375a12fca0d6fd34fb41fe89a66686d6, type: 2}
+  - {fileID: 11400000, guid: cd2ccfa0f5cb8e24484c69b7c8e12eaf, type: 2}
+  - {fileID: 11400000, guid: 3f018053f52fcb0449cc04c2000dc5a9, type: 2}
+  - {fileID: 11400000, guid: dfe48a4f7ec8f2f49ab7cde326a07ae7, type: 2}
+  - {fileID: 11400000, guid: 96e8eb7f5edc2464abe5584135eaf88b, type: 2}
+  fighterPrefab: {fileID: 2470324322742162747, guid: 12c011911cb38414f908ab682aff2c0b, type: 3}
+  useScriptedOpening: 1
+  usePreparedSlots: 1
+  allowAutonomousExpansion: 0
+  allowAutomaticQuartel: 0
+  allowPeacetimeMilitaryProduction: 0
+  enablePlanningAdvisor: 1
+  maxConstructionDistanceFromController: 4200
+  progressiveMilitaryCatalog: 1
+  allowMilitaryTierAdvancement: 1
+  strategicOptions:
+    EnableBallisticThreatEscalation: 0
+    EnableNuclearThreatEscalation: 0
+    EnableStrategicLeaderIntegration: 0
+    EnableLeaderProtection: 0
+    EnableLeaderWarObjective: 0
+    EnableLeaderVictoryCondition: 0
+    EnableCountryTransferOperation: 0
+    BallisticWarDurationMultiplier: 1.35
+    NuclearWarDurationMultiplier: 2.5
+    StrategicIncursionMinimumDuration: 30
+    StrategicIncursionMaximumDuration: 900
+    WarObjectiveReevaluationInterval: 12
+    StrategicThreatExpirationTime: 180
+    MaximumWartimeMilitaryBudgetShare: 0.8
+    BallisticMobilizationMultiplier: 1.25
+    NuclearMobilizationMultiplier: 1.75
+    MinimumEssentialEconomyShare: 0.2
+    PostWarDemobilizationSpeed: 0.08
+    LeaderVictoryMode: 1
+    LeaderPositionConfidenceDecay: 0.08
+    LeaderSearchExpiration: 120
+    MaximumLeaderObjectivesPerCampaign: 1
+    MaximumOwnershipTransfersPerSlice: 12
+    CountryTransferFrameBudgetMs: 0.5
+    MaximumBallisticEventsProcessedPerSlice: 4
+  autoRegisterWithManager: 1
+  autoApplyGovernmentSnapshot: 1
+  fallbackCadenceSeconds: 0.65
+  nonCapitalConstructionIntervalSeconds: 5
+  runtimeSummary: 
 --- !u!1 &1199505861
 GameObject:
   m_ObjectHideFlags: 0
@@ -4799,6 +7451,37 @@ Transform:
   - {fileID: 925739429}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1237986794
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1237986795}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1237986795
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1237986794}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1327741823}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1256667837
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4872,6 +7555,86 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: b3faa5cae794f224f81ea88eb0e3d89e, type: 3}
+--- !u!1 &1259020048
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1259020049}
+  - component: {fileID: 1259020050}
+  m_Layer: 0
+  m_Name: IA01 Build Slot Registry
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1259020049
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1259020048}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1259020050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1259020048}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d4e86b8a095f7e4f8124d5ff4d520a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+  layoutId: ia01.layout
+  layoutVersion: 1
+  slotRegistry: {fileID: 0}
+  autonomousZones: []
+  capitalSlot: {fileID: 0}
+--- !u!1 &1261110477
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1261110478}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1261110478
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1261110477}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 57709343}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1277943856
 GameObject:
   m_ObjectHideFlags: 0
@@ -4906,6 +7669,37 @@ Transform:
   - {fileID: 68161524}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1279900927
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1279900928}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1279900928
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1279900927}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 36}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 442228684}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1285206650
 GameObject:
   m_ObjectHideFlags: 0
@@ -4939,6 +7733,203 @@ Transform:
   - {fileID: 1481294692}
   m_Father: {fileID: 1683863950}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1297498812
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1297498813}
+  - component: {fileID: 1297498814}
+  m_Layer: 0
+  m_Name: IA01 Create - Tenda Militar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1297498813
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1297498812}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 85.00006, y: 0, z: 220.00049}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1687553031}
+  - {fileID: 680953142}
+  - {fileID: 948901200}
+  - {fileID: 45443996}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1297498814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1297498812}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.tenda
+  slotGroupId: abertura_inicial
+  allowedRole: 9
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1297498813}
+  unitSpawnPoint: {fileID: 1687553031}
+  exitDirection: {fileID: 680953142}
+  reservedFootprint: {x: 28, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
+--- !u!1 &1308001188
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1308001189}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1308001189
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1308001188}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 57709343}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1309937703
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1309937704}
+  - component: {fileID: 1309937706}
+  - component: {fileID: 1309937705}
+  m_Layer: 0
+  m_Name: IA01 Create - Estaleiro Naval
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1309937704
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1309937703}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3235, y: 1, z: 1739.0005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 965664246}
+  - {fileID: 49785310}
+  - {fileID: 580498478}
+  - {fileID: 1876101061}
+  - {fileID: 988821057}
+  - {fileID: 804386805}
+  - {fileID: 978254139}
+  - {fileID: 1165099147}
+  - {fileID: 294686859}
+  - {fileID: 221451061}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1309937705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1309937703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 488dbb675be1aa44b9d43b1415adafc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01NavalBuildSlot
+  buildSlot: {fileID: 1309937706}
+  navalSpawnPoint: {fileID: 965664246}
+  exitDirection: {fileID: 49785310}
+  minimumWaterDepth: 4
+  minimumExitWidth: 18
+  maritimeRegionId: 
+  cachedValid: 0
+  cachedReason: Ainda nao validado.
+  cachedLayoutVersion: -1
+--- !u!114 &1309937706
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1309937703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.estaleiro
+  slotGroupId: abertura_inicial
+  allowedRole: 19
+  allowedDomain: 1
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1309937704}
+  unitSpawnPoint: {fileID: 965664246}
+  exitDirection: {fileID: 49785310}
+  reservedFootprint: {x: 70, y: 48}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &1319298034
 GameObject:
   m_ObjectHideFlags: 0
@@ -5097,6 +8088,104 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
+--- !u!1 &1325831809
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1325831810}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1325831810
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1325831809}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1731801339}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1327741822
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1327741823}
+  - component: {fileID: 1327741824}
+  m_Layer: 0
+  m_Name: IA01 Create - Quartel Militar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1327741823
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1327741822}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1297, y: 0, z: -267.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1237986795}
+  - {fileID: 723411264}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1327741824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1327741822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.quartel
+  slotGroupId: infraestrutura_estrategica
+  allowedRole: 9
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1327741823}
+  unitSpawnPoint: {fileID: 1237986795}
+  exitDirection: {fileID: 723411264}
+  reservedFootprint: {x: 75, y: 55}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1001 &1344049398
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5154,6 +8243,37 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e51415fb69670f9499215302060e90ab, type: 3}
+--- !u!1 &1344186394
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1344186395}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1344186395
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1344186394}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1950525443}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1345856046
 GameObject:
   m_ObjectHideFlags: 0
@@ -5271,6 +8391,37 @@ Transform:
   m_Children:
   - {fileID: 1661253538}
   m_Father: {fileID: 1232395131}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1374357224
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1374357225}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1374357225
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1374357224}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 17158242}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!134 &1384333196
 PhysicsMaterial:
@@ -5396,6 +8547,68 @@ MonoBehaviour:
   paisesProibidos: 
   alvoPreferencial: 0
   tamanhoGizmo: 10000
+--- !u!1 &1443863200
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1443863201}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1443863201
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1443863200}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 131750468}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1446662778
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1446662779}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1446662779
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1446662778}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 42}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1451157269
 GameObject:
   m_ObjectHideFlags: 0
@@ -5433,6 +8646,7 @@ MonoBehaviour:
   refreshInterval: 0.5
   tilesCreatedPerFrame: 1
   terrainRowsPerFrame: 2
+  alphamapRowsPerFrame: 1
   vegetationRowsPerFrame: 1
   showDiagnostics: 1
 --- !u!4 &1451157271
@@ -5824,6 +9038,37 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c568086df55d283488b2d98b7b05f0f3, type: 2}
   - {fileID: 11400000, guid: 086cd0b0d6f7b1d46b6cb34b4f2a23f2, type: 2}
   - {fileID: 11400000, guid: 3885dab8c83b4d6394327603fb15555e, type: 2}
+--- !u!1 &1485907493
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1485907494}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1485907494
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1485907493}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 149143915}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1498349612
 GameObject:
   m_ObjectHideFlags: 0
@@ -5956,6 +9201,37 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &1560439109
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1560439110}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1560439110
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1560439109}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1804353802}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1568409755
 GameObject:
   m_ObjectHideFlags: 0
@@ -6125,6 +9401,57 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
+--- !u!1 &1618027941
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1618027942}
+  - component: {fileID: 1618027943}
+  m_Layer: 0
+  m_Name: Create Patrulha Aerea 03
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1618027942
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1618027941}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 620, y: 0, z: -460}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 124237670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1618027943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1618027941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be48778a38d58954c882b3342080ceb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
+  raio: 260
+  largura: 520
+  profundidade: 360
+  altitude: 120
+  intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!1 &1619804373
 GameObject:
   m_ObjectHideFlags: 0
@@ -6621,6 +9948,8 @@ MonoBehaviour:
   streamer: {fileID: 1451157270}
   visible: 1
   sampleInterval: 1
+  activeObjectScanInterval: 5
+  activeObjectScanBudgetPerFrame: 256
   benchmarkLabel: 250km-parado
   benchmarkKey: 290
 --- !u!1 &1683087101
@@ -6817,6 +10146,37 @@ MonoBehaviour:
   WeakEmpireRecoveryActive: 0
   ActiveStrategicTarget: 
   ImperialPlanSummary: 
+--- !u!1 &1687553030
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1687553031}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1687553031
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1687553030}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 36}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1297498813}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1707234389
 GameObject:
   m_ObjectHideFlags: 0
@@ -6990,6 +10350,186 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1707234389}
   m_CullTransparentMesh: 1
+--- !u!1 &1712768643
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1712768644}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1712768644
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1712768643}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1731801339}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1715073026
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1715073027}
+  m_Layer: 0
+  m_Name: Direcao_Saida
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1715073027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1715073026}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 120}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 442228684}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1730061014
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1730061015}
+  - component: {fileID: 1730061016}
+  m_Layer: 0
+  m_Name: Create Patrulha Aerea 02
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1730061015
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730061014}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 620, y: 0, z: 460}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 124237670}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1730061016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730061014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be48778a38d58954c882b3342080ceb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
+  raio: 260
+  largura: 520
+  profundidade: 360
+  altitude: 120
+  intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
+--- !u!1 &1731801338
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1731801339}
+  - component: {fileID: 1731801340}
+  m_Layer: 0
+  m_Name: IA01 Create - Armazenamento 03
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1731801339
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1731801338}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 48.00006, y: 0, z: 52.00049}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1712768644}
+  - {fileID: 1325831810}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1731801340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1731801338}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.armazenamento.03
+  slotGroupId: infraestrutura_estrategica
+  allowedRole: 4
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1731801339}
+  unitSpawnPoint: {fileID: 1712768644}
+  exitDirection: {fileID: 1325831810}
+  reservedFootprint: {x: 34, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1001 &1744977305
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7264,7 +10804,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1757997231
 Transform:
   m_ObjectHideFlags: 0
@@ -7559,6 +11099,73 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1804060268}
   m_CullTransparentMesh: 1
+--- !u!1 &1804353801
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1804353802}
+  - component: {fileID: 1804353803}
+  m_Layer: 0
+  m_Name: IA01 Create - Apartamento Alto
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1804353802
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1804353801}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -35.99994, y: 0, z: -722.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1560439110}
+  - {fileID: 246484298}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1804353803
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1804353801}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.apartamento_alto
+  slotGroupId: abertura_inicial
+  allowedRole: 1
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1804353802}
+  unitSpawnPoint: {fileID: 1560439110}
+  exitDirection: {fileID: 246484298}
+  reservedFootprint: {x: 28, y: 28}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &1804713713
 GameObject:
   m_ObjectHideFlags: 0
@@ -7890,11 +11497,182 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
+--- !u!1 &1817975819
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1817975820}
+  m_Layer: 0
+  m_Name: Pista_Inicio
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1817975820
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1817975819}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1856837725
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1856837727}
+  - component: {fileID: 1856837726}
+  m_Layer: 0
+  m_Name: ia01 (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &1856837726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1856837725}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c4d4ea6d99c4895b4e9bba2b8ddf4a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01Manager
+  autoBindSceneControllers: 1
+  autoResolveIdentityCollisions: 1
+  autoSpawnMissingControllersFromSave: 1
+  autoSpawnFromGovernment: 0
+  frameBudgetMilliseconds: 1.5
+  serviceRefreshInterval: 1
+  summaryRefreshInterval: 0.25
+  matchSeed: 1
+  usarOrquestradorGlobal: 1
+  frequenciaEstrategicaGlobal: 0.5
+  logSummary: 0
+  runtimeSummary: 
+--- !u!4 &1856837727
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1856837725}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: -103477, y: -0.00001474121, z: -9568.764}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1195098061}
+  - {fileID: 2143834470}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1859319329
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1859319330}
+  - component: {fileID: 1859319331}
+  m_Layer: 0
+  m_Name: "IA01 Patrulha Aerea - \xC1rea Inicial"
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1859319330
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1859319329}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 280}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1859319331
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1859319329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be48778a38d58954c882b3342080ceb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01AirPatrolZone
+  raio: 260
+  largura: 520
+  profundidade: 360
+  altitude: 120
+  intervaloDias: 1
+  tipoSetor: 0
+  aeronavesDesejadas: 2
 --- !u!4 &1872334166 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
   m_PrefabInstance: {fileID: 1582100448}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1876101060
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1876101061}
+  m_Layer: 0
+  m_Name: Pista_Fim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1876101061
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1876101060}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1309937704}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1878281230
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7968,6 +11746,37 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: -5645937942226959685, guid: 24d3ffdfbd9ad794396fcaf086144eef, type: 3}
+--- !u!1 &1899927098
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1899927099}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1899927099
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1899927098}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 36}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1040724796}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1906979408
 GameObject:
   m_ObjectHideFlags: 0
@@ -8212,6 +12021,104 @@ MonoBehaviour:
   BootstrapStage: 0
   GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
   GizmoRadius: 5
+--- !u!1 &1945413123
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1945413124}
+  m_Layer: 0
+  m_Name: Spawn_Unidades
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1945413124
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1945413123}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 16}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 131750468}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1950525442
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1950525443}
+  - component: {fileID: 1950525444}
+  m_Layer: 0
+  m_Name: IA01 Create - Plataforma Offshore B
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1950525443
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1950525442}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3235, y: 1, z: 1959.0005}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 538613783}
+  - {fileID: 1344186395}
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1950525444
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1950525442}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.plataforma.b
+  slotGroupId: plataformas_offshore
+  allowedRole: 11
+  allowedDomain: 1
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 1950525443}
+  unitSpawnPoint: {fileID: 538613783}
+  exitDirection: {fileID: 1344186395}
+  reservedFootprint: {x: 75, y: 55}
+  safetyMargin: 2
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &1956591382
 GameObject:
   m_ObjectHideFlags: 0
@@ -8407,6 +12314,71 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &2018424023
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2018424024}
+  - component: {fileID: 2018424025}
+  m_Layer: 0
+  m_Name: IA01 Create - Ares Antiaereo (posicione no editor)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2018424024
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018424023}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 100, y: 0, z: -464}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2018424025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018424023}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: ia01.local.ares_ar
+  slotGroupId: defesa_antiaerea
+  allowedRole: 7
+  allowedDomain: 0
+  required: 0
+  exactPosition: 1
+  allowAlternativeSlot: 0
+  preferredConstructionItemId: defesa.ares_ar
+  buildingPoint: {fileID: 2018424024}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 80, y: 80}
+  safetyMargin: 4
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &2020639508
 GameObject:
   m_ObjectHideFlags: 0
@@ -8783,6 +12755,71 @@ MonoBehaviour:
   paisesProibidos: 
   alvoPreferencial: 0
   tamanhoGizmo: 1.25
+--- !u!1 &2073586282
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2073586283}
+  - component: {fileID: 2073586284}
+  m_Layer: 0
+  m_Name: EnergiaSlot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2073586283
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2073586282}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -514, y: 0, z: -690.9995}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2143834470}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2073586284
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2073586282}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0f0740146d06ff44acf4fdf2946d272, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlot
+  slotId: energia_01
+  slotGroupId: energia
+  allowedRole: 3
+  allowedDomain: 0
+  required: 1
+  exactPosition: 1
+  allowAlternativeSlot: 1
+  preferredConstructionItemId: 
+  buildingPoint: {fileID: 2073586283}
+  unitSpawnPoint: {fileID: 0}
+  exitDirection: {fileID: 0}
+  reservedFootprint: {x: 16, y: 16}
+  safetyMargin: 1
+  ownerTeamId: 2
+  state: 0
+  reservedCommandId: 
+  ownerNationId: 2
+  constructedItemId: 
+  reservedAt: 0
+  blockReason: 
+  layoutVersion: 1
 --- !u!1 &2092833405
 GameObject:
   m_ObjectHideFlags: 0
@@ -8844,6 +12881,37 @@ MonoBehaviour:
   paisesProibidos: 
   alvoPreferencial: 0
   tamanhoGizmo: 1.25
+--- !u!1 &2093539647
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2093539648}
+  m_Layer: 0
+  m_Name: Pista_Fim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2093539648
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2093539647}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 50, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 341444785}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2110901011
 GameObject:
   m_ObjectHideFlags: 0
@@ -8966,6 +13034,195 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1315448553159251154, guid: e51415fb69670f9499215302060e90ab, type: 3}
   m_PrefabInstance: {fileID: 878715497}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2143834469
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2143834470}
+  - component: {fileID: 2143834480}
+  - component: {fileID: 2143834479}
+  - component: {fileID: 2143834478}
+  - component: {fileID: 2143834477}
+  - component: {fileID: 2143834476}
+  - component: {fileID: 2143834475}
+  - component: {fileID: 2143834474}
+  - component: {fileID: 2143834473}
+  - component: {fileID: 2143834472}
+  - component: {fileID: 2143834471}
+  m_Layer: 0
+  m_Name: IA01CityLayout
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2143834470
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -1, z: 0, w: 0}
+  m_LocalPosition: {x: 46.28058, y: 0.00001474121, z: 42.236816}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1259020049}
+  - {fileID: 752573470}
+  - {fileID: 2073586283}
+  - {fileID: 83234853}
+  - {fileID: 33343848}
+  - {fileID: 473527738}
+  - {fileID: 1040724796}
+  - {fileID: 341444785}
+  - {fileID: 57709343}
+  - {fileID: 1804353802}
+  - {fileID: 1157402475}
+  - {fileID: 17158242}
+  - {fileID: 1309937704}
+  - {fileID: 1297498813}
+  - {fileID: 348852474}
+  - {fileID: 149143915}
+  - {fileID: 1731801339}
+  - {fileID: 442228684}
+  - {fileID: 131750468}
+  - {fileID: 1950525443}
+  - {fileID: 36965226}
+  - {fileID: 1327741823}
+  - {fileID: 2018424024}
+  m_Father: {fileID: 1856837727}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2143834471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834473
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834474
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834478
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834479
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01BuildSlotRegistry
+--- !u!114 &2143834480
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2143834469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d4e86b8a095f7e4f8124d5ff4d520a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA01.IA01CityLayout
+  layoutId: ia01.layout
+  layoutVersion: 1
+  slotRegistry: {fileID: 0}
+  autonomousZones: []
+  capitalSlot: {fileID: 752573471}
 --- !u!1 &3100000010
 GameObject:
   m_ObjectHideFlags: 0
@@ -11995,3 +16252,5 @@ SceneRoots:
   - {fileID: 1803721178}
   - {fileID: 2010727219}
   - {fileID: 2064377788}
+  - {fileID: 1856837727}
+  - {fileID: 1118805666}

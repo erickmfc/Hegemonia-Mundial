@@ -827,7 +827,7 @@ public class Estaleiro : MonoBehaviour
         if (eficienciaEnergia <= 0f) return;
 
         float incremento = (Time.deltaTime / tempoDeConstrucao) * 100f * eficienciaEnergia;
-        slot.progresso += incremento;
+        slot.progresso = Mathf.Min(100f, slot.progresso + incremento);
 
         // Atualiza Barra de Progresso
         if (slot.barFillImage != null)

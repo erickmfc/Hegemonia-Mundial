@@ -682,9 +682,10 @@ public sealed class ReformaGameplayRegressionTests
     public void AircraftKeepsItsRouteWhenCarrierResubmitsTheSameList()
     {
         Component aircraft = Create("ControleAviao");
+        float altitude = (float)Read(aircraft, "altitudeVoo");
         var route = (IList)Read(aircraft, "rotaPatrulhaSalva");
-        var points = new[] { new Vector3(100f, 181f, 100f), new Vector3(500f, 181f, 100f),
-            new Vector3(500f, 181f, 500f), new Vector3(100f, 181f, 500f) };
+        var points = new[] { new Vector3(100f, altitude, 100f), new Vector3(500f, altitude, 100f),
+            new Vector3(500f, altitude, 500f), new Vector3(100f, altitude, 500f) };
         foreach (var point in points) route.Add(point);
         Call(aircraft, "RegistrarPatrulha", route);
         CollectionAssert.AreEqual(points, route);
@@ -717,6 +718,7 @@ public sealed class ReformaGameplayRegressionTests
     {
         Component aircraft = Create("ControleAviao");
         Component stateComponent = aircraft;
+        float altitude = (float)Read(stateComponent, "altitudeVoo");
         Set(stateComponent, "estadoAtual", Enum.Parse(TypeOf("ControleAviao+EstadoAviao"), "EmMissao"));
         Set(stateComponent, "estaEmModoVooFisico", true);
         Set(stateComponent, "alvoPrioritarioIA", true);
@@ -728,8 +730,8 @@ public sealed class ReformaGameplayRegressionTests
         Vector3 destination = new Vector3(900f, 20f, -450f);
         Assert.IsTrue((bool)Call(stateComponent, "ReceberOrdemManual", destination));
         Assert.AreEqual(0, route.Count);
-        Assert.AreEqual(new Vector3(900f, 181f, -450f), Read(stateComponent, "centroDaPatrulha"));
-        Assert.AreEqual(new Vector3(900f, 181f, -450f), Read(stateComponent, "alvoGPSVoo"));
+        Assert.AreEqual(new Vector3(900f, altitude, -450f), Read(stateComponent, "centroDaPatrulha"));
+        Assert.AreEqual(new Vector3(900f, altitude, -450f), Read(stateComponent, "alvoGPSVoo"));
         Assert.IsFalse((bool)Read(stateComponent, "ordemParaRetorno"));
         Assert.IsFalse((bool)Read(stateComponent, "alvoPrioritarioIA"));
     }
@@ -738,15 +740,16 @@ public sealed class ReformaGameplayRegressionTests
     public void AircraftPatrolOrderUpdatesTheExistingFlightInsteadOfStartingASecondOne()
     {
         Component aircraft = Create("ControleAviao");
+        float altitude = (float)Read(aircraft, "altitudeVoo");
         Set(aircraft, "estadoAtual", Enum.Parse(TypeOf("ControleAviao+EstadoAviao"), "EmMissao"));
         Set(aircraft, "estaEmModoVooFisico", true);
 
         var points = new List<Vector3>
         {
-            new Vector3(200f, 181f, 200f),
-            new Vector3(500f, 181f, 200f),
-            new Vector3(500f, 181f, 500f),
-            new Vector3(200f, 181f, 500f)
+            new Vector3(200f, altitude, 200f),
+            new Vector3(500f, altitude, 200f),
+            new Vector3(500f, altitude, 500f),
+            new Vector3(200f, altitude, 500f)
         };
 
         Assert.IsTrue((bool)Call(aircraft, "ReceberOrdemPatrulha", points));

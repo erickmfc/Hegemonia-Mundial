@@ -20,6 +20,17 @@ public enum QuartelStatusRecrutaV2
 public sealed class QuartelRecrutaV2
 {
     public string id;
+    public string nomeCompleto;
+    public string nacionalidade;
+    public int teamId;
+    public int idade;
+    public string patente;
+    public string especialidade;
+    public float experiencia;
+    public int diaInicioServico;
+    public long salarioDiario;
+    public string postoAtual;
+    public string instalacaoId;
     public QuartelForcaV2 forca;
     public QuartelStatusRecrutaV2 estado;
     public float progressoSegundos;
@@ -92,9 +103,13 @@ public sealed class QuartelComunicacaoSnapshotV2
 [DisallowMultipleComponent]
 public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 {
+    private const int MetaEfetivoPadrao = GerenciadorQuartel.MetaEfetivoInicial;
+    private static readonly Dictionary<int, int> quarteisAtivosPorEquipe = new Dictionary<int, int>();
+    private int equipeRegistrada = -1;
+
     [Header("Identidade administrativa")]
     [Min(1)] public int teamID = 1;
-    [Min(1)] public int recrutamentoPorDia = 4;
+    [Min(1)] public int recrutamentoPorDia = 40;
     [Min(1f)] public float tempoFormacaoPadraoSegundos = 10f;
     [Min(0)] public int custoFolhaPorMilitarDia = 1;
     [Min(1)] public int periodoFolhaDias = 15;
@@ -110,6 +125,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
     [Header("Historico administrativo")]
     [SerializeField] private List<QuartelRecrutaV2> recrutas = new List<QuartelRecrutaV2>();
+    private readonly List<QuartelRecrutaV2> filaFormacao = new List<QuartelRecrutaV2>(32);
     [SerializeField] private List<QuartelPerdaV2> perdas = new List<QuartelPerdaV2>();
 
     private GerenciadorQuartel quartel;
@@ -259,6 +275,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
     private void OnEnable()
     {
+        AtualizarRegistroEquipe();
         if (Application.isPlaying)
         {
             InscreverNoRelogio();
@@ -270,6 +287,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
     private void OnDisable()
     {
+        RemoverRegistroEquipe();
         if (GerenciadorTempo.Instancia != null)
         {
             GerenciadorTempo.Instancia.OnDataAlterada -= AoMudarDia;
@@ -385,6 +403,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
     public void ProcessarDia(int dia)
     {
+        AtualizarRegistroEquipe();
         dia = Mathf.Max(1, dia);
         if (dia <= ultimoDiaObservado && ultimoDiaObservado >= 0) return;
 
@@ -412,17 +431,24 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
     /// </summary>
     public void ProcessarTreinamento(float segundos)
     {
-        if (segundos <= 0f || recrutas == null) return;
+        if (segundos <= 0f || filaFormacao == null || filaFormacao.Count == 0) return;
         float tempoBase = Mathf.Max(1f, quartel != null ? quartel.tempoFormacaoSegundos : tempoFormacaoPadraoSegundos);
 
-        for (int i = 0; i < recrutas.Count; i++)
+        for (int i = filaFormacao.Count - 1; i >= 0; i--)
         {
-            QuartelRecrutaV2 recruta = recrutas[i];
-            if (recruta == null || recruta.estado != QuartelStatusRecrutaV2.EmFormacao) continue;
+            QuartelRecrutaV2 recruta = filaFormacao[i];
+            if (recruta == null || recruta.estado != QuartelStatusRecrutaV2.EmFormacao)
+            {
+                filaFormacao.RemoveAt(i);
+                continue;
+            }
+
             recruta.tempoTotalSegundos = tempoBase;
             recruta.progressoSegundos = Mathf.Min(tempoBase, recruta.progressoSegundos + segundos);
+            recruta.experiencia = Mathf.Clamp01(recruta.experiencia + segundos / Mathf.Max(tempoBase * 10f, 1f));
             if (recruta.progressoSegundos + 0.0001f < tempoBase) continue;
             ConcluirFormacao(recruta);
+            filaFormacao.RemoveAt(i);
         }
     }
 
@@ -448,8 +474,13 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
         if (pais.orcamentoInvestimentoAtivo)
             OrcamentoInvestimentoNacional.ProcessarDia(SistemaGovernoMundial.Instancia, pais, ObterDiaAtual());
 
-        int meta = quartel != null ? Mathf.Max(1, quartel.metaEfetivo) : 24;
-        int emFormacao = ContarRecrutasEmFormacao();
+        if (quartel != null)
+            pais.metaEfetivoMilitar = Mathf.Max(1, quartel.metaEfetivo);
+
+        int meta = quartel != null ? Mathf.Max(1, quartel.metaEfetivo) : MetaEfetivoPadrao;
+        int emFormacao = Mathf.Max(
+            Mathf.Max(ContarRecrutasEmFormacao(), SistemaMilitar.ObterRegistrosEmFormacao(pais)),
+            Mathf.Max(0, pais.reservistas));
         int falta = Mathf.Max(0, meta - pais.populacaoMilitarAtiva - emFormacao);
         int disponiveis = Mathf.Max(0, pais.alistaveis);
         int limite = Mathf.Clamp(quantidade, 1, 100);
@@ -469,15 +500,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
                 break;
             pais.alistaveis = Mathf.Max(0, pais.alistaveis - 1);
             pais.reservistas += 1;
-            recrutas.Add(new QuartelRecrutaV2
-            {
-                id = "quartel-recruta-" + (++sequenciaRecruta),
-                forca = forca,
-                estado = QuartelStatusRecrutaV2.EmFormacao,
-                progressoSegundos = 0f,
-                tempoTotalSegundos = Mathf.Max(1f, quartel != null ? quartel.tempoFormacaoSegundos : tempoFormacaoPadraoSegundos),
-                diaRecrutamento = ObterDiaAtual()
-            });
+            AdicionarNovoRecrutaEmFormacao(forca, ObterDiaAtual());
             recrutasPorForca[forca] = recrutasPorForca[forca] + 1;
             recrutasRecrutados++;
         }
@@ -496,8 +519,13 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             OrcamentoInvestimentoNacional.ProcessarDia(SistemaGovernoMundial.Instancia, pais, dia);
         ultimoDiaRecrutamento = dia;
 
-        int meta = quartel != null ? Mathf.Max(1, quartel.metaEfetivo) : 24;
-        int emFormacao = ContarRecrutasEmFormacao();
+        if (quartel != null)
+            pais.metaEfetivoMilitar = Mathf.Max(1, quartel.metaEfetivo);
+
+        int meta = quartel != null ? Mathf.Max(1, quartel.metaEfetivo) : MetaEfetivoPadrao;
+        int emFormacao = Mathf.Max(
+            Mathf.Max(ContarRecrutasEmFormacao(), SistemaMilitar.ObterRegistrosEmFormacao(pais)),
+            Mathf.Max(0, pais.reservistas));
         int limiteFinanciado = pais.orcamentoInvestimentoAtivo
             ? OrcamentoInvestimentoNacional.ObterLimiteRecrutamentoDiario(pais)
             : int.MaxValue;
@@ -528,15 +556,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
                 break;
             pais.alistaveis = Mathf.Max(0, pais.alistaveis - 1);
             pais.reservistas += 1;
-            recrutas.Add(new QuartelRecrutaV2
-            {
-                id = "quartel-recruta-" + (++sequenciaRecruta),
-                forca = forca,
-                estado = QuartelStatusRecrutaV2.EmFormacao,
-                progressoSegundos = 0f,
-                tempoTotalSegundos = Mathf.Max(1f, quartel != null ? quartel.tempoFormacaoSegundos : tempoFormacaoPadraoSegundos),
-                diaRecrutamento = dia
-            });
+            AdicionarNovoRecrutaEmFormacao(forca, dia);
             recrutasConcluidos = ContarRecrutasConcluidos();
             recrutasPorForca[forca] = recrutasPorForca[forca] + 1;
             recrutasRecrutados++;
@@ -545,6 +565,113 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
         RecalcularPopulacao(pais);
         ultimoEvento = recrutadosNesteCiclo + " recruta(s) encaminhado(s) para formacao";
+    }
+
+    private void AdicionarNovoRecrutaEmFormacao(QuartelForcaV2 forca, int dia)
+    {
+        DadosPaisGoverno pais = ObterPais();
+        GameObject instalacao = quartel != null ? quartel.gameObject : gameObject;
+        string instalacaoId = ObterIdEstavel(instalacao);
+        var recruta = new QuartelRecrutaV2
+        {
+            id = "quartel-recruta-" + teamID + "-" + instalacaoId + "-" + (++sequenciaRecruta),
+            forca = forca,
+            estado = QuartelStatusRecrutaV2.EmFormacao,
+            progressoSegundos = 0f,
+            tempoTotalSegundos = Mathf.Max(1f, quartel != null ? quartel.tempoFormacaoSegundos : tempoFormacaoPadraoSegundos),
+            diaRecrutamento = Mathf.Max(1, dia),
+            nomeCompleto = GeradorNomesBatismo.GerarNome(),
+            nacionalidade = pais != null ? pais.nomePais : string.Empty,
+            teamId = teamID,
+            idade = UnityEngine.Random.Range(18, 36),
+            patente = "Recruta",
+            especialidade = GerarEspecialidade(forca),
+            experiencia = 0f,
+            salarioDiario = Math.Max(0, custoFolhaPorMilitarDia),
+            postoAtual = "Em formacao",
+            instalacaoId = instalacaoId
+        };
+
+        recrutas.Add(recruta);
+        filaFormacao.Add(recruta);
+        SistemaMilitar.RegistrarRecrutaQuartel(
+            pais,
+            recruta.id,
+            recruta.nomeCompleto,
+            teamID,
+            recruta.nacionalidade,
+            recruta.idade,
+            (int)recruta.forca,
+            recruta.patente,
+            recruta.especialidade,
+            recruta.experiencia,
+            recruta.diaRecrutamento,
+            recruta.diaInicioServico,
+            recruta.salarioDiario,
+            recruta.postoAtual,
+            recruta.instalacaoId,
+            true);
+    }
+
+    private void GarantirIdentidadeRecruta(QuartelRecrutaV2 recruta, DadosPaisGoverno pais)
+    {
+        if (recruta == null) return;
+        GameObject instalacao = quartel != null ? quartel.gameObject : gameObject;
+        if (string.IsNullOrWhiteSpace(recruta.id))
+        {
+            recruta.id = "quartel-recruta-" + teamID + "-" + ObterIdEstavel(instalacao) + "-" + (++sequenciaRecruta);
+        }
+        if (string.IsNullOrWhiteSpace(recruta.nomeCompleto)) recruta.nomeCompleto = GeradorNomesBatismo.GerarNome();
+        if (string.IsNullOrWhiteSpace(recruta.nacionalidade)) recruta.nacionalidade = pais != null ? pais.nomePais : string.Empty;
+        if (recruta.teamId <= 0) recruta.teamId = teamID;
+        if (recruta.idade < 18) recruta.idade = UnityEngine.Random.Range(18, 36);
+        if (string.IsNullOrWhiteSpace(recruta.patente))
+            recruta.patente = recruta.estado == QuartelStatusRecrutaV2.Ativo ? "Soldado" : "Recruta";
+        if (string.IsNullOrWhiteSpace(recruta.especialidade)) recruta.especialidade = GerarEspecialidade(recruta.forca);
+        if (recruta.estado == QuartelStatusRecrutaV2.Ativo)
+        {
+            if (recruta.diaInicioServico <= 0) recruta.diaInicioServico = Mathf.Max(1, recruta.diaRecrutamento);
+            if (string.IsNullOrWhiteSpace(recruta.postoAtual)) recruta.postoAtual = "Reserva nacional";
+        }
+        else if (string.IsNullOrWhiteSpace(recruta.postoAtual))
+        {
+            recruta.postoAtual = "Em formacao";
+        }
+
+        if (recruta.salarioDiario <= 0L) recruta.salarioDiario = Math.Max(0, custoFolhaPorMilitarDia);
+        if (string.IsNullOrWhiteSpace(recruta.instalacaoId)) recruta.instalacaoId = ObterIdEstavel(instalacao);
+        SistemaMilitar.RegistrarRecrutaQuartel(
+            pais,
+            recruta.id,
+            recruta.nomeCompleto,
+            recruta.teamId,
+            recruta.nacionalidade,
+            recruta.idade,
+            (int)recruta.forca,
+            recruta.patente,
+            recruta.especialidade,
+            recruta.experiencia,
+            recruta.diaRecrutamento,
+            recruta.diaInicioServico,
+            recruta.salarioDiario,
+            recruta.postoAtual,
+            recruta.instalacaoId,
+            recruta.estado == QuartelStatusRecrutaV2.EmFormacao);
+    }
+
+    private static string GerarEspecialidade(QuartelForcaV2 forca)
+    {
+        switch (forca)
+        {
+            case QuartelForcaV2.Veiculos:
+                return UnityEngine.Random.Range(0, 2) == 0 ? "Tripulante de tanque" : "Mecanico de campanha";
+            case QuartelForcaV2.Naval:
+                return UnityEngine.Random.Range(0, 2) == 0 ? "Marinheiro" : "Operador naval";
+            case QuartelForcaV2.Aerea:
+                return UnityEngine.Random.Range(0, 2) == 0 ? "Tecnico aeronautico" : "Operador de defesa aerea";
+            default:
+                return UnityEngine.Random.Range(0, 3) == 0 ? "Fuzileiro" : "Infantaria";
+        }
     }
 
     private void ConcluirFormacao(QuartelRecrutaV2 recruta)
@@ -557,6 +684,10 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
         pais.populacaoMilitarAtiva++;
         recruta.estado = QuartelStatusRecrutaV2.Ativo;
         recruta.progressoSegundos = recruta.tempoTotalSegundos;
+        recruta.patente = "Soldado";
+        recruta.diaInicioServico = ObterDiaAtual();
+        recruta.postoAtual = "Reserva nacional";
+        SistemaMilitar.ConcluirFormacaoDeRecruta(pais, recruta.id, recruta.diaInicioServico);
         recrutasConcluidos = ContarRecrutasConcluidos();
         RecalcularPopulacao(pais);
         ultimoEvento = "Formacao concluida: " + NomeForca(recruta.forca);
@@ -984,6 +1115,17 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             destino.adminRecrutas.Add(new SaveQuartelRecrutaData
             {
                 id = recruta.id,
+                nomeCompleto = recruta.nomeCompleto,
+                nacionalidade = recruta.nacionalidade,
+                teamId = recruta.teamId,
+                idade = recruta.idade,
+                patente = recruta.patente,
+                especialidade = recruta.especialidade,
+                experiencia = recruta.experiencia,
+                diaInicioServico = recruta.diaInicioServico,
+                salarioDiario = recruta.salarioDiario,
+                postoAtual = recruta.postoAtual,
+                instalacaoId = recruta.instalacaoId,
                 forca = (int)recruta.forca,
                 estado = (int)recruta.estado,
                 progressoSegundos = recruta.progressoSegundos,
@@ -1031,6 +1173,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
         }
 
         recrutas.Clear();
+        filaFormacao.Clear();
         GarantirDicionarioForcas();
         for (int i = 0; i < 4; i++) recrutasPorForca[(QuartelForcaV2)i] = 0;
         if (origem.adminRecrutas != null)
@@ -1039,15 +1182,30 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             {
                 SaveQuartelRecrutaData salvo = origem.adminRecrutas[i];
                 if (salvo == null) continue;
-                recrutas.Add(new QuartelRecrutaV2
+                QuartelRecrutaV2 recruta = new QuartelRecrutaV2
                 {
                     id = salvo.id,
+                    nomeCompleto = salvo.nomeCompleto,
+                    nacionalidade = salvo.nacionalidade,
+                    teamId = salvo.teamId,
+                    idade = salvo.idade,
+                    patente = salvo.patente,
+                    especialidade = salvo.especialidade,
+                    experiencia = Mathf.Max(0f, salvo.experiencia),
+                    diaInicioServico = Mathf.Max(0, salvo.diaInicioServico),
+                    salarioDiario = Math.Max(0L, salvo.salarioDiario),
+                    postoAtual = salvo.postoAtual,
+                    instalacaoId = salvo.instalacaoId,
                     forca = (QuartelForcaV2)Mathf.Clamp(salvo.forca, 0, 3),
                     estado = (QuartelStatusRecrutaV2)Mathf.Clamp(salvo.estado, 0, 1),
                     progressoSegundos = Mathf.Max(0f, salvo.progressoSegundos),
                     tempoTotalSegundos = Mathf.Max(1f, salvo.tempoTotalSegundos),
                     diaRecrutamento = Mathf.Max(1, salvo.diaRecrutamento)
-                });
+                };
+                GarantirIdentidadeRecruta(recruta, ObterPais());
+                recrutas.Add(recruta);
+                if (recruta.estado == QuartelStatusRecrutaV2.EmFormacao)
+                    filaFormacao.Add(recruta);
                 recrutasPorForca[(QuartelForcaV2)Mathf.Clamp(salvo.forca, 0, 3)]++;
             }
         }
@@ -1217,10 +1375,33 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
 
     private int ContarRecrutasEmFormacao()
     {
-        int total = 0;
-        for (int i = 0; i < recrutas.Count; i++)
-            if (recrutas[i] != null && recrutas[i].estado == QuartelStatusRecrutaV2.EmFormacao) total++;
-        return total;
+        return filaFormacao != null ? filaFormacao.Count : 0;
+    }
+
+    public static bool ExisteQuartelAtivoParaEquipe(int teamId)
+    {
+        return teamId > 0 && quarteisAtivosPorEquipe.TryGetValue(teamId, out int quantidade) && quantidade > 0;
+    }
+
+    private void AtualizarRegistroEquipe()
+    {
+        int equipeAtual = Mathf.Max(1, teamID);
+        if (equipeRegistrada == equipeAtual) return;
+        RemoverRegistroEquipe();
+        quarteisAtivosPorEquipe.TryGetValue(equipeAtual, out int quantidade);
+        quarteisAtivosPorEquipe[equipeAtual] = quantidade + 1;
+        equipeRegistrada = equipeAtual;
+    }
+
+    private void RemoverRegistroEquipe()
+    {
+        if (equipeRegistrada <= 0) return;
+        if (quarteisAtivosPorEquipe.TryGetValue(equipeRegistrada, out int quantidade))
+        {
+            if (quantidade <= 1) quarteisAtivosPorEquipe.Remove(equipeRegistrada);
+            else quarteisAtivosPorEquipe[equipeRegistrada] = quantidade - 1;
+        }
+        equipeRegistrada = -1;
     }
 
     private int ContarRecrutasConcluidos()

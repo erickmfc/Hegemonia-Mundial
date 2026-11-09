@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-04 23:56:57Z" end-time="2026-11-05 00:01:18Z" duration="261,1689657">
+  <test-suite type="TestSuite" id="1315" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-04 23:56:57Z" end-time="2026-11-05 00:01:18Z" duration="261.168966" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1311" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-04 23:56:57Z" end-time="2026-11-05 00:01:18Z" duration="261.112941" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="24168" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1097" name="GlobalMapRequestedAcceptancePlayModeTests" fullname="GlobalMapRequestedAcceptancePlayModeTests" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-11-04 23:56:57Z" end-time="2026-11-05 00:01:18Z" duration="261.074055" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1110" name="TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater" fullname="GlobalMapRequestedAcceptancePlayModeTests.TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater" methodname="TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater" classname="GlobalMapRequestedAcceptancePlayModeTests" runstate="Runnable" seed="991950844" result="Passed" start-time="2026-11-04 23:56:57Z" end-time="2026-11-05 00:01:18Z" duration="260.775724" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="Timeout" value="360000" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[[DEUSA][Team 2] Runtime vinculado | pais=Valdoria | presidente=Artur Nobre | moeda=Valdoria | modo=Normal | personalidade=Expansionista | observador=True | escopo=apenas DEUSA
+[Gameplay Bootstrap] cena=GlobalMapRTS IA01Manager=ativo controllers=0 registrados=0 Cartel=ausente
+[NovoJogo][Valdoria] DEUSA ativada em modo autônomo; autoridade de construção permanece no BrainMaster.
+[NovoJogo] Tesouro inicial aplicado a 1 IA(s) ativa(s); comida inicial de 1 IA(s) definida para 10000; estoques de combustíveis iniciais aplicados aos times 1,2.
+[Mapa] superfícies corrigidas: terrenos=1, reativados=0, marcadores=1
+[MenuComando] Limites do mapa tático pela definição global: centro=(0, 0) metades=(256250, 144250).
+[QuartelUI] documento inicializado: objeto=Menu Quartel - Controlador Global, root=True, panelSettings=True, sorting=1200
+[QuartelUI] Awake: objeto=Menu Quartel - Controlador Global, pronto=True, root=True, documento=True, administracao=False
+[Quartel] Awake: objeto=Menu Quartel - Controlador Global, cena=GlobalMapRTS, testeAuto=False, uiToolkit=True, painel=True
+[MapaGeral] Footprint lógico do GlobalWorldDefinition: 512000 x 288000 m; UV independente dos tiles ativos.
+[IA01 WorldNotReady] nenhum controller IA01 registrado na cena. Nenhuma construção ou slice foi executado.
+[DEUSA][Team 2] modoObservadorDebug=False | escopo=desligado | execucao DEUSA liberada.
+[IA_BackendBridge] Catalogo carregado: 104 itens disponíveis para a IA.
+[DEUSA][Team 2] estagio -> FundacaoNacional | motivo=progressao por infraestrutura: FundacaoNacional | politica=FundacaoNacional | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=HQ/Prefeitura
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[AuditoriaConteudo] Artilharia: unidade militar sem Collider (Ignorado)
+[AuditoriaConteudo] Artilharia: prefab sem SaveableEntity nem componente coletado pelo save em runtime
+[AuditoriaConteudo] Artilharia: unidade militar sem IdentidadeUnidade (Ignorado)
+[AuditoriaConteudo] Artilharia: unidade militar sem SistemaDeDanos (Ignorado)
+[AuditoriaConteudo] Gate de conteudo aprovado: fichas=104 erros=0 avisos=50 cena=GlobalMapRTS avisosConsoleSuprimidos=46
+[DEUSA][Team 2] estagio -> OrganizacaoEconomica | motivo=deficit de comida | politica=OrganizacaoEconomica | eco=0,80 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=Agricultura Nacional
+[Cidade inicial] Nova Aurora criada para o Team 1 com 5.000 habitantes em (-189271.40, 32.52, 86867.66).
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: base aerea militar | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: military airport | motivo=IA03 exige o Creaty manual próprio do aeroporto militar; busca geral bloqueada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-141461.0, 5.0, -124000.0) agente=(-141461.0, 5.0, -124000.0) velocidade=(4.07, 0.00, 0.00) restante=859,7 distanciaCosta=911,0
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: aeroporto militar | motivo=intencao duplicada
+[IA03][Valdoria] construção aguardando: base aerea militar | motivo=intencao duplicada
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+[IA03][Valdoria] construção aguardando: military airport | motivo=IA03 exige o Creaty manual próprio do aeroporto militar; busca geral bloqueada
+Progresso costeiro: tanque=(-141424.0, 5.0, -124000.0) agente=(-141424.0, 5.0, -124000.0) velocidade=(5.92, 0.00, 0.00) restante=822,7 distanciaCosta=874,0
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[IA03][Valdoria] construção aguardando: Hangar | motivo=intencao duplicada
+✅ [Armazem_Recursos(Clone)] Galpão de Recursos ativado: Armazém Central
+Progresso costeiro: tanque=(-141360.6, 5.0, -124000.0) agente=(-141360.6, 5.0, -124000.0) velocidade=(4.70, 0.00, 0.00) restante=759,3 distanciaCosta=810,6
+[DEUSA][Team 2] estagio -> ExpansaoTerritorial | motivo=progressao por infraestrutura: ExpansaoTerritorial | politica=ExpansaoTerritorial | eco=0,45 mil=0,15 def=0,25 atk=0,10 | alvo=Monitorar fronteira | build=Agricultura Nacional
+[DEUSA][Team 2] estagio -> MilitarizacaoDefensiva | motivo=progressao por infraestrutura: MilitarizacaoDefensiva | politica=MilitarizacaoDefensiva | eco=0,25 mil=0,40 def=0,75 atk=0,10 | alvo=Monitorar fronteira | build=Nenhuma
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-141295.1, 5.0, -124000.0) agente=(-141295.1, 5.0, -124000.0) velocidade=(3.80, 0.00, 0.00) restante=693,8 distanciaCosta=745,1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-141226.8, 5.0, -124000.0) agente=(-141226.8, 5.0, -124000.0) velocidade=(3.94, 0.00, 0.00) restante=625,5 distanciaCosta=676,8
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-141158.1, 5.0, -124000.0) agente=(-141158.1, 5.0, -124000.0) velocidade=(4.25, 0.00, 0.00) restante=556,8 distanciaCosta=608,1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+Progresso costeiro: tanque=(-141089.8, 5.0, -124000.0) agente=(-141089.8, 5.0, -124000.0) velocidade=(3.91, 0.00, 0.00) restante=488,5 distanciaCosta=539,8
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-141021.7, 5.0, -124000.0) agente=(-141021.7, 5.0, -124000.0) velocidade=(4.15, 0.00, 0.00) restante=420,4 distanciaCosta=471,7
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Nenhuma | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-140950.8, 5.0, -124000.0) agente=(-140950.8, 5.0, -124000.0) velocidade=(3.91, 0.00, 0.00) restante=349,5 distanciaCosta=400,8
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Nenhuma | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-140881.1, 5.0, -124000.0) agente=(-140881.1, 5.0, -124000.0) velocidade=(3.47, 0.00, 0.00) restante=279,8 distanciaCosta=331,1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Nenhuma | alvo=Monitorar fronteira
+Progresso costeiro: tanque=(-140812.8, 5.0, -124000.0) agente=(-140812.8, 5.0, -124000.0) velocidade=(4.35, 0.00, 0.00) restante=211,5 distanciaCosta=262,8
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-140743.1, 5.0, -124000.0) agente=(-140743.1, 5.0, -124000.0) velocidade=(5.23, 0.00, 0.00) restante=141,8 distanciaCosta=193,1
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Nenhuma | alvo=Monitorar fronteira
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Progresso costeiro: tanque=(-140674.9, 5.0, -124000.0) agente=(-140674.9, 5.0, -124000.0) velocidade=(4.19, 0.00, 0.00) restante=73,6 distanciaCosta=124,9
+[DEUSA][Team 2] resumo | observador=desligado | proximaPrioridade=CriarEsquadraoAereo (76) Formar esquadrao minimo antes de atacar. | proximaConstrucao=Agricultura Nacional | alvo=Monitorar fronteira
+Progresso costeiro: tanque=(-140607.3, 5.0, -124000.0) agente=(-140607.3, 5.0, -124000.0) velocidade=(4.11, 0.00, 0.00) restante=6,0 distanciaCosta=57,3
+[LogisticaMercado] Aguardando pier de origem/destino para a rota 2:1
+Teste costeiro: origem=(-141500.0, 5.0, -124000.0) água=(-140500.0, 5.0, -124000.0) destino=(-140601.3, 5.0, -124000.0) deslocamento=898,2 distanciaCostaInicial=950,0 distanciaCostaFinal=51,8 velocidadeFinal=(0.00, 0.00, 0.00) árvores=0 direção=(1.00, 0.00, 0.00)
+<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

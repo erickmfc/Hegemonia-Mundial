@@ -102,7 +102,34 @@ public static class RecursosPorTime
             "petroleo_time_" + id,
             "bruto_entregue=" + estado.petroleoEntregue);
 
+        if (ObterRefinoAutomaticoAtivo(teamId))
+        {
+            industrial.RefinarPetroleoAutomaticoPier(teamId, recebido);
+        }
+
         return recebido;
+    }
+
+    public static bool ObterRefinoAutomaticoAtivo(int teamId)
+    {
+        if (teamId <= 0) return false;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null) return false;
+        DadosPaisGoverno pais = governo.ObterPais(teamId);
+        return pais != null && pais.refinoAutomaticoPier;
+    }
+
+    public static void DefinirRefinoAutomaticoAtivo(int teamId, bool ativo)
+    {
+        if (teamId <= 0) return;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null) return;
+        DadosPaisGoverno pais = governo.ObterPais(teamId);
+        if (pais != null)
+        {
+            pais.refinoAutomaticoPier = ativo;
+            governo.NotificarGovernoAtualizado();
+        }
     }
 
     // Compatibilidade com cenas/testes antigos: a opção anterior marcava como
@@ -204,6 +231,18 @@ public static class RecursosPorTime
 
         string teamKey = teamId.ToString();
         double combustivelDisponivel = industrial.ObterQuantidadePais(teamId, recursoCombustivel);
+
+        // Se o refino automático estiver ativo e o estoque for menor que o desejado,
+        // converte do petróleo bruto disponível sob demanda imediatamente (sem travar nem pesar):
+        if (combustivelDisponivel < desejado && ObterRefinoAutomaticoAtivo(teamId))
+        {
+            double deficit = desejado - combustivelDisponivel;
+            if (industrial.ConverterPetroleoEmCombustivel(teamId, recursoCombustivel, deficit))
+            {
+                combustivelDisponivel = industrial.ObterQuantidadePais(teamId, recursoCombustivel);
+            }
+        }
+
         float possivel = Mathf.Min(desejado, (float)combustivelDisponivel);
         if (possivel <= 0.01f)
         {

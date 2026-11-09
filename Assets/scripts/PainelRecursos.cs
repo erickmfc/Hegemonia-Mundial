@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using System.Collections.Generic;
 
 public class PainelRecursos : MonoBehaviour
 {
@@ -56,6 +57,7 @@ public class PainelRecursos : MonoBehaviour
     private TextMeshProUGUI statusEstoqueValor;
 
     private RectTransform raizHUD;
+    private RectTransform barraSuperiorNaval;
     private RectTransform blocoRecursos;
     private RectTransform blocoStatus;
     private RectTransform blocoObjetivos;
@@ -65,6 +67,8 @@ public class PainelRecursos : MonoBehaviour
     private RectTransform conteudoObjetivos;
     private SistemaGovernoMundial governoInscrito;
     private TextMeshProUGUI iconeDinheiro;
+    private readonly TextMeshProUGUI[] valoresBarraNaval = new TextMeshProUGUI[16];
+    private readonly List<Sprite> spritesBarraNaval = new List<Sprite>();
 
     private TextMeshProUGUI setaRecursos;
     private TextMeshProUGUI setaStatus;
@@ -85,7 +89,7 @@ public class PainelRecursos : MonoBehaviour
         larguraHUD = Mathf.Max(larguraHUD, 340f);
         escalaHUD = Mathf.Max(escalaHUD, 0.68f);
         margemEsquerda = Mathf.Max(margemEsquerda, 14f);
-        margemTopo = Mathf.Max(margemTopo, 34f);
+        margemTopo = Mathf.Max(margemTopo, 126f);
         espacamentoBlocos = Mathf.Max(espacamentoBlocos, 8f);
     }
 
@@ -97,6 +101,7 @@ public class PainelRecursos : MonoBehaviour
         if (construirAutomaticamente)
         {
             GarantirCanvas();
+            CriarBarraSuperiorNaval();
             ConstruirHUD();
         }
     }
@@ -118,6 +123,13 @@ public class PainelRecursos : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (barraSuperiorNaval != null)
+        {
+            if (Application.isPlaying) Destroy(barraSuperiorNaval.gameObject);
+            else DestroyImmediate(barraSuperiorNaval.gameObject);
+        }
+        DestruirSpritesBarraNaval();
+
         if (governoInscrito != null)
             governoInscrito.OnGovernoAtualizado -= AtualizarTudo;
         governoInscrito = null;
@@ -161,8 +173,140 @@ public class PainelRecursos : MonoBehaviour
     {
         RemoverVisualDoObjetoBase();
         GarantirCanvas();
+        CriarBarraSuperiorNaval();
         ConstruirHUD();
         AtualizarTudo();
+    }
+
+    private void CriarBarraSuperiorNaval()
+    {
+        DestruirSpritesBarraNaval();
+        Canvas canvas = GetComponentInParent<Canvas>();
+        float fatorCanvas = canvas != null ? Mathf.Max(0.01f, canvas.scaleFactor) : 1f;
+        Transform canvasRaiz = transform.parent != null ? transform.parent : transform;
+        Transform existente = canvasRaiz.Find("HUD_Superior_Naval");
+        if (existente != null)
+        {
+            if (Application.isPlaying) Destroy(existente.gameObject);
+            else DestroyImmediate(existente.gameObject);
+        }
+
+        GameObject barra = CriarObjetoUI("HUD_Superior_Naval", canvasRaiz);
+        barraSuperiorNaval = barra.GetComponent<RectTransform>();
+        barraSuperiorNaval.anchorMin = new Vector2(0f, 1f);
+        barraSuperiorNaval.anchorMax = new Vector2(1f, 1f);
+        barraSuperiorNaval.pivot = new Vector2(0.5f, 1f);
+        barraSuperiorNaval.anchoredPosition = new Vector2(0f, -8f / fatorCanvas);
+        barraSuperiorNaval.sizeDelta = new Vector2(-24f / fatorCanvas, 112f / fatorCanvas);
+
+        Image moldura = barra.AddComponent<Image>();
+        moldura.sprite = CarregarSpriteNaval("painel_naval");
+        moldura.type = Image.Type.Simple;
+        moldura.preserveAspect = false;
+        moldura.raycastTarget = false;
+
+        RectTransform faixaInterior = CriarRect("Faixa_Interior", barra.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+        faixaInterior.offsetMin = new Vector2(13f / fatorCanvas, 10f / fatorCanvas);
+        faixaInterior.offsetMax = new Vector2(-13f / fatorCanvas, -10f / fatorCanvas);
+        Image interior = faixaInterior.gameObject.AddComponent<Image>();
+        interior.color = new Color(0.015f, 0.075f, 0.12f, 0.98f);
+        interior.raycastTarget = false;
+
+        for (int i = 0; i < valoresBarraNaval.Length; i++)
+        {
+            float inicio = (float)i / valoresBarraNaval.Length;
+            float fim = (float)(i + 1) / valoresBarraNaval.Length;
+            RectTransform celula = CriarRect("Indicador_" + (i + 1), faixaInterior, new Vector2(inicio, 0f), new Vector2(fim, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            celula.offsetMin = new Vector2(3f / fatorCanvas, 4f / fatorCanvas);
+            celula.offsetMax = new Vector2(-3f / fatorCanvas, -4f / fatorCanvas);
+
+            if (i > 0)
+            {
+                RectTransform divisoria = CriarRect("Divisoria", celula, new Vector2(0f, 0.12f), new Vector2(0f, 0.88f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(1f / fatorCanvas, 0f));
+                Image divisoriaImagem = divisoria.gameObject.AddComponent<Image>();
+                divisoriaImagem.color = new Color(0.30f, 0.72f, 0.90f, 0.38f);
+                divisoriaImagem.raycastTarget = false;
+            }
+
+            Image icone = CriarImagem("Icone", celula, CarregarSpriteNaval((i + 1).ToString("00") + "_" + NomesIconesNaval[i]));
+            RectTransform iconeRect = icone.rectTransform;
+            iconeRect.anchorMin = new Vector2(0f, 0.5f);
+            iconeRect.anchorMax = new Vector2(0f, 0.5f);
+            iconeRect.pivot = new Vector2(0f, 0.5f);
+            iconeRect.anchoredPosition = new Vector2(3f / fatorCanvas, 0f);
+            iconeRect.sizeDelta = new Vector2(25f / fatorCanvas, 25f / fatorCanvas);
+            icone.preserveAspect = true;
+
+            TextMeshProUGUI label = CriarTexto("Nome", celula, RotulosBarraNaval[i], Mathf.Max(1, Mathf.RoundToInt(10f / fatorCanvas)), corTextoSecundario, TextAlignmentOptions.Left, FontStyles.Bold);
+            ConfigurarTextoCelula(label.rectTransform, 0.56f, 1f, fatorCanvas);
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 7f / fatorCanvas;
+            label.fontSizeMax = 10f / fatorCanvas;
+
+            TextMeshProUGUI valor = CriarTexto("Valor", celula, "—", Mathf.Max(1, Mathf.RoundToInt(14f / fatorCanvas)), corTexto, TextAlignmentOptions.Left, FontStyles.Bold);
+            ConfigurarTextoCelula(valor.rectTransform, 0f, 0.56f, fatorCanvas);
+            valor.enableAutoSizing = true;
+            valor.fontSizeMin = 7f / fatorCanvas;
+            valor.fontSizeMax = 14f / fatorCanvas;
+            valoresBarraNaval[i] = valor;
+        }
+
+        barra.transform.SetAsLastSibling();
+    }
+
+    private static readonly string[] NomesIconesNaval =
+    {
+        "calendario", "dinheiro", "economia", "armazem", "estabilidade", "populacao", "pesquisa", "aco",
+        "comida", "petroleo", "energia", "defesa", "industria", "militares", "reservistas", "radar_mapa"
+    };
+
+    private static readonly string[] RotulosBarraNaval =
+    {
+        "DATA", "SALDO", "ECONOMIA", "ARMAZEM", "ESTAB.", "POP.", "PESQ.", "ACO",
+        "COMIDA", "PETROLEO", "ENERGIA", "DEFESA", "INDUSTRIA", "MILITARES", "RESERVAS", "PAIS"
+    };
+
+    private Sprite CarregarSpriteNaval(string nome)
+    {
+        Texture2D textura = Resources.Load<Texture2D>("HUDSuperiorNaval/" + nome);
+        if (textura == null) return null;
+
+        textura.filterMode = FilterMode.Bilinear;
+        textura.wrapMode = TextureWrapMode.Clamp;
+        Sprite sprite = Sprite.Create(textura, new Rect(0f, 0f, textura.width, textura.height), new Vector2(0.5f, 0.5f), 100f);
+        spritesBarraNaval.Add(sprite);
+        return sprite;
+    }
+
+    private void DestruirSpritesBarraNaval()
+    {
+        for (int i = 0; i < spritesBarraNaval.Count; i++)
+        {
+            if (spritesBarraNaval[i] != null)
+            {
+                if (Application.isPlaying) Destroy(spritesBarraNaval[i]);
+                else DestroyImmediate(spritesBarraNaval[i]);
+            }
+        }
+        spritesBarraNaval.Clear();
+    }
+
+    private Image CriarImagem(string nome, Transform parent, Sprite sprite)
+    {
+        GameObject go = CriarObjetoUI(nome, parent);
+        Image imagem = go.AddComponent<Image>();
+        imagem.sprite = sprite;
+        imagem.color = sprite != null ? Color.white : new Color(0.2f, 0.65f, 0.8f, 0.9f);
+        imagem.raycastTarget = false;
+        return imagem;
+    }
+
+    private static void ConfigurarTextoCelula(RectTransform rect, float minY, float maxY, float fatorCanvas)
+    {
+        rect.anchorMin = new Vector2(0f, minY);
+        rect.anchorMax = new Vector2(1f, maxY);
+        rect.offsetMin = new Vector2(31f / fatorCanvas, 1f / fatorCanvas);
+        rect.offsetMax = new Vector2(-2f / fatorCanvas, -1f / fatorCanvas);
     }
 
     private void GarantirCanvas()
@@ -674,6 +818,7 @@ public class PainelRecursos : MonoBehaviour
             if (textoEstoque != null) textoEstoque.text = "42%";
             if (textoExercito != null) textoExercito.text = "0";
             AtualizarStatusLateral(null, 0f, 0f);
+            AtualizarBarraNaval(paisIdentidade, null, -1f, simboloMoeda);
 
             return;
         }
@@ -720,6 +865,43 @@ public class PainelRecursos : MonoBehaviour
             textoExercito.text = CensoImperial.Instancia.totalUnidades.ToString("N0");
 
         AtualizarStatusLateral(paisJogador, energiaConsumida, energiaProduzida, ocupacaoArmazem);
+        AtualizarBarraNaval(paisJogador, r, ocupacaoArmazem, simboloMoeda);
+    }
+
+    private void AtualizarBarraNaval(DadosPaisGoverno pais, GerenciadorRecursos recursos, float ocupacaoArmazem, string simboloMoeda)
+    {
+        string data = GerenciadorTempo.Instancia != null ? "DIA " + GerenciadorTempo.Instancia.totalDias.ToString("N0") : "--";
+        int pesquisasAtivas = 0;
+        int pesquisasTotais = 0;
+        if (pais != null && pais.pesquisas != null)
+        {
+            pesquisasTotais = pais.pesquisas.Count;
+            for (int i = 0; i < pais.pesquisas.Count; i++)
+                if (pais.pesquisas[i] != null && pais.pesquisas[i].emAndamento) pesquisasAtivas++;
+        }
+
+        DefinirValorBarraNaval(0, data);
+        DefinirValorBarraNaval(1, recursos != null ? simboloMoeda.Trim() + " " + recursos.dinheiro.ToString("N0") : "--");
+        DefinirValorBarraNaval(2, pais != null ? pais.nivelEconomico + "%" : "--");
+        DefinirValorBarraNaval(3, ocupacaoArmazem >= 0f ? ocupacaoArmazem.ToString("0") + "%" : "--");
+        DefinirValorBarraNaval(4, pais != null ? pais.estabilidade.ToString("0") + "%" : "--");
+        DefinirValorBarraNaval(5, pais != null ? pais.populacao.ToString("N0") + "/" + pais.populacaoMaxima.ToString("N0") : recursos != null ? recursos.populacaoAtual.ToString("N0") + "/" + recursos.populacaoMaxima.ToString("N0") : "--");
+        DefinirValorBarraNaval(6, pais != null ? pesquisasAtivas + "/" + pesquisasTotais : "--");
+        DefinirValorBarraNaval(7, recursos != null ? recursos.aco.ToString("N0") : "--");
+        DefinirValorBarraNaval(8, pais != null ? pais.comida.ToString("N0") : recursos != null ? recursos.comida.ToString("N0") : "--");
+        DefinirValorBarraNaval(9, recursos != null ? recursos.petroleo.ToString("N0") : "--");
+        DefinirValorBarraNaval(10, pais != null ? Mathf.RoundToInt(pais.energiaProduzida) + "/" + Mathf.RoundToInt(pais.energiaConsumida) + " MW" : "--");
+        DefinirValorBarraNaval(11, pais != null ? pais.nivelMilitar + "%" : "--");
+        DefinirValorBarraNaval(12, pais != null ? pais.nivelIndustrial + "%" : "--");
+        DefinirValorBarraNaval(13, pais != null ? pais.populacaoMilitarAtiva.ToString("N0") : "--");
+        DefinirValorBarraNaval(14, pais != null ? pais.reservistas.ToString("N0") : "--");
+        DefinirValorBarraNaval(15, pais != null ? pais.nomePais : "--");
+    }
+
+    private void DefinirValorBarraNaval(int indice, string valor)
+    {
+        if (valoresBarraNaval[indice] != null)
+            valoresBarraNaval[indice].text = valor;
     }
 
     private void AtualizarEnergiaHUD(float consumida, float produzida)

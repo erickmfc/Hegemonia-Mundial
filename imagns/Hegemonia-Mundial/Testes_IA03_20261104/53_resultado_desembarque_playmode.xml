@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-05 02:53:53Z" end-time="2026-11-05 02:53:53Z" duration="0,3477908">
+  <test-suite type="TestSuite" id="1315" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-05 02:53:53Z" end-time="2026-11-05 02:53:53Z" duration="0.347791" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1311" name="Hegemonia.PlayMode.Tests.dll" fullname="C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial/Library/ScriptAssemblies/Hegemonia.PlayMode.Tests.dll" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-05 02:53:53Z" end-time="2026-11-05 02:53:53Z" duration="0.264838" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13072" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestFixture" id="1260" name="NavioTransporteTropasDesembarquePlayModeTests" fullname="NavioTransporteTropasDesembarquePlayModeTests" classname="NavioTransporteTropasDesembarquePlayModeTests" runstate="Runnable" testcasecount="1" result="Passed" start-time="2026-11-05 02:53:53Z" end-time="2026-11-05 02:53:53Z" duration="0.250772" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1261" name="PontoDeSaidaAbaixoDoTerrenoDesembarcaNaAlturaDoSolo" fullname="NavioTransporteTropasDesembarquePlayModeTests.PontoDeSaidaAbaixoDoTerrenoDesembarcaNaAlturaDoSolo" methodname="PontoDeSaidaAbaixoDoTerrenoDesembarcaNaAlturaDoSolo" classname="NavioTransporteTropasDesembarquePlayModeTests" runstate="Runnable" seed="239418555" result="Passed" start-time="2026-11-05 02:53:53Z" end-time="2026-11-05 02:53:53Z" duration="0.156729" asserts="0">
+          <properties>
+            <property name="_JOINTYPE" value="UnityCombinatorial" />
+            <property name="Timeout" value="30000" />
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,26 @@
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Built from '6000.2/staging' branch; Version is '6000.2.15f1 (0707b6d1e918) revision 460726'; Using compiler version '194234433'; Build Type 'Release'
+OS: 'Windows 11  (10.0.22621) 64bit Professional' Language: 'pt' Physical Memory: 16315 MB
+[Licensing::IpcConnector] Channel LicenseClient-Mathe doesn't exist
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-11-05T01:34:35Z
+[Licensing::Module] Successfully launched the LicensingClient (PId: 22728)
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Unity.exe
+-batchmode
+-nographics
+-projectPath
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial
+-runTests
+-testPlatform
+PlayMode
+-testFilter
+GlobalMapRequestedAcceptancePlayModeTests.ValdoriaBuildsManualShipyardAndPierThroughTheRuntimeQueue
+-testResults
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\22_runtimequeue_plataforma_chamada_imediata.xml
+-logFile
+C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial\imagns\Hegemonia-Mundial\Testes_IA03_20261104\22_runtimequeue_plataforma_chamada_imediata.log
+Successfully changed project path to: C:\Users\Mathe\Documents\Unity Projects\Hegemonia-Mundial
+C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial
+Exiting without the bug reporter. Application will terminate with return code 1

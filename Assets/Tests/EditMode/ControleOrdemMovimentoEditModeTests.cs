@@ -212,7 +212,10 @@ public sealed class ControleOrdemMovimentoEditModeTests
         Vector3 novoPonto = new Vector3(240f, 95f, -130f);
         MethodInfo emitirPatrulha = controleType.GetMethod(
             "EmitirOrdemPatrulha",
-            BindingFlags.Instance | BindingFlags.Public);
+            BindingFlags.Instance | BindingFlags.Public,
+            null,
+            new[] { typeof(IList<Vector3>) },
+            null);
         Assert.That(emitirPatrulha, Is.Not.Null);
         Assert.That(
             (bool)emitirPatrulha.Invoke(controle, new object[] { new List<Vector3> { novoPonto } }),

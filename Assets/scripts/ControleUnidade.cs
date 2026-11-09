@@ -112,6 +112,12 @@ public class ControleUnidade : MonoBehaviour
     private const float IntervaloWatchdogOrdem = 1.25f;
     private const float TempoMaximoSemProgresso = 7.5f;
     private const float IntervaloRelatorioWatchdogBloqueado = 8f;
+    private const float RaioAjusteDestinoTerrestre = 850f;
+    private const float DistanciaMaximaAjusteCostaTerrestre = 20000f;
+    private const float PassoBuscaCostaTerrestre = 250f;
+    private const float MargemInteriorCostaTerrestre = 12f;
+    private const float RaioBuscaNavMeshCostaTerrestre = 20f;
+    private const int IteracoesRefinamentoCostaTerrestre = 12;
     private const int MaxReemissoesWatchdogOrdem = 2;
     private bool cacheCombateSujo = true;
     private ControleTorreta[] cacheTorretas = System.Array.Empty<ControleTorreta>();
@@ -123,6 +129,9 @@ public class ControleUnidade : MonoBehaviour
     private LancadorNaval[] cacheLancadoresNavais = System.Array.Empty<LancadorNaval>();
     private ControleSubmarino[] cacheSubmarinos = System.Array.Empty<ControleSubmarino>();
     private ControleAviaoAC130[] cacheAvioesAC130 = System.Array.Empty<ControleAviaoAC130>();
+    private Renderer[] renderersDetalheVeicularDistante = System.Array.Empty<Renderer>();
+    private bool[] estadoOriginalDetalheVeicular = System.Array.Empty<bool>();
+    private bool detalheVeicularDistanteAplicado;
 
     [Header("Trilha Oficial")]
     [SerializeField] private DominioControleUnidade dominioControleAtual = DominioControleUnidade.Terrestre;
@@ -225,6 +234,8 @@ public class ControleUnidade : MonoBehaviour
         {
             CombustivelUnidade.Garantir(gameObject);
         }
+
+        CachearDetalheVeicularDistante();
     }
 
     void SanearBoxCollidersComEscalaNegativa()
@@ -332,6 +343,7 @@ public class ControleUnidade : MonoBehaviour
 
     protected virtual void OnDisable()
     {
+        RestaurarDetalheVeicularDistante();
         CancelarOrdemMovimentoExterna("unidade desativada");
         OrquestradorGlobalOrdens.LiberarUnidade(
             gameObject,
@@ -461,6 +473,12 @@ public class ControleUnidade : MonoBehaviour
         if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
+        AtualizarDetalheVeicularDistante();
+        if (DeveAdiarTickTaticoDistante())
+        {
+            InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Terra, inicioUpdate);
+            return;
+        }
 
         if (!Hegemonia.RTS.RTSInputBindings.IsTextEntryFocused()
             && selecionado && EhUnidadeNaval()
@@ -847,6 +865,21 @@ public class ControleUnidade : MonoBehaviour
         TipoOrdemMovimento tipo)
     {
         ultimoMotivoRecusaOrdem = string.Empty;
+
+        // Resolve coastal water clicks before validating the route's fuel
+        // autonomy. Otherwise a valid shore approach is rejected based on the
+        // unreachable point on the submerged shelf instead of the land edge.
+        if (!EhUnidadeNaval() && !ehAereo && hovercraftTransporte == null
+            && RegistroSuperficieMapa.TryClassify(
+                destino,
+                out ClassificacaoSuperficieMapa superficieDestinoBruto,
+                out _)
+            && superficieDestinoBruto == ClassificacaoSuperficieMapa.Agua
+            && TentarProjetarDestinoCosteiroTerrestre(destino, out Vector3 destinoCosteiro))
+        {
+            destino = destinoCosteiro;
+        }
+
         if (DestinoTerrestreBloqueadoPorDesmilitarizacao(destino))
         {
             DefinirMotivoRecusaOrdem("destino em região desmilitarizada");
@@ -2246,6 +2279,136 @@ public class ControleUnidade : MonoBehaviour
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajada, heroica);
     }
 
+    private void CachearDetalheVeicularDistante()
+    {
+        if (identidadeUnidade == null || identidadeUnidade.tipoUnidade != TipoUnidade.Veiculo)
+        {
+            return;
+        }
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        var detalhes = new List<Renderer>(8);
+        var estadosOriginais = new List<bool>(8);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null || renderer is SkinnedMeshRenderer)
+            {
+                continue;
+            }
+
+            string nome = renderer.gameObject.name.ToLowerInvariant();
+            bool rodaSecundaria = (nome.Contains("wheel") && !nome.Contains("wheelhouse"))
+                || nome.Contains("roda");
+            if (!rodaSecundaria)
+            {
+                continue;
+            }
+
+            detalhes.Add(renderer);
+            estadosOriginais.Add(renderer.enabled);
+        }
+
+        renderersDetalheVeicularDistante = detalhes.ToArray();
+        estadoOriginalDetalheVeicular = estadosOriginais.ToArray();
+    }
+
+    private void AtualizarDetalheVeicularDistante()
+    {
+        if (renderersDetalheVeicularDistante == null || renderersDetalheVeicularDistante.Length == 0)
+        {
+            return;
+        }
+
+        bool estaEmCombate = PossuiAlvoDeCombateAtivo();
+        bool ocultarDetalhes = estadoOtimizacao.distante
+            && !selecionado
+            && !estaEmCombate;
+        if (ocultarDetalhes == detalheVeicularDistanteAplicado)
+        {
+            return;
+        }
+
+        detalheVeicularDistanteAplicado = ocultarDetalhes;
+        for (int i = 0; i < renderersDetalheVeicularDistante.Length; i++)
+        {
+            Renderer renderer = renderersDetalheVeicularDistante[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            renderer.enabled = ocultarDetalhes ? false : estadoOriginalDetalheVeicular[i];
+        }
+    }
+
+    private void RestaurarDetalheVeicularDistante()
+    {
+        if (!detalheVeicularDistanteAplicado || renderersDetalheVeicularDistante == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < renderersDetalheVeicularDistante.Length; i++)
+        {
+            Renderer renderer = renderersDetalheVeicularDistante[i];
+            if (renderer != null)
+            {
+                renderer.enabled = estadoOriginalDetalheVeicular[i];
+            }
+        }
+
+        detalheVeicularDistanteAplicado = false;
+    }
+
+    private bool DeveAdiarTickTaticoDistante()
+    {
+        if (selecionado
+            || ehAereo
+            || EhUnidadeNaval()
+            || estadoOtimizacao.estaEngajada
+            || !estadoOtimizacao.distante
+            || PossuiAlvoDeCombateAtivo())
+        {
+            return false;
+        }
+
+        float intervalo = InfraPerformanceGameplay.ResolverIntervalo(
+            0.08f,
+            estadoOtimizacao,
+            tickPesado: false,
+            preservarResposta: true);
+        return !InfraPerformanceGameplay.DeveExecutar(
+            this,
+            ref estadoOtimizacao.proximoTickLogica,
+            intervalo);
+    }
+
+    private bool PossuiAlvoDeCombateAtivo()
+    {
+        if (cacheCombateSujo)
+        {
+            GarantirCacheCombate();
+        }
+
+        for (int i = 0; i < cacheSistemasDeTiro.Length; i++)
+        {
+            SistemaDeTiro sistema = cacheSistemasDeTiro[i];
+            if (sistema == null)
+            {
+                continue;
+            }
+
+            Transform alvo = sistema.alvoAtual != null ? sistema.alvoAtual : sistema.alvoPrioritario;
+            if (alvo != null && alvo.gameObject.activeInHierarchy)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void AplicarDestinoNavMeshComCooldown(Vector3 destino, bool forcar)
     {
         if (agente == null || !agente.enabled || !agente.isActiveAndEnabled || !agente.isOnNavMesh)
@@ -2254,16 +2417,49 @@ public class ControleUnidade : MonoBehaviour
         }
 
         if (!EhUnidadeNaval() && !ehAereo && hovercraftTransporte == null
-            && RegistroSuperficieMapa.TryClassify(destino, out ClassificacaoSuperficieMapa superficieDestino, out _)
-            && superficieDestino == ClassificacaoSuperficieMapa.Chao
-            && NavMesh.SamplePosition(destino, out NavMeshHit destinoNavMesh, 100f, agente.areaMask)
-            && RegistroSuperficieMapa.TryClassify(destinoNavMesh.position, out ClassificacaoSuperficieMapa superficieAjustada, out _)
-            && superficieAjustada == ClassificacaoSuperficieMapa.Chao)
+            && RegistroSuperficieMapa.TryClassify(
+                destino,
+                out ClassificacaoSuperficieMapa superficieDestino,
+                out float alturaDestino))
         {
-            // Mouse clicks near a streamed coastline can land just outside the
-            // baked NavMesh although the selected point is still on visible
-            // land. Keep the destination on the nearest ground polygon.
-            destino = destinoNavMesh.position;
+            if (superficieDestino == ClassificacaoSuperficieMapa.Agua)
+            {
+                // Clicks in the water band at the coast must resolve to the
+                // nearest reachable point on the land side of that shoreline.
+                // Otherwise the agent follows a partial path on the submerged
+                // shelf and appears to stop short of the visible coast.
+                if (TentarProjetarDestinoCosteiroTerrestre(destino, out Vector3 destinoCosteiro))
+                    destino = destinoCosteiro;
+            }
+            else if (superficieDestino == ClassificacaoSuperficieMapa.Chao
+                || superficieDestino == ClassificacaoSuperficieMapa.Costa)
+            {
+                // Tactical-map orders arrive with y=0. Use the authoritative
+                // terrain height before sampling so an overlapping seabed
+                // polygon cannot win simply because it is vertically nearer.
+                destino.y = alturaDestino;
+
+                if (NavMesh.SamplePosition(destino, out NavMeshHit destinoNavMesh, RaioAjusteDestinoTerrestre, agente.areaMask)
+                    && RegistroSuperficieMapa.TryClassify(
+                        destinoNavMesh.position,
+                        out ClassificacaoSuperficieMapa superficieAjustada,
+                        out _)
+                    && (superficieAjustada == ClassificacaoSuperficieMapa.Chao
+                        || superficieAjustada == ClassificacaoSuperficieMapa.Costa))
+                {
+                    // Only snap a land order when the sampled polygon is
+                    // reachable from this unit; do not send it onto another
+                    // disconnected landmass.
+                    if (caminhoAutonomiaNavMesh == null)
+                        caminhoAutonomiaNavMesh = new NavMeshPath();
+
+                    if (agente.CalculatePath(destinoNavMesh.position, caminhoAutonomiaNavMesh)
+                        && caminhoAutonomiaNavMesh.status == NavMeshPathStatus.PathComplete)
+                    {
+                        destino = destinoNavMesh.position;
+                    }
+                }
+            }
         }
 
         float cooldownBase = EhUnidadeNaval() ? 1.10f : 0.80f;
@@ -2285,6 +2481,139 @@ public class ControleUnidade : MonoBehaviour
             agente.isStopped = false;
         }
         InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Pathfinding, inicioPath);
+    }
+
+    private bool TentarProjetarDestinoCosteiroTerrestre(Vector3 destinoAgua, out Vector3 destinoCosteiro)
+    {
+        destinoCosteiro = destinoAgua;
+        if (agente == null || !agente.isOnNavMesh
+            || !RegistroSuperficieMapa.TryClassify(
+                transform.position,
+                out ClassificacaoSuperficieMapa superficieOrigem,
+                out _)
+            || (superficieOrigem != ClassificacaoSuperficieMapa.Chao
+                && superficieOrigem != ClassificacaoSuperficieMapa.Costa))
+        {
+            return false;
+        }
+
+        Vector3 origem = transform.position;
+        origem.y = 0f;
+        Vector3 deslocamento = destinoAgua - origem;
+        deslocamento.y = 0f;
+        float distancia = deslocamento.magnitude;
+        if (distancia <= 1f || distancia > DistanciaMaximaAjusteCostaTerrestre)
+            return false;
+
+        int amostras = Mathf.Clamp(
+            Mathf.CeilToInt(distancia / PassoBuscaCostaTerrestre),
+            4,
+            80);
+        float limiteTerra = 0f;
+        float limiteAgua = 1f;
+        bool encontrouTransicaoCosta = false;
+
+        // Walk from the unit toward the clicked point and find the first
+        // land-to-water interval. The source texture is lower resolution than
+        // the streamed Terrain, so this coarse scan is followed by bisection.
+        for (int i = 1; i <= amostras; i++)
+        {
+            float t = i / (float)amostras;
+            Vector3 amostra = origem + deslocamento * t;
+            if (!RegistroSuperficieMapa.TryClassify(
+                    amostra,
+                    out ClassificacaoSuperficieMapa superficieAmostra,
+                    out _))
+            {
+                return false;
+            }
+
+            if (superficieAmostra == ClassificacaoSuperficieMapa.Agua)
+            {
+                limiteAgua = t;
+                encontrouTransicaoCosta = true;
+                break;
+            }
+
+            if (superficieAmostra == ClassificacaoSuperficieMapa.Chao
+                || superficieAmostra == ClassificacaoSuperficieMapa.Costa)
+            {
+                limiteTerra = t;
+                continue;
+            }
+
+            return false;
+        }
+
+        if (!encontrouTransicaoCosta)
+            return false;
+
+        for (int i = 0; i < IteracoesRefinamentoCostaTerrestre; i++)
+        {
+            float meio = (limiteTerra + limiteAgua) * 0.5f;
+            Vector3 amostra = origem + deslocamento * meio;
+            if (!RegistroSuperficieMapa.TryClassify(
+                    amostra,
+                    out ClassificacaoSuperficieMapa superficieAmostra,
+                    out _))
+            {
+                return false;
+            }
+
+            if (superficieAmostra == ClassificacaoSuperficieMapa.Chao
+                || superficieAmostra == ClassificacaoSuperficieMapa.Costa)
+            {
+                limiteTerra = meio;
+            }
+            else
+            {
+                limiteAgua = meio;
+            }
+        }
+
+        if (caminhoAutonomiaNavMesh == null)
+            caminhoAutonomiaNavMesh = new NavMeshPath();
+
+        float recuoBase = Mathf.Max(MargemInteriorCostaTerrestre, agente.radius * 2f + 4f);
+        float raioNavMesh = Mathf.Max(RaioBuscaNavMeshCostaTerrestre, agente.radius * 4f);
+        for (int tentativa = 0; tentativa < 7; tentativa++)
+        {
+            float recuo = recuoBase * (1 << tentativa);
+            float tTerra = Mathf.Max(0f, limiteTerra - recuo / distancia);
+            Vector3 candidato = origem + deslocamento * tTerra;
+            if (!RegistroSuperficieMapa.TryClassify(
+                    candidato,
+                    out ClassificacaoSuperficieMapa superficieCandidata,
+                    out float alturaCandidata)
+                || (superficieCandidata != ClassificacaoSuperficieMapa.Chao
+                    && superficieCandidata != ClassificacaoSuperficieMapa.Costa))
+            {
+                continue;
+            }
+
+            candidato.y = alturaCandidata;
+            if (!NavMesh.SamplePosition(candidato, out NavMeshHit hit, raioNavMesh, agente.areaMask)
+                || !RegistroSuperficieMapa.TryClassify(
+                    hit.position,
+                    out ClassificacaoSuperficieMapa superficieHit,
+                    out _)
+                || (superficieHit != ClassificacaoSuperficieMapa.Chao
+                    && superficieHit != ClassificacaoSuperficieMapa.Costa))
+            {
+                continue;
+            }
+
+            if (!agente.CalculatePath(hit.position, caminhoAutonomiaNavMesh)
+                || caminhoAutonomiaNavMesh.status != NavMeshPathStatus.PathComplete)
+            {
+                continue;
+            }
+
+            destinoCosteiro = hit.position;
+            return true;
+        }
+
+        return false;
     }
 
     private void RecuperarMovimentoTerrestreSeNecessario()

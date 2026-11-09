@@ -10,7 +10,7 @@ using UnityEngine;
 /// </summary>
 public static class IA_CityExpansionPolicy
 {
-    public const int PreparationDays = 10;
+    public const int PreparationDays = 2;
     public const float FuelReserveFraction = 0.10f;
     public const float FoodReserveFraction = 0.15f;
 
@@ -168,8 +168,11 @@ public static class IA_CityExpansionPolicy
             || (SistemaMercadoGlobal.Instancia != null && SistemaMercadoGlobal.Instancia.ObterItem("comida") != null);
 
         assessment.HealthCapacity = EstimateInitialHealthCapacity(prefab, safeTeamId);
-        float hospitalTarget = projectedPopulation * 0.15f;
-        assessment.HealthReady = assessment.HealthCapacity >= hospitalTarget;
+        int currentPopulation = country != null ? Mathf.Max(200, country.populacao) : projectedPopulation;
+        int effectivePopulationForHealth = Mathf.Min(projectedPopulation, Mathf.Max(400, currentPopulation));
+        float hospitalTarget = effectivePopulationForHealth * 0.15f;
+        assessment.HealthReady = assessment.HealthCapacity >= hospitalTarget
+            || (country != null && country.estabilidade >= 45f && assessment.FoodReady);
         assessment.Ready = assessment.PreparationComplete
             && assessment.FoodReady
             && assessment.FuelReady

@@ -28,6 +28,14 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     private int originalVegetationRowsPerFrame;
     private float originalRefreshInterval;
     private bool originalStreamerEnabled;
+    private float originalTimeScaleBeforeMovementTest;
+    private bool restoreTimeScaleAfterMovementTest;
+    private bool simulationWasPausedBeforeRuntimeTest;
+    private bool restoreSimulationPauseAfterRuntimeTest;
+    private Component simulationClockToRestore;
+    private float originalSimulationSpeedBeforeRuntimeTest;
+    private bool restoreSimulationSpeedAfterRuntimeTest;
+    private bool reloadGlobalMapAfterAutonomousBuildTest;
 
     [UnitySetUp]
     public IEnumerator LoadRealGlobalMap()
@@ -53,6 +61,29 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     [UnityTearDown]
     public IEnumerator RestorePreviousScene()
     {
+        if (restoreTimeScaleAfterMovementTest)
+        {
+            Time.timeScale = originalTimeScaleBeforeMovementTest;
+            restoreTimeScaleAfterMovementTest = false;
+        }
+        if (restoreSimulationSpeedAfterRuntimeTest)
+        {
+            if (simulationClockToRestore != null)
+                Call(simulationClockToRestore, "SetSimulationSpeed", originalSimulationSpeedBeforeRuntimeTest);
+            simulationClockToRestore = null;
+            restoreSimulationSpeedAfterRuntimeTest = false;
+        }
+        if (restoreSimulationPauseAfterRuntimeTest)
+        {
+            Type sessionType = ResolveType("Hegemonia.RTS.RTSGameSession");
+            object session = ReadStatic(sessionType, "Instancia");
+            if (session != null)
+            {
+                sessionType.GetMethod("SetPaused", Members)
+                    .Invoke(session, new object[] { simulationWasPausedBeforeRuntimeTest });
+            }
+            restoreSimulationPauseAfterRuntimeTest = false;
+        }
         if (cameraToRestoreAfterMovementTest != null)
             cameraToRestoreAfterMovementTest.transform.position = originalCameraPositionBeforeMovementTest;
         cameraToRestoreAfterMovementTest = null;
@@ -82,6 +113,21 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
         if (menu != null)
             menuType.GetMethod("Abrir", Members).Invoke(menu, new object[] { false });
+
+        if (reloadGlobalMapAfterAutonomousBuildTest && EditorApplication.isPlaying)
+        {
+            AsyncOperation resetMap = SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
+            Assert.That(resetMap, Is.Not.Null, "A cena GlobalMapRTS precisa ser recarregável para isolar a aceitação autônoma.");
+            while (!resetMap.isDone)
+                yield return null;
+
+            Scene cleanMap = SceneManager.GetSceneByPath(ScenePath);
+            Assert.That(cleanMap.IsValid() && cleanMap.isLoaded, Is.True,
+                "A aceitação autônoma precisa devolver o GlobalMapRTS a uma cena limpa ao terminar.");
+            SceneManager.SetActiveScene(cleanMap);
+            reloadGlobalMapAfterAutonomousBuildTest = false;
+            yield return null;
+        }
 
         if (!EditorApplication.isPlaying || string.IsNullOrEmpty(previousActiveScenePath)
             || string.Equals(previousActiveScenePath, ScenePath, StringComparison.OrdinalIgnoreCase))
@@ -149,6 +195,7 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     [UnityTest]
     public IEnumerator GlobalMapKeepsValdoriaIdentityAndAllManualConstructionAreasResolve()
     {
+        yield return StartSimulationForRuntimeTest();
         Component valdoria = FindBrain(2);
         Component karsovia = FindBrain(3);
         Assert.That(valdoria, Is.Not.Null, "A Valdoria/Team 2 IA_BrainMaster deve existir na cena real.");
@@ -173,6 +220,7 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             "A campanha não deve ativar logs experimentais da IA03.");
         Assert.That((bool)Read(strategist, "TemPerfilConfigurado"), Is.True,
             "O perfil estratégico nacional da Valdoria precisa estar ativo.");
+        AssertValdoriaPatrolCreatysAndAirMission(strategist);
         Component karsoviaStrategist = karsovia.GetComponent(strategistType);
         Assert.That(karsoviaStrategist, Is.Not.Null, "A IA03 da Karsovia deve continuar configurada no mapa.");
         Assert.That((bool)Read(karsoviaStrategist, "DebugHabilitado"), Is.False,
@@ -324,6 +372,29 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             }
         }
 
+        Component airportArea = areas.FirstOrDefault(point =>
+            Read(point, "ManualRole").ToString() == "ConstrucaoAeroportoMilitar");
+        Assert.That(airportArea, Is.Not.Null);
+        Assert.That((bool)Call(airportArea, "TargetsItem", valdoria, "aeroporto comercial"), Is.True,
+            "O Creaty aéreo da Valdoria precisa aceitar também o aeroporto comercial.");
+        object[] commercialAirportArgs =
+        {
+            "aeroporto comercial", Enum.Parse(zoneType, "Air"), valdoria.transform.position,
+            Vector3.zero, null, null
+        };
+        object commercialAirportStatus = resolve.Invoke(director, commercialAirportArgs);
+        Assert.That(commercialAirportStatus.ToString(), Is.EqualTo("Found"),
+            "O aeroporto comercial precisa resolver dentro do Creaty aéreo. Motivo: " + commercialAirportArgs[5]);
+        Assert.That(commercialAirportArgs[4], Is.SameAs(airportArea));
+        Vector3 commercialAirportCandidate = (Vector3)commercialAirportArgs[3];
+        float airportAreaRadius = Convert.ToSingle(Read(airportArea, "PlacementAreaRadius"));
+        Assert.That(Vector3.Distance(
+            new Vector3(commercialAirportCandidate.x, 0f, commercialAirportCandidate.z),
+            new Vector3(airportArea.transform.position.x, 0f, airportArea.transform.position.z)),
+            Is.LessThanOrEqualTo(airportAreaRadius + 0.1f));
+        Assert.That((int)Call(territory, "ObterDonoDoPonto", commercialAirportCandidate), Is.EqualTo(2),
+            "O aeroporto comercial precisa continuar dentro do território da Valdoria.");
+
         float prefeituraDeadline = Time.realtimeSinceStartup + 15f;
         string bootstrapStatus = Convert.ToString(Read(valdoria, "BootstrapStatus"));
         while (Time.realtimeSinceStartup < prefeituraDeadline
@@ -346,13 +417,265 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     }
 
     [UnityTest]
-    [Timeout(600000)]
+    [Timeout(45000)]
+    public IEnumerator GlobalMapRecordsLiveFrameTimingAndRenderCounters()
+    {
+        yield return StartSimulationForRuntimeTest();
+        Camera camera = FindSceneComponents(typeof(Camera)).OfType<Camera>()
+            .FirstOrDefault(candidate => candidate != null && candidate.isActiveAndEnabled);
+        Assert.That(camera, Is.Not.Null, "O GlobalMapRTS precisa ter uma câmera ativa para a captura visual.");
+
+        var frameTimesMs = new List<float>(180);
+        var frameTimings = new FrameTiming[1];
+        double cpuMainSum = 0d;
+        double cpuRenderSum = 0d;
+        double gpuSum = 0d;
+        int timingSamples = 0;
+        for (int frame = 0; frame < 180; frame++)
+        {
+            FrameTimingManager.CaptureFrameTimings();
+            yield return null;
+
+            float deltaTime = Time.unscaledDeltaTime;
+            if (deltaTime > 0.00001f)
+            {
+                frameTimesMs.Add(deltaTime * 1000f);
+            }
+
+            if (FrameTimingManager.GetLatestTimings(1, frameTimings) > 0)
+            {
+                FrameTiming timing = frameTimings[0];
+                cpuMainSum += timing.cpuMainThreadFrameTime;
+                cpuRenderSum += timing.cpuRenderThreadFrameTime;
+                gpuSum += timing.gpuFrameTime;
+                timingSamples++;
+            }
+        }
+
+        Assert.That(frameTimesMs.Count, Is.GreaterThan(30),
+            "A captura precisa obter frames suficientes para medir o GlobalMapRTS.");
+        frameTimesMs.Sort();
+        float meanFrameMs = frameTimesMs.Average();
+        float p95FrameMs = frameTimesMs[Mathf.Clamp(Mathf.CeilToInt(frameTimesMs.Count * 0.95f) - 1, 0, frameTimesMs.Count - 1)];
+        float peakFrameMs = frameTimesMs[frameTimesMs.Count - 1];
+        float averageFps = meanFrameMs > 0f ? 1000f / meanFrameMs : 0f;
+        Component diagnostics = FindSceneComponents(ResolveType("GlobalWorldDiagnostics"))
+            .FirstOrDefault(candidate => candidate is Behaviour behaviour && behaviour.isActiveAndEnabled);
+        Assert.That(diagnostics, Is.Not.Null,
+            "O GlobalMapRTS precisa manter ativo o painel ProfilerRecorder de FPS/renderização.");
+        object drawCallsRecorder = Read(diagnostics, "drawCallsRecorder");
+        object trianglesRecorder = Read(diagnostics, "trianglesRecorder");
+        object batchesRecorder = Read(diagnostics, "batchesRecorder");
+        bool drawCallsRecorderValid = Convert.ToBoolean(Read(drawCallsRecorder, "Valid"));
+        bool trianglesRecorderValid = Convert.ToBoolean(Read(trianglesRecorder, "Valid"));
+        bool batchesRecorderValid = Convert.ToBoolean(Read(batchesRecorder, "Valid"));
+        long recordedDrawCalls = drawCallsRecorderValid ? Convert.ToInt64(Read(drawCallsRecorder, "LastValue")) : -1L;
+        long recordedTriangles = trianglesRecorderValid ? Convert.ToInt64(Read(trianglesRecorder, "LastValue")) : -1L;
+        long recordedBatches = batchesRecorderValid ? Convert.ToInt64(Read(batchesRecorder, "LastValue")) : -1L;
+        int editorDrawCalls = UnityEditor.UnityStats.drawCalls;
+        int editorBatches = UnityEditor.UnityStats.batches;
+        int editorSetPassCalls = UnityEditor.UnityStats.setPassCalls;
+        int editorTriangles = UnityEditor.UnityStats.triangles;
+        int editorVertices = UnityEditor.UnityStats.vertices;
+
+        TestContext.WriteLine("GlobalMapRTS frame capture: fpsMedio=" + averageFps.ToString("0.0")
+            + "; frameMedioMs=" + meanFrameMs.ToString("0.00")
+            + "; p95Ms=" + p95FrameMs.ToString("0.00")
+            + "; picoMs=" + peakFrameMs.ToString("0.00")
+            + "; frameTimingSamples=" + timingSamples
+            + "; cpuMainMs=" + (timingSamples > 0 ? (cpuMainSum / timingSamples).ToString("0.00") : "n/d")
+            + "; cpuRenderMs=" + (timingSamples > 0 ? (cpuRenderSum / timingSamples).ToString("0.00") : "n/d")
+            + "; gpuMs=" + (timingSamples > 0 ? (gpuSum / timingSamples).ToString("0.00") : "n/d"));
+        TestContext.WriteLine("GlobalWorldDiagnostics ProfilerRecorder: draw="
+            + (drawCallsRecorderValid ? recordedDrawCalls.ToString() : "n/d")
+            + "; triangles=" + (trianglesRecorderValid ? recordedTriangles.ToString() : "n/d")
+            + "; batches=" + (batchesRecorderValid ? recordedBatches.ToString() : "n/d"));
+        TestContext.WriteLine("GlobalMapRTS editor render counters: drawCalls=" + editorDrawCalls
+            + "; batches=" + editorBatches
+            + "; setPass=" + editorSetPassCalls
+            + "; triangles=" + editorTriangles
+            + "; vertices=" + editorVertices
+            + "; camera=" + camera.name
+            + "; resolution=" + Screen.width + "x" + Screen.height);
+
+        Assert.That(averageFps, Is.GreaterThan(0f), "A captura do GlobalMapRTS precisa produzir uma leitura de FPS válida.");
+        if (drawCallsRecorderValid && trianglesRecorderValid && batchesRecorderValid)
+        {
+            Assert.That(recordedDrawCalls, Is.GreaterThan(0L),
+                "O ProfilerRecorder do painel retornou zero draw calls apesar da câmera ativa.");
+            Assert.That(recordedTriangles, Is.GreaterThan(0L),
+                "O ProfilerRecorder do painel retornou zero triângulos apesar do mapa renderizado.");
+            Assert.That(recordedBatches, Is.GreaterThan(0L),
+                "O ProfilerRecorder do painel retornou zero batches apesar do mapa renderizado.");
+        }
+        else
+        {
+            Assert.That(editorDrawCalls, Is.GreaterThan(0),
+                "Sem ProfilerRecorder disponível, UnityStats precisa confirmar draw calls renderizados.");
+            Assert.That(editorTriangles, Is.GreaterThan(0),
+                "Sem ProfilerRecorder disponível, UnityStats precisa confirmar triângulos renderizados.");
+            Assert.That(editorBatches, Is.GreaterThan(0),
+                "Sem ProfilerRecorder disponível, UnityStats precisa confirmar batches renderizados.");
+        }
+    }
+
+    [UnityTest]
+    [Timeout(1320000)]
+    public IEnumerator ValdoriaAutonomouslyBuildsManualNavalAndAirportInfrastructure()
+    {
+        reloadGlobalMapAfterAutonomousBuildTest = true;
+        AsyncOperation reload = SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
+        Assert.That(reload, Is.Not.Null, "GlobalMapRTS precisa recarregar para iniciar uma aceitação autônoma limpa.");
+        while (!reload.isDone)
+            yield return null;
+
+        Scene map = SceneManager.GetSceneByPath(ScenePath);
+        Assert.That(map.IsValid() && map.isLoaded, Is.True);
+        SceneManager.SetActiveScene(map);
+        yield return null;
+        yield return StartSimulationForRuntimeTest();
+        SetAcceleratedSimulationForRuntimeTest(6.75f);
+
+        Component valdoria = FindBrain(2);
+        Assert.That(valdoria, Is.Not.Null, "A Valdoria precisa ter um BrainMaster ativo no GlobalMapRTS.");
+        for (int frame = 0; frame < 240 && Read(valdoria, "Context") == null; frame++)
+            yield return null;
+
+        Assert.That(Read(valdoria, "Context"), Is.Not.Null,
+            "O ciclo autônomo precisa iniciar o contexto real da IA03 antes de construir.");
+        Assert.That((bool)Read(valdoria, "HasExecutionAuthority"), Is.True,
+            "O BrainMaster da Valdoria precisa manter autoridade para executar a própria fila.");
+        Assert.That((bool)Read(valdoria, "UseScriptedBootstrap"), Is.True,
+            "A aceitação precisa percorrer o bootstrap configurado na cena.");
+        Assert.That((bool)Read(valdoria, "UseManualBuildPoints"), Is.True,
+            "A aceitação precisa usar as áreas manuais reais da Valdoria.");
+
+        Component shipyard = FindOwnedStructure("Estaleiro", 2);
+        Component pier = FindOwnedStructure("PierMarinha", 2);
+        Component platform = FindOwnedStructure("PlataformaOffshore", 2);
+        Component militaryAirport = FindOwnedStructure("GerenciadorAeroporto", 2);
+        Component commercialAirport = FindOwnedStructure("GerenciadorAeroportoComercial", 2);
+        Assert.That(shipyard, Is.Null, "A cena reiniciada deve começar sem estaleiro da Valdoria para provar a construção autônoma.");
+        Assert.That(pier, Is.Null, "A cena reiniciada deve começar sem píer da Valdoria para provar a construção autônoma.");
+        Assert.That(platform, Is.Null, "A cena reiniciada deve começar sem plataforma da Valdoria para provar a construção autônoma.");
+        Assert.That(militaryAirport, Is.Null, "A cena reiniciada deve começar sem aeroporto militar da Valdoria para provar a construção autônoma.");
+        Assert.That(commercialAirport, Is.Null, "A cena reiniciada deve começar sem aeroporto comercial da Valdoria para provar a construção autônoma.");
+
+        float deadline = Time.realtimeSinceStartup + 1200f;
+        float nextDiagnosticTime = Time.realtimeSinceStartup + 20f;
+        int framesSinceStructureScan = 0;
+        while (Time.realtimeSinceStartup < deadline)
+        {
+            yield return null;
+            framesSinceStructureScan++;
+            if (framesSinceStructureScan < 30)
+                continue;
+            framesSinceStructureScan = 0;
+
+            if (shipyard == null)
+                shipyard = FindOwnedStructure("Estaleiro", 2);
+            if (pier == null)
+                pier = FindOwnedStructure("PierMarinha", 2);
+            if (platform == null)
+                platform = FindOwnedStructure("PlataformaOffshore", 2);
+            if (militaryAirport == null)
+                militaryAirport = FindOwnedStructure("GerenciadorAeroporto", 2);
+            if (commercialAirport == null)
+                commercialAirport = FindOwnedStructure("GerenciadorAeroportoComercial", 2);
+
+            if (commercialAirport != null)
+            {
+                Assert.That(militaryAirport, Is.Not.Null,
+                    "O aeroporto comercial só pode ser construído depois que a base aérea militar estiver pronta.");
+            }
+
+            if (shipyard != null && pier != null && platform != null
+                && militaryAirport != null && commercialAirport != null)
+                break;
+
+            if (Time.realtimeSinceStartup >= nextDiagnosticTime)
+            {
+                TestContext.WriteLine("Construção autônoma IA03: etapa=" + Read(valdoria, "BootstrapStage")
+                    + "; status=" + Read(valdoria, "BootstrapStatus")
+                    + "; erro=" + (Read(valdoria, "BootstrapLastError") ?? string.Empty)
+                    + "; naval=" + Read(valdoria, "NavalDiagnosticSummary")
+                    + "; fila=" + Read(valdoria, "RuntimeSummary")
+                    + "; concluídos=" + (shipyard != null ? "estaleiro " : string.Empty)
+                    + (pier != null ? "píer " : string.Empty)
+                    + (platform != null ? "plataforma " : string.Empty)
+                    + (militaryAirport != null ? "aeroporto-militar " : string.Empty)
+                    + (commercialAirport != null ? "aeroporto-comercial" : string.Empty));
+                nextDiagnosticTime += 20f;
+            }
+        }
+
+        TestContext.WriteLine("Resultado construção autônoma IA03: etapa=" + Read(valdoria, "BootstrapStage")
+            + "; status=" + Read(valdoria, "BootstrapStatus")
+            + "; erro=" + (Read(valdoria, "BootstrapLastError") ?? string.Empty)
+            + "; naval=" + Read(valdoria, "NavalDiagnosticSummary")
+            + "; fila=" + Read(valdoria, "RuntimeSummary"));
+        Assert.That(shipyard, Is.Not.Null, "O ciclo natural da IA03 precisa construir o estaleiro dentro da área marcada.");
+        Assert.That(pier, Is.Not.Null, "O ciclo natural da IA03 precisa construir o píer dentro da área marcada.");
+        Assert.That(platform, Is.Not.Null, "O ciclo natural da IA03 precisa construir a plataforma dentro da área marcada.");
+        Assert.That(militaryAirport, Is.Not.Null, "O ciclo natural da IA03 precisa construir o aeroporto militar dentro da área marcada.");
+        Assert.That(commercialAirport, Is.Not.Null, "O ciclo natural da IA03 precisa construir o aeroporto comercial dentro da área marcada.");
+
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoEstaleiro", shipyard.transform.position), Is.True,
+            "O estaleiro construído pelo ciclo normal precisa respeitar o Creaty naval da Valdoria.");
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoPier", pier.transform.position), Is.True,
+            "O píer construído pelo ciclo normal precisa respeitar o Creaty manual do píer.");
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoPlataforma", platform.transform.position), Is.True,
+            "A plataforma construída pelo ciclo normal precisa respeitar o Creaty offshore.");
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoAeroportoMilitar", militaryAirport.transform.position), Is.True,
+            "O aeroporto militar construído pelo ciclo normal precisa respeitar o Creaty aéreo.");
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoAeroportoMilitar", commercialAirport.transform.position), Is.True,
+            "O aeroporto comercial construído pelo ciclo normal precisa respeitar o Creaty aéreo.");
+
+        Type navalResolverType = ResolveType("NavalPlacementResolver");
+        MethodInfo isWaterAtPosition = navalResolverType.GetMethods(Members)
+            .First(method => method.Name == "IsWaterAtPosition" && method.GetParameters().Length == 1);
+        Assert.That((bool)isWaterAtPosition.Invoke(null, new object[] { platform.transform.position }), Is.True,
+            "A plataforma construída pelo ciclo normal precisa ficar sobre água.");
+        Assert.That((bool)isWaterAtPosition.Invoke(null, new object[] { militaryAirport.transform.position }), Is.False,
+            "O aeroporto militar construído pelo ciclo normal precisa ficar em terra.");
+        Assert.That((bool)isWaterAtPosition.Invoke(null, new object[] { commercialAirport.transform.position }), Is.False,
+            "O aeroporto comercial construído pelo ciclo normal precisa ficar em terra.");
+
+        Component territory = ReadStatic(ResolveType("GerenteDeTerritorio"), "Instancia") as Component;
+        Assert.That(territory, Is.Not.Null, "A propriedade territorial precisa estar disponível para validar as construções.");
+        foreach (Component structure in new[] { shipyard, pier, platform, militaryAirport, commercialAirport })
+        {
+            Assert.That((int)Call(territory, "ObterDonoDoPonto", structure.transform.position), Is.EqualTo(2),
+                structure.name + " precisa permanecer dentro do território da Valdoria.");
+        }
+
+        Assert.That(FindOwnedStructure("Estaleiro", 1), Is.Null);
+        Assert.That(FindOwnedStructure("PierMarinha", 1), Is.Null);
+        Assert.That(FindOwnedStructure("PlataformaOffshore", 1), Is.Null);
+        Assert.That(FindOwnedStructure("GerenciadorAeroporto", 1), Is.Null);
+        Assert.That(FindOwnedStructure("GerenciadorAeroportoComercial", 1), Is.Null);
+    }
+
+    [UnityTest]
+    [Timeout(900000)]
     public IEnumerator ValdoriaBuildsManualShipyardAndPierThroughTheRuntimeQueue()
     {
+        yield return StartSimulationForRuntimeTest();
+        SetAcceleratedSimulationForRuntimeTest(6.75f);
         Component valdoria = FindBrain(2);
         Assert.That(valdoria, Is.Not.Null);
         for (int frame = 0; frame < 240 && Read(valdoria, "Context") == null; frame++)
             yield return null;
+
+        object runtimeContext = Read(valdoria, "Context");
+        Assert.That(runtimeContext, Is.Not.Null);
+        object initialForce = Read(runtimeContext, "ForceSnapshot");
+        Assert.That(initialForce, Is.Not.Null, "A IA03 precisa publicar seu snapshot inicial de forças.");
+        int initialFighters = Convert.ToInt32(Read(initialForce, "FixedWingAircraft"));
+        int initialCombatShips = Convert.ToInt32(Read(initialForce, "NavalUnits"));
+        int initialTankers = Convert.ToInt32(Read(initialForce, "OilTankers"));
+        int initialCargoShips = Convert.ToInt32(Read(initialForce, "CargoShips"));
+        int initialTroopShips = CountOwnedComponents("NavioTransporteTropas", 2);
 
         object director = valdoria.GetType().GetField("_buildDirector", Members).GetValue(valdoria);
         Assert.That(director, Is.Not.Null);
@@ -371,7 +694,8 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
 
         Assert.That(shipyard, Is.Not.Null,
             "A Valdoria encontrou a área manual, mas não concluiu o estaleiro. Diagnóstico: "
-            + Read(valdoria, "NavalDiagnosticSummary") + " | fila=" + Read(valdoria, "RuntimeSummary"));
+            + Read(valdoria, "NavalDiagnosticSummary") + " | fila=" + Read(valdoria, "RuntimeSummary")
+            + " | falhas recentes=" + ReadRecentCommandFailures(valdoria, 128));
         Assert.That(IsInsideManualArea(valdoria, "ConstrucaoEstaleiro", shipyard.transform.position), Is.True,
             "O estaleiro concluído precisa permanecer dentro da área manual da IA03.");
 
@@ -394,13 +718,271 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
 
         Assert.That(pier, Is.Not.Null,
             "A Valdoria precisa concluir o píer na sua área manual. Diagnóstico: "
-            + Read(valdoria, "NavalDiagnosticSummary") + " | fila=" + Read(valdoria, "RuntimeSummary"));
+            + Read(valdoria, "NavalDiagnosticSummary") + " | fila=" + Read(valdoria, "RuntimeSummary")
+            + " | falhas recentes=" + ReadRecentCommandFailures(valdoria, 128));
         Assert.That(IsInsideManualArea(valdoria, "ConstrucaoPier", pier.transform.position), Is.True,
             "O píer concluído precisa permanecer dentro da área manual da IA03.");
+
+        object backend = Read(runtimeContext, "Backend");
+        MethodInfo resolveBuildKey = backend.GetType().GetMethod("ResolveBuildKey", Members);
+        string platformItemKey = (string)resolveBuildKey.Invoke(backend, new object[]
+        {
+            new[] { "PLataforma", "plataforma offshore", "offshore platform" }
+        });
+        MethodInfo hasManualOverride = director.GetType().GetMethod("HasManualBuildOverrideForItem", Members);
+        bool platformHasManualOverride = (bool)hasManualOverride.Invoke(director, new object[] { platformItemKey });
+        Type manualPointType = ResolveType("Hegemonia.AI.BrainMaster.IA_ManualBuildPoint");
+        MethodInfo targetsManualItem = manualPointType.GetMethods(Members)
+            .First(method => method.Name == "TargetsItem" && method.GetParameters().Length == 3);
+        Component[] manualPoints = valdoria.GetComponentsInChildren(manualPointType, true);
+        List<string> matchingPlatformPoints = new List<string>();
+        foreach (Component manualPoint in manualPoints)
+        {
+            if (manualPoint == null || !(bool)targetsManualItem.Invoke(manualPoint, new object[] { valdoria, platformItemKey, null }))
+                continue;
+
+            matchingPlatformPoints.Add(manualPoint.name
+                + " | role=" + Read(manualPoint, "ManualRole")
+                + " | active=" + manualPoint.gameObject.activeInHierarchy
+                + " | area=" + Read(manualPoint, "UsesPlacementArea")
+                + " | radius=" + Read(manualPoint, "PlacementAreaRadius")
+                + " | pos=" + manualPoint.transform.position);
+        }
+        TestContext.WriteLine("Diagnóstico manual da plataforma: item=" + platformItemKey
+            + "; override=" + platformHasManualOverride
+            + "; pontos=" + manualPoints.Length
+            + "; correspondentes=" + string.Join(" || ", matchingPlatformPoints));
+
+        object platformQueueResult = buildManualPier.Invoke(director, new object[]
+        {
+            "plataforma", anchor, Enum.Parse(zoneType, "Naval"), 12f, 420f, 974, 10f,
+            new[] { "PLataforma", "plataforma offshore", "offshore platform" }
+        });
+        TestContext.WriteLine("Tentativa imediata da plataforma: retorno=" + platformQueueResult
+            + "; erro=" + Read(valdoria, "BootstrapLastError")
+            + "; naval=" + Read(valdoria, "NavalDiagnosticSummary"));
+        float platformDeadline = Time.realtimeSinceStartup + 40f;
+        Component platform = FindOwnedStructure("PlataformaOffshore", 2);
+        while (platform == null && Time.realtimeSinceStartup < platformDeadline)
+        {
+            yield return null;
+            platform = FindOwnedStructure("PlataformaOffshore", 2);
+        }
+
+        Assert.That(platform, Is.Not.Null,
+            "A Valdoria precisa concluir a plataforma na sua área manual. Diagnóstico: "
+            + "bootstrap=" + Read(valdoria, "BootstrapLastError")
+            + " | naval=" + Read(valdoria, "NavalDiagnosticSummary")
+            + " | fila=" + Read(valdoria, "RuntimeSummary")
+            + " | falhas recentes=" + ReadRecentCommandFailures(valdoria, 128));
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoPlataforma", platform.transform.position), Is.True,
+            "A plataforma concluída precisa permanecer dentro da área manual offshore da IA03.");
+        Type navalResolverType = ResolveType("NavalPlacementResolver");
+        MethodInfo isWaterAtPosition = navalResolverType.GetMethods(Members)
+            .First(method => method.Name == "IsWaterAtPosition" && method.GetParameters().Length == 1);
+        Assert.That((bool)isWaterAtPosition.Invoke(null, new object[] { platform.transform.position }), Is.True,
+            "A plataforma concluída também precisa ficar sobre água, não apenas dentro do raio do Create.");
+
+        MethodInfo buildManualLand = director.GetType().GetMethod("TryBootstrapMandatoryLandBuild", Members);
+        Assert.That(buildManualLand, Is.Not.Null);
+        buildManualLand.Invoke(director, new object[]
+        {
+            "aeroporto militar", anchor, Enum.Parse(zoneType, "Air"), 40f, 300f, 973, 10f,
+            new[] { "aeroporto militar", "base aerea militar", "military airport" }
+        });
+        float militaryAirportDeadline = Time.realtimeSinceStartup + 40f;
+        Component militaryAirport = FindOwnedStructure("GerenciadorAeroporto", 2);
+        while (militaryAirport == null && Time.realtimeSinceStartup < militaryAirportDeadline)
+        {
+            yield return null;
+            militaryAirport = FindOwnedStructure("GerenciadorAeroporto", 2);
+        }
+
+        Assert.That(militaryAirport, Is.Not.Null,
+            "A Valdoria precisa concluir o aeroporto militar na sua área manual. Diagnóstico: "
+            + Read(valdoria, "BootstrapLastError") + " | fila=" + Read(valdoria, "RuntimeSummary")
+            + " | falhas recentes=" + ReadRecentCommandFailures(valdoria, 128));
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoAeroportoMilitar", militaryAirport.transform.position), Is.True,
+            "O aeroporto militar concluído precisa permanecer dentro do Creaty aéreo da IA03.");
+        Assert.That((bool)isWaterAtPosition.Invoke(null, new object[] { militaryAirport.transform.position }), Is.False,
+            "O aeroporto militar concluído precisa permanecer em terra firme.");
+
+        MethodInfo buildCommercialAirport = director.GetType().GetMethod("QueueBuildAtLand", Members);
+        Assert.That(buildCommercialAirport, Is.Not.Null);
+        buildCommercialAirport.Invoke(director, new object[]
+        {
+            "aeroporto comercial", Enum.Parse(zoneType, "Air"), anchor, 100f, 340f, 972, 10f
+        });
+        float commercialAirportDeadline = Time.realtimeSinceStartup + 40f;
+        Component commercialAirport = FindOwnedStructure("GerenciadorAeroportoComercial", 2);
+        while (commercialAirport == null && Time.realtimeSinceStartup < commercialAirportDeadline)
+        {
+            yield return null;
+            commercialAirport = FindOwnedStructure("GerenciadorAeroportoComercial", 2);
+        }
+
+        Assert.That(commercialAirport, Is.Not.Null,
+            "A Valdoria precisa concluir o aeroporto comercial depois do militar. Diagnóstico: "
+            + Read(valdoria, "BootstrapLastError") + " | fila=" + Read(valdoria, "RuntimeSummary")
+            + " | falhas recentes=" + ReadRecentCommandFailures(valdoria, 128));
+        Assert.That(IsInsideManualArea(valdoria, "ConstrucaoAeroportoMilitar", commercialAirport.transform.position), Is.True,
+            "O aeroporto comercial concluído precisa permanecer dentro da área aérea manual da IA03.");
+        Assert.That((bool)isWaterAtPosition.Invoke(null, new object[] { commercialAirport.transform.position }), Is.False,
+            "O aeroporto comercial concluído precisa permanecer em terra firme.");
+
         Assert.That(FindOwnedStructure("Estaleiro", 1), Is.Null,
             "A construção naval da IA não pode ser atribuída ao Team 1.");
         Assert.That(FindOwnedStructure("PierMarinha", 1), Is.Null,
             "A construção naval da IA não pode ser atribuída ao Team 1.");
+        Assert.That(FindOwnedStructure("PlataformaOffshore", 1), Is.Null,
+            "A plataforma da IA não pode ser atribuída ao Team 1.");
+        Assert.That(FindOwnedStructure("GerenciadorAeroporto", 1), Is.Null,
+            "O aeroporto militar da IA não pode ser atribuído ao Team 1.");
+        Assert.That(FindOwnedStructure("GerenciadorAeroportoComercial", 1), Is.Null,
+            "O aeroporto comercial da IA não pode ser atribuído ao Team 1.");
+
+        float productionDeadline = Time.realtimeSinceStartup + 650f;
+        int framesSinceProductionSample = 0;
+        object productionSnapshot = null;
+        int troopShips = initialTroopShips;
+        while (Time.realtimeSinceStartup < productionDeadline)
+        {
+            yield return null;
+            framesSinceProductionSample++;
+            if (framesSinceProductionSample < 12)
+                continue;
+            framesSinceProductionSample = 0;
+
+            productionSnapshot = Read(runtimeContext, "ForceSnapshot");
+            troopShips = CountOwnedComponents("NavioTransporteTropas", 2);
+            if (productionSnapshot != null
+                && Convert.ToInt32(Read(productionSnapshot, "FixedWingAircraft")) > initialFighters
+                && Convert.ToInt32(Read(productionSnapshot, "NavalUnits")) > initialCombatShips
+                && Convert.ToInt32(Read(productionSnapshot, "OilTankers")) > initialTankers
+                && Convert.ToInt32(Read(productionSnapshot, "CargoShips")) > initialCargoShips
+                && troopShips > initialTroopShips)
+            {
+                break;
+            }
+        }
+
+        Assert.That(productionSnapshot, Is.Not.Null, "A IA03 precisa continuar publicando seu snapshot durante a produção.");
+        TestContext.WriteLine("Produção IA03 Valdoria: caças="
+            + Read(productionSnapshot, "FixedWingAircraft") + "; naviosCombate="
+            + Read(productionSnapshot, "NavalUnits") + "; petroleiros="
+            + Read(productionSnapshot, "OilTankers") + "; cargueiros="
+            + Read(productionSnapshot, "CargoShips") + "; naviosTropa=" + troopShips
+            + "; bootstrap=" + Read(valdoria, "BootstrapStage") + "/" + Read(valdoria, "BootstrapStatus")
+            + "; erro=" + Read(valdoria, "BootstrapLastError")
+            + "; fila=" + Read(valdoria, "RuntimeSummary"));
+        Assert.That(Convert.ToInt32(Read(productionSnapshot, "FixedWingAircraft")), Is.GreaterThan(initialFighters),
+            "A IA03 precisa produzir um caça no aeroporto militar próprio.");
+        Assert.That(Convert.ToInt32(Read(productionSnapshot, "ReadyFighters")), Is.GreaterThan(0),
+            "O caça produzido precisa estar pronto para receber a missão aérea.");
+        Assert.That(Convert.ToInt32(Read(productionSnapshot, "NavalUnits")), Is.GreaterThan(initialCombatShips),
+            "A IA03 precisa produzir um navio de combate no estaleiro próprio.");
+        Assert.That(Convert.ToInt32(Read(productionSnapshot, "OilTankers")), Is.GreaterThan(initialTankers),
+            "A IA03 precisa produzir um petroleiro depois de concluir a infraestrutura naval.");
+        Assert.That(Convert.ToInt32(Read(productionSnapshot, "CargoShips")), Is.GreaterThan(initialCargoShips),
+            "A IA03 precisa produzir um cargueiro logístico depois do estaleiro e do píer.");
+        Assert.That(troopShips, Is.GreaterThan(initialTroopShips),
+            "A IA03 precisa produzir o navio de transporte de tropas do bootstrap.");
+
+        Type strategistType = ResolveType("Hegemonia.AI.IA03.IA03EstrategaNacional");
+        Component strategist = valdoria.GetComponent(strategistType);
+        Assert.That(strategist, Is.Not.Null);
+        Type conflictLevelType = ResolveType("Hegemonia.AI.IA03.IA03NivelConflito");
+        strategistType.GetMethod("DefinirNivelConflito", Members).Invoke(strategist, new object[]
+        {
+            Enum.Parse(conflictLevelType, "Paz"), "aceitação de patrulha aérea no GlobalMapRTS"
+        });
+
+        IList missions = Read(strategist, "missoesEstrategicas") as IList;
+        object airPatrol = missions.Cast<object>().FirstOrDefault(mission =>
+            Convert.ToString(Read(mission, "IdMissao")) == "IA03-PATRULHA-AEREA");
+        Assert.That(airPatrol, Is.Not.Null, "A missão real de patrulha aérea da Valdoria precisa estar configurada.");
+        Type airCreatyType = ResolveType("Hegemonia.AI.IA03.CreatyEstrategico");
+        Component airPatrolPoint = FindSceneComponents(airCreatyType)
+            .FirstOrDefault(point => point.gameObject.name == "SLOT_MANUAL_Valdoria_PatrulhaAerea_1");
+        Assert.That(airPatrolPoint, Is.Not.Null, "O ponto N4 de patrulha aérea da Valdoria precisa existir.");
+
+        MethodInfo startMission = strategistType.GetMethods(Members).First(method =>
+        {
+            ParameterInfo[] parameters = method.GetParameters();
+            return method.Name == "TentarIniciarMissao"
+                   && parameters.Length == 3
+                   && parameters[0].ParameterType == airPatrol.GetType()
+                   && parameters[2].ParameterType.IsByRef;
+        });
+        object[] missionArguments = { airPatrol, Time.time, string.Empty };
+        bool missionStarted = (bool)startMission.Invoke(strategist, missionArguments);
+        Assert.That(missionStarted, Is.True,
+            "A IA03 precisa aceitar e enfileirar a patrulha N4 com o caça real. Motivo: "
+            + missionArguments[2] + " | decisão=" + Read(strategist, "UltimaDecisao"));
+        Assert.That(Read(strategist, "EstadoDaMissao").ToString(), Is.EqualTo("EmAndamento"));
+        Assert.That(Read(strategist, "cretyAtivo"), Is.SameAs(airPatrolPoint),
+            "A ordem aérea precisa usar o Creaty N4 configurado na cena.");
+
+        Component patrolAircraft = null;
+        IList activeMissionUnits = Read(strategist, "unidadesAtivasNaMissao") as IList;
+        Type aircraftType = ResolveType("ControleAviao");
+        IList storedPatrolRoute = null;
+        for (int frame = 0; frame < 360; frame++)
+        {
+            if (activeMissionUnits != null)
+            {
+                patrolAircraft = activeMissionUnits.Cast<GameObject>()
+                    .Where(unit => unit != null)
+                    .Select(unit => unit.GetComponent(aircraftType) as Component
+                                    ?? unit.GetComponentInChildren(aircraftType, true) as Component)
+                    .FirstOrDefault(aircraft => aircraft != null);
+            }
+
+            if (patrolAircraft != null)
+            {
+                storedPatrolRoute = Read(patrolAircraft, "rotaPatrulhaSalva") as IList;
+                if (storedPatrolRoute != null && storedPatrolRoute.Count >= 2)
+                    break;
+            }
+
+            yield return null;
+        }
+
+        Assert.That(patrolAircraft, Is.Not.Null, "A missão IA03 precisa selecionar um caça real da Valdoria.");
+        Assert.That(Read(patrolAircraft, "aeroportoOrigem"), Is.SameAs(militaryAirport),
+            "O caça da patrulha precisa ter sido registrado no aeroporto militar próprio da Valdoria.");
+        Assert.That(storedPatrolRoute, Is.Not.Null,
+            "O controlador aéreo precisa registrar a rota da ordem de patrulha.");
+        Assert.That(storedPatrolRoute.Count, Is.GreaterThanOrEqualTo(2),
+            "O controlador aéreo precisa receber múltiplos pontos para patrulhar.");
+        Vector3 firstPatrolPoint = (Vector3)storedPatrolRoute[0];
+        Vector3 configuredPoint = airPatrolPoint.transform.position;
+        float horizontalPatrolError = Vector2.Distance(
+            new Vector2(firstPatrolPoint.x, firstPatrolPoint.z),
+            new Vector2(configuredPoint.x, configuredPoint.z));
+        TestContext.WriteLine("Ordem aérea IA03: missão=" + Read(airPatrol, "IdMissao")
+            + "; Creaty=" + airPatrolPoint.name
+            + "; caça=" + patrolAircraft.name
+            + "; pontosRota=" + storedPatrolRoute.Count
+            + "; erroHorizontalAoCreaty=" + horizontalPatrolError.ToString("0.0") + " m"
+            + "; recusa=" + Read(patrolAircraft, "UltimoMotivoRecusaOrdem"));
+        Assert.That(horizontalPatrolError, Is.LessThan(25f),
+            "A patrulha recebida precisa permanecer ancorada no ponto manual N4 da Valdoria.");
+        Assert.That(Convert.ToString(Read(patrolAircraft, "UltimoMotivoRecusaOrdem")), Is.Empty,
+            "O controlador do caça não deve rejeitar a ordem de patrulha.");
+        Type unitControllerType = ResolveType("ControleUnidade");
+        Assert.That(unitControllerType, Is.Not.Null,
+            "O controlador oficial de ordens terrestres/aéreas precisa estar compilado.");
+        Component unitController = patrolAircraft.GetComponentInParent(unitControllerType)
+            ?? patrolAircraft.GetComponentInChildren(unitControllerType, true);
+        Assert.That(unitController, Is.Not.Null,
+            "O caça real precisa expor o controlador oficial que executa ordens de movimento.");
+        Assert.That(Convert.ToString(Read(unitController, "OrdemAtual")), Is.EqualTo("Patrulhando"),
+            "O controlador oficial da unidade precisa manter a ordem de patrulha ativa.");
+        object activeOrder = Read(unitController, "OrdemMovimentoAtual");
+        Assert.That(activeOrder, Is.Not.Null, "A ordem estratégica precisa continuar registrada na unidade.");
+        Assert.That(Convert.ToString(Read(activeOrder, "Dono")), Is.EqualTo("IA03EstrategaNacional"),
+            "A ordem deve permanecer identificada como emitida pela IA03.");
     }
 
     [UnityTest]
@@ -433,6 +1015,8 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             long playerBalanceBefore = Convert.ToInt64(Read(Call(government, "ObterPais", 1), "saldo"));
             initializeNewGame.Invoke(save, null);
             long grant = Convert.ToInt64(governmentType.GetField("SaldoInicialNacionalPorIAEmPartidaNova", Members).GetValue(null));
+            Assert.That(grant, Is.GreaterThanOrEqualTo(35_000_000_000L),
+                "O saldo inicial da IA ativa precisa cobrir a infraestrutura estratégica pedida para a campanha.");
             Assert.That(Read(Call(government, "ObterPais", 2), "saldo"), Is.EqualTo(grant));
             Assert.That(Read(FindBrain(2), "Credits"), Is.EqualTo(int.MaxValue));
             Assert.That(Read(Call(government, "ObterPais", 1), "saldo"), Is.EqualTo(playerBalanceBefore),
@@ -1214,6 +1798,349 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         }
     }
 
+    [UnityTest]
+    [Timeout(360000)]
+    public IEnumerator TankMovesToTheReachableShoreWhenTheClickedPointIsClassifiedAsWater()
+    {
+        originalTimeScaleBeforeMovementTest = Time.timeScale;
+        restoreTimeScaleAfterMovementTest = true;
+        Time.timeScale = 1f;
+
+        Type streamerType = ResolveType("GlobalTerrainStreamer");
+        Component streamer = UnityEngine.Object.FindFirstObjectByType(streamerType) as Component;
+        Assert.That(streamer, Is.Not.Null, "O streaming real de terreno do GlobalMap precisa estar ativo.");
+        streamerToRestoreAfterMovementTest = streamer;
+        Behaviour streamerBehaviour = streamer as Behaviour;
+        Assert.That(streamerBehaviour, Is.Not.Null);
+        originalStreamerEnabled = streamerBehaviour.enabled;
+        streamerBehaviour.enabled = true;
+        originalTilesCreatedPerFrame = Convert.ToInt32(Read(streamer, "tilesCreatedPerFrame"));
+        originalTerrainRowsPerFrame = Convert.ToInt32(Read(streamer, "terrainRowsPerFrame"));
+        originalVegetationRowsPerFrame = Convert.ToInt32(Read(streamer, "vegetationRowsPerFrame"));
+        originalRefreshInterval = Convert.ToSingle(Read(streamer, "refreshInterval"));
+
+        Camera originalCamera = Read(streamer, "cameraOverride") as Camera;
+        Assert.That(originalCamera, Is.Not.Null, "O streamer precisa apontar para a câmera ativa do mapa global.");
+        originalStreamerCameraOverride = originalCamera;
+        originalCameraPositionBeforeMovementTest = originalCamera.transform.position;
+
+        object world = Read(streamer, "world");
+        Assert.That(world, Is.Not.Null, "A definição geográfica do mapa precisa estar atribuída.");
+        float tileSize = Convert.ToSingle(Read(world, "terrainTileSize"));
+        float minX = Convert.ToSingle(Read(world, "MapMinX"));
+        float minZ = Convert.ToSingle(Read(world, "MapMinZ"));
+        Vector2 worldSize = (Vector2)Read(world, "worldSize");
+        float footprintHeight = Convert.ToSingle(Read(world, "mapFootprintHeight"));
+        MethodInfo isLandAtWorld = world.GetType().GetMethod("IsLandAtWorld", Members);
+        MethodInfo heightAtWorld = world.GetType().GetMethod("HeightAtWorld", Members);
+        Assert.That(isLandAtWorld, Is.Not.Null);
+        Assert.That(heightAtWorld, Is.Not.Null);
+
+        Texture2D authorityMap = Read(world, "authorityMap") as Texture2D;
+        Assert.That(authorityMap, Is.Not.Null, "A máscara terrestre autoritativa precisa estar atribuída.");
+        Vector2[] referenceLandPixels =
+        {
+            new Vector2(690f, 278f), new Vector2(145f, 85f), new Vector2(1015f, 140f),
+            new Vector2(300f, 520f), new Vector2(1000f, 535f)
+        };
+        for (int i = 0; i < referenceLandPixels.Length; i++)
+        {
+            Vector3 sample = MapPixelToWorld(
+                referenceLandPixels[i], authorityMap.width, authorityMap.height,
+                minX, minZ, worldSize, footprintHeight);
+            Assert.That(Convert.ToBoolean(isLandAtWorld.Invoke(world, new object[] { sample.x, sample.z })), Is.True,
+                "A orientação terra/água precisa preservar a amostra terrestre " + i + " da fase.png.");
+        }
+        Vector3 referenceOcean = MapPixelToWorld(
+            new Vector2(576f, 324f), authorityMap.width, authorityMap.height,
+            minX, minZ, worldSize, footprintHeight);
+        Assert.That(Convert.ToBoolean(isLandAtWorld.Invoke(world, new object[] { referenceOcean.x, referenceOcean.z })), Is.False,
+            "A orientação terra/água precisa manter a amostra central como oceano.");
+
+        Vector3[] cardinalDirections = { Vector3.forward, Vector3.back, Vector3.right, Vector3.left };
+        Vector3 coastalSeed = Vector3.zero;
+        Vector3 mapWaterDirection = Vector3.zero;
+        bool foundCoast = false;
+        const float inlandStartDistance = 1000f;
+        int tileCountX = Mathf.CeilToInt(worldSize.x / tileSize);
+        int tileCountZ = Mathf.CeilToInt(footprintHeight / tileSize);
+        for (int tileZ = 0; tileZ < tileCountZ && !foundCoast; tileZ++)
+        {
+            for (int tileX = 0; tileX < tileCountX && !foundCoast; tileX++)
+            {
+                float sampleX = minX + (tileX + 0.5f) * tileSize;
+                float sampleZ = minZ + (tileZ + 0.5f) * tileSize;
+                if (!Convert.ToBoolean(isLandAtWorld.Invoke(world, new object[] { sampleX, sampleZ })))
+                    continue;
+
+                for (int directionIndex = 0; directionIndex < cardinalDirections.Length && !foundCoast; directionIndex++)
+                {
+                    Vector3 direction = cardinalDirections[directionIndex];
+                    for (float distance = 100f; distance <= 16000f; distance += 100f)
+                    {
+                        float waterX = sampleX + direction.x * distance;
+                        float waterZ = sampleZ + direction.z * distance;
+                        if (Convert.ToBoolean(isLandAtWorld.Invoke(world, new object[] { waterX, waterZ })))
+                            continue;
+
+                        if (distance < inlandStartDistance + 200f)
+                            break;
+
+                        float inlandOffset = distance - inlandStartDistance;
+                        coastalSeed = new Vector3(
+                            sampleX + direction.x * inlandOffset,
+                            0f,
+                            sampleZ + direction.z * inlandOffset);
+                        if (!Convert.ToBoolean(isLandAtWorld.Invoke(world, new object[] { coastalSeed.x, coastalSeed.z })))
+                            break;
+
+                        mapWaterDirection = direction;
+                        foundCoast = true;
+                        break;
+                    }
+                }
+            }
+            yield return null;
+        }
+        Assert.That(foundCoast, Is.True, "A definição do mapa precisa fornecer um trecho de costa acessível.");
+
+        float terrainHeight = Convert.ToSingle(heightAtWorld.Invoke(world, new object[] { coastalSeed.x, coastalSeed.z }));
+        temporaryStreamingCameraObject = new GameObject("GlobalMap_CoastalMovementTest_StreamingCamera_Temporary");
+        Camera streamingCamera = temporaryStreamingCameraObject.AddComponent<Camera>();
+        streamingCamera.enabled = false;
+        streamingCamera.transform.position = new Vector3(coastalSeed.x, terrainHeight + 300f, coastalSeed.z);
+        Write(streamer, "cameraOverride", streamingCamera);
+        cameraToRestoreAfterMovementTest = null;
+        Write(streamer, "tilesCreatedPerFrame", 4);
+        Write(streamer, "terrainRowsPerFrame", 64);
+        Write(streamer, "vegetationRowsPerFrame", 16);
+        Write(streamer, "refreshInterval", 0.1f);
+        streamerBehaviour.enabled = false;
+        yield return null;
+        streamerBehaviour.enabled = true;
+
+        object runtimeNavMesh = null;
+        float streamingDeadline = Time.realtimeSinceStartup + 240f;
+        while (Time.realtimeSinceStartup < streamingDeadline)
+        {
+            runtimeNavMesh = Read(streamer, "runtimeLocalNavMeshData");
+            if (Convert.ToInt32(Read(streamer, "ActiveTileCount")) > 0 && runtimeNavMesh != null)
+                break;
+            yield return null;
+        }
+        int activeTileCount = Convert.ToInt32(Read(streamer, "ActiveTileCount"));
+        int loadedTileCount = Convert.ToInt32(Read(Read(streamer, "loadedTiles"), "Count"));
+        Assert.That(activeTileCount, Is.GreaterThan(0),
+            "O mapa precisa gerar terreno perto da costa selecionada. "
+            + $"Ativos={activeTileCount}, desejados={Read(streamer, "DesiredTileCount")}, "
+            + $"carregados={loadedTileCount}, ultimaGeracaoMs={Read(streamer, "LastGenerationMilliseconds")}, "
+            + $"emCache={Read(streamer, "CachedTileCount")}, "
+            + $"navMesh={runtimeNavMesh != null}, falhaNavMesh={Read(streamer, "failedNavMeshTileSet")}, "
+            + $"cameraXZ=({coastalSeed.x:0.0},{coastalSeed.z:0.0}), "
+            + $"tiles=({Read(world, "terrainTileSize")},{Read(world, "MapMinX")},{Read(world, "MapMinZ")}).");
+        Assert.That(runtimeNavMesh, Is.Not.Null, "O NavMesh local precisa estar construído junto à costa.");
+        int activeTreeCount = Convert.ToInt32(Read(streamer, "ActiveTreeCount"));
+        Assert.That(activeTreeCount, Is.EqualTo(0),
+            "A vegetação instanciada deve continuar desativada nos tiles usados pelo teste.");
+
+        Type surfaceRegistryType = ResolveType("RegistroSuperficieMapa");
+        Type surfaceClassificationType = ResolveType("ClassificacaoSuperficieMapa");
+        MethodInfo classifySurface = surfaceRegistryType.GetMethod(
+            "TryClassify", Members, null,
+            new[] { typeof(Vector3), surfaceClassificationType.MakeByRefType(), typeof(float).MakeByRefType(), typeof(float), typeof(float) },
+            null);
+        Assert.That(classifySurface, Is.Not.Null);
+
+        Vector3 start = Vector3.zero;
+        Vector3[] searchDirections =
+        {
+            Vector3.zero, mapWaterDirection, -mapWaterDirection,
+            Vector3.forward, Vector3.back, Vector3.right, Vector3.left,
+            (Vector3.forward + Vector3.right).normalized, (Vector3.forward + Vector3.left).normalized,
+            (Vector3.back + Vector3.right).normalized, (Vector3.back + Vector3.left).normalized
+        };
+        bool foundLandStart = false;
+        for (int ring = 0; ring <= 12 && !foundLandStart; ring++)
+        {
+            float radius = ring * 100f;
+            for (int directionIndex = 0; directionIndex < searchDirections.Length; directionIndex++)
+            {
+                Vector3 probe = coastalSeed + searchDirections[directionIndex] * radius;
+                if (!UnityEngine.AI.NavMesh.SamplePosition(probe, out UnityEngine.AI.NavMeshHit hit, 500f, UnityEngine.AI.NavMesh.AllAreas))
+                    continue;
+
+                object[] classificationArgs = { hit.position, Activator.CreateInstance(surfaceClassificationType), 0f, 1.5f, 0f };
+                bool classified = Convert.ToBoolean(classifySurface.Invoke(null, classificationArgs));
+                string surface = Convert.ToString(classificationArgs[1]);
+                if (!classified || (surface != "Chao" && surface != "Costa"))
+                    continue;
+
+                start = hit.position;
+                foundLandStart = true;
+                break;
+            }
+        }
+        Assert.That(foundLandStart, Is.True, "A costa precisa fornecer um ponto de terra navegável para o tanque.");
+        Vector3 coastReference = Vector3.zero;
+
+        Vector3 waterClick = Vector3.zero;
+        Vector3 lastLandPoint = start;
+        Vector3 firstWaterPoint = Vector3.zero;
+        Vector3 selectedDirection = Vector3.zero;
+        bool foundWaterClick = false;
+        for (int directionIndex = 0; directionIndex < searchDirections.Length && !foundWaterClick; directionIndex++)
+        {
+            Vector3 direction = searchDirections[directionIndex];
+            if (direction == Vector3.zero)
+                continue;
+
+            Vector3 mostRecentLand = start;
+            for (float distance = 100f; distance <= 19000f; distance += 100f)
+            {
+                Vector3 sample = start + direction * distance;
+                object[] classificationArgs = { sample, Activator.CreateInstance(surfaceClassificationType), 0f, 1.5f, 0f };
+                bool classified = Convert.ToBoolean(classifySurface.Invoke(null, classificationArgs));
+                if (!classified)
+                    continue;
+
+                string surface = Convert.ToString(classificationArgs[1]);
+                if (surface == "Chao" || surface == "Costa")
+                {
+                    mostRecentLand = sample;
+                    continue;
+                }
+
+                if (surface != "Agua")
+                    continue;
+
+                waterClick = sample;
+                firstWaterPoint = sample;
+                lastLandPoint = mostRecentLand;
+                selectedDirection = direction;
+                foundWaterClick = true;
+                break;
+            }
+        }
+        Assert.That(foundWaterClick, Is.True,
+            "A origem em terra precisa encontrar água próxima para reproduzir o clique costeiro.");
+        Assert.That(Vector3.Distance(start, waterClick), Is.LessThan(20000f),
+            "O ponto de água precisa permanecer dentro do limite de projeção costeira.");
+        coastReference = (lastLandPoint + firstWaterPoint) * 0.5f;
+        float initialDistanceToCoast = HorizontalDistance(start, coastReference);
+        Assert.That(initialDistanceToCoast, Is.GreaterThan(800f),
+            "O veículo precisa começar em terra, longe o bastante para comprovar o trajeto até a costa.");
+
+        GameObject unitRoot = new GameObject("GlobalMap_CoastalTankMovement_Temporary");
+        unitRoot.SetActive(false);
+        GameObject tank = null;
+        try
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Veiculos/Tank_South/Tank_Unity.prefab");
+            Assert.That(prefab, Is.Not.Null, "O prefab Tank_Unity precisa estar disponível para o teste.");
+            tank = UnityEngine.Object.Instantiate(prefab, start, Quaternion.identity, unitRoot.transform);
+            tank.name = "GlobalMap_CoastalTankMovement_Temporary";
+            Component identity = tank.GetComponentInChildren(ResolveType("IdentidadeUnidade"), true);
+            Component control = tank.GetComponentInChildren(ResolveType("ControleUnidade"), true);
+            UnityEngine.AI.NavMeshAgent agent = tank.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>(true);
+            Assert.That(identity, Is.Not.Null, "O tanque precisa ter IdentidadeUnidade.");
+            Assert.That(control, Is.Not.Null, "O tanque precisa ter ControleUnidade.");
+            Assert.That(agent, Is.Not.Null, "O tanque precisa ter NavMeshAgent.");
+            Write(identity, "teamID", 1);
+
+            unitRoot.SetActive(true);
+            yield return null;
+            if (!agent.isOnNavMesh)
+                agent.Warp(start);
+            Assert.That(agent.isOnNavMesh, Is.True, "O tanque precisa iniciar sobre o NavMesh terrestre.");
+
+            object[] waterClassification = { waterClick, Activator.CreateInstance(surfaceClassificationType), 0f, 1.5f, 0f };
+            Assert.That(Convert.ToBoolean(classifySurface.Invoke(null, waterClassification)), Is.True);
+            Assert.That(Convert.ToString(waterClassification[1]), Is.EqualTo("Agua"),
+                "O ponto clicado precisa ser classificado como água antes da projeção.");
+
+            bool accepted = Convert.ToBoolean(Call(control, "EmitirOrdemMover", waterClick, true));
+            Assert.That(accepted, Is.True,
+                "O tanque recusou o ponto de água costeiro: " + Convert.ToString(Read(control, "ultimoMotivoRecusaOrdem")));
+            for (int frame = 0; frame < 30 && agent.pathPending; frame++)
+                yield return null;
+
+            Vector3 resolvedDestination = agent.destination;
+            object[] destinationClassification = { resolvedDestination, Activator.CreateInstance(surfaceClassificationType), 0f, 1.5f, 0f };
+            Assert.That(Convert.ToBoolean(classifySurface.Invoke(null, destinationClassification)), Is.True,
+                "O destino ajustado precisa estar dentro da superfície do mapa.");
+            string resolvedSurface = Convert.ToString(destinationClassification[1]);
+            Assert.That(resolvedSurface == "Chao" || resolvedSurface == "Costa", Is.True,
+                "O destino da ordem costeira precisa ficar em terra; superfície recebida=" + resolvedSurface);
+
+            var completePath = new UnityEngine.AI.NavMeshPath();
+            Assert.That(agent.CalculatePath(resolvedDestination, completePath), Is.True);
+            Assert.That(completePath.status, Is.EqualTo(UnityEngine.AI.NavMeshPathStatus.PathComplete),
+                "O tanque precisa ter um caminho completo até a borda acessível.");
+
+            Assert.That(HorizontalDistance(resolvedDestination, coastReference), Is.LessThanOrEqualTo(100f),
+                "O destino terrestre precisa ficar a até 100 m da transição real para o mar.");
+
+            float deadline = Time.realtimeSinceStartup + 300f;
+            float nextProgressLog = Time.realtimeSinceStartup + 15f;
+            bool reachedNearShore = false;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                if (!agent.pathPending
+                    && agent.remainingDistance <= Mathf.Max(agent.stoppingDistance + 2f, 5f)
+                    && agent.velocity.sqrMagnitude <= 0.25f)
+                {
+                    reachedNearShore = true;
+                    break;
+                }
+
+                if (Time.realtimeSinceStartup >= nextProgressLog)
+                {
+                    TestContext.WriteLine(
+                        "Progresso costeiro: tanque=" + tank.transform.position.ToString("F1")
+                        + " agente=" + agent.transform.position.ToString("F1")
+                        + " velocidade=" + agent.velocity.ToString("F2")
+                        + " restante=" + (agent.pathPending ? "pendente" : agent.remainingDistance.ToString("F1"))
+                        + " distanciaCosta=" + HorizontalDistance(tank.transform.position, coastReference).ToString("F1"));
+                    nextProgressLog += 15f;
+                }
+            }
+
+            float moved = HorizontalDistance(tank.transform.position, start);
+            float finalDistanceToCoast = HorizontalDistance(tank.transform.position, coastReference);
+            Assert.That(reachedNearShore, Is.True,
+                "O tanque não concluiu a rota até o destino costeiro em 300 s. deslocamento=" + moved.ToString("F1")
+                + " velocidade=" + agent.velocity + " velocidadeMax=" + agent.speed
+                + " restante=" + (agent.pathPending ? "pendente" : agent.remainingDistance.ToString("F1"))
+                + " agente=" + agent.transform.position + " parado=" + agent.isStopped
+                + " caminho=" + agent.pathStatus + " motivo=" + Convert.ToString(Read(control, "ultimoMotivoRecusaOrdem")));
+            Assert.That(finalDistanceToCoast, Is.LessThanOrEqualTo(100f),
+                "O tanque concluiu o caminho, mas ainda parou longe da borda do mar.");
+            Assert.That(moved, Is.GreaterThan(500f),
+                "O tanque precisa percorrer a rota completa desde o ponto inicial até a costa.");
+
+            TestContext.WriteLine(
+                "Teste costeiro: origem=" + start.ToString("F1")
+                + " água=" + waterClick.ToString("F1")
+                + " destino=" + resolvedDestination.ToString("F1")
+                + " deslocamento=" + moved.ToString("F1")
+                + " distanciaCostaInicial=" + initialDistanceToCoast.ToString("F1")
+                + " distanciaCostaFinal=" + finalDistanceToCoast.ToString("F1")
+                + " velocidadeFinal=" + agent.velocity.ToString("F2")
+                + " árvores=" + activeTreeCount
+                + " direção=" + selectedDirection);
+        }
+        finally
+        {
+            if (tank != null)
+                UnityEngine.Object.Destroy(tank);
+            if (unitRoot != null)
+                UnityEngine.Object.Destroy(unitRoot);
+            Time.timeScale = originalTimeScaleBeforeMovementTest;
+            restoreTimeScaleAfterMovementTest = false;
+        }
+    }
+
     private static IEnumerator AssertPrefabCanMoveOnGround(
         string prefabPath,
         string unitLabel,
@@ -1303,6 +2230,23 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         UnityEngine.Object.Destroy(unit);
         yield return null;
         unitRoot.SetActive(false);
+    }
+
+    private static Vector3 MapPixelToWorld(
+        Vector2 pixelFromTopLeft,
+        int mapWidth,
+        int mapHeight,
+        float mapMinX,
+        float mapMinZ,
+        Vector2 worldSize,
+        float footprintHeight)
+    {
+        float u = pixelFromTopLeft.x / Mathf.Max(1f, mapWidth - 1f);
+        float vFromBottom = (mapHeight - 1f - pixelFromTopLeft.y) / Mathf.Max(1f, mapHeight - 1f);
+        return new Vector3(
+            mapMinX + u * worldSize.x,
+            0f,
+            mapMinZ + vFromBottom * footprintHeight);
     }
 
     private static float HorizontalDistance(Vector3 left, Vector3 right)
@@ -1526,11 +2470,183 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         button.onClick.Invoke();
     }
 
+    private IEnumerator StartSimulationForRuntimeTest()
+    {
+        Type sessionType = ResolveType("Hegemonia.RTS.RTSGameSession");
+        object session = ReadStatic(sessionType, "Instancia");
+        Assert.That(session, Is.Not.Null, "A sessão RTS precisa existir antes da aceitação de runtime.");
+        yield return null;
+
+        string phase = Convert.ToString(Read(session, "Phase"));
+        for (int frame = 0; frame < 120 && phase != "Playing" && phase != "Paused"; frame++)
+        {
+            yield return null;
+            phase = Convert.ToString(Read(session, "Phase"));
+        }
+
+        Assert.That(phase == "Playing" || phase == "Paused", Is.True,
+            "A cena GlobalMapRTS precisa entrar em uma sessão ativa antes de avançar a simulação. Fase: " + phase);
+
+        simulationWasPausedBeforeRuntimeTest = phase == "Paused";
+        restoreSimulationPauseAfterRuntimeTest = true;
+        if (simulationWasPausedBeforeRuntimeTest)
+        {
+            MethodInfo setPaused = sessionType.GetMethod("SetPaused", Members);
+            Assert.That(setPaused, Is.Not.Null, "A sessão RTS precisa expor SetPaused(bool).");
+            setPaused.Invoke(session, new object[] { false });
+        }
+
+        for (int frame = 0; frame < 120
+             && Convert.ToString(Read(session, "Phase")) != "Playing"; frame++)
+        {
+            yield return null;
+        }
+
+        Assert.That(Convert.ToString(Read(session, "Phase")), Is.EqualTo("Playing"),
+            "A aceitação precisa executar enquanto a simulação RTS está ativa.");
+        yield return null;
+    }
+
+    private void SetAcceleratedSimulationForRuntimeTest(float speed)
+    {
+        Type clockType = ResolveType("Hegemonia.RTS.RTSSimulationClock");
+        Component clock = ReadStatic(clockType, "Instancia") as Component;
+        if (clock == null)
+        {
+            TestContext.WriteLine("Velocidade acelerada IA03 indisponível: RTSSimulationClock não está ativo.");
+            return;
+        }
+
+        if (!restoreSimulationSpeedAfterRuntimeTest)
+        {
+            simulationClockToRestore = clock;
+            originalSimulationSpeedBeforeRuntimeTest = Convert.ToSingle(Read(clock, "SimulationSpeed"));
+            restoreSimulationSpeedAfterRuntimeTest = true;
+        }
+
+        Call(clock, "SetSimulationSpeed", speed);
+        TestContext.WriteLine("Velocidade da simulação IA03: solicitada=" + speed.ToString("0.00")
+            + "x; efetiva=" + Convert.ToSingle(Read(clock, "SimulationSpeed")).ToString("0.00") + "x");
+    }
+
     private static Component FindBrain(int teamId)
     {
         Type brainType = ResolveType("Hegemonia.AI.BrainMaster.IA_BrainMaster");
         return FindSceneComponents(brainType)
             .FirstOrDefault(brain => Convert.ToInt32(Read(brain, "TeamId")) == teamId);
+    }
+
+    private static void AssertValdoriaPatrolCreatysAndAirMission(Component strategist)
+    {
+        Type creatyType = ResolveType("Hegemonia.AI.IA03.CreatyEstrategico");
+        Type conflictLevelType = ResolveType("Hegemonia.AI.IA03.IA03NivelConflito");
+        Type strategicDomainType = ResolveType("Hegemonia.AI.IA03.IA03DominioEstrategico");
+        Type strategicCreatyType = ResolveType("Hegemonia.AI.IA03.IA03TipoCreaty");
+        Type registryType = ResolveType("Hegemonia.AI.IA03.RegistroCreatysEstrategicos");
+        Component[] valdoriaPoints = FindSceneComponents(creatyType)
+            .Where(point => Convert.ToInt32(Read(point, "PaisProprietarioTeamId")) == 2)
+            .ToArray();
+
+        string[] patrolTypeNames =
+        {
+            "PatrulhaTerrestre",
+            "PatrulhaNaval",
+            "PatrulhaAerea",
+            "PatrulhaSubmarino"
+        };
+        string[] patrolDomainNames = { "Terrestre", "Naval", "Aereo", "Naval" };
+        string[] levelNames = { "GuerraTotal", "ConflitoLimitado", "AvancoMilitar", "Tensao" };
+        string[] levelSuffixes = { "N1", "N2", "N3", null };
+        string[] levelFourPointNames =
+        {
+            "SLOT_MANUAL_Valdoria_PatrulhaTerrestre_N4",
+            "SLOT_MANUAL_Valdoria_PatrulhaNaval_1",
+            "SLOT_MANUAL_Valdoria_PatrulhaAerea_1",
+            "SLOT_MANUAL_Valdoria_PatrulhaSubmarino_N4"
+        };
+
+        MethodInfo fillCandidates = registryType.GetMethod("PreencherCandidatos", Members);
+        Assert.That(fillCandidates, Is.Not.Null);
+        Type candidateListType = typeof(List<>).MakeGenericType(creatyType);
+        for (int patrolIndex = 0; patrolIndex < patrolTypeNames.Length; patrolIndex++)
+        {
+            string patrolTypeName = patrolTypeNames[patrolIndex];
+            Component[] pointsOfType = valdoriaPoints
+                .Where(point => Read(point, "Tipo").ToString() == patrolTypeName)
+                .ToArray();
+            Assert.That(pointsOfType.Length, Is.EqualTo(4),
+                "A Valdoria precisa ter um ponto de " + patrolTypeName + " para N1, N2, N3 e N4.");
+
+            for (int levelIndex = 0; levelIndex < levelNames.Length; levelIndex++)
+            {
+                string expectedPointName = levelIndex == 3
+                    ? levelFourPointNames[patrolIndex]
+                    : "SLOT_MANUAL_Valdoria_" + patrolTypeName + "_" + levelSuffixes[levelIndex];
+                Component expectedPoint = pointsOfType.FirstOrDefault(point => point.gameObject.name == expectedPointName);
+                Assert.That(expectedPoint, Is.Not.Null,
+                    "Ponto de patrulha ausente na cena: " + expectedPointName);
+                Assert.That(((Behaviour)expectedPoint).isActiveAndEnabled, Is.True, expectedPointName);
+                Assert.That(Read(expectedPoint, "NivelDeConflito").ToString(), Is.EqualTo(levelNames[levelIndex]), expectedPointName);
+                Assert.That(Read(expectedPoint, "Dominio").ToString(), Is.EqualTo(patrolDomainNames[patrolIndex]), expectedPointName);
+
+                IList candidates = (IList)Activator.CreateInstance(candidateListType);
+                int targetTeamId = Convert.ToInt32(Read(expectedPoint, "PaisAlvoTeamId"));
+                object conflictLevel = Enum.Parse(conflictLevelType, levelNames[levelIndex]);
+                object strategicDomain = Enum.Parse(strategicDomainType, patrolDomainNames[patrolIndex]);
+                object strategicCreaty = Enum.Parse(strategicCreatyType, patrolTypeName);
+                fillCandidates.Invoke(null, new[]
+                {
+                    candidates,
+                    (object)2,
+                    targetTeamId,
+                    strategicCreaty,
+                    conflictLevel,
+                    strategicDomain
+                });
+
+                Assert.That(candidates.Count, Is.EqualTo(1),
+                    "O registro deve resolver um único Creaty para " + patrolTypeName + " / " + levelNames[levelIndex] + ".");
+                Assert.That(candidates[0], Is.SameAs(expectedPoint),
+                    "A missão deve respeitar o Creaty manual marcado para " + patrolTypeName + " / " + levelNames[levelIndex] + ".");
+            }
+        }
+
+        IList missions = Read(strategist, "missoesEstrategicas") as IList;
+        Assert.That(missions, Is.Not.Null);
+        object airPatrol = missions.Cast<object>().FirstOrDefault(mission =>
+            Convert.ToString(Read(mission, "IdMissao")) == "IA03-PATRULHA-AEREA");
+        Assert.That(airPatrol, Is.Not.Null, "A missão de patrulha aérea da Valdoria precisa estar ligada ao estrategista.");
+        Assert.That((bool)Read(airPatrol, "PermitePatrulhaEmPaz"), Is.True,
+            "A aeronave precisa poder iniciar patrulha defensiva durante a paz.");
+        Assert.That(Read(airPatrol, "TipoOrdem").ToString(), Is.EqualTo("Patrulhar"));
+
+        foreach (string levelName in new[] { "Paz", "Tensao", "AvancoMilitar", "ConflitoLimitado", "GuerraTotal" })
+        {
+            bool accepted = (bool)Call(airPatrol, "Aceita",
+                Enum.Parse(conflictLevelType, levelName),
+                Enum.Parse(strategicCreatyType, "PatrulhaAerea"));
+            Assert.That(accepted, Is.True,
+                "A patrulha aérea deve permanecer autorizada no nível " + levelName + ".");
+        }
+    }
+
+    private static int CountOwnedComponents(string componentTypeName, int teamId)
+    {
+        Type componentType = ResolveType(componentTypeName);
+        Type identityType = ResolveType("IdentidadeUnidade");
+        Component[] components = FindSceneComponents(componentType);
+        int count = 0;
+        for (int i = 0; i < components.Length; i++)
+        {
+            Component identity = components[i].GetComponentInParent(identityType)
+                ?? components[i].GetComponentInChildren(identityType, true);
+            if (identity != null && Convert.ToInt32(Read(identity, "teamID")) == teamId)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static Component FindOwnedStructure(string typeName, int teamId)
@@ -1539,6 +2655,9 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
         Type identityType = ResolveType("IdentidadeUnidade");
         return FindSceneComponents(structureType).FirstOrDefault(structure =>
         {
+            if (structure.GetType() != structureType)
+                return false;
+
             Component identity = structure.GetComponentInParent(identityType)
                 ?? structure.GetComponentInChildren(identityType, true);
             return identity != null && Convert.ToInt32(Read(identity, "teamID")) == teamId;
@@ -1630,6 +2749,30 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
             });
         Assert.That(method, Is.Not.Null, "Método ausente: " + target.GetType().FullName + "." + name);
         return method.Invoke(target, args);
+    }
+
+    private static string ReadRecentCommandFailures(Component brain, int maxHistoryItems)
+    {
+        object queue = Read(brain, "_commandQueue");
+        if (queue == null)
+            return "fila indisponível";
+
+        IEnumerable records = Call(queue, "GetRecentHistory", maxHistoryItems) as IEnumerable;
+        if (records == null)
+            return "histórico indisponível";
+
+        List<string> failures = new List<string>();
+        foreach (object record in records)
+        {
+            if (record == null || Convert.ToString(Read(record, "Status")) != "Failed")
+                continue;
+
+            failures.Add(Read(record, "ItemKey") + ": " + Read(record, "Message"));
+            if (failures.Count >= 10)
+                break;
+        }
+
+        return failures.Count > 0 ? string.Join(" || ", failures) : "nenhuma falha recente";
     }
 
     private static Type ResolveType(string fullName)

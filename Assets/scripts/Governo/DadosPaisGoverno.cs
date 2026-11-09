@@ -192,6 +192,14 @@ public class DadosPaisGoverno
     public int reservistas = 0;
     public int alistaveis = 0;
     public int mortosAcumulados = 0;
+    [Min(1)] public int metaEfetivoMilitar = SistemaMilitar.MetaEfetivoPadrao;
+    [Min(1)] public int recrutamentoMilitarPorDia = SistemaMilitar.RecrutamentoMilitarPadraoPorDia;
+    [Min(0)] public int ultimoDiaRecrutamentoMilitar;
+    [Min(0)] public int sequenciaRegistroMilitar;
+    [Min(0)] public int registrosMilitaresAtivos;
+    [Min(0)] public int registrosMilitaresEmFormacao;
+    public bool registrosMilitaresSincronizados;
+    public List<RegistroMilitarIndividual> efetivoMilitar = new List<RegistroMilitarIndividual>();
     [Range(0f, 100f)] public float felicidade = 70f;
     [Header("Bonus temporarios")]
     [Range(0f, 10f)] public float bonusFelicidadeCartel;
@@ -330,6 +338,7 @@ public class DadosPaisGoverno
     [Min(0)] public int producaoAgrotoxicosDiaria;
     [Min(0)] public int estercoDisponivel;
     public int petroleo = 500;
+    public bool refinoAutomaticoPier;
     public int energia = 200;
     public int aco = 300;
     public int armamentos = 500;

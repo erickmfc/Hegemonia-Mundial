@@ -3587,6 +3587,7 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             TabelaLinha("PETROLEO", petroleo.ToString("0.0"), consumoPetroleo.ToString("0.0"), deficitPetroleo.ToString("0.0"), deficitPetroleo <= 0f ? "SUPRIDA" : "FALTA");
             TabelaLinha("INDUSTRIA", industria.ToString("0.0"), "-", p.nivelIndustrial.ToString("0"), p.nivelIndustrial >= 50 ? "FORTE" : "FRACA");
             ConstruirControleCulturas(p, sistemaAgricola);
+            ConstruirControleRefinoLogistico(p);
             return;
         }
 
@@ -3726,6 +3727,127 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
             int estoque = governo != null ? governo.ObterEstoque(pais.teamId, id) : 0;
             TabelaLinha(AgriculturaNacional.ObterNomeCultura(id), mix.ToString("0.0") + "%", estoque.ToString("N0"), "t", estoque > 0 ? "ESTOCADO" : "SEM ESTOQUE");
         }
+    }
+
+    private void ConstruirControleRefinoLogistico(DadosPaisGoverno pais)
+    {
+        if (pais == null) return;
+
+        SistemaIndustrialNacional industrial = SistemaIndustrialNacional.Instancia;
+        double dieselDisponivel = industrial != null ? industrial.ObterQuantidadePais(pais.teamId, IndustriaIds.Diesel) : 0d;
+        double navalDisponivel = industrial != null ? industrial.ObterQuantidadePais(pais.teamId, IndustriaIds.CombustivelNaval) : 0d;
+        double aviacaoDisponivel = industrial != null ? industrial.ObterQuantidadePais(pais.teamId, IndustriaIds.CombustivelAviacao) : 0d;
+        double petroleoDisponivel = industrial != null ? industrial.ObterQuantidadePais(pais.teamId, IndustriaIds.PetroleoBruto) : pais.petroleo;
+        if (petroleoDisponivel <= 0d && pais.petroleo > 0) petroleoDisponivel = pais.petroleo;
+
+        AdicionarCard(conteudo, "REFINO LOGÍSTICO NO PÍER & ABASTECIMENTO MILITAR",
+            "Chegou no píer, já refinou! Ao ativar esta opção, o petróleo bruto entregue pelos petroleiros é fracionado instantaneamente nos 3 combustíveis de combate. Unidades recém-compradas (tanques, navios, caças) e bases operacionais recebem combustível imediatamente sob demanda a partir do petróleo bruto armazenado.");
+
+        VisualElement controle = new VisualElement();
+        controle.AddToClassList("card");
+        controle.AddToClassList("gov-culture-control");
+
+        Toggle toggleRefino = new Toggle("ATIVAR REFINO AUTOMÁTICO NO PÍER E ABASTECIMENTO IMEDIATO")
+        {
+            value = pais.refinoAutomaticoPier
+        };
+        toggleRefino.AddToClassList("gov-budget-toggle");
+        toggleRefino.tooltip = "Fraciona o petróleo bruto descarregado no píer e abastece unidades recém-compradas instantaneamente.";
+        toggleRefino.RegisterValueChangedCallback(evt =>
+        {
+            pais.refinoAutomaticoPier = evt.newValue;
+            SistemaGovernoMundial.Instancia?.NotificarGovernoAtualizado();
+            MostrarMensagem(evt.newValue
+                ? "Refino automático no píer e abastecimento imediato ativados!"
+                : "Refino automático desativado. Combustíveis dependerão exclusivamente das linhas industriais.");
+            MostrarPagina(abaAtual);
+        });
+        controle.Add(toggleRefino);
+
+        VisualElement linhaAcoes = new VisualElement();
+        linhaAcoes.AddToClassList("gov-share-row");
+        linhaAcoes.style.marginTop = 8;
+        linhaAcoes.style.flexDirection = FlexDirection.Row;
+        linhaAcoes.style.justifyContent = Justify.FlexStart;
+
+        Button botaoRefinarLote = new Button(() =>
+        {
+            if (industrial == null)
+            {
+                MostrarMensagem("Sistema Industrial indisponível.");
+                return;
+            }
+
+            double lote = Math.Min(10000d, petroleoDisponivel);
+            if (lote <= 0d)
+            {
+                MostrarMensagem("Petróleo bruto insuficiente para refino.");
+                return;
+            }
+
+            bool ok = industrial.RefinarLoteCombustiveis(pais.teamId, lote);
+            if (ok)
+            {
+                MostrarMensagem("Lote de " + lote.ToString("N0") + " barris refinado em Diesel, Naval e Aviação!");
+                AtualizarRecursos();
+                MostrarPagina(abaAtual);
+            }
+            else
+            {
+                MostrarMensagem("Não foi possível refinar o lote.");
+            }
+        })
+        {
+            text = "REFINAR 10.000 BARRIS AGORA"
+        };
+        botaoRefinarLote.AddToClassList("gov-mini-button");
+        botaoRefinarLote.AddToClassList("buy");
+        botaoRefinarLote.tooltip = "Converte imediatamente 10.000 barris de petróleo bruto em partes iguais para Diesel, Combustível Naval e de Aviação.";
+        linhaAcoes.Add(botaoRefinarLote);
+
+        Button botaoRefinarTudo = new Button(() =>
+        {
+            if (industrial == null)
+            {
+                MostrarMensagem("Sistema Industrial indisponível.");
+                return;
+            }
+
+            double lote = Math.Min(50000d, petroleoDisponivel);
+            if (lote <= 0d)
+            {
+                MostrarMensagem("Petróleo bruto insuficiente para refino.");
+                return;
+            }
+
+            bool ok = industrial.RefinarLoteCombustiveis(pais.teamId, lote);
+            if (ok)
+            {
+                MostrarMensagem("Lote de " + lote.ToString("N0") + " barris refinado em Diesel, Naval e Aviação!");
+                AtualizarRecursos();
+                MostrarPagina(abaAtual);
+            }
+            else
+            {
+                MostrarMensagem("Não foi possível refinar o lote.");
+            }
+        })
+        {
+            text = "REFINAR LOTE GRANDE (50.000 BARRIS)"
+        };
+        botaoRefinarTudo.AddToClassList("gov-mini-button");
+        botaoRefinarTudo.AddToClassList("buy");
+        botaoRefinarTudo.style.marginLeft = 8;
+        linhaAcoes.Add(botaoRefinarTudo);
+
+        controle.Add(linhaAcoes);
+        conteudo.Add(controle);
+
+        TabelaCabecalho("COMBUSTÍVEL", "ESTOQUE DISPONÍVEL", "CONSUMO / TIPO", "STATUS OPERACIONAL", "ABASTECIMENTO");
+        TabelaLinha("DIESEL MILITAR", dieselDisponivel.ToString("N0") + " L", "Terrestre (Tanques e Blindados)", dieselDisponivel > 1000d ? "SUPRIDO" : "BAIXO", pais.refinoAutomaticoPier ? "AUTO NO PÍER" : "MANUAL");
+        TabelaLinha("COMBUSTÍVEL NAVAL", navalDisponivel.ToString("N0") + " L", "Marinha (Navios e Submarinos)", navalDisponivel > 1000d ? "SUPRIDO" : "BAIXO", pais.refinoAutomaticoPier ? "AUTO NO PÍER" : "MANUAL");
+        TabelaLinha("COMB. DE AVIAÇÃO", aviacaoDisponivel.ToString("N0") + " L", "Aeronáutica (Caças e Bombardeiros)", aviacaoDisponivel > 1000d ? "SUPRIDO" : "BAIXO", pais.refinoAutomaticoPier ? "AUTO NO PÍER" : "MANUAL");
+        TabelaLinha("PETRÓLEO BRUTO", petroleoDisponivel.ToString("N0") + " barris", "Matéria-prima de refino", petroleoDisponivel > 1000d ? "ABUNDANTE" : "LIMITADO", "PÍER / PLATAFORMA");
     }
 
     private void AjustarImpostoIndividual(string setor, int delta)

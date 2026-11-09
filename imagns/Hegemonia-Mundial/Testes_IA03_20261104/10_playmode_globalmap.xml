@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="0" result="Passed" total="0" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-04 23:54:35Z" end-time="2026-11-04 23:54:47Z" duration="11,8680172">
+  <test-suite type="TestSuite" id="1316" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="260" result="Passed" start-time="2026-11-04 23:54:35Z" end-time="2026-11-04 23:54:47Z" duration="11.868017" total="0" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+      <property name="retryIteration" value="0" />
+      <property name="repeatIteration" value="0" />
+    </properties>
+  </test-suite>
+</test-run>

@@ -16,6 +16,8 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<GameObject> _heavyActiveBuffer = new List<GameObject>(8);
         private readonly List<GameObject> _subActiveBuffer = new List<GameObject>(4);
         private readonly List<GameObject> _coastalGuardBuffer = new List<GameObject>(2);
+        private readonly List<CreatyEstrategico> _navalCreatyBuffer = new List<CreatyEstrategico>(8);
+        private int _navalCreatyRotationIndex;
         private Vector3 _coastalGuardPoint;
         private float _nextCoastalGuardRefreshTime;
         private float _nextDecisionTime;
@@ -299,7 +301,65 @@ namespace Hegemonia.AI.BrainMaster
                 return best.Position;
             }
 
+            Vector3 creatyPatrol;
+            if (TryResolveNavalCreatyPatrolPoint(out creatyPatrol))
+            {
+                return creatyPatrol;
+            }
+
             return _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Water, 220f, 1200f, 28);
+        }
+
+        private bool TryResolveNavalCreatyPatrolPoint(out Vector3 point)
+        {
+            point = Vector3.zero;
+            int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 0;
+            if (teamId <= 0)
+            {
+                return false;
+            }
+
+            IA03NivelConflito nivel = _ia03Estratega != null
+                ? _ia03Estratega.NivelDeConflito
+                : IA03NivelConflito.Paz;
+            RegistroCreatysEstrategicos.PreencherCandidatos(
+                _navalCreatyBuffer,
+                teamId,
+                0,
+                IA03TipoCreaty.PatrulhaNaval,
+                nivel,
+                IA03DominioEstrategico.Naval);
+            if (_navalCreatyBuffer.Count == 0 && nivel != IA03NivelConflito.Paz)
+            {
+                RegistroCreatysEstrategicos.PreencherCandidatos(
+                    _navalCreatyBuffer,
+                    teamId,
+                    0,
+                    IA03TipoCreaty.PatrulhaNaval,
+                    IA03NivelConflito.Paz,
+                    IA03DominioEstrategico.Naval);
+            }
+
+            if (_navalCreatyBuffer.Count == 0)
+            {
+                return false;
+            }
+
+            int index = Mathf.Abs(_navalCreatyRotationIndex++) % _navalCreatyBuffer.Count;
+            CreatyEstrategico chosen = _navalCreatyBuffer[index];
+            if (chosen == null)
+            {
+                return false;
+            }
+
+            Vector3 waterPoint = _context.MapAnalyzer.FindPointInTerrain(
+                chosen.transform.position,
+                IA_TerrainType.Water,
+                10f,
+                160f,
+                18);
+            point = waterPoint != Vector3.zero ? waterPoint : chosen.transform.position;
+            return point != Vector3.zero;
         }
 
         private bool ShouldLaunchNavalStrike(
@@ -344,6 +404,14 @@ namespace Hegemonia.AI.BrainMaster
         {
             if (_coastalGuardPoint != Vector3.zero && now < _nextCoastalGuardRefreshTime)
             {
+                return _coastalGuardPoint;
+            }
+
+            Vector3 creatyGuard;
+            if (TryResolveNavalCreatyPatrolPoint(out creatyGuard))
+            {
+                _coastalGuardPoint = creatyGuard;
+                _nextCoastalGuardRefreshTime = now + 22f;
                 return _coastalGuardPoint;
             }
 

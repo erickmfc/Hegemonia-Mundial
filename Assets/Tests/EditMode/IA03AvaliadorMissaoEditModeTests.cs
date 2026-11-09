@@ -3420,10 +3420,10 @@ public sealed class IA03AvaliadorMissaoEditModeTests
             Component brain = strategistObject.GetComponent(brainType);
             SetField(brain, "TeamId", 1);
             object worldState = Activator.CreateInstance(worldStateType, new object[] { 1 });
-            ((IList)worldStateType.GetField("OwnUnits").GetValue(worldState)).Add(emptyUnit);
-            ((IList)worldStateType.GetField("OwnUnits").GetValue(worldState)).Add(readyUnit);
-            ((IList)worldStateType.GetField("OwnCombatUnits").GetValue(worldState)).Add(emptyUnit);
-            ((IList)worldStateType.GetField("OwnCombatUnits").GetValue(worldState)).Add(readyUnit);
+            ((IList)worldStateType.GetProperty("OwnUnits").GetValue(worldState)).Add(emptyUnit);
+            ((IList)worldStateType.GetProperty("OwnUnits").GetValue(worldState)).Add(readyUnit);
+            ((IList)worldStateType.GetProperty("OwnCombatUnits").GetValue(worldState)).Add(emptyUnit);
+            ((IList)worldStateType.GetProperty("OwnCombatUnits").GetValue(worldState)).Add(readyUnit);
             object context = Activator.CreateInstance(contextType);
             SetField(context, "WorldState", worldState);
             brainType.GetProperty("Context").GetSetMethod(true).Invoke(brain, new[] { context });
@@ -3876,7 +3876,7 @@ public sealed class IA03AvaliadorMissaoEditModeTests
         ScriptableObject profile = ScriptableObject.CreateInstance(profileType);
         GameObject unit = CriarVeiculoIA03ComCombustivel(identityType, fuelType, unitKindType, 0f);
         object worldState = Activator.CreateInstance(worldStateType, new object[] { 1 });
-        ((IList)worldStateType.GetField("OwnUnits").GetValue(worldState)).Add(unit);
+        ((IList)worldStateType.GetProperty("OwnUnits").GetValue(worldState)).Add(unit);
         try
         {
             Component strategist = strategistObject.AddComponent(strategistType);

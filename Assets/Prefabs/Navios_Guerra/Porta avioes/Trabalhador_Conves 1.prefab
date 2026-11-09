@@ -223,6 +223,7 @@ MonoBehaviour:
   antygavitiEstabilidade: 5
   tipoUnidade: 0
   militaresConsumidos: 0
+  militaresVinculadosIds: []
   combustivelPorHora: 0
   energiaConsumida: 0
   nomeDeBatismo: 

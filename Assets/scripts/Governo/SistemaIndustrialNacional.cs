@@ -636,6 +636,82 @@ public class SistemaIndustrialNacional : MonoBehaviour
         return true;
     }
 
+    public bool RefinarPetroleoAutomaticoPier(int teamId, double quantidade)
+    {
+        if (teamId <= 0 || quantidade <= 0d) return false;
+        string teamKey = teamId.ToString();
+        GarantirPetroleoDisponivel(teamId);
+        double disponivel = Armazem.ObterDisponivel(teamKey, IndustriaIds.PetroleoBruto);
+        double processar = Math.Min(quantidade, disponivel);
+        if (processar <= 0.01d) return false;
+
+        Armazem.TentarConsumir(teamKey, IndustriaIds.PetroleoBruto, processar);
+        double fracao = processar / 3.0;
+        Armazem.Adicionar(teamKey, IndustriaIds.Diesel, fracao);
+        Armazem.Adicionar(teamKey, IndustriaIds.CombustivelNaval, fracao);
+        Armazem.Adicionar(teamKey, IndustriaIds.CombustivelAviacao, fracao);
+
+        SincronizarPaisEmGoverno(teamId);
+        AtualizarEstadoPais(teamId);
+        OnSistemaAtualizado?.Invoke();
+        return true;
+    }
+
+    public bool ConverterPetroleoEmCombustivel(int teamId, string recursoCombustivel, double quantidadeDesejada)
+    {
+        if (teamId <= 0 || quantidadeDesejada <= 0d || string.IsNullOrWhiteSpace(recursoCombustivel)) return false;
+        string teamKey = teamId.ToString();
+        GarantirPetroleoDisponivel(teamId);
+        double disponivel = Armazem.ObterDisponivel(teamKey, IndustriaIds.PetroleoBruto);
+        double processar = Math.Min(quantidadeDesejada, disponivel);
+        if (processar <= 0.01d) return false;
+
+        Armazem.TentarConsumir(teamKey, IndustriaIds.PetroleoBruto, processar);
+        Armazem.Adicionar(teamKey, recursoCombustivel, processar);
+
+        SincronizarPaisEmGoverno(teamId);
+        AtualizarEstadoPais(teamId);
+        OnSistemaAtualizado?.Invoke();
+        return true;
+    }
+
+    public bool RefinarLoteCombustiveis(int teamId, double quantidadeBruto)
+    {
+        if (teamId <= 0 || quantidadeBruto <= 0d) return false;
+        string teamKey = teamId.ToString();
+        GarantirPetroleoDisponivel(teamId);
+        double disponivel = Armazem.ObterDisponivel(teamKey, IndustriaIds.PetroleoBruto);
+        double processar = Math.Min(quantidadeBruto, disponivel);
+        if (processar <= 0.01d) return false;
+
+        Armazem.TentarConsumir(teamKey, IndustriaIds.PetroleoBruto, processar);
+        double fracao = processar / 3.0;
+        Armazem.Adicionar(teamKey, IndustriaIds.Diesel, fracao);
+        Armazem.Adicionar(teamKey, IndustriaIds.CombustivelNaval, fracao);
+        Armazem.Adicionar(teamKey, IndustriaIds.CombustivelAviacao, fracao);
+
+        SincronizarPaisEmGoverno(teamId);
+        AtualizarEstadoPais(teamId);
+        OnSistemaAtualizado?.Invoke();
+        return true;
+    }
+
+    private void GarantirPetroleoDisponivel(int teamId)
+    {
+        string teamKey = teamId.ToString();
+        if (Armazem.ObterDisponivel(teamKey, IndustriaIds.PetroleoBruto) > 0d) return;
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null)
+        {
+            DadosPaisGoverno pais = governo.ObterPais(teamId);
+            if (pais != null && pais.petroleo > 0)
+            {
+                Armazem.Adicionar(teamKey, IndustriaIds.PetroleoBruto, pais.petroleo);
+            }
+        }
+    }
+
     /// <summary>
     /// Adds a complete factory cycle with one government synchronization.
     /// This avoids one economy/UI refresh per material when a factory produces

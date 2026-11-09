@@ -1373,7 +1373,10 @@ public sealed class AircraftPurchasePlayModeTests
     {
         CreateRaisedLandFixture();
         PrepareEmptyAviationFuelStock();
-        PrepareIsolatedPlayerGovernment(2);
+        // Cada aeronave legada sem efetivo declarado consome o mínimo aéreo (2).
+        // A compra repetida deste cenário precisa reservar efetivo para ambas.
+        PrepareIsolatedPlayerGovernment(4);
+        IsolateAirportRegistry();
         Component airport = CreatePlayerAirport(new Vector3(50f, 30f, 50f));
         Set(airport, "semEnergia", false);
         Component resources = PrepareResources(5000L);

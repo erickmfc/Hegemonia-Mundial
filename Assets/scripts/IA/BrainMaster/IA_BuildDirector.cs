@@ -1370,6 +1370,7 @@ namespace Hegemonia.AI.BrainMaster
 
             _warningCooldownUntil[key] = now + 20f;
             string message = "[IA03][Valdoria] construção aguardando: " + itemKey + " | motivo=" + reason;
+            GlobalWorldDiagnostics.RegisterIA03PlanningFailure(itemKey, reason);
             Debug.LogWarning(message, _context.Brain);
             IA_RuntimeTextTrace.LogText(2, "IA_BuildDirector", "BUILD_BLOCKED", itemKey + " | motivo=" + reason);
         }
@@ -2487,7 +2488,10 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_BrainMaster.IA_BootstrapStage.HoldGroundUnits:
                 case IA_BrainMaster.IA_BootstrapStage.ProduceAircraft:
                 case IA_BrainMaster.IA_BootstrapStage.ProduceShip:
-                    return true;
+                    // Production is owned by IA_ProductionDirector. Keep the
+                    // construction tick available so missing prerequisites
+                    // (for example an airport or naval base) can be repaired.
+                    return false;
 
                 case IA_BrainMaster.IA_BootstrapStage.Completed:
                 case IA_BrainMaster.IA_BootstrapStage.Disabled:
@@ -2544,7 +2548,8 @@ namespace Hegemonia.AI.BrainMaster
             string reason;
             if (TryFindValidatedCandidate(itemKey, zone, anchor, IA_TerrainType.Water, minRadius, maxRadius, out candidate, out reason))
             {
-                if (QueueBuild(itemKey, candidate, zone, priority, cooldown))
+                IA_ManualBuildPoint manualPoint = ConsumePendingManualBuildPoint();
+                if (QueueBuild(itemKey, candidate, zone, priority, cooldown, manualPoint))
                 {
                     brain.SetBootstrapStatus("bootstrap: " + logKey + " em fila (" + itemKey + ")");
                     return true;

@@ -77,7 +77,8 @@ public sealed class IAConstructionAreaEditModeTests
                 "ConstrucaoEnergia",
                 "ConstrucaoPier",
                 "ConstrucaoEstaleiro",
-                "ConstrucaoPlataforma"
+                "ConstrucaoPlataforma",
+                "ConstrucaoAeroportoMilitar"
             };
 
             for (int i = 0; i < roles.Length; i++)

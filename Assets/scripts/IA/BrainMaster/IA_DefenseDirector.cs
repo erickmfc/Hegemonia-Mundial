@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Hegemonia.AI.IA03;
 using UnityEngine;
 
 namespace Hegemonia.AI.BrainMaster
@@ -10,10 +12,17 @@ namespace Hegemonia.AI.BrainMaster
         // --- Antiaérea ARES ---
         private float _nextAresCheckTime;
         private int   _aresBuilt;
-        private const int   MaxAresTotal        = 6;   // Limite global de ARES na zona
-        private const float AresCheckInterval   = 12f; // Segundos entre avaliações de ARES
-        private const float AresMinRadius       = 40f;
-        private const float AresMaxRadius       = 280f;
+        private int   _aresAnchorRotation;
+        private const int   MaxAresTotal        = 4;   // Limite global de ARES na zona (distribuído pela ilha)
+        private const int   MaxClassicTurrets   = 2;
+        private const int   MaxClassicCiws      = 2;
+        private const int   MaxMissileLaunchers = 2;
+        private const float AresCheckInterval   = 18f; // Segundos entre avaliações de ARES
+        private const float AresMinRadius       = 45f;
+        private const float AresMaxRadius       = 260f;
+        private const float AresMinSeparation   = 150f;
+        private readonly List<Vector3> _existingAresPositions = new List<Vector3>(8);
+        private readonly List<CreatyEstrategico> _creatyAnchorBuffer = new List<CreatyEstrategico>(16);
 
         // --- Reforço Terrestre Reativo ---
         private float _nextGroundReinforceTime;
@@ -113,12 +122,22 @@ namespace Hegemonia.AI.BrainMaster
             {
                 AtivarSistemasAntimissil();
                 
-                // Se o modo estiver ativo, acelera a construção de defesas! (com cooldown local)
+                // Se o modo estiver ativo, acelera a construção de defesas! (com cooldown local e limite global)
                 if (now >= _nextEmergencyBuildTime && _commandQueueNotSaturated())
                 {
-                    _nextEmergencyBuildTime = now + 10f; // Tenta construir a cada 10s enquanto em alerta
-                    QueueDefensiveBuild("ciws", baseCenter, IA_TerrainType.City, 20f, 180f, 100, 5f);
-                    QueueDefensiveBuild("thaad", baseCenter, IA_TerrainType.Open, 40f, 220f, 99, 8f);
+                    _nextEmergencyBuildTime = now + 22f;
+                    CountExistingDefenses(out int existingTurrets, out int existingCiws, out int existingAres, out int existingLaunchers, out _);
+                    int totalAntiAir = existingCiws + existingAres;
+                    if (existingCiws < MaxClassicCiws && totalAntiAir < (MaxAresTotal + MaxClassicCiws))
+                    {
+                        Vector3 ciwsAnchor = ResolveDistributedDefenseAnchor(baseCenter);
+                        QueueDefensiveBuild("ciws", ciwsAnchor, IA_TerrainType.City, 35f, 180f, 100, 18f);
+                    }
+                    if (existingLaunchers < MaxMissileLaunchers)
+                    {
+                        Vector3 thaadAnchor = ResolveDistributedDefenseAnchor(baseCenter);
+                        QueueDefensiveBuild("thaad", thaadAnchor, IA_TerrainType.Open, 55f, 220f, 99, 25f);
+                    }
                 }
             }
         }
@@ -173,26 +192,33 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (localThreat > 55f)
-                QueueDefensiveBuild("torreta", baseCenter, IA_TerrainType.Choke, 35f, 140f, 93, 10f);
+            CountExistingDefenses(out int existingTurrets, out int existingCiws, out int existingAres, out int existingLaunchers, out int existingRadars);
+            Vector3 distributedAnchor = ResolveDistributedDefenseAnchor(baseCenter);
 
-            if (counter.AirWeight > 0.32f || localThreat > 70f)
-                QueueDefensiveBuild("ciws", baseCenter, IA_TerrainType.City, 30f, 130f, 92, 10f);
+            if (localThreat > 55f && existingTurrets < MaxClassicTurrets)
+                QueueDefensiveBuild("torreta", distributedAnchor, IA_TerrainType.Choke, 45f, 160f, 93, 18f);
+
+            if ((counter.AirWeight > 0.32f || localThreat > 70f)
+                && existingCiws < MaxClassicCiws
+                && (existingCiws + existingAres) < (MaxAresTotal + MaxClassicCiws))
+                QueueDefensiveBuild("ciws", distributedAnchor, IA_TerrainType.City, 40f, 160f, 92, 20f);
 
             if (counter.ReinforceCoast)
             {
-                QueueDefensiveBuild("radar",   baseCenter, IA_TerrainType.Coast, 80f, 260f, 82, 16f);
-                QueueDefensiveBuild("torreta", baseCenter, IA_TerrainType.Coast, 90f, 300f, 80, 12f);
+                if (existingRadars < 2)
+                    QueueDefensiveBuild("radar",   distributedAnchor, IA_TerrainType.Coast, 80f, 260f, 82, 24f);
+                if (existingTurrets < MaxClassicTurrets)
+                    QueueDefensiveBuild("torreta", distributedAnchor, IA_TerrainType.Coast, 90f, 300f, 80, 20f);
             }
 
-            if (counter.ReinforceCenter)
+            if (counter.ReinforceCenter && existingTurrets < MaxClassicTurrets)
             {
-                QueueDefensiveBuild("muro", baseCenter, IA_TerrainType.Choke, 30f, 150f, 76,  7f);
-                QueueDefensiveBuild("hack", baseCenter, IA_TerrainType.Open,  60f, 180f, 74, 12f);
+                QueueDefensiveBuild("muro", baseCenter, IA_TerrainType.Choke, 30f, 150f, 76, 15f);
+                QueueDefensiveBuild("hack", distributedAnchor, IA_TerrainType.Open,  60f, 180f, 74, 22f);
             }
 
-            if (counter.AntiRush || localThreat > 85f)
-                QueueDefensiveBuild("lancador missil", baseCenter, IA_TerrainType.Open, 90f, 240f, 70, 35f);
+            if ((counter.AntiRush || localThreat > 85f) && existingLaunchers < MaxMissileLaunchers)
+                QueueDefensiveBuild("lancador missil", distributedAnchor, IA_TerrainType.Open, 90f, 240f, 70, 35f);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -213,8 +239,8 @@ namespace Hegemonia.AI.BrainMaster
             float airThreat  = _context.ThreatAnalyzer.EvaluateThreat(baseCenter, IA_Domain.Air);
             float landThreat = _context.ThreatAnalyzer.EvaluateThreat(baseCenter, IA_Domain.Land);
 
-            // Sempre constrói ao menos 1 ARES perto da base ao iniciar
-            bool forcarPrimeiro = (_aresBuilt == 0);
+            // Sempre constrói ao menos 1 ARES na ilha quando a base estiver operando
+            bool forcarPrimeiro = (_aresBuilt == 0 && now >= 35f);
 
             // Condições para construir ARES neste ciclo
             bool aresNecessario = forcarPrimeiro
@@ -225,36 +251,51 @@ namespace Hegemonia.AI.BrainMaster
             if (!aresNecessario)
                 return;
 
-            // ── Prioridade 1: Choke points (desfiladeiros, entradas) — mais difícil de contornar
+            Vector3 spreadAnchor = ResolveDistributedDefenseAnchor(baseCenter);
+
+            // ── Prioridade 1: Choke points / setores periféricos da ilha
             if (_aresBuilt < 2)
             {
-                bool enqueued = QueueAresBuild("ares", baseCenter, IA_TerrainType.Choke,
-                    AresMinRadius, 160f, 97, 20f);
+                bool enqueued = QueueAresBuild("ares", spreadAnchor, IA_TerrainType.Choke,
+                    AresMinRadius, 190f, 97, 24f);
                 if (enqueued) return;
             }
 
             // ── Prioridade 2: Costa — protege contra invasão anfíbia com cobertura aérea
-            if (_aresBuilt < 4 && (counter.ReinforceCoast || airThreat > 25f))
+            if (_aresBuilt < 3 && (counter.ReinforceCoast || airThreat > 25f))
             {
-                bool enqueued = QueueAresBuild("ares", baseCenter, IA_TerrainType.Coast,
-                    80f, AresMaxRadius, 95, 22f);
+                bool enqueued = QueueAresBuild("ares", spreadAnchor, IA_TerrainType.Coast,
+                    80f, AresMaxRadius, 95, 26f);
                 if (enqueued) return;
             }
 
-            // ── Prioridade 3: Terreno aberto — cobertura de área extensa
+            // ── Prioridade 3: Terreno aberto — cobertura de área extensa espalhada pela ilha
             if (_aresBuilt < MaxAresTotal)
             {
-                QueueAresBuild("ares", baseCenter, IA_TerrainType.Open,
-                    60f, AresMaxRadius, 88, 25f);
+                QueueAresBuild("ares", spreadAnchor, IA_TerrainType.Open,
+                    70f, AresMaxRadius, 88, 28f);
             }
         }
 
-        private void ReconcileAresCountWithWorld()
+        private void CountExistingDefenses(
+            out int turrets,
+            out int ciws,
+            out int ares,
+            out int launchers,
+            out int radars)
         {
-            if (_context == null || _context.WorldState == null)
-                return;
+            turrets = 0;
+            ciws = 0;
+            ares = 0;
+            launchers = 0;
+            radars = 0;
+            _existingAresPositions.Clear();
 
-            int existingAres = 0;
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnStructures == null)
+            {
+                return;
+            }
+
             for (int i = 0; i < _context.WorldState.OwnStructures.Count; i++)
             {
                 GameObject structure = _context.WorldState.OwnStructures[i];
@@ -265,23 +306,177 @@ namespace Hegemonia.AI.BrainMaster
                 string identity = metadata != null
                     ? IA_Text.Normalize(metadata.ItemId + " " + metadata.DisplayName + " " + metadata.SourcePrefabName + " " + structure.name)
                     : IA_Text.Normalize(structure.name);
-                if (identity.Contains("ares_ar") || identity.Contains("ares ar"))
-                    existingAres++;
+
+                if (identity.Contains("ares_ar") || identity.Contains("ares ar") || identity.Contains("ares"))
+                {
+                    ares++;
+                    _existingAresPositions.Add(structure.transform.position);
+                }
+                else if (identity.Contains("ciws") || identity.Contains("phalanx") || identity.Contains("antia"))
+                {
+                    ciws++;
+                    _existingAresPositions.Add(structure.transform.position);
+                }
+                else if (identity.Contains("torreta") || identity.Contains("sentinela") || identity.Contains("metralh"))
+                {
+                    turrets++;
+                }
+
+                if (identity.Contains("lancador") || identity.Contains("thaad") || identity.Contains("silo"))
+                {
+                    launchers++;
+                }
+
+                if (identity.Contains("radar"))
+                {
+                    radars++;
+                }
+            }
+        }
+
+        private Vector3 ResolveDistributedDefenseAnchor(Vector3 baseCenter)
+        {
+            CountExistingDefenses(out _, out _, out _, out _, out _);
+
+            Vector3 bestAnchor = baseCenter;
+            float bestMinDistSq = -1f;
+
+            // 1. Tenta usar Creatys estratégicos terrestres/costeiros na ilha para espalhar defesas
+            int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 0;
+            if (teamId > 0)
+            {
+                RegistroCreatysEstrategicos.PreencherCandidatos(
+                    _creatyAnchorBuffer,
+                    teamId,
+                    0,
+                    IA03TipoCreaty.PatrulhaTerrestre,
+                    IA03NivelConflito.Paz,
+                    IA03DominioEstrategico.Terrestre);
+                for (int i = 0; i < _creatyAnchorBuffer.Count; i++)
+                {
+                    CreatyEstrategico creaty = _creatyAnchorBuffer[i];
+                    if (creaty == null) continue;
+                    EvaluateCandidateDefenseAnchor(creaty.transform.position, baseCenter, ref bestAnchor, ref bestMinDistSq);
+                }
             }
 
-            // _aresBuilt também reserva vagas já enfileiradas neste runtime.
-            // O máximo mantém essas reservas e recupera estruturas existentes
-            // depois que o diretor é recriado ao carregar uma partida salva.
-            _aresBuilt = Mathf.Max(_aresBuilt, existingAres);
+            // 2. Avalia também instalações periféricas (aeroporto, fábrica, radar, quartel, usina)
+            if (_context != null && _context.WorldState != null && _context.WorldState.OwnStructures != null)
+            {
+                List<GameObject> structures = _context.WorldState.OwnStructures;
+                int count = structures.Count;
+                for (int i = 0; i < count; i++)
+                {
+                    int idx = (i + _aresAnchorRotation) % count;
+                    GameObject structure = structures[idx];
+                    if (structure == null) continue;
+                    string name = IA_Text.Normalize(structure.name);
+                    if (name.Contains("prefeitura") || name.Contains("ares") || name.Contains("ciws") || name.Contains("torreta"))
+                        continue;
+
+                    EvaluateCandidateDefenseAnchor(structure.transform.position, baseCenter, ref bestAnchor, ref bestMinDistSq);
+                }
+            }
+
+            _aresAnchorRotation++;
+            return bestAnchor != Vector3.zero ? bestAnchor : baseCenter;
+        }
+
+        private void EvaluateCandidateDefenseAnchor(
+            Vector3 candidate,
+            Vector3 baseCenter,
+            ref Vector3 bestAnchor,
+            ref float bestMinDistSq)
+        {
+            if (candidate == Vector3.zero)
+                return;
+
+            // Não escolher pontos no mar ou excessivamente longe da ilha
+            Vector3 fromBase = candidate - baseCenter;
+            fromBase.y = 0f;
+            if (fromBase.sqrMagnitude > 950f * 950f)
+                return;
+
+            if (_existingAresPositions.Count == 0)
+            {
+                // Primeiro ARES: prefere uma estrutura periférica ou ponto a ~120-450m da prefeitura
+                float distBaseSq = fromBase.sqrMagnitude;
+                if (distBaseSq >= 80f * 80f && distBaseSq > bestMinDistSq)
+                {
+                    bestMinDistSq = distBaseSq;
+                    bestAnchor = candidate;
+                }
+                return;
+            }
+
+            float minDistSqToExisting = float.MaxValue;
+            for (int i = 0; i < _existingAresPositions.Count; i++)
+            {
+                Vector3 delta = candidate - _existingAresPositions[i];
+                delta.y = 0f;
+                float dSq = delta.sqrMagnitude;
+                if (dSq < minDistSqToExisting)
+                {
+                    minDistSqToExisting = dSq;
+                }
+            }
+
+            if (minDistSqToExisting > bestMinDistSq)
+            {
+                bestMinDistSq = minDistSqToExisting;
+                bestAnchor = candidate;
+            }
+        }
+
+        private void ReconcileAresCountWithWorld()
+        {
+            CountExistingDefenses(out _, out _, out int existingAres, out _, out _);
+            // Sincroniza _aresBuilt com as estruturas vivas (permitindo repor até o limite se destruídas, sem passar de MaxAresTotal)
+            if (existingAres > _aresBuilt)
+            {
+                _aresBuilt = existingAres;
+            }
         }
 
         private bool QueueAresBuild(string itemKey, Vector3 anchor, IA_TerrainType terrain,
             float minR, float maxR, int priority, float cooldown)
         {
-            Vector3 candidate = _context.MapAnalyzer.FindPointInTerrain(anchor, terrain, minR, maxR, 14);
+            Vector3 candidate = Vector3.zero;
+            float bestSeparationSq = -1f;
 
-            // Verifica se o ponto encontrado é minimamente válido (evita construir no mar)
-            if (candidate == Vector3.zero || Vector3.Distance(candidate, anchor) < minR * 0.5f)
+            // Faz até 4 amostragens ao redor da âncora distribuída e escolhe a mais afastada das baterias existentes
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                Vector3 sample = _context.MapAnalyzer.FindPointInTerrain(anchor, terrain, minR, maxR, 12);
+                if (sample == Vector3.zero || Vector3.Distance(sample, anchor) < minR * 0.45f)
+                    continue;
+
+                float minDistSq = float.MaxValue;
+                for (int i = 0; i < _existingAresPositions.Count; i++)
+                {
+                    Vector3 d = sample - _existingAresPositions[i];
+                    d.y = 0f;
+                    if (d.sqrMagnitude < minDistSq)
+                        minDistSq = d.sqrMagnitude;
+                }
+
+                if (_existingAresPositions.Count == 0 || minDistSq >= AresMinSeparation * AresMinSeparation)
+                {
+                    candidate = sample;
+                    bestSeparationSq = minDistSq;
+                    break;
+                }
+
+                if (minDistSq > bestSeparationSq)
+                {
+                    bestSeparationSq = minDistSq;
+                    candidate = sample;
+                }
+            }
+
+            // Verifica se o ponto encontrado é minimamente válido e suficientemente separado (evita empilhar na prefeitura)
+            if (candidate == Vector3.zero
+                || (_existingAresPositions.Count > 0 && bestSeparationSq < (AresMinSeparation * 0.65f) * (AresMinSeparation * 0.65f)))
                 return false;
 
             IA_BuildOrderData payload = new IA_BuildOrderData

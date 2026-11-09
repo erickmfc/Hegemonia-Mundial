@@ -84,7 +84,17 @@ public class SistemaDeTiro : MonoBehaviour
             return;
         }
 
+        bool possuiAlvo = alvoAtual != null || alvoPrioritario != null;
+        if (!possuiAlvo && (modoManualNaval || Time.unscaledTime < proximaBuscaAlvo))
+        {
+            return;
+        }
+
         AtualizarAgendamentoBusca();
+        if (alvoAtual == null && alvoPrioritario == null)
+        {
+            return;
+        }
 
         // Decrementa o cooldown
         if (tempoParaProximoTiro > 0) tempoParaProximoTiro -= Time.deltaTime;

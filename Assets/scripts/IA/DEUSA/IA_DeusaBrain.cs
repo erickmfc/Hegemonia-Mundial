@@ -600,12 +600,12 @@ namespace Hegemonia.AI.DEUSA
                 return;
             }
 
-            if (_terrestre.PrecisaTanques && snapshot.HasFactory && TentarEnfileirarProducao("deusa_tanque", 87, 7f, "tanque", "arthur", "king", "leon"))
+            if (_terrestre.PrecisaTanques && snapshot.HasFactory && TentarEnfileirarProducao("deusa_tanque", 87, 9f, "arthur", "tank south", "tank c1", "king", "leon", "mbt", "tanque"))
             {
                 return;
             }
 
-            if (_aerea.PrecisaAviacao && snapshot.HasMilitaryAirport && TentarEnfileirarProducao("deusa_aviao", 86, 7f, "b260", "fa1", "caca", "aviao"))
+            if (_aerea.PrecisaAviacao && snapshot.HasMilitaryAirport && TentarEnfileirarProducao("deusa_aviao", 86, 9f, "fa1", "g18m", "su11", "supra", "a20", "a10", "super tuk", "caca", "aviao"))
             {
                 return;
             }

@@ -610,6 +610,7 @@ namespace Hegemonia.AI.BrainMaster
             bool isHeliport;
             bool isShipyard;
             bool isPier;
+            bool isOffshorePlatform;
             try
             {
                 isPortaAvioes = prefab.GetComponent<GerenciadorPortaAvioes>() != null;
@@ -617,6 +618,7 @@ namespace Hegemonia.AI.BrainMaster
                 isHeliport = prefab.GetComponent<Heliporto>() != null;
                 isShipyard = prefab.GetComponent<Estaleiro>() != null;
                 isPier = prefab.GetComponent<PierMarinha>() != null;
+                isOffshorePlatform = prefab.GetComponent<PlataformaOffshore>() != null;
             }
             catch (MissingReferenceException)
             {
@@ -747,7 +749,7 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("heliport");
             }
 
-            if (joined.Contains("plataforma") || joined.Contains("offshore platform"))
+            if (isOffshorePlatform)
             {
                 aliases.Add("plataforma");
                 aliases.Add("offshore platform");
@@ -1195,6 +1197,14 @@ namespace Hegemonia.AI.BrainMaster
             {
                 reason = "falha ao instanciar";
                 return false;
+            }
+
+            if (_teamId == 2)
+            {
+                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("ia03_built_placements");
+                DiagnosticoDesempenhoJogo.RegistrarEvento(
+                    "IA03_Construcao",
+                    "item=" + itemKey + " pos=" + position.ToString("F1"));
             }
 
             long initStart = rawInstantiate ? System.Diagnostics.Stopwatch.GetTimestamp() : 0L;
@@ -2574,24 +2584,57 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            bool isIA03 = _bridge.TeamId == 2;
+            string actionItem = request.Type == IA_CommandType.Build
+                ? ((request.Payload as IA_BuildOrderData) != null ? ((IA_BuildOrderData)request.Payload).ItemKey : request.Id)
+                : request.Type == IA_CommandType.Produce
+                    ? ((request.Payload as IA_ProduceOrderData) != null ? ((IA_ProduceOrderData)request.Payload).ItemKey : request.Id)
+                    : request.Id;
+            if (isIA03 && (request.Type == IA_CommandType.Build || request.Type == IA_CommandType.Produce))
+            {
+                GlobalWorldDiagnostics.RegisterIA03Attempt(
+                    request.Type == IA_CommandType.Build ? "construcao" : "compra",
+                    actionItem,
+                    request.AttemptCount);
+            }
+
+            bool succeeded;
             switch (request.Type)
             {
                 case IA_CommandType.Build:
-                    return ExecuteBuild(request, context, out message);
+                    succeeded = ExecuteBuild(request, context, out message);
+                    break;
                 case IA_CommandType.Produce:
-                    return ExecuteProduce(request, context, out message);
+                    succeeded = ExecuteProduce(request, context, out message);
+                    break;
                 case IA_CommandType.Move:
-                    return ExecuteMove(request, out message);
+                    succeeded = ExecuteMove(request, out message);
+                    break;
                 case IA_CommandType.Attack:
-                    return ExecuteAttack(request, out message);
+                    succeeded = ExecuteAttack(request, out message);
+                    break;
                 case IA_CommandType.Patrol:
-                    return ExecutePatrol(request, out message);
+                    succeeded = ExecutePatrol(request, out message);
+                    break;
                 case IA_CommandType.Ability:
-                    return ExecuteAbility(request, out message);
+                    succeeded = ExecuteAbility(request, out message);
+                    break;
                 default:
                     message = "tipo nao suportado";
-                    return false;
+                    succeeded = false;
+                    break;
             }
+
+            if (isIA03 && request.Type == IA_CommandType.Build)
+            {
+                GlobalWorldDiagnostics.RegisterIA03BuildResult(actionItem, succeeded, message);
+            }
+            else if (isIA03 && request.Type == IA_CommandType.Produce && !succeeded)
+            {
+                GlobalWorldDiagnostics.RegisterIA03PurchaseResult(actionItem, 0, false, message);
+            }
+
+            return succeeded;
         }
 
         private bool ExecuteBuild(IA_CommandRequest request, IA_Context context, out string message)
@@ -2781,6 +2824,9 @@ namespace Hegemonia.AI.BrainMaster
                     context.Brain.Refund(totalCost);
                     return false;
                 }
+
+                if (_bridge.TeamId == 2)
+                    GlobalWorldDiagnostics.RegisterIA03PurchaseResult(payload.ItemKey, produced, true, string.Empty);
 
                 if (produced < amount)
                 {

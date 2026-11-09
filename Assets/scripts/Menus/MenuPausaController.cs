@@ -30,6 +30,16 @@ public class MenuPausaController : MonoBehaviour
     private GameObject hudTempoObject;
     private Text textoVelocidade;
     private Text textoBotaoPausa;
+    private RawImage imagemVelocidadeAtual;
+    private RawImage imagemBotaoPausa;
+    private Texture2D texturaMapaTempo;
+    private Texture2D texturaVelocidade1x;
+    private Texture2D texturaDiminuirTempo;
+    private Texture2D texturaPausarTempo;
+    private Texture2D texturaAumentarTempo;
+    private Texture2D texturaVelocidade2x;
+    private Texture2D texturaNavioAviao;
+    private Texture2D texturaMolduraTempo;
     private int cicloHUDN;
     private float velocidadeHUDAnterior = -1f;
     private float velocidadeFallbackAtual = 1f;
@@ -370,9 +380,49 @@ public class MenuPausaController : MonoBehaviour
             velocidadeHUDAnterior = velocidade;
         }
 
+        if (imagemVelocidadeAtual != null)
+        {
+            bool velocidadeNormal = Mathf.Approximately(velocidade, 1f);
+            bool velocidadeDupla = Mathf.Approximately(velocidade, 6.75f);
+            imagemVelocidadeAtual.texture = velocidadeNormal ? texturaVelocidade1x
+                : velocidadeDupla ? texturaVelocidade2x : null;
+            imagemVelocidadeAtual.color = imagemVelocidadeAtual.texture != null
+                ? Color.white
+                : new Color(0.08f, 0.1f, 0.045f, 0.98f);
+            if (textoVelocidade != null)
+            {
+                textoVelocidade.enabled = imagemVelocidadeAtual.texture == null;
+            }
+        }
+
         if (textoBotaoPausa != null && estadoPausaHUDAnterior != EstaPausado)
         {
-            textoBotaoPausa.text = EstaPausado ? "● RETOMAR 6" : "PAUSAR 6";
+            if (imagemBotaoPausa != null)
+            {
+                imagemBotaoPausa.texture = EstaPausado ? null : texturaPausarTempo;
+                imagemBotaoPausa.color = Color.white;
+
+                Button botaoPausa = imagemBotaoPausa.GetComponent<Button>();
+                if (botaoPausa != null)
+                {
+                    ColorBlock cores = botaoPausa.colors;
+                    cores.normalColor = EstaPausado
+                        ? new Color(0.16f, 0.15f, 0.07f, 0.98f)
+                        : Color.white;
+                    cores.highlightedColor = EstaPausado
+                        ? new Color(0.28f, 0.24f, 0.1f, 1f)
+                        : new Color(1f, 0.9f, 0.6f, 1f);
+                    cores.pressedColor = EstaPausado
+                        ? new Color(0.1f, 0.1f, 0.045f, 1f)
+                        : new Color(0.78f, 0.78f, 0.78f, 1f);
+                    cores.selectedColor = cores.highlightedColor;
+                    botaoPausa.colors = cores;
+                }
+
+                textoBotaoPausa.enabled = EstaPausado || texturaPausarTempo == null;
+            }
+
+            textoBotaoPausa.text = EstaPausado ? "▶ RETOMAR" : "PAUSAR";
             estadoPausaHUDAnterior = EstaPausado;
         }
 
@@ -381,7 +431,8 @@ public class MenuPausaController : MonoBehaviour
             if (EstaPausado)
             {
                 float pulso = 0.35f + Mathf.PingPong(Time.unscaledTime * 1.8f, 0.65f);
-                textoBotaoPausa.color = Color.Lerp(corTextoAlerta, new Color(1f, 0.42f, 0.16f, 1f), pulso);
+                textoBotaoPausa.color = Color.Lerp(new Color(1f, 0.82f, 0.4f, 1f),
+                    new Color(1f, 0.96f, 0.72f, 1f), pulso);
             }
             else
             {
@@ -589,31 +640,74 @@ public class MenuPausaController : MonoBehaviour
 
     private void ConstruirHUDTempo()
     {
-        RectTransform faixa = CriarPainel("ControlesTempoSimulacao", canvasMenu.transform,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -76f),
-            new Vector2(430f, 62f), new Color(0.025f, 0.075f, 0.09f, 0.92f));
-        hudTempoObject = faixa.gameObject;
-        Outline borda = faixa.gameObject.AddComponent<Outline>();
-        borda.effectColor = corBorda;
-        borda.effectDistance = new Vector2(1.5f, -1.5f);
+        texturaMapaTempo = Resources.Load<Texture2D>("UI/PainelTempo/01_mapa_mundial");
+        texturaVelocidade1x = Resources.Load<Texture2D>("UI/PainelTempo/02_velocidade_1x");
+        texturaDiminuirTempo = Resources.Load<Texture2D>("UI/PainelTempo/03_diminuir_velocidade");
+        texturaPausarTempo = Resources.Load<Texture2D>("UI/PainelTempo/04_pausar");
+        texturaAumentarTempo = Resources.Load<Texture2D>("UI/PainelTempo/05_aumentar_velocidade");
+        texturaVelocidade2x = Resources.Load<Texture2D>("UI/PainelTempo/06_velocidade_2x");
+        texturaNavioAviao = Resources.Load<Texture2D>("UI/PainelTempo/07_navio_aviao");
+        texturaMolduraTempo = Resources.Load<Texture2D>("UI/PainelTempo/08_moldura_conectora");
 
-        textoVelocidade = CriarTexto("VelocidadeAtual", faixa, "1x", 20, FontStyle.Bold,
-            TextAnchor.MiddleCenter, corTexto, new Vector2(0f, 0f), new Vector2(0f, 1f),
-            new Vector2(24f, 0f), new Vector2(56f, 0f));
+        RectTransform faixa = CriarPainel("ControlesTempoSimulacao", canvasMenu.transform,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -83f),
+            new Vector2(670f, 80f), new Color(0f, 0f, 0f, 0f));
+        hudTempoObject = faixa.gameObject;
+
+        Image fundoFaixa = faixa.GetComponent<Image>();
+        if (fundoFaixa != null)
+        {
+            fundoFaixa.color = Color.clear;
+            fundoFaixa.raycastTarget = false;
+        }
+
+        CriarImagemHUD("MolduraDourada", faixa, texturaMolduraTempo,
+            Vector2.zero, new Vector2(670f, 80f));
+        CriarImagemHUD("MapaMundialDecorativo", faixa, texturaMapaTempo,
+            new Vector2(-266f, 0f), new Vector2(94f, 52f));
+        CriarImagemHUD("NavioEAviaoDecorativo", faixa, texturaNavioAviao,
+            new Vector2(264f, 0f), new Vector2(101f, 52f));
+
+        RectTransform indicadorVelocidade = CriarElementoHUD("IndicadorVelocidade",
+            faixa, new Vector2(-171f, 0f), new Vector2(80f, 49f));
+        Image fundoVelocidade = indicadorVelocidade.gameObject.AddComponent<Image>();
+        fundoVelocidade.color = new Color(0.08f, 0.1f, 0.045f, 0.98f);
+        fundoVelocidade.raycastTarget = false;
+        Outline bordaVelocidade = indicadorVelocidade.gameObject.AddComponent<Outline>();
+        bordaVelocidade.effectColor = new Color(0.83f, 0.68f, 0.31f, 0.9f);
+        bordaVelocidade.effectDistance = new Vector2(1.5f, -1.5f);
+
+        imagemVelocidadeAtual = CriarImagemHUD("ArteVelocidadeAtual", indicadorVelocidade,
+            texturaVelocidade1x, Vector2.zero, new Vector2(80f, 49f));
+        textoVelocidade = CriarTexto("VelocidadeAtual", indicadorVelocidade, "1x", 25,
+            FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.92f, 0.72f, 1f),
+            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        textoVelocidade.raycastTarget = false;
+        textoVelocidade.enabled = false;
 
         textoBotaoPausa = CriarBotaoCompactoTempo(faixa, "PausarTempo", "PAUSAR 6",
-            new Vector2(-17f, 0f), new Vector2(108f, 42f), AlternarPausaTempo, true);
+            new Vector2(-1f, 0f), new Vector2(130f, 52f), AlternarPausaTempo, true,
+            texturaPausarTempo);
+        imagemBotaoPausa = textoBotaoPausa.transform.parent.GetComponent<RawImage>();
         CriarBotaoCompactoTempo(faixa, "ReduzirTempo", "- 7",
-            new Vector2(-101f, 0f), new Vector2(58f, 42f), ReduzirVelocidadeTempo, false);
+            new Vector2(-92f, 0f), new Vector2(52f, 52f), ReduzirVelocidadeTempo, false,
+            texturaDiminuirTempo);
         CriarBotaoCompactoTempo(faixa, "AumentarTempo", "+ 8",
-            new Vector2(68f, 0f), new Vector2(58f, 42f), AumentarVelocidadeTempo, false);
+            new Vector2(94f, 0f), new Vector2(52f, 52f), AumentarVelocidadeTempo, false,
+            texturaAumentarTempo);
         CriarBotaoCompactoTempo(faixa, "VelocidadeNormal", "1x",
-            new Vector2(150f, 0f), new Vector2(72f, 42f), RestaurarVelocidadeNormal, false);
+            new Vector2(163f, 0f), new Vector2(81f, 52f), RestaurarVelocidadeNormal, false,
+            texturaVelocidade1x);
+
+        CriarDicaTeclaTempo(faixa.Find("PausarTempo"), "6");
+        CriarDicaTeclaTempo(faixa.Find("ReduzirTempo"), "7");
+        CriarDicaTeclaTempo(faixa.Find("AumentarTempo"), "8");
         AtualizarHUDTempo();
     }
 
     private Text CriarBotaoCompactoTempo(Transform parent, string nome, string titulo,
-        Vector2 posicao, Vector2 tamanho, UnityEngine.Events.UnityAction acao, bool destaque)
+        Vector2 posicao, Vector2 tamanho, UnityEngine.Events.UnityAction acao, bool destaque,
+        Texture2D textura)
     {
         GameObject botaoObject = new GameObject(nome);
         botaoObject.transform.SetParent(parent, false);
@@ -623,17 +717,34 @@ public class MenuPausaController : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.anchoredPosition = posicao;
-        rect.sizeDelta = tamanho;
+        rect.sizeDelta = textura != null ? AjustarTamanhoPelaTextura(textura, tamanho) : tamanho;
 
-        Image fundo = botaoObject.AddComponent<Image>();
-        fundo.color = destaque ? corBotaoDestaque : corBotao;
+        Graphic fundo;
+        if (textura != null)
+        {
+            RawImage arte = botaoObject.AddComponent<RawImage>();
+            arte.texture = textura;
+            arte.color = Color.white;
+            arte.raycastTarget = true;
+            fundo = arte;
+        }
+        else
+        {
+            Image imagem = botaoObject.AddComponent<Image>();
+            imagem.color = destaque ? corBotaoDestaque : corBotao;
+            fundo = imagem;
+        }
 
         Button botao = botaoObject.AddComponent<Button>();
+        botao.targetGraphic = fundo;
         ColorBlock cores = botao.colors;
-        cores.normalColor = fundo.color;
-        cores.highlightedColor = corBotaoHover;
-        cores.pressedColor = new Color(fundo.color.r * 0.84f, fundo.color.g * 0.84f, fundo.color.b * 0.84f, fundo.color.a);
-        cores.selectedColor = corBotaoHover;
+        Color corNormal = textura != null ? Color.white : fundo.color;
+        cores.normalColor = corNormal;
+        cores.highlightedColor = textura != null ? new Color(1f, 0.9f, 0.6f, 1f) : corBotaoHover;
+        cores.pressedColor = textura != null
+            ? new Color(0.78f, 0.78f, 0.78f, 1f)
+            : new Color(corNormal.r * 0.84f, corNormal.g * 0.84f, corNormal.b * 0.84f, corNormal.a);
+        cores.selectedColor = cores.highlightedColor;
         cores.fadeDuration = 0.08f;
         botao.colors = cores;
         botao.onClick.AddListener(acao);
@@ -643,7 +754,59 @@ public class MenuPausaController : MonoBehaviour
         label.resizeTextForBestFit = true;
         label.resizeTextMinSize = 12;
         label.resizeTextMaxSize = 17;
+        label.raycastTarget = false;
+        label.enabled = textura == null;
         return label;
+    }
+
+    private RectTransform CriarElementoHUD(string nome, Transform parent, Vector2 posicao, Vector2 tamanho)
+    {
+        GameObject elemento = new GameObject(nome);
+        elemento.transform.SetParent(parent, false);
+
+        RectTransform rect = elemento.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = posicao;
+        rect.sizeDelta = tamanho;
+        return rect;
+    }
+
+    private RawImage CriarImagemHUD(string nome, Transform parent, Texture2D textura,
+        Vector2 posicao, Vector2 tamanhoMaximo)
+    {
+        if (textura == null) return null;
+
+        RectTransform rect = CriarElementoHUD(nome, parent, posicao,
+            AjustarTamanhoPelaTextura(textura, tamanhoMaximo));
+        RawImage imagem = rect.gameObject.AddComponent<RawImage>();
+        imagem.texture = textura;
+        imagem.color = Color.white;
+        imagem.raycastTarget = false;
+        return imagem;
+    }
+
+    private Vector2 AjustarTamanhoPelaTextura(Texture2D textura, Vector2 tamanhoMaximo)
+    {
+        if (textura == null || textura.width <= 0 || textura.height <= 0)
+        {
+            return tamanhoMaximo;
+        }
+
+        float escala = Mathf.Min(tamanhoMaximo.x / textura.width, tamanhoMaximo.y / textura.height);
+        return new Vector2(textura.width * escala, textura.height * escala);
+    }
+
+    private void CriarDicaTeclaTempo(Transform botao, string tecla)
+    {
+        if (botao == null) return;
+
+        Text dica = CriarTexto("AtalhoTeclado", botao, tecla, 12, FontStyle.Bold,
+            TextAnchor.LowerRight, new Color(1f, 0.91f, 0.68f, 0.95f),
+            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-7f, 5f),
+            new Vector2(20f, 16f));
+        dica.raycastTarget = false;
     }
 
     private RectTransform CriarPainel(string nome, Transform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta, Color cor)

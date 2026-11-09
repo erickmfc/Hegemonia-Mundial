@@ -574,6 +574,12 @@ namespace Hegemonia.AI.IA03
                 return;
             }
 
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia03_state", estadoNacional + "/" + estadoDaMissao);
+            DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("ia03_decision", ultimaDecisao);
+            DiagnosticoDesempenhoJogo.DefinirContadorMetrica(
+                "ia03_replacements_pending",
+                reposicoesPendentes != null ? reposicoesPendentes.Count : 0);
+
             if (ordemDaMissaoRestaurada)
             {
                 brain.Context.CommandQueue.RestoreInFlight(idOrdemAtivaDaMissao);
@@ -2572,11 +2578,17 @@ namespace Hegemonia.AI.IA03
 
             if (nivelDeConflito == IA03NivelConflito.Paz)
             {
-                // AtualizarConflito pode observar o cessar-fogo no mesmo Tick
-                // em que a ordem ainda está pendente. Cancela o canal de
-                // comando antes que ele volte a emitir movimento/ataque.
-                EncerrarMissao("cessar-fogo registrado antes da conclusão da missão");
-                return;
+                bool patrulhaEmPazAtiva = creatyAtivo != null
+                    && EhPontoDePatrulha(creatyAtivo.Tipo)
+                    && (missaoAtiva == null || missaoAtiva.PermitePatrulhaEmPaz);
+                if (!patrulhaEmPazAtiva)
+                {
+                    // AtualizarConflito pode observar o cessar-fogo no mesmo Tick
+                    // em que a ordem ainda está pendente. Cancela o canal de
+                    // comando antes que ele volte a emitir movimento/ataque.
+                    EncerrarMissao("cessar-fogo registrado antes da conclusão da missão");
+                    return;
+                }
             }
 
             if (EncerrarSeOrdemEstrategicaTerminouComFalha())
@@ -3857,11 +3869,21 @@ namespace Hegemonia.AI.IA03
             }
 
             proximaAvaliacaoVotosConselhoEm = now + 3f + (brain.TeamId % 5) * 0.25f;
-            foreach (PropostaInternacional proposta in governo.ObterReivindicacoesTerritoriaisParaVoto(brain.TeamId))
+            IReadOnlyList<PropostaInternacional> propostasParaVoto = governo.ObterReivindicacoesTerritoriaisParaVoto(brain.TeamId);
+            for (int i = 0; i < propostasParaVoto.Count; i++)
             {
-                VotoTerritorialConselho votoAtual = proposta.votosConselho != null
-                    ? proposta.votosConselho.FirstOrDefault(voto => voto != null && voto.teamId == brain.TeamId)
-                    : null;
+                PropostaInternacional proposta = propostasParaVoto[i];
+                if (proposta == null || proposta.votosConselho == null) continue;
+                VotoTerritorialConselho votoAtual = null;
+                for (int v = 0; v < proposta.votosConselho.Count; v++)
+                {
+                    VotoTerritorialConselho candidatoVoto = proposta.votosConselho[v];
+                    if (candidatoVoto != null && candidatoVoto.teamId == brain.TeamId)
+                    {
+                        votoAtual = candidatoVoto;
+                        break;
+                    }
+                }
                 if (votoAtual == null || votoAtual.voto != VotoConselhoMundial.SemVoto) continue;
                 AoCriarPropostaInternacional(proposta);
             }
@@ -3889,17 +3911,13 @@ namespace Hegemonia.AI.IA03
 
             GerenteDeTerritorio gerenteTerritorial = GerenteDeTerritorio.Instancia;
             DadosMapaTerritorial mapaPolitico = gerenteTerritorial != null ? gerenteTerritorial.MapaPolitico : null;
-            List<RegiaoPolitica> territoriosEstrategicos = governo.ObterTerritoriosElegiveisParaReivindicacao()
-                .Where(regiao => regiao != null)
-                .OrderByDescending(regiao => GestorDiplomaciaIA03.CalcularPontuacaoTerritorial(
-                    mapaPolitico,
-                    regiao,
-                    brain.TeamId))
-                .ThenBy(regiao => regiao.territorioId, System.StringComparer.Ordinal)
-                .ToList();
+            IReadOnlyList<RegiaoPolitica> elegiveis = governo.ObterTerritoriosElegiveisParaReivindicacao();
+            RegiaoPolitica melhorRegiao = null;
+            float melhorPontuacao = GestorDiplomaciaIA03.PontuacaoMinimaParaReivindicarTerritorio;
 
-            foreach (RegiaoPolitica regiao in territoriosEstrategicos)
+            for (int i = 0; i < elegiveis.Count; i++)
             {
+                RegiaoPolitica regiao = elegiveis[i];
                 if (regiao == null || string.IsNullOrWhiteSpace(regiao.territorioId)) continue;
                 float pontuacaoTerritorial = GestorDiplomaciaIA03.CalcularPontuacaoTerritorial(
                     mapaPolitico,
@@ -3910,21 +3928,41 @@ namespace Hegemonia.AI.IA03
                     continue;
                 }
 
-                bool jaReivindicou = governo.Propostas != null && governo.Propostas.Any(proposta => proposta != null
-                    && proposta.EstaPendente
-                    && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
-                    && proposta.origemTeamId == brain.TeamId
-                    && proposta.territoriosReivindicados != null
-                    && proposta.territoriosReivindicados.Contains(regiao.territorioId));
+                bool jaReivindicou = false;
+                if (governo.Propostas != null)
+                {
+                    for (int p = 0; p < governo.Propostas.Count; p++)
+                    {
+                        PropostaInternacional proposta = governo.Propostas[p];
+                        if (proposta != null
+                            && proposta.EstaPendente
+                            && proposta.tipo == TipoPropostaInternacional.ReivindicacaoTerritorial
+                            && proposta.origemTeamId == brain.TeamId
+                            && proposta.territoriosReivindicados != null
+                            && proposta.territoriosReivindicados.Contains(regiao.territorioId))
+                        {
+                            jaReivindicou = true;
+                            break;
+                        }
+                    }
+                }
                 if (jaReivindicou) continue;
 
-                if (governo.TentarCriarReivindicacaoTerritorial(brain.TeamId, regiao.territorioId, out _))
+                if (melhorRegiao == null
+                    || pontuacaoTerritorial > melhorPontuacao
+                    || (Mathf.Approximately(pontuacaoTerritorial, melhorPontuacao)
+                        && string.CompareOrdinal(regiao.territorioId, melhorRegiao.territorioId) < 0))
                 {
-                    ultimaDecisao = "solicitou reconhecimento internacional para "
-                        + (string.IsNullOrWhiteSpace(regiao.nome) ? regiao.territorioId : regiao.nome);
-                    RegistrarLogDebugSeNecessario();
-                    break;
+                    melhorRegiao = regiao;
+                    melhorPontuacao = pontuacaoTerritorial;
                 }
+            }
+
+            if (melhorRegiao != null && governo.TentarCriarReivindicacaoTerritorial(brain.TeamId, melhorRegiao.territorioId, out _))
+            {
+                ultimaDecisao = "solicitou reconhecimento internacional para "
+                    + (string.IsNullOrWhiteSpace(melhorRegiao.nome) ? melhorRegiao.territorioId : melhorRegiao.nome);
+                RegistrarLogDebugSeNecessario();
             }
         }
 

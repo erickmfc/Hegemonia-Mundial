@@ -11,6 +11,8 @@
     <!-- Top Status Bar Panel -->
     <ui:VisualElement name="status-container" class="colony-status-container">
         <ui:VisualElement name="status-bar-panel" class="status-bar-panel">
+            <ui:VisualElement class="status-panel-art" />
+            <ui:VisualElement class="status-panel-mask" />
             
             <!-- Left Side: Title & Country -->
             <ui:VisualElement name="status-title-group" class="status-title-group">
@@ -172,3 +174,4 @@
             </ui:VisualElement>
         </ui:VisualElement>
 </ui:UXML>
+

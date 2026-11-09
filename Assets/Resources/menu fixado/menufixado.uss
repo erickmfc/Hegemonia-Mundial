@@ -1,5 +1,4 @@
-/* StyleSheet for Colony Status Bar UI */
-
+/* Barra superior naval: acabamento metalico azul, mantendo os campos dinamicos. */
 .colony-status-container {
     width: 100%;
     align-items: center;
@@ -13,75 +12,84 @@
 .status-bar-panel {
     width: 100%;
     max-width: none;
-    height: 58px;
-    background-color: rgba(7, 24, 39, 0.72); /* Cor anterior azul escuro */
-    border-width: 1.5px;
-    border-color: rgba(0, 195, 255, 0.4); /* Borda azul anterior */
-    border-radius: 8px;
+    height: 78px;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    border-radius: 0;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    padding-left: 10px;
-    padding-right: 10px;
-    
-    /* Glow effect anterior */
-    border-left-color: rgba(0, 195, 255, 0.55);
-    border-right-color: rgba(0, 195, 255, 0.55);
-    border-top-color: rgba(0, 195, 255, 0.55);
-    border-bottom-color: rgba(0, 195, 255, 0.55);
+    padding-left: 12px;
+    padding-right: 12px;
 }
 
+.status-panel-art {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/painel_naval.png");
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.status-panel-mask {
+    position: absolute;
+    left: 118px;
+    right: 124px;
+    top: 11px;
+    bottom: 11px;
+    background-color: rgba(3, 17, 27, 1);
+}
 .status-title-group {
     flex-direction: row;
     align-items: center;
     flex-shrink: 0;
     min-width: 178px;
-}
-
-.status-title {
-    color: rgb(160, 220, 245); /* Cor azul claro anterior */
-    font-size: 14px;
-    -unity-font-style: bold;
-    letter-spacing: 1.5px;
-    margin-right: 12px;
+    height: 100%;
+    border-right-width: 1px;
+    border-right-color: rgba(193, 162, 98, 0.9);
+    margin-right: 4px;
 }
 
 .status-title-button {
-    color: rgb(160, 220, 245);
-    background-color: rgba(0, 0, 0, 0);
-    border-width: 0;
-    padding-left: 0;
+    color: rgb(255, 241, 204);
+    background-color: rgba(91, 67, 28, 0.96);
+    border-width: 1px;
+    border-color: rgba(218, 182, 103, 0.82);
+    border-radius: 3px;
+    padding-left: 8px;
     padding-right: 8px;
     padding-top: 4px;
     padding-bottom: 4px;
-    margin-right: 4px;
+    margin-right: 7px;
     min-width: 64px;
     -unity-font-style: bold;
-    font-size: 14px;
-    letter-spacing: 1.5px;
-    -unity-text-align: middle-left;
+    font-size: 13px;
+    letter-spacing: 1px;
+    -unity-text-align: middle-center;
 }
 
 .status-title-button:hover,
 .status-title-button:focus,
 .status-title-button:active {
-    color: rgb(235, 250, 255);
-    background-color: rgba(0, 195, 255, 0.16);
-    border-width: 0;
+    color: white;
+    background-color: rgba(39, 106, 134, 0.96);
+    border-color: rgb(164, 220, 235);
 }
 
 .status-title-button.has-news {
-    color: rgb(245, 253, 255);
-    background-color: rgba(0, 195, 255, 0.22);
+    color: rgb(255, 239, 193);
+    background-color: rgba(112, 78, 25, 0.94);
     border-width: 1px;
-    border-color: rgba(0, 214, 255, 0.85);
-    border-radius: 5px;
+    border-color: rgb(226, 179, 78);
+    border-radius: 3px;
 }
 
 .status-title-button.has-news.status-pulse {
-    color: rgb(255, 255, 255);
-    background-color: rgba(0, 195, 255, 0.68);
-    border-color: rgb(135, 235, 255);
+    color: white;
+    background-color: rgba(161, 111, 31, 0.98);
+    border-color: rgb(255, 224, 139);
 }
 
 .resources-group {
@@ -93,6 +101,7 @@
     justify-content: space-between;
     flex-wrap: nowrap;
     overflow: hidden;
+    padding-right: 124px;
 }
 
 .resource-item {
@@ -100,35 +109,70 @@
     align-items: center;
     flex-shrink: 1;
     min-width: 0;
-    margin-left: 1px;
-    margin-right: 1px;
+    min-height: 42px;
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 6px;
+    padding-right: 6px;
+    background-color: rgba(3, 17, 27, 0);
+    border-width: 0;
+    border-right-width: 1px;
+    border-right-color: rgba(164, 184, 188, 0.52);
+    border-radius: 0;
 }
 
 .country-item {
-    background-color: rgba(0, 195, 255, 0.15);
-    padding: 2px 5px;
-    border-radius: 4px;
-    border-width: 1px;
-    border-color: rgba(0, 195, 255, 0.3);
+    min-height: 32px;
+    padding-left: 5px;
+    padding-right: 7px;
+    background-color: rgba(16, 49, 65, 0);
+    border-width: 0;
 }
 
 .country-text {
-    color: #e2e8f0;
+    color: rgb(238, 245, 239);
     font-size: 10px;
     -unity-font-style: bold;
 }
 
-/* Emoji Icons */
+/* Icones importados dos recursos HUD naval. */
 .resource-emoji {
-    font-size: 13px;
-    margin-right: 2px;
+    width: 21px;
+    height: 21px;
+    margin-right: 4px;
     flex-shrink: 0;
-    -unity-text-align: middle-center;
+    font-size: 0;
+    color: rgba(0, 0, 0, 0);
+    -unity-background-scale-mode: scale-to-fit;
 }
 
-/* Value Labels */
+.country-item .resource-emoji {
+    width: 18px;
+    height: 18px;
+    background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/16_radar_mapa.png");
+}
+
+.resource-money { border-color: rgba(208, 168, 79, 0.85); }
+.resource-energy { border-color: rgba(208, 168, 79, 0.72); }
+.resource-military { border-color: rgba(208, 168, 79, 0.72); }
+
+.resource-date .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/01_calendario.png"); }
+.resource-money .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/02_dinheiro.png"); }
+.resource-currency .resource-emoji,
+.resource-gold .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/03_economia.png"); }
+.resource-storage .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/04_armazem.png"); }
+.resource-happy .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/05_estabilidade.png"); }
+.resource-pop .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/06_populacao.png"); }
+.resource-dead .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/15_reservistas.png"); }
+.resource-jobs .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/13_industria.png"); }
+.resource-oil .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/10_petroleo.png"); }
+.resource-steel .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/08_aco.png"); }
+.resource-food .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/09_comida.png"); }
+.resource-energy .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/11_energia.png"); }
+.resource-military .resource-emoji { background-image: url("project://database/Assets/Resources/HUDSuperiorNaval/14_militares.png"); }
+
 .resource-base-value {
-    color: rgb(240, 248, 255); /* Azul/branco anterior */
+    color: rgb(244, 247, 245);
     font-size: 11px;
     -unity-font-style: bold;
     white-space: nowrap;
@@ -138,14 +182,14 @@
 }
 
 .resource-bonus {
-    color: #22c55e;
+    color: rgb(107, 224, 139);
     font-size: 9px;
     margin-left: 2px;
     -unity-font-style: bold;
 }
 
 .resource-bonus-value {
-    color: #22c55e;
+    color: rgb(107, 224, 139);
     font-size: 9px;
     margin-left: 2px;
     -unity-font-style: bold;
@@ -155,11 +199,6 @@
     min-width: 0;
 }
 
-/*
- * Modo seguro para o UXML estatico: antes do controlador calcular a largura
- * real, mantemos somente os indicadores essenciais. Em runtime, o controlador
- * adiciona hud-wide quando ha espaco suficiente e reabre os campos extras.
- */
 .resource-optional,
 .resource-narrow,
 .resource-bonus-value,
@@ -174,50 +213,23 @@
     display: flex;
 }
 
-/*
- * A barra e persistente e tambem aparece em janelas menores do Editor e em
- * notebooks. Nesses casos, indicadores secundarios saem da linha, mas seus
- * valores continuam disponiveis nas notificacoes e tooltips. Isso evita
- * comprimir o texto ate ele se sobrepor ou cortar o botao STATUS.
- */
 .hud-compact .resource-optional,
-.hud-compact .resource-narrow {
-    display: none;
-}
-
+.hud-compact .resource-narrow,
 .hud-compact .resource-bonus-value,
 .hud-compact .resource-bonus {
     display: none;
 }
 
-.hud-compact .status-title-group {
-    min-width: 170px;
-}
-
-.hud-compact .status-title-button {
-    min-width: 58px;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-
-.hud-compact .country-text {
-    font-size: 9px;
-}
-
-.hud-compact .resource-base-value {
-    font-size: 10px;
-}
+.status-title-group { min-width: 170px; }
+.hud-compact .status-title-button { min-width: 58px; font-size: 12px; letter-spacing: 1px; }
+.hud-compact .country-text { font-size: 9px; }
+.hud-compact .resource-base-value { font-size: 10px; }
+.hud-compact .resource-item { padding-left: 3px; padding-right: 3px; }
 
 .hud-very-compact .resource-gold,
 .hud-very-compact .resource-happy,
-.hud-very-compact .resource-storage {
-    display: none;
-}
-
-.hud-very-compact .status-title-group {
-    min-width: 150px;
-}
-
+.hud-very-compact .resource-storage { display: none; }
+.status-title-group { min-width: 150px; }
 /* Painel de notificacoes */
 .decision-banner {
     position: absolute;
@@ -277,7 +289,7 @@
     background-color: rgba(230, 112, 46, 0.82);
     border-width: 1px;
     border-color: rgba(255, 220, 164, 0.75);
-    border-radius: 5px;
+    border-radius: 3px;
     -unity-font-style: bold;
     font-size: 11px;
 }
@@ -420,7 +432,7 @@
     background-color: rgba(255, 255, 255, 0.07);
     border-width: 1px;
     border-color: rgba(136, 207, 238, 0.26);
-    border-radius: 5px;
+    border-radius: 3px;
     -unity-font-style: bold;
     font-size: 10px;
     white-space: normal;
@@ -455,7 +467,7 @@
     color: rgb(255, 220, 220);
     background-color: rgba(145, 35, 42, 0.88);
     border-color: rgba(255, 145, 150, 0.78);
-    border-radius: 5px;
+    border-radius: 3px;
     -unity-font-style: bold;
     font-size: 14px;
     -unity-text-align: middle-center;
@@ -569,7 +581,7 @@
     color: rgba(229, 242, 249, 0.78);
     background-color: rgba(255, 255, 255, 0.05);
     border-width: 0;
-    border-radius: 5px;
+    border-radius: 3px;
     font-size: 12px;
     -unity-text-align: middle-center;
 }
@@ -814,3 +826,8 @@
         min-width: 76px;
     }
 }
+
+
+
+
+

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
 
 public class IdentidadeUnidade : MonoBehaviour
@@ -20,6 +21,7 @@ public class IdentidadeUnidade : MonoBehaviour
     
     [Header("Logistica (GDD)")]
     public int militaresConsumidos;
+    public List<string> militaresVinculadosIds = new List<string>();
     public float combustivelPorHora;
     public float energiaConsumida;
 
@@ -81,6 +83,7 @@ public class IdentidadeUnidade : MonoBehaviour
             if (pais != null)
             {
                 pais.mortosAcumulados += militaresConsumidos;
+                SistemaMilitar.RegistrarBaixas(pais, this, militaresConsumidos);
                 pais.populacaoMilitarAtiva = Mathf.Max(0, pais.populacaoMilitarAtiva - militaresConsumidos);
                 pais.populacao = Mathf.Clamp(pais.populacaoCivil + pais.populacaoMilitarAtiva + pais.reservistas + pais.alistaveis, 0, pais.populacaoMaxima);
             }

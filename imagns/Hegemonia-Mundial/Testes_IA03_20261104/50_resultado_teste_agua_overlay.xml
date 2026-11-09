@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-05 02:51:32Z" end-time="2026-11-05 02:51:32Z" duration="0,0489802">
+  <test-suite type="TestSuite" id="1853" name="Hegemonia Global" fullname="Hegemonia Global" runstate="Runnable" testcasecount="436" result="Passed" start-time="2026-11-05 02:51:32Z" end-time="2026-11-05 02:51:32Z" duration="0.048980" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1845" name="Hegemonia.EditMode.Tests.dll" fullname="C:/Users/Mathe/Documents/Unity Projects/Hegemonia-Mundial/Library/ScriptAssemblies/Hegemonia.EditMode.Tests.dll" runstate="Runnable" testcasecount="419" result="Passed" start-time="2026-11-05 02:51:32Z" end-time="2026-11-05 02:51:32Z" duration="0.030210" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="13072" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestFixture" id="1753" name="NavioTransporteTropasDesembarqueEditModeTests" fullname="NavioTransporteTropasDesembarqueEditModeTests" classname="NavioTransporteTropasDesembarqueEditModeTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-11-05 02:51:32Z" end-time="2026-11-05 02:51:32Z" duration="0.027604" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-case id="1755" name="AguaSobreTerrenoNaoTransformaFundoMarinhoEmPontoDeDesembarque" fullname="NavioTransporteTropasDesembarqueEditModeTests.AguaSobreTerrenoNaoTransformaFundoMarinhoEmPontoDeDesembarque" methodname="AguaSobreTerrenoNaoTransformaFundoMarinhoEmPontoDeDesembarque" classname="NavioTransporteTropasDesembarqueEditModeTests" runstate="Runnable" seed="1794697148" result="Passed" start-time="2026-11-05 02:51:32Z" end-time="2026-11-05 02:51:32Z" duration="0.017042" asserts="0">
+          <properties>
+            <property name="retryIteration" value="0" />
+            <property name="repeatIteration" value="0" />
+          </properties>
+          <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\TestResults.xml
+]]></output>
+        </test-case>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

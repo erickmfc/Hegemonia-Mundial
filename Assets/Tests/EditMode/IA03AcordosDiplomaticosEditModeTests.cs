@@ -452,11 +452,12 @@ public sealed class IA03AcordosDiplomaticosEditModeTests
 
             IDictionary equipesPresentes = (IDictionary)Field(gerente, "equipesPresentesPorTerritorio");
             Assert.That(equipesPresentes.Contains(territorioId), Is.True, "A IdentidadeUnidade ativa deve ser lida pelo registro reutilizável.");
-            Assert.That(recebeuGenerico, Is.True);
+            Assert.That(recebeuGenerico, Is.False,
+                "Ocupar fisicamente um território neutro não transfere soberania nem publica mudança de proprietário.");
             Assert.That(recebeuOcupacao, Is.True);
             Assert.That(donoAnterior, Is.EqualTo(0));
             Assert.That(novoDono, Is.EqualTo(2));
-            Assert.That(Invocar(gerente, "ObterDonoDaRegiao", territorioId), Is.EqualTo(2));
+            Assert.That(Invocar(gerente, "ObterDonoDaRegiao", territorioId), Is.EqualTo(0));
             Assert.That(Field(estratega, "territorioDoObjetivoCapturado"), Is.True,
                 "O consumidor IA03 deve receber o evento físico e confirmar o objetivo da missão.");
             Assert.That(Field(estratega, "territorioDoObjetivoPerdido"), Is.False);
