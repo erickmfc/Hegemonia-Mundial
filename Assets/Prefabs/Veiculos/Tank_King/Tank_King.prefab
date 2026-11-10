@@ -143,7 +143,7 @@ GameObject:
   - component: {fileID: 6748013781902122901}
   - component: {fileID: 7000000000000000052}
   m_Layer: 0
-  m_Name: 'Codex '
+  m_Name: Tank_King
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -157,14 +157,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3293232131906463762}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.5, y: 0.5, z: 0.5, w: 0.5}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 147.672, y: 1.81, z: 61.902252}
-  m_LocalScale: {x: 0.26472437, y: 0.4059672, z: 0.30588642}
+  m_LocalScale: {x: 0.4059672, y: 0.26472437, z: 0.30588642}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1962853606700859537}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 90}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!195 &3609633699257844899
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -203,6 +203,8 @@ MonoBehaviour:
   vidaAtual: 1500
   unidadeBiologica: 0
   ehEstrutura: 0
+  prefabEfeitoDano: {fileID: 100000, guid: 6ca2ead270ed34045b54a18fee4e9a2e, type: 3}
+  prefabFumacaDano: {fileID: 100000, guid: 6ca2ead270ed34045b54a18fee4e9a2e, type: 3}
   prefabDestrocos: {fileID: 3293232131906463762, guid: aa70972e7a4b0b24d8e1c8df6a8e68d7, type: 3}
   somExplosaoExclusivo: {fileID: 8300000, guid: d47e6ed162da1f740ad807d00f4679f3, type: 3}
   tamanhoDoEfeito: 2.2
@@ -230,8 +232,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 8.13, y: 12.55, z: 29.81}
-  m_Center: {x: -3.22, y: -0.76, z: 4.98}
+  m_Size: {x: 12.55, y: 8.13, z: 29.81}
+  m_Center: {x: 0.76, y: -3.22, z: 4.98}
 --- !u!114 &4076595183591478902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -895,23 +897,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 68d57aa985347ba469edd29c66662465, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.5
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 68d57aa985347ba469edd29c66662465, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.5
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 68d57aa985347ba469edd29c66662465, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 68d57aa985347ba469edd29c66662465, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 68d57aa985347ba469edd29c66662465, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 68d57aa985347ba469edd29c66662465, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y

@@ -10,7 +10,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1956277204074730875, guid: ca809153c1d9cde41859e5ec9d6832a5, type: 3}
       propertyPath: alcance
-      value: 1000
+      value: 2400
       objectReference: {fileID: 0}
     - target: {fileID: 1956277204074730875, guid: ca809153c1d9cde41859e5ec9d6832a5, type: 3}
       propertyPath: usarMisselParaInterceptar

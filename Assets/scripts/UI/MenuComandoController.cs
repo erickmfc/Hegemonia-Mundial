@@ -2119,7 +2119,7 @@ public class MenuComandoController : MonoBehaviour
             if (lancador.prefabMissel != null)
             {
                 AdicionarOpcaoArmamentoHud(
-                    () => "MÍSSIL NAVAL · " + lancador.municaoTotal + "/" + Mathf.Max(lancador.municaoTotal, lancador.municaoMaxima),
+                    () => "MÍSSIL NAVAL · " + lancador.MunicaoTridenteAtual + "/" + lancador.MunicaoTridenteMaxima,
                     () => lancador.ArmamentoSelecionadoHud == LancadorNaval.ArmamentoHud.MissilNaval
                         && lancador.tipoMissilNaval == LancadorNaval.TipoMissilNaval.Tridente,
                     () => lancador.DefinirTipoMissilHud(LancadorNaval.TipoMissilNaval.Tridente));
@@ -2127,7 +2127,7 @@ public class MenuComandoController : MonoBehaviour
             if (lancador.prefabMisselCruzeiro != null)
             {
                 AdicionarOpcaoArmamentoHud(
-                    () => "MÍSSIL DE CRUZEIRO · " + lancador.municaoTotal + "/" + Mathf.Max(lancador.municaoTotal, lancador.municaoMaxima),
+                    () => "MÍSSIL DE CRUZEIRO · " + lancador.MunicaoCruzeiroAtual + "/" + lancador.MunicaoCruzeiroMaxima,
                     () => lancador.ArmamentoSelecionadoHud == LancadorNaval.ArmamentoHud.MissilNaval
                         && lancador.tipoMissilNaval == LancadorNaval.TipoMissilNaval.Kh23Cruzeiro,
                     () => lancador.DefinirTipoMissilHud(LancadorNaval.TipoMissilNaval.Kh23Cruzeiro));

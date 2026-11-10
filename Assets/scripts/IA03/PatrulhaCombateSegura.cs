@@ -42,6 +42,7 @@ public sealed class PatrulhaCombateSegura : MonoBehaviour
     private IdentidadeUnidade identidade;
     private readonly Collider[] bufferColisores = new Collider[128];
     private readonly HashSet<IdentidadeUnidade> candidatos = new HashSet<IdentidadeUnidade>();
+    private readonly List<Vector3> bufferRotaRetorno = new List<Vector3>(8);
     private Transform alvoAtual;
     private Vector3 ultimaPosicaoConhecida;
     private float ultimoContatoEm;
@@ -162,11 +163,22 @@ public sealed class PatrulhaCombateSegura : MonoBehaviour
         EmitirInterceptacaoSeNecessario(alvo, ultimaPosicaoConhecida);
     }
 
+    private int ObterMascaraDeteccaoEfetiva()
+    {
+        int mask = camadasDeDeteccao.value;
+        int ignorar = LayerMask.GetMask("Water", "UI", "Chao", "TransparentFX");
+        if (mask == ~0 || mask == -1)
+        {
+            return ~ignorar;
+        }
+        return mask & ~ignorar;
+    }
+
     private Transform EncontrarInimigoNoRaio()
     {
         candidatos.Clear();
         int quantidade = Physics.OverlapSphereNonAlloc(transform.position, raioDeteccaoMetros,
-            bufferColisores, camadasDeDeteccao, QueryTriggerInteraction.Ignore);
+            bufferColisores, ObterMascaraDeteccaoEfetiva(), QueryTriggerInteraction.Ignore);
         IdentidadeUnidade melhor = null;
         float menorDistancia = float.MaxValue;
         for (int i = 0; i < quantidade; i++)
@@ -287,10 +299,10 @@ public sealed class PatrulhaCombateSegura : MonoBehaviour
         controle.DefinirModoCombate(false);
         if (retornarAPatrulhaAoPerderContato)
         {
-            List<Vector3> rota = new List<Vector3>();
+            bufferRotaRetorno.Clear();
             for (int i = 0; i < pontosDePatrulha.Count; i++)
-                if (pontosDePatrulha[i] != null) rota.Add(pontosDePatrulha[i].position);
-            if (rota.Count > 0 && controle.EmitirOrdemPatrulha(rota)) { estadoAtual = Estado.Patrulhando; return; }
+                if (pontosDePatrulha[i] != null) bufferRotaRetorno.Add(pontosDePatrulha[i].position);
+            if (bufferRotaRetorno.Count > 0 && controle.EmitirOrdemPatrulha(bufferRotaRetorno)) { estadoAtual = Estado.Patrulhando; return; }
         }
         estadoAtual = Estado.Patrulhando;
     }

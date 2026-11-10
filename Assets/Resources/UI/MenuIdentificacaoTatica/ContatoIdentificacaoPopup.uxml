@@ -1,0 +1,57 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="pop-root" class="ident-popup-root">
+        <!-- Barra de Cabeçalho / Título -->
+        <ui:VisualElement name="pop-header" class="ident-popup-header">
+            <ui:VisualElement class="ident-header-left">
+                <ui:VisualElement name="radar-dot" class="ident-radar-dot" />
+                <ui:Label name="lbl-titulo" text="ALERTA RADAR · CONTATO NÃO IDENTIFICADO" class="ident-title-text" />
+            </ui:VisualElement>
+            <ui:VisualElement class="ident-header-actions">
+                <ui:Button name="btn-minimizar" text="—" class="ident-btn-header" tooltip="Minimizar pop-up" />
+                <ui:Button name="btn-fechar" text="✕" class="ident-btn-header ident-btn-close" tooltip="Fechar alerta" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Corpo do Pop-up (expansível / colapsável) -->
+        <ui:VisualElement name="pop-body" class="ident-popup-body">
+            <!-- Linha de Telemetria e Fonte do Sensor -->
+            <ui:VisualElement class="ident-sensor-source-bar">
+                <ui:Label name="lbl-fonte-sensor" text="SENSOR: RADAR DE SUPERFÍCIE (NAVIO)" class="ident-sensor-badge" />
+                <ui:Label name="lbl-precisao" text="TELEMETRIA: ESTIMADA" class="ident-precision-badge" />
+            </ui:VisualElement>
+
+            <!-- Tabela Rápida de Métricas (Designação, Velocidade, Distância, Altitude) -->
+            <ui:VisualElement class="ident-metrics-row">
+                <ui:VisualElement class="ident-metric-col">
+                    <ui:Label text="DESIGNAÇÃO" class="ident-metric-title" />
+                    <ui:Label name="lbl-designacao" text="ECO-042 (DESCONHECIDO)" class="ident-metric-val ident-val-warning" />
+                </ui:VisualElement>
+                <ui:VisualElement class="ident-metric-col">
+                    <ui:Label text="VELOCIDADE" class="ident-metric-title" />
+                    <ui:Label name="lbl-velocidade" text="14 KTS (ESTIMADA)" class="ident-metric-val" />
+                </ui:VisualElement>
+                <ui:VisualElement class="ident-metric-col">
+                    <ui:Label text="DISTÂNCIA" class="ident-metric-title" />
+                    <ui:Label name="lbl-distancia" text="8.4 NMI" class="ident-metric-val" />
+                </ui:VisualElement>
+                <ui:VisualElement name="col-altitude" class="ident-metric-col ident-col-boeing">
+                    <ui:Label text="ALTITUDE (AWACS)" class="ident-metric-title" />
+                    <ui:Label name="lbl-altitude" text="NÍVEL DO MAR (0 FT)" class="ident-metric-val" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- Grid de Ações Rápidas 2x2 -->
+            <ui:VisualElement class="ident-actions-grid">
+                <ui:Button name="btn-identificar" text="📡 IDENTIFIQUE-SE" class="ident-action-btn" tooltip="Interrogar transponder e bandeira" />
+                <ui:Button name="btn-radio" text="📻 AVISO VIA RÁDIO" class="ident-action-btn" tooltip="Exigir mudança de rota ou parada" />
+                <ui:Button name="btn-disparo" text="⚠️ TIRO ADVERTÊNCIA" class="ident-action-btn ident-btn-warning" tooltip="Tiro na proa para forçar desaceleração" />
+                <ui:Button name="btn-travar" text="🎯 TRAVAR ALVO" class="ident-action-btn ident-btn-danger" tooltip="Travar sistema de mira (aviso diplomático)" />
+            </ui:VisualElement>
+
+            <!-- Feed de Mensagens / Resposta Tática -->
+            <ui:VisualElement class="ident-feed-box">
+                <ui:Label name="lbl-feed" text="> Contato detectado na área de patrulha. Pressione [IDENTIFIQUE-SE]." class="ident-feed-text" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -72,6 +72,7 @@ namespace Hegemonia.AI.IA03
     public sealed class IA03RelatorioConflito
     {
         private readonly IA03RelatorioSnapshot acumulado = new IA03RelatorioSnapshot();
+        private readonly IA03RelatorioSnapshot ultimoSnapshot = new IA03RelatorioSnapshot();
         private readonly HashSet<string> eventosDeCombateProcessados = new HashSet<string>(StringComparer.Ordinal);
 
         public IA03RelatorioSnapshot Acumulado => acumulado;
@@ -281,43 +282,41 @@ namespace Hegemonia.AI.IA03
             acumulado.DuracaoConflitoSegundos = Mathf.Max(0f, duracaoConflitoSegundos);
             RegistrarForcasProprias(forcaPropria);
 
-            return new IA03RelatorioSnapshot
-            {
-                UnidadesPropriasDisponiveis = acumulado.UnidadesPropriasDisponiveis,
-                UnidadesInimigasConhecidas = acumulado.UnidadesInimigasConhecidas,
-                UnidadesPropriasPerdidas = acumulado.UnidadesPropriasPerdidas,
-                InimigosDestruidos = acumulado.InimigosDestruidos,
-                EstruturasInimigasDestruidas = acumulado.EstruturasInimigasDestruidas,
-                EstruturasPropriasDestruidas = acumulado.EstruturasPropriasDestruidas,
-                InfantariaPropriaDisponivel = acumulado.InfantariaPropriaDisponivel,
-                TanquesPropriosDisponiveis = acumulado.TanquesPropriosDisponiveis,
-                AvioesPropriosDisponiveis = acumulado.AvioesPropriosDisponiveis,
-                NaviosPropriosDisponiveis = acumulado.NaviosPropriosDisponiveis,
-                SubmarinosPropriosDisponiveis = acumulado.SubmarinosPropriosDisponiveis,
-                PortaAvioesPropriosDisponiveis = acumulado.PortaAvioesPropriosDisponiveis,
-                QuarteisProprios = acumulado.QuarteisProprios,
-                FabricasProprias = acumulado.FabricasProprias,
-                EstaleirosProprios = acumulado.EstaleirosProprios,
-                AeroportosMilitaresProprios = acumulado.AeroportosMilitaresProprios,
-                BatalhasVencidas = acumulado.BatalhasVencidas,
-                BatalhasPerdidas = acumulado.BatalhasPerdidas,
-                PrejuizoEconomicoInimigo = acumulado.PrejuizoEconomicoInimigo,
-                PrejuizoEconomicoProprio = acumulado.PrejuizoEconomicoProprio,
-                DanoEstruturalInimigo = acumulado.DanoEstruturalInimigo,
-                DanoEstruturalProprio = acumulado.DanoEstruturalProprio,
-                SaldoNacional = acumulado.SaldoNacional,
-                EstoqueComida = acumulado.EstoqueComida,
-                EstoquePetroleo = acumulado.EstoquePetroleo,
-                EstoqueEnergia = acumulado.EstoqueEnergia,
-                DeficitComida = acumulado.DeficitComida,
-                DeficitPetroleo = acumulado.DeficitPetroleo,
-                PressaoEconomicaNacional = acumulado.PressaoEconomicaNacional,
-                ObjetivosCapturados = acumulado.ObjetivosCapturados,
-                ObjetivosPerdidos = acumulado.ObjetivosPerdidos,
-                CapacidadeMilitarRestante = acumulado.CapacidadeMilitarRestante,
-                MomentoDoRelatorio = acumulado.MomentoDoRelatorio,
-                DuracaoConflitoSegundos = acumulado.DuracaoConflitoSegundos
-            };
+            ultimoSnapshot.UnidadesPropriasDisponiveis = acumulado.UnidadesPropriasDisponiveis;
+            ultimoSnapshot.UnidadesInimigasConhecidas = acumulado.UnidadesInimigasConhecidas;
+            ultimoSnapshot.UnidadesPropriasPerdidas = acumulado.UnidadesPropriasPerdidas;
+            ultimoSnapshot.InimigosDestruidos = acumulado.InimigosDestruidos;
+            ultimoSnapshot.EstruturasInimigasDestruidas = acumulado.EstruturasInimigasDestruidas;
+            ultimoSnapshot.EstruturasPropriasDestruidas = acumulado.EstruturasPropriasDestruidas;
+            ultimoSnapshot.InfantariaPropriaDisponivel = acumulado.InfantariaPropriaDisponivel;
+            ultimoSnapshot.TanquesPropriosDisponiveis = acumulado.TanquesPropriosDisponiveis;
+            ultimoSnapshot.AvioesPropriosDisponiveis = acumulado.AvioesPropriosDisponiveis;
+            ultimoSnapshot.NaviosPropriosDisponiveis = acumulado.NaviosPropriosDisponiveis;
+            ultimoSnapshot.SubmarinosPropriosDisponiveis = acumulado.SubmarinosPropriosDisponiveis;
+            ultimoSnapshot.PortaAvioesPropriosDisponiveis = acumulado.PortaAvioesPropriosDisponiveis;
+            ultimoSnapshot.QuarteisProprios = acumulado.QuarteisProprios;
+            ultimoSnapshot.FabricasProprias = acumulado.FabricasProprias;
+            ultimoSnapshot.EstaleirosProprios = acumulado.EstaleirosProprios;
+            ultimoSnapshot.AeroportosMilitaresProprios = acumulado.AeroportosMilitaresProprios;
+            ultimoSnapshot.BatalhasVencidas = acumulado.BatalhasVencidas;
+            ultimoSnapshot.BatalhasPerdidas = acumulado.BatalhasPerdidas;
+            ultimoSnapshot.PrejuizoEconomicoInimigo = acumulado.PrejuizoEconomicoInimigo;
+            ultimoSnapshot.PrejuizoEconomicoProprio = acumulado.PrejuizoEconomicoProprio;
+            ultimoSnapshot.DanoEstruturalInimigo = acumulado.DanoEstruturalInimigo;
+            ultimoSnapshot.DanoEstruturalProprio = acumulado.DanoEstruturalProprio;
+            ultimoSnapshot.SaldoNacional = acumulado.SaldoNacional;
+            ultimoSnapshot.EstoqueComida = acumulado.EstoqueComida;
+            ultimoSnapshot.EstoquePetroleo = acumulado.EstoquePetroleo;
+            ultimoSnapshot.EstoqueEnergia = acumulado.EstoqueEnergia;
+            ultimoSnapshot.DeficitComida = acumulado.DeficitComida;
+            ultimoSnapshot.DeficitPetroleo = acumulado.DeficitPetroleo;
+            ultimoSnapshot.PressaoEconomicaNacional = acumulado.PressaoEconomicaNacional;
+            ultimoSnapshot.ObjetivosCapturados = acumulado.ObjetivosCapturados;
+            ultimoSnapshot.ObjetivosPerdidos = acumulado.ObjetivosPerdidos;
+            ultimoSnapshot.CapacidadeMilitarRestante = acumulado.CapacidadeMilitarRestante;
+            ultimoSnapshot.MomentoDoRelatorio = acumulado.MomentoDoRelatorio;
+            ultimoSnapshot.DuracaoConflitoSegundos = acumulado.DuracaoConflitoSegundos;
+            return ultimoSnapshot;
         }
     }
 }

@@ -177,6 +177,10 @@ public class SistemaAntiMissil : MonoBehaviour
         AudioRuntime.ConfigurarFonteDeMissel(audioSource);
 
         AtualizarCacheOrigem();
+        if (((minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval) || (controleUnidade != null && controleUnidade.EhUnidadeNaval()) || GetComponentInParent<IdentidadeNaval>() != null || GetComponentInParent<ControleNavioRealista>() != null) && alcanceRadar < 2000f)
+        {
+            alcanceRadar = 2200f;
+        }
 
         float intervalo = ObterIntervaloEscaneamentoEfetivo();
         if (DiagnosticoDesempenhoJogo.CapturaAtiva)
@@ -311,6 +315,17 @@ public class SistemaAntiMissil : MonoBehaviour
     float ObterIntervaloVarreduraFisicaEfetivo()
     {
         return Mathf.Max(Mathf.Max(ObterIntervaloEscaneamentoEfetivo(), intervaloMinimoVarreduraFisica), 0.15f);
+    }
+
+    int ObterMascaraVarreduraEfetiva()
+    {
+        int mask = mascaraVarredura.value;
+        int ignorar = LayerMask.GetMask("Water", "UI", "Chao", "TransparentFX");
+        if (mask == ~0 || mask == -1)
+        {
+            return ~ignorar;
+        }
+        return mask & ~ignorar;
     }
 
     void InicializarPaiol()
@@ -710,7 +725,7 @@ public class SistemaAntiMissil : MonoBehaviour
                 transform.position,
                 alcanceRadar,
                 bufferAmeacas,
-                mascaraVarredura,
+                ObterMascaraVarreduraEfetiva(),
                 QueryTriggerInteraction.Collide);
 
             int limiteProcessamento = Mathf.Min(
@@ -1423,6 +1438,10 @@ public class SistemaAntiMissil : MonoBehaviour
         if (collidersOrigemCache == null || raizDefendidaCache != raizAtual)
         {
             AtualizarCacheOrigem();
+        if (((minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval) || (controleUnidade != null && controleUnidade.EhUnidadeNaval()) || GetComponentInParent<IdentidadeNaval>() != null || GetComponentInParent<ControleNavioRealista>() != null) && alcanceRadar < 2000f)
+        {
+            alcanceRadar = 2200f;
+        }
         }
 
         return collidersOrigemCache;

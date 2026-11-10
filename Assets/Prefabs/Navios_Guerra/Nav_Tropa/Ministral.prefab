@@ -1421,6 +1421,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 70000
+  alcanceRadar: 2800
   alcanceConfiguradoNoPrefab: 1
   radarLigado: 0

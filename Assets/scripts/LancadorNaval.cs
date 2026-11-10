@@ -27,6 +27,10 @@ public class LancadorNaval : MonoBehaviour
     [Header("Configurações de Combate")]
     public int municaoTotal = 32;
     public int municaoMaxima = 32; // Limite para recarga
+    [Tooltip("Munição independente do míssil de cruzeiro. Se < 0, inicia com a mesma capacidade da munição tática (municaoMaxima).")]
+    public int municaoCruzeiroTotal = -1;
+    public int municaoCruzeiroMaxima = -1;
+    private bool municaoCruzeiroInicializada;
     public int torpedosTotal = 8; // NOVO: limite para torpedos
     public int torpedosMaximos = 8;
     public int tirosPorSalva = 4; // Quantos mísseis saem de uma vez
@@ -77,6 +81,82 @@ public class LancadorNaval : MonoBehaviour
     public GameObject PrefabMissilSelecionado => tipoMissilNaval == TipoMissilNaval.Kh23Cruzeiro
         ? prefabMisselCruzeiro
         : prefabMissel;
+    public int MunicaoTridenteAtual => municaoTotal;
+    public int MunicaoTridenteMaxima => Mathf.Max(municaoTotal, municaoMaxima);
+    public int MunicaoCruzeiroAtual
+    {
+        get { GarantirMunicaoCruzeiroInicializada(); return municaoCruzeiroTotal; }
+        set { GarantirMunicaoCruzeiroInicializada(); municaoCruzeiroTotal = Mathf.Max(0, value); }
+    }
+    public int MunicaoCruzeiroMaxima
+    {
+        get { GarantirMunicaoCruzeiroInicializada(); return Mathf.Max(municaoCruzeiroTotal, municaoCruzeiroMaxima); }
+        set { GarantirMunicaoCruzeiroInicializada(); municaoCruzeiroMaxima = Mathf.Max(0, value); }
+    }
+    public int MunicaoMissilSelecionadoAtual => tipoMissilNaval == TipoMissilNaval.Kh23Cruzeiro
+        ? MunicaoCruzeiroAtual
+        : municaoTotal;
+    public int MunicaoMissilSelecionadoMaxima => tipoMissilNaval == TipoMissilNaval.Kh23Cruzeiro
+        ? MunicaoCruzeiroMaxima
+        : MunicaoTridenteMaxima;
+
+    public void GarantirMunicaoCruzeiroInicializada()
+    {
+        if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
+        if (!municaoCruzeiroInicializada || municaoCruzeiroMaxima < 0 || municaoCruzeiroTotal < 0)
+        {
+            int baseMax = Mathf.Max(municaoTotal, municaoMaxima);
+            if (municaoCruzeiroMaxima < 0) municaoCruzeiroMaxima = baseMax;
+            if (municaoCruzeiroTotal < 0) municaoCruzeiroTotal = municaoCruzeiroMaxima;
+            if (municaoCruzeiroMaxima < municaoCruzeiroTotal) municaoCruzeiroMaxima = municaoCruzeiroTotal;
+            municaoCruzeiroInicializada = true;
+        }
+    }
+
+    public int ObterMunicaoMissil(TipoMissilNaval tipo)
+    {
+        return tipo == TipoMissilNaval.Kh23Cruzeiro ? MunicaoCruzeiroAtual : municaoTotal;
+    }
+
+    public int ObterMunicaoMaximaMissil(TipoMissilNaval tipo)
+    {
+        return tipo == TipoMissilNaval.Kh23Cruzeiro ? MunicaoCruzeiroMaxima : MunicaoTridenteMaxima;
+    }
+
+    private void ConsumirMunicaoMissil(TipoMissilNaval tipo)
+    {
+        if (tipo == TipoMissilNaval.Kh23Cruzeiro)
+        {
+            GarantirMunicaoCruzeiroInicializada();
+            municaoCruzeiroTotal = Mathf.Max(0, municaoCruzeiroTotal - 1);
+        }
+        else
+        {
+            municaoTotal = Mathf.Max(0, municaoTotal - 1);
+        }
+    }
+
+    private void DevolverMunicaoMissil(TipoMissilNaval tipo)
+    {
+        if (tipo == TipoMissilNaval.Kh23Cruzeiro)
+        {
+            GarantirMunicaoCruzeiroInicializada();
+            municaoCruzeiroTotal++;
+        }
+        else
+        {
+            municaoTotal++;
+        }
+    }
+
+    public bool PrecisaRecargaNoPier()
+    {
+        GarantirMunicaoCruzeiroInicializada();
+        return municaoTotal < municaoMaxima
+            || (prefabMisselCruzeiro != null && municaoCruzeiroTotal < municaoCruzeiroMaxima)
+            || torpedosTotal < torpedosMaximos;
+    }
+
     public bool EstaRecarregando => salvaEmAndamento || TempoRecargaRestante > 0f;
     public float TempoRecargaRestante => tempoUltimoDisparoConfirmado < 0f
         ? 0f
@@ -183,6 +263,7 @@ public class LancadorNaval : MonoBehaviour
         }
         // Se Maxima não foi configurada ou menor que total inicial, ajusta
         if (municaoMaxima < municaoTotal) municaoMaxima = municaoTotal;
+        GarantirMunicaoCruzeiroInicializada();
 
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
@@ -321,7 +402,9 @@ public class LancadorNaval : MonoBehaviour
     // --- SISTEMA DE RECARGA (USADO PELO PIER) ---
     public void Recarregar(int quantidade)
     {
+        GarantirMunicaoCruzeiroInicializada();
         municaoTotal = Mathf.Min(municaoTotal + quantidade, municaoMaxima);
+        municaoCruzeiroTotal = Mathf.Min(municaoCruzeiroTotal + quantidade, municaoCruzeiroMaxima);
         torpedosTotal = Mathf.Min(torpedosTotal + (quantidade / 4), torpedosMaximos);
     }
 
@@ -508,13 +591,13 @@ public class LancadorNaval : MonoBehaviour
 
         if (!PodeAtirar())
         {
-            motivo = municaoTotal <= 0 && torpedosTotal <= 0
+            motivo = MunicaoMissilSelecionadoAtual <= 0 && torpedosTotal <= 0
                 ? "sem municao"
                 : "recarga ou salva anterior em andamento";
             return false;
         }
 
-        if (armamentoSelecionadoHud == ArmamentoHud.MissilNaval && municaoTotal <= 0)
+        if (armamentoSelecionadoHud == ArmamentoHud.MissilNaval && MunicaoMissilSelecionadoAtual <= 0)
         {
             motivo = "sem municao para o missil naval selecionado";
             return false;
@@ -567,13 +650,13 @@ public class LancadorNaval : MonoBehaviour
     {
         if (!PodeLancarCoordenado(destino, alvo, modoAutomatico, out motivo)) return false;
 
-        int municaoAntes = municaoTotal;
+        int municaoAntes = MunicaoTridenteAtual + MunicaoCruzeiroAtual;
         int torpedosAntes = torpedosTotal;
         tempoUltimoDisparo = Time.time;
         alvoAtual = alvo;
         DispararUnico(destino, alvo, !modoAutomatico && torpedosSomenteNoModoAtivo);
 
-        if (municaoAntes == municaoTotal && torpedosAntes == torpedosTotal)
+        if (municaoAntes == (MunicaoTridenteAtual + MunicaoCruzeiroAtual) && torpedosAntes == torpedosTotal)
         {
             motivo = "o lancador nao conseguiu criar o projetil";
             return false;
@@ -652,7 +735,7 @@ public class LancadorNaval : MonoBehaviour
     IEnumerator DispararSalvaManual(Vector3 ponto)
     {
         tempoUltimoDisparo = Time.time;
-        int misseisDisponiveisNaSalva = Mathf.Min(tirosPorSalva, municaoTotal);
+        int misseisDisponiveisNaSalva = Mathf.Min(tirosPorSalva, MunicaoMissilSelecionadoAtual);
         
         for (int i = 0; i < misseisDisponiveisNaSalva; i++)
         {
@@ -725,7 +808,7 @@ public class LancadorNaval : MonoBehaviour
 
     bool PodeAtirar()
     {
-        return Time.time > tempoUltimoDisparo + tempoRecargaSalva && (municaoTotal > 0 || torpedosTotal > 0);
+        return Time.time > tempoUltimoDisparo + tempoRecargaSalva && (MunicaoMissilSelecionadoAtual > 0 || torpedosTotal > 0);
     }
 
     Transform ResolverTransformAlvo(Transform alvo)
@@ -1075,7 +1158,7 @@ public class LancadorNaval : MonoBehaviour
 
         salvaEmAndamento = true;
         tempoUltimoDisparo = Time.time;
-        int misseisDisponiveisNaSalva = Mathf.Min(tirosPorSalva, municaoTotal);
+        int misseisDisponiveisNaSalva = Mathf.Min(tirosPorSalva, MunicaoMissilSelecionadoAtual);
         
         // Simulação de dano do Míssil (seguro contra nulos se for um lançador apenas de torpedo)
         float danoMissel = 200f; 
@@ -1232,6 +1315,8 @@ public class LancadorNaval : MonoBehaviour
         bool usarMunicaoSecundaria = false;
         bool torpedoPrioritario = comandoAtivo && torpedosSomenteNoModoAtivo;
         bool podeUsarTorpedoNesteLancador = torpedoPrioritario || !torpedosSomenteNoModoAtivo;
+        TipoMissilNaval tipoMissilDisparo = tipoMissilNaval;
+        int municaoMissilDisponivel = ObterMunicaoMissil(tipoMissilDisparo);
         // No automatico, use primeiro o missil guiado. O torpedo fica como
         // fallback quando a carga de misseis acabou; assim navios de combate
         // realmente engajam alvos navais com a arma esperada.
@@ -1245,7 +1330,7 @@ public class LancadorNaval : MonoBehaviour
         }
         else if (armamentoSelecionadoHud == ArmamentoHud.MissilNaval)
         {
-            if (prefabMissilSelecionado == null || municaoTotal <= 0) return;
+            if (prefabMissilSelecionado == null || municaoMissilDisponivel <= 0) return;
             prefabASpawnar = prefabMissilSelecionado;
         }
         else if (alvoNavalOuSubmarino && torpedoPrioritario && prefabTorpedo != null && torpedosTotal > 0)
@@ -1253,7 +1338,7 @@ public class LancadorNaval : MonoBehaviour
             prefabASpawnar = prefabTorpedo;
             usarMunicaoSecundaria = true;
         }
-        else if (alvoNavalOuSubmarino && prefabMissilSelecionado != null && municaoTotal > 0)
+        else if (alvoNavalOuSubmarino && prefabMissilSelecionado != null && municaoMissilDisponivel > 0)
         {
             prefabASpawnar = prefabMissilSelecionado;
         }
@@ -1267,7 +1352,7 @@ public class LancadorNaval : MonoBehaviour
             prefabASpawnar = prefabTorpedo; // Fallback se não houver missil mas tiver torpedo
             usarMunicaoSecundaria = true;
         }
-        else if (municaoTotal <= 0)
+        else if (municaoMissilDisponivel <= 0)
         {
             // Se nao decidiu usar torpedo e ta sem missil normal
             if (podeUsarTorpedoNesteLancador && torpedosTotal > 0 && prefabTorpedo != null)
@@ -1281,7 +1366,7 @@ public class LancadorNaval : MonoBehaviour
         if (prefabASpawnar == null) return;
         
         if (usarMunicaoSecundaria) torpedosTotal--;
-        else municaoTotal--;
+        else ConsumirMunicaoMissil(tipoMissilDisparo);
 
         // Pega o próximo ponto de saída correto (rodízio entre os tubos)
         Transform pontoDeSaida = transform; // Fallback
@@ -1317,7 +1402,7 @@ public class LancadorNaval : MonoBehaviour
         if (misselObj == null)
         {
             if (usarMunicaoSecundaria) torpedosTotal++;
-            else municaoTotal++;
+            else DevolverMunicaoMissil(tipoMissilDisparo);
             return;
         }
         
@@ -1339,7 +1424,7 @@ public class LancadorNaval : MonoBehaviour
                 usarTorpedo: usarMunicaoSecundaria))
         {
             if (usarMunicaoSecundaria) torpedosTotal++;
-            else municaoTotal++;
+            else DevolverMunicaoMissil(tipoMissilDisparo);
             PoolDeObjetosCombate.Release(misselObj);
             Debug.LogError("[LancadorNaval] Prefab sem controlador de voo válido.", this);
             return;

@@ -175,7 +175,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7225303023925442712, guid: 63760bbfc774e6e47b8ab27944f07e44, type: 3}
       propertyPath: alcance
-      value: 1100
+      value: 2400
       objectReference: {fileID: 0}
     - target: {fileID: 7225303023925442712, guid: 63760bbfc774e6e47b8ab27944f07e44, type: 3}
       propertyPath: pecaQueGira

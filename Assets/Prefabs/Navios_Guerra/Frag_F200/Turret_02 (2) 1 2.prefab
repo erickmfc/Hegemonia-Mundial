@@ -154,7 +154,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 400
+  alcance: 3200
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90

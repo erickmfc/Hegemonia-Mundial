@@ -1,0 +1,184 @@
+/* Estilo Tático UI Toolkit para Pop-up de Interrogação Naval / Aérea */
+.ident-popup-root {
+    position: absolute;
+    top: 42px;
+    right: 220px;
+    width: 380px;
+    background-color: rgba(6, 16, 24, 0.95);
+    border-color: rgba(89, 177, 184, 0.7);
+    border-width: 1px;
+    border-radius: 4px;
+    padding: 0;
+    margin: 0;
+}
+
+.ident-popup-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(14, 38, 52, 0.95);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(89, 177, 184, 0.4);
+    padding: 4px 8px;
+}
+
+.ident-header-left {
+    flex-direction: row;
+    align-items: center;
+}
+
+.ident-radar-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    background-color: rgb(245, 158, 11);
+    margin-right: 6px;
+}
+
+.ident-title-text {
+    font-size: 10px;
+    color: rgb(89, 177, 184);
+    -unity-font-style: bold;
+    letter-spacing: 0.5px;
+}
+
+.ident-header-actions {
+    flex-direction: row;
+}
+
+.ident-btn-header {
+    width: 20px;
+    height: 18px;
+    background-color: transparent;
+    border-width: 0;
+    color: rgb(160, 180, 195);
+    font-size: 11px;
+    margin-left: 2px;
+    padding: 0;
+    -unity-text-align: middle-center;
+}
+
+.ident-btn-header:hover {
+    color: rgb(255, 255, 255);
+    background-color: rgba(89, 177, 184, 0.3);
+}
+
+.ident-btn-close:hover {
+    background-color: rgba(220, 38, 38, 0.6);
+}
+
+.ident-popup-body {
+    padding: 8px;
+}
+
+.ident-sensor-source-bar {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(89, 177, 184, 0.2);
+}
+
+.ident-sensor-badge {
+    font-size: 9px;
+    color: rgb(148, 190, 205);
+    -unity-font-style: bold;
+}
+
+.ident-precision-badge {
+    font-size: 9px;
+    color: rgb(245, 158, 11);
+}
+
+.ident-metrics-row {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    background-color: rgba(10, 24, 34, 0.7);
+    border-width: 1px;
+    border-color: rgba(89, 177, 184, 0.15);
+    border-radius: 3px;
+    padding: 4px 6px;
+}
+
+.ident-metric-col {
+    flex: 1;
+}
+
+.ident-metric-title {
+    font-size: 8px;
+    color: rgb(130, 155, 170);
+    margin-bottom: 1px;
+}
+
+.ident-metric-val {
+    font-size: 10px;
+    color: rgb(220, 240, 245);
+    -unity-font-style: bold;
+}
+
+.ident-val-warning {
+    color: rgb(251, 191, 36);
+}
+
+.ident-actions-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.ident-action-btn {
+    width: 48.5%;
+    margin-bottom: 4px;
+    height: 24px;
+    background-color: rgba(18, 38, 52, 0.9);
+    border-width: 1px;
+    border-color: rgba(89, 177, 184, 0.4);
+    border-radius: 3px;
+    color: rgb(185, 220, 230);
+    font-size: 10px;
+    -unity-font-style: bold;
+    padding: 0;
+    -unity-text-align: middle-center;
+}
+
+.ident-action-btn:hover {
+    background-color: rgba(35, 75, 100, 0.95);
+    border-color: rgb(89, 177, 184);
+    color: rgb(255, 255, 255);
+}
+
+.ident-btn-warning:hover {
+    border-color: rgb(245, 158, 11);
+    background-color: rgba(90, 60, 20, 0.9);
+}
+
+.ident-btn-danger {
+    border-color: rgba(220, 60, 60, 0.5);
+    background-color: rgba(50, 18, 22, 0.85);
+    color: rgb(252, 165, 165);
+}
+
+.ident-btn-danger:hover {
+    background-color: rgba(110, 25, 30, 0.95);
+    border-color: rgb(239, 68, 68);
+    color: rgb(255, 255, 255);
+}
+
+.ident-feed-box {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-width: 1px;
+    border-color: rgba(89, 177, 184, 0.25);
+    border-radius: 3px;
+    padding: 4px 6px;
+    min-height: 26px;
+    justify-content: center;
+}
+
+.ident-feed-text {
+    font-size: 9px;
+    color: rgb(125, 225, 235);
+    white-space: normal;
+}

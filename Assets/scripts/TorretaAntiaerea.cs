@@ -130,6 +130,12 @@ public class TorretaAntiaerea : MonoBehaviour
             cartuchosAtuais = Mathf.Max(1, capacidadeCartucho);
         }
         SincronizarIdentidadePropria();
+        if (((minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval)
+            || GetComponentInParent<IdentidadeNaval>() != null
+            || GetComponentInParent<ControleNavioRealista>() != null) && alcanceArea < 2000f)
+        {
+            alcanceArea = 2200f;
+        }
 
         if (baseGiratoria != null)
         {
@@ -233,6 +239,12 @@ public class TorretaAntiaerea : MonoBehaviour
     public void DefinirModoAtivo(bool ativo)
     {
         SincronizarIdentidadePropria();
+        if (((minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval)
+            || GetComponentInParent<IdentidadeNaval>() != null
+            || GetComponentInParent<ControleNavioRealista>() != null) && alcanceArea < 2000f)
+        {
+            alcanceArea = 2200f;
+        }
         modoPassivo = !ativo;
         if (modoPassivo) alvoAtual = null;
     }
@@ -240,6 +252,12 @@ public class TorretaAntiaerea : MonoBehaviour
     private Transform ProcurarAlvoAereoNoRegistroGlobal()
     {
         SincronizarIdentidadePropria();
+        if (((minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval)
+            || GetComponentInParent<IdentidadeNaval>() != null
+            || GetComponentInParent<ControleNavioRealista>() != null) && alcanceArea < 2000f)
+        {
+            alcanceArea = 2200f;
+        }
         if (minhaIdentidade == null || minhaIdentidade.teamID <= 0)
         {
             return null;

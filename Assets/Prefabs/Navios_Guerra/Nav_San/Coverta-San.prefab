@@ -608,7 +608,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Inimigo
-  alcance: 7000
+  alcance: 3500
   velocidadeGiro: 60
   limitarRotacao: 1
   anguloMinimo: -90
@@ -830,7 +830,7 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.1
   tempoRecargaSalva: 1
-  alcanceRadar: 35000
+  alcanceRadar: 3500
   intervaloVarreduraAutomatica: 0.45
   mascaraVarredura:
     serializedVersion: 2
@@ -876,7 +876,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 50000
+  alcanceRadar: 3500
   alcanceConfiguradoNoPrefab: 1
   radarLigado: 0
   ativacaoAutomaticaHelicopteroEmVoo: 0
@@ -4120,7 +4120,7 @@ MonoBehaviour:
   municaoAtual: 0
   municaoMaxima: 8
   custoMissil: 200
-  alcanceMaximo: 18000
+  alcanceMaximo: 3500
   tempoRecarga: 2
   pontosDeSaida:
   - {fileID: 3511596786014645580}

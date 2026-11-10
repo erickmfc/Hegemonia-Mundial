@@ -462,7 +462,7 @@ public class PierMarinha : MonoBehaviour
 
                 // 2. RECARGA DE MÍSSEIS
                 LancadorNaval lancador = navio.GetComponentInChildren<LancadorNaval>();
-                if (lancador != null && lancador.municaoTotal < lancador.municaoMaxima)
+                if (lancador != null && lancador.PrecisaRecargaNoPier())
                 {
                     vaga.timerRecarga += Time.deltaTime;
                     if (vaga.timerRecarga >= intervaloRecargaMissel)

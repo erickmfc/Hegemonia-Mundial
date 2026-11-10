@@ -24,6 +24,10 @@ public class SistemaDeDanos : MonoBehaviour
     public bool ehEstrutura = false;
 
     [Header("Personalização Visual")]
+    [Tooltip("Efeito visual de dano/fogo desta unidade. Se vazio, usa o efeito 'dano unidade' configurado no GerenciadorFXGlobal.")]
+    public GameObject prefabEfeitoDano;
+    [Tooltip("Efeito visual de fumaça desta unidade (opcional). Se vazio, usa o prefabEfeitoDano ou o padrão global.")]
+    public GameObject prefabFumacaDano;
     public GameObject prefabDestrocos; // O modelo 3D do tanque destruído/queimado OU corpo do soldado
     public AudioClip somExplosaoExclusivo; // Som específico desta unidade (opcional)
     [Range(0.1f, 10f)]
@@ -69,6 +73,7 @@ public class SistemaDeDanos : MonoBehaviour
 
     void Start()
     {
+        GarantirEfeitoPadraoConfigurado();
         vidaAtual = vidaMaxima;
         
         // O nome de alguns navios também contém "Wall" (por exemplo,
@@ -250,23 +255,109 @@ public class SistemaDeDanos : MonoBehaviour
         {
             if (fxFumacaLeve != null) DestruirFx(ref fxFumacaLeve);
             
-            // Mantém ou cria a fumaça preta
-            if (fxFumacaGrave == null) fxFumacaGrave = CriarFxContinuo("FumacaEscura");
-            
-            // Adiciona Fogo
-            if (fxFogo == null) fxFogo = CriarFxContinuo("Fogo");
+            GameObject prefabGrave = ResolverPrefabEfeito("FumacaEscura");
+            GameObject prefabCritico = ResolverPrefabEfeito("Fogo");
+
+            // Quando o mesmo prefab unificado (ex: "dano unidade") já contém fogo e fumaça,
+            // evita duplicar duas instâncias idênticas no mesmo ponto.
+            if (prefabGrave != null && prefabGrave == prefabCritico)
+            {
+                if (fxFumacaGrave != null) DestruirFx(ref fxFumacaGrave);
+                if (fxFogo == null) fxFogo = CriarFxContinuo("Fogo");
+            }
+            else
+            {
+                // Mantém ou cria a fumaça preta
+                if (fxFumacaGrave == null) fxFumacaGrave = CriarFxContinuo("FumacaEscura");
+                
+                // Adiciona Fogo
+                if (fxFogo == null) fxFogo = CriarFxContinuo("Fogo");
+            }
         }
+    }
+
+    private void GarantirEfeitoPadraoConfigurado()
+    {
+#if UNITY_EDITOR
+        if (prefabEfeitoDano == null)
+        {
+            prefabEfeitoDano = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Efeitos/dano unidade.prefab");
+        }
+        if (prefabFumacaDano == null)
+        {
+            prefabFumacaDano = prefabEfeitoDano;
+        }
+#endif
+        if (prefabEfeitoDano == null && GerenciadorFXGlobal.Instancia != null && GerenciadorFXGlobal.Instancia.prefabDanoUnidade != null)
+        {
+            prefabEfeitoDano = GerenciadorFXGlobal.Instancia.prefabDanoUnidade;
+        }
+    }
+
+#if UNITY_EDITOR
+    private void Reset()
+    {
+        GarantirEfeitoPadraoConfigurado();
+    }
+
+    private void OnValidate()
+    {
+        if (!unidadeBiologica && !ehEstrutura)
+        {
+            GarantirEfeitoPadraoConfigurado();
+        }
+    }
+#endif
+
+    private GameObject ResolverPrefabEfeito(string tipo)
+    {
+        if (tipo == "Fogo" || tipo == "FogoGrande" || tipo == "DanoUnidade")
+        {
+            if (prefabEfeitoDano != null) return prefabEfeitoDano;
+            if (prefabFumacaDano != null) return prefabFumacaDano;
+        }
+        else
+        {
+            if (prefabFumacaDano != null) return prefabFumacaDano;
+            if (prefabEfeitoDano != null) return prefabEfeitoDano;
+        }
+
+        if (GerenciadorFXGlobal.Instancia != null)
+        {
+            return GerenciadorFXGlobal.Instancia.ResolverPrefabContinuo(tipo);
+        }
+
+        return null;
     }
 
     GameObject CriarFxContinuo(string tipo)
     {
-        if (GerenciadorFXGlobal.Instancia != null)
+        GameObject prefabLocal = null;
+        if (tipo == "Fogo" || tipo == "FogoGrande" || tipo == "DanoUnidade")
+        {
+            prefabLocal = prefabEfeitoDano != null ? prefabEfeitoDano : prefabFumacaDano;
+        }
+        else
+        {
+            prefabLocal = prefabFumacaDano != null ? prefabFumacaDano : prefabEfeitoDano;
+        }
+
+        GameObject fx = null;
+        if (prefabLocal != null)
+        {
+            fx = Instantiate(prefabLocal, transform.position, Quaternion.identity, transform);
+            fx.transform.localPosition = Vector3.zero;
+            AudioRuntime.ConfigurarHierarquia(fx);
+        }
+        else if (GerenciadorFXGlobal.Instancia != null)
         {
             // Cria o efeito e já define este objeto como pai
-            GameObject fx = GerenciadorFXGlobal.Instancia.CriarEfeitoContinuo(tipo, this.transform);
-            
+            fx = GerenciadorFXGlobal.Instancia.CriarEfeitoContinuo(tipo, this.transform);
+        }
+
+        if (fx != null)
+        {
             // Ajuste de posição (Motor/Exaustor)
-            if (fx != null)
             {
                 fx.transform.localPosition = ajusteDePosicao;
                 fx.transform.localScale = Vector3.one * tamanhoDoEfeito; // Aplica escala baseada no tamanho da unidade

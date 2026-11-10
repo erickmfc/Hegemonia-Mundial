@@ -528,15 +528,15 @@ namespace Hegemonia.AI.BrainMaster
             float territoryFactor = Mathf.Clamp01(snapshot.TotalOwnStructures / 24f);
             float threatFactor = country != null && country.emGuerra ? 1.35f : 1f;
             int airCapacity = Mathf.Clamp(
-                3 + Mathf.RoundToInt(((population / 5000f) * 2f + budgetFactor * 16f + militarismFactor * 10f
-                    + industrialFactor * 10f + territoryFactor * 8f) * threatFactor),
-                3,
-                powerDoctrine ? 56 : 32);
-            int fleetCapacity = Mathf.Clamp(
-                2 + Mathf.RoundToInt(((population / 7000f) * 2f + budgetFactor * 12f + militarismFactor * 8f
-                    + industrialFactor * 10f + territoryFactor * 8f) * threatFactor),
+                2 + Mathf.RoundToInt(((population / 8000f) * 1.5f + budgetFactor * 6f + militarismFactor * 4f
+                    + industrialFactor * 4f + territoryFactor * 4f) * threatFactor),
                 2,
-                powerDoctrine ? 48 : 24);
+                powerDoctrine ? 14 : 9);
+            int fleetCapacity = Mathf.Clamp(
+                2 + Mathf.RoundToInt(((population / 9000f) * 1.5f + budgetFactor * 5f + militarismFactor * 4f
+                    + industrialFactor * 4f + territoryFactor * 4f) * threatFactor),
+                2,
+                powerDoctrine ? 12 : 8);
             bool infrastructureCapacity = budgetFactor >= 0.35f
                                         && industrialFactor >= 0.45f
                                         && territoryFactor >= 0.25f;

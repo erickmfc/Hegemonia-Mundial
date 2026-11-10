@@ -308,6 +308,9 @@ public class ControleTorreta : MonoBehaviour
         if (minhaIdentidade != null && minhaIdentidade.tipoUnidade == TipoUnidade.Naval)
             exigeGuerraDeclarada = true;
 
+        if (exigeGuerraDeclarada && alcance < 2000f)
+            alcance = 2200f;
+
         souAntiAereo = DeterminarSouAntiAereo();
 
         balasAtuais = tamanhoCartucho;
@@ -430,39 +433,69 @@ public class ControleTorreta : MonoBehaviour
 
     void GarantirPivoSeguroDaMalha()
     {
-        if (!criarPivoSeguroDaMalha || pecaQueGira == null || pecaQueGira.parent == null)
+        if (pecaQueGira == null || pecaQueGira.parent == null)
         {
             return;
         }
 
-        MeshFilter filtro = pecaQueGira.GetComponent<MeshFilter>();
-        MeshRenderer renderer = pecaQueGira.GetComponent<MeshRenderer>();
-        if (filtro == null || filtro.sharedMesh == null || renderer == null)
-        {
-            return;
-        }
-
-        Vector3 centroLocal = filtro.sharedMesh.bounds.center;
-        if (centroLocal.sqrMagnitude < 0.01f)
+        bool eixoPaiDesalinhado = Vector3.Dot(pecaQueGira.parent.up, transform.up) < 0.7f;
+        if (!criarPivoSeguroDaMalha && !eixoPaiDesalinhado)
         {
             return;
         }
 
         Transform pecaOriginal = pecaQueGira;
         Transform paiOriginal = pecaOriginal.parent;
-        Vector3 posicaoPivoMundo = pecaOriginal.TransformPoint(centroLocal);
+        Vector3 posicaoPivoMundo = pecaOriginal.position;
+
+        if (criarPivoSeguroDaMalha)
+        {
+            MeshFilter filtro = pecaOriginal.GetComponent<MeshFilter>();
+            MeshRenderer renderer = pecaOriginal.GetComponent<MeshRenderer>();
+            if (filtro == null || filtro.sharedMesh == null || renderer == null)
+            {
+                if (!eixoPaiDesalinhado) return;
+            }
+            else
+            {
+                Vector3 centroLocal = filtro.sharedMesh.bounds.center;
+                if (centroLocal.sqrMagnitude < 0.01f && !eixoPaiDesalinhado)
+                {
+                    return;
+                }
+                if (centroLocal.sqrMagnitude >= 0.01f)
+                {
+                    posicaoPivoMundo = pecaOriginal.TransformPoint(centroLocal);
+                }
+            }
+        }
+
+        Transform paiDoPivo = paiOriginal;
         Quaternion rotacaoPivoMundo = pecaOriginal.rotation;
+        if (eixoPaiDesalinhado)
+        {
+            GameObject objetoBase = new GameObject(pecaOriginal.name + "_BaseAlinhada");
+            Transform baseAlinhada = objetoBase.transform;
+            baseAlinhada.SetParent(paiOriginal, true);
+            baseAlinhada.position = posicaoPivoMundo;
+            baseAlinhada.rotation = transform.rotation;
+            paiDoPivo = baseAlinhada;
+            rotacaoPivoMundo = transform.rotation;
+        }
 
         GameObject objetoPivo = new GameObject(pecaOriginal.name + "_PivoSeguro");
         Transform pivo = objetoPivo.transform;
-        pivo.SetParent(paiOriginal, true);
+        pivo.SetParent(paiDoPivo, true);
         pivo.position = posicaoPivoMundo;
         pivo.rotation = rotacaoPivoMundo;
-        pivo.localScale = Vector3.one;
+        if (!eixoPaiDesalinhado)
+        {
+            pivo.localScale = Vector3.one;
+        }
 
         // Preserva a posição de repouso da malha. A partir daqui, somente o
         // novo pivô gira, impedindo que a arma faça uma órbita em torno da
-        // origem do avião ao procurar o alvo.
+        // origem do avião ou gire no eixo errado em malhas GLB Z-up.
         pecaOriginal.SetParent(pivo, true);
         pecaQueGira = pivo;
     }

@@ -221,7 +221,7 @@ public static class InfraPerformanceGameplay
             switch (estado.nivel)
             {
                 case NivelProcessamentoTatico.Medio:
-                    multiplicador *= 1.35f;
+                    multiplicador *= 1.55f;
                     break;
                 case NivelProcessamentoTatico.Distante:
                 {
@@ -229,7 +229,7 @@ public static class InfraPerformanceGameplay
                     // atualizar o cérebro com menor frequência. Movimento,
                     // seleção e combate continuam no caminho prioritário.
                     bool respostaCritica = estado.estaSelecionada || estado.estaEngajada || estado.heroica;
-                    multiplicador *= respostaCritica ? 2.10f : 3.50f;
+                    multiplicador *= respostaCritica ? 2.40f : 4.25f;
                     break;
                 }
             }

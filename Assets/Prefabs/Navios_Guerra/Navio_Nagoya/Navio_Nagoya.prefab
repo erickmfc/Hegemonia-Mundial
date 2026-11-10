@@ -497,7 +497,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 900
+  alcanceRadar: 4000
   alcanceConfiguradoNoPrefab: 0
   radarLigado: 0
   ativacaoAutomaticaHelicopteroEmVoo: 0
@@ -589,7 +589,7 @@ MonoBehaviour:
   tirosPorSalva: 4
   intervaloEntreTiros: 0.5
   tempoRecargaSalva: 5
-  alcanceRadar: 2000
+  alcanceRadar: 4000
   intervaloVarreduraAutomatica: 0.45
   mascaraVarredura:
     serializedVersion: 2
@@ -699,7 +699,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5385027182118467097, guid: 4935aeb30039463aa96a96b0b593a1f6, type: 3}
       propertyPath: alcance
-      value: 5000
+      value: 4500
       objectReference: {fileID: 0}
     - target: {fileID: 7391212287292791184, guid: 4935aeb30039463aa96a96b0b593a1f6, type: 3}
       propertyPath: m_Name
@@ -725,7 +725,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1109670852497118349, guid: 64aadec2cc0d432382dde9580918514c, type: 3}
       propertyPath: alcance
-      value: 1500
+      value: 4000
       objectReference: {fileID: 0}
     - target: {fileID: 1388456230983846784, guid: 64aadec2cc0d432382dde9580918514c, type: 3}
       propertyPath: m_Name
@@ -855,7 +855,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5385027182118467097, guid: 4935aeb30039463aa96a96b0b593a1f6, type: 3}
       propertyPath: alcance
-      value: 5000
+      value: 4500
       objectReference: {fileID: 0}
     - target: {fileID: 7391212287292791184, guid: 4935aeb30039463aa96a96b0b593a1f6, type: 3}
       propertyPath: m_Name

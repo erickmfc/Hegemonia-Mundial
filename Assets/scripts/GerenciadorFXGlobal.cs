@@ -4,7 +4,8 @@ public class GerenciadorFXGlobal : MonoBehaviour
 {
     public static GerenciadorFXGlobal Instancia;
 
-    [Header("Efeitos de Dano (Arraste os Prefabs da pasta Efeitos_dano)")]
+    [Header("Efeitos de Dano (Arraste os Prefabs da pasta Efeitos / Efeitos_dano)")]
+    public GameObject prefabDanoUnidade;   // Novo efeito unificado "dano unidade" (Pasta Prefabs/Efeitos)
     public GameObject prefabExplosao;      // Para "Explosao"
     public GameObject prefabFumacaClara;   // Para "fumaca_Clara" (Dano Leve)
     public GameObject prefabFumacaEscura;  // Para "fumaca_escura" (Dano Médio)
@@ -37,20 +38,28 @@ public class GerenciadorFXGlobal : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Cria um efeito contínuo (fumaça/fogo) anexado ao objeto pai. Retorna o GameObject criado para que quem chamou possa desligá-lo depois.
-    /// </summary>
-    public GameObject CriarEfeitoContinuo(string tipo, Transform pai)
+    public GameObject ResolverPrefabContinuo(string tipo)
     {
         GameObject prefabAlvo = null;
 
         switch (tipo)
         {
-            case "FumacaLeve": prefabAlvo = prefabFumacaClara; break;
-            case "FumacaEscura": prefabAlvo = prefabFumacaEscura; break;
-            case "Fogo": prefabAlvo = prefabFogoIntenso; break;
-            case "FogoGrande": prefabAlvo = prefabFogoGrande; break;
+            case "DanoUnidade": prefabAlvo = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFogoIntenso; break;
+            case "FumacaLeve": prefabAlvo = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFumacaClara; break;
+            case "FumacaEscura": prefabAlvo = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFumacaEscura; break;
+            case "Fogo": prefabAlvo = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFogoIntenso; break;
+            case "FogoGrande": prefabAlvo = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFogoGrande; break;
         }
+
+        return prefabAlvo;
+    }
+
+    /// <summary>
+    /// Cria um efeito contínuo (fumaça/fogo) anexado ao objeto pai. Retorna o GameObject criado para que quem chamou possa desligá-lo depois.
+    /// </summary>
+    public GameObject CriarEfeitoContinuo(string tipo, Transform pai)
+    {
+        GameObject prefabAlvo = ResolverPrefabContinuo(tipo);
 
         if (prefabAlvo != null)
         {
@@ -72,9 +81,10 @@ public class GerenciadorFXGlobal : MonoBehaviour
 
         switch (tipo)
         {
-            case "FumacaLeve": prefab = prefabFumacaClara; break;
-            case "FumacaEscura": prefab = prefabFumacaEscura; break;
-            case "Fogo": prefab = prefabFogoIntenso; break;
+            case "DanoUnidade": prefab = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFogoIntenso; break;
+            case "FumacaLeve": prefab = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFumacaClara; break;
+            case "FumacaEscura": prefab = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFumacaEscura; break;
+            case "Fogo": prefab = prefabDanoUnidade != null ? prefabDanoUnidade : prefabFogoIntenso; break;
             case "Explosao": prefab = prefabExplosao; break;
         }
 

@@ -304,7 +304,19 @@ namespace Hegemonia.AI.BrainMaster
             if (pais == null || pais.teamId == gov.teamJogador) return;
 
             _state.LastSyncTime = now;
-            _state.PendingProposals = gov.Propostas.Count(p => p != null && p.EstaPendente && (p.origemTeamId == pais.teamId || p.alvoTeamId == pais.teamId));
+            int pendingCount = 0;
+            if (gov.Propostas != null)
+            {
+                for (int i = 0; i < gov.Propostas.Count; i++)
+                {
+                    PropostaInternacional p = gov.Propostas[i];
+                    if (p != null && p.EstaPendente && (p.origemTeamId == pais.teamId || p.alvoTeamId == pais.teamId))
+                    {
+                        pendingCount++;
+                    }
+                }
+            }
+            _state.PendingProposals = pendingCount;
 
             RecursoMercado surplus = IA_EconomyDirector.ResolveBestSurplus(pais);
             if (surplus == RecursoMercado.Nenhum) return;
@@ -398,10 +410,27 @@ namespace Hegemonia.AI.BrainMaster
             DadosItemMercado item = mercado.ObterItem(SistemaGovernoMundial.IdRecurso(recurso));
             if (item == null) return;
 
-            DadosPaisGoverno vendedor = gov.Paises
-                .Where(p => p != null && p.teamId != comprador.teamId && gov.ObterEstoque(p.teamId, recurso) > item.CalcularQuantidadePadrao())
-                .OrderByDescending(p => ScoreVendedor(gov, comprador, p, recurso))
-                .FirstOrDefault();
+            DadosPaisGoverno vendedor = null;
+            float bestSellerScore = float.MinValue;
+            int minStock = item.CalcularQuantidadePadrao();
+            if (gov.Paises != null)
+            {
+                for (int i = 0; i < gov.Paises.Count; i++)
+                {
+                    DadosPaisGoverno p = gov.Paises[i];
+                    if (p == null || p.teamId == comprador.teamId || gov.ObterEstoque(p.teamId, recurso) <= minStock)
+                    {
+                        continue;
+                    }
+
+                    float s = ScoreVendedor(gov, comprador, p, recurso);
+                    if (vendedor == null || s > bestSellerScore)
+                    {
+                        bestSellerScore = s;
+                        vendedor = p;
+                    }
+                }
+            }
 
             if (vendedor == null)
             {
@@ -435,10 +464,26 @@ namespace Hegemonia.AI.BrainMaster
             DadosItemMercado item = mercado.ObterItem(SistemaGovernoMundial.IdRecurso(recurso));
             if (item == null) return;
 
-            DadosPaisGoverno comprador = gov.Paises
-                .Where(p => p != null && p.teamId != vendedor.teamId && IA_EconomyDirector.ResolveCriticalNeed(p) == recurso)
-                .OrderByDescending(p => ScoreComprador(gov, vendedor, p))
-                .FirstOrDefault();
+            DadosPaisGoverno comprador = null;
+            float bestBuyerScore = float.MinValue;
+            if (gov.Paises != null)
+            {
+                for (int i = 0; i < gov.Paises.Count; i++)
+                {
+                    DadosPaisGoverno p = gov.Paises[i];
+                    if (p == null || p.teamId == vendedor.teamId || IA_EconomyDirector.ResolveCriticalNeed(p) != recurso)
+                    {
+                        continue;
+                    }
+
+                    float s = ScoreComprador(gov, vendedor, p);
+                    if (comprador == null || s > bestBuyerScore)
+                    {
+                        bestBuyerScore = s;
+                        comprador = p;
+                    }
+                }
+            }
             if (comprador == null) return;
 
             int quantidade = Mathf.Min(item.CalcularQuantidadePadrao() * 2, gov.ObterEstoque(vendedor.teamId, recurso) / 4);

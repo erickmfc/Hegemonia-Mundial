@@ -947,19 +947,19 @@ namespace Hegemonia.AI.IA03
                     break;
                 case IA03NivelEconomico.Fraco:
                     fleetGoal = 2;
-                    airGoal = 4;
+                    airGoal = 3;
                     break;
                 case IA03NivelEconomico.Medio:
-                    fleetGoal = 4;
-                    airGoal = 8;
+                    fleetGoal = 3;
+                    airGoal = 5;
                     break;
                 case IA03NivelEconomico.Forte:
-                    fleetGoal = 7;
-                    airGoal = 12;
+                    fleetGoal = 5;
+                    airGoal = 7;
                     break;
                 default:
-                    fleetGoal = 10;
-                    airGoal = 18;
+                    fleetGoal = 6;
+                    airGoal = 8;
                     break;
             }
 
@@ -2579,7 +2579,10 @@ namespace Hegemonia.AI.IA03
             if (nivelDeConflito == IA03NivelConflito.Paz)
             {
                 bool patrulhaEmPazAtiva = creatyAtivo != null
-                    && EhPontoDePatrulha(creatyAtivo.Tipo)
+                    && (creatyAtivo.Tipo == IA03TipoCreaty.PatrulhaTerrestre
+                        || creatyAtivo.Tipo == IA03TipoCreaty.PatrulhaNaval
+                        || creatyAtivo.Tipo == IA03TipoCreaty.PatrulhaAerea
+                        || creatyAtivo.Tipo == IA03TipoCreaty.PatrulhaSubmarino)
                     && (missaoAtiva == null || missaoAtiva.PermitePatrulhaEmPaz);
                 if (!patrulhaEmPazAtiva)
                 {
@@ -3869,10 +3872,8 @@ namespace Hegemonia.AI.IA03
             }
 
             proximaAvaliacaoVotosConselhoEm = now + 3f + (brain.TeamId % 5) * 0.25f;
-            IReadOnlyList<PropostaInternacional> propostasParaVoto = governo.ObterReivindicacoesTerritoriaisParaVoto(brain.TeamId);
-            for (int i = 0; i < propostasParaVoto.Count; i++)
+            foreach (PropostaInternacional proposta in governo.ObterReivindicacoesTerritoriaisParaVoto(brain.TeamId))
             {
-                PropostaInternacional proposta = propostasParaVoto[i];
                 if (proposta == null || proposta.votosConselho == null) continue;
                 VotoTerritorialConselho votoAtual = null;
                 for (int v = 0; v < proposta.votosConselho.Count; v++)
@@ -3911,13 +3912,11 @@ namespace Hegemonia.AI.IA03
 
             GerenteDeTerritorio gerenteTerritorial = GerenteDeTerritorio.Instancia;
             DadosMapaTerritorial mapaPolitico = gerenteTerritorial != null ? gerenteTerritorial.MapaPolitico : null;
-            IReadOnlyList<RegiaoPolitica> elegiveis = governo.ObterTerritoriosElegiveisParaReivindicacao();
             RegiaoPolitica melhorRegiao = null;
             float melhorPontuacao = GestorDiplomaciaIA03.PontuacaoMinimaParaReivindicarTerritorio;
 
-            for (int i = 0; i < elegiveis.Count; i++)
+            foreach (RegiaoPolitica regiao in governo.ObterTerritoriosElegiveisParaReivindicacao())
             {
-                RegiaoPolitica regiao = elegiveis[i];
                 if (regiao == null || string.IsNullOrWhiteSpace(regiao.territorioId)) continue;
                 float pontuacaoTerritorial = GestorDiplomaciaIA03.CalcularPontuacaoTerritorial(
                     mapaPolitico,

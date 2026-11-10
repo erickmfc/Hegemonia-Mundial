@@ -87932,11 +87932,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c2ab114c04af760428e84cdb06d05806, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GerenciadorFXGlobal
+  prefabDanoUnidade: {fileID: 100000, guid: 6ca2ead270ed34045b54a18fee4e9a2e, type: 3}
   prefabExplosao: {fileID: 9059704371925623876, guid: 07b2c769e5d06a74782a89f19cd27b13, type: 3}
-  prefabFumacaClara: {fileID: 8605806729708519770, guid: f6c1e31ddcd0f424ab6d679de010d2ed, type: 3}
-  prefabFumacaEscura: {fileID: 3689352056395394299, guid: 3c5a3e4932bb0b24f89d479baad599ae, type: 3}
-  prefabFogoIntenso: {fileID: 5778609071243430566, guid: aeb8d9456e8f2714ebd3164097f5455b, type: 3}
-  prefabFogoGrande: {fileID: 4079559363357107082, guid: 51d65cd54bf1f824f97d7fe6aecb922b, type: 3}
+  prefabFumacaClara: {fileID: 101130, guid: 2f3bcb6b574f1794bbfeec78a0f309af, type: 3}
+  prefabFumacaEscura: {fileID: 100000, guid: 6ca2ead270ed34045b54a18fee4e9a2e, type: 3}
+  prefabFogoIntenso: {fileID: 100000, guid: 6ca2ead270ed34045b54a18fee4e9a2e, type: 3}
+  prefabFogoGrande: {fileID: 100000, guid: 6ca2ead270ed34045b54a18fee4e9a2e, type: 3}
   prefabFogoReto: {fileID: 9169263798598525455, guid: e997d449daf194a47adae12a9a56c8e4, type: 3}
   somExplosao: {fileID: 8300000, guid: d47e6ed162da1f740ad807d00f4679f3, type: 3}
 --- !u!4 &1627674461

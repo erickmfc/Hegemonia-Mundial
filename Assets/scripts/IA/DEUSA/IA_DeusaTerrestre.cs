@@ -21,7 +21,7 @@ namespace Hegemonia.AI.DEUSA
             }
 
             int baseInf = estagio >= DeusaEstagio.GuerraTotal ? 14 : estagio >= DeusaEstagio.MilitarizacaoDefensiva ? 8 : 4;
-            int baseTank = estagio >= DeusaEstagio.GuerraTotal ? 10 : estagio >= DeusaEstagio.ProjecaoPoder ? 6 : estagio >= DeusaEstagio.MilitarizacaoDefensiva ? 4 : 2;
+            int baseTank = estagio >= DeusaEstagio.GuerraTotal ? 10 : estagio >= DeusaEstagio.MilitarizacaoDefensiva ? 4 : 2;
             int inimigoTerrestre = espionagem != null ? espionagem.EstimativaTerrestre : 0;
 
             MetaInfantaria = Mathf.Clamp(Mathf.Max(baseInf, Mathf.RoundToInt(inimigoTerrestre * 0.90f)), 4, 24);

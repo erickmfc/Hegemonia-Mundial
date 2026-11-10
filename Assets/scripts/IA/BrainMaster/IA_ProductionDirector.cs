@@ -950,6 +950,15 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             var variants = new List<string>(grouped.Keys);
+            // Limita bombardeiros B-260 no aeroporto para garantir caças e atacantes variados
+            if (variants.Count > 1 && CountExistingBombers() >= MaxBombersPerAirport)
+            {
+                variants.Remove("b260");
+                if (variants.Count == 0)
+                {
+                    variants = new List<string>(grouped.Keys);
+                }
+            }
             if (variants.Count > 1 && !string.IsNullOrEmpty(_lastPreferredAircraftVariant))
             {
                 variants.Remove(_lastPreferredAircraftVariant);

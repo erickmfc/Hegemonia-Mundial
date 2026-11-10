@@ -435,7 +435,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 900
+  alcanceRadar: 3200
   alcanceConfiguradoNoPrefab: 0
   radarLigado: 0
   ativacaoAutomaticaHelicopteroEmVoo: 0
@@ -527,7 +527,7 @@ MonoBehaviour:
   tirosPorSalva: 1
   intervaloEntreTiros: 0.5
   tempoRecargaSalva: 5
-  alcanceRadar: 19000
+  alcanceRadar: 3800
   intervaloVarreduraAutomatica: 0.45
   mascaraVarredura:
     serializedVersion: 2
@@ -678,7 +678,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4089975250393568596, guid: 8ff4a13df0ec47e796923c1a24f51425, type: 3}
       propertyPath: alcanceRadar
-      value: 5000
+      value: 3800
       objectReference: {fileID: 0}
     - target: {fileID: 5203712587483020577, guid: 8ff4a13df0ec47e796923c1a24f51425, type: 3}
       propertyPath: m_LocalScale.x
@@ -756,7 +756,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1109670852497118349, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: alcance
-      value: 5000
+      value: 3800
       objectReference: {fileID: 0}
     - target: {fileID: 1109670852497118349, guid: 88b4963e60054149b3a282ec3068841d, type: 3}
       propertyPath: limitarRotacao

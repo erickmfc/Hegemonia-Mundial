@@ -59,6 +59,9 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextFoundationAttemptTime;
         private int _lastKnownStructureCount = -1;
         private float _lastProgressTime;
+        private float _lastStructureLossTime = -999f;
+        private int _rebuildAnchorRotation;
+        private readonly List<CidadeComplexoUrbano> _activeCitiesBuffer = new List<CidadeComplexoUrbano>(8);
         private float _nextRecoveryAttemptTime;
         private float _nextCoastScanTime;
         private float _nextNavalAttemptTime;
@@ -533,6 +536,11 @@ namespace Hegemonia.AI.BrainMaster
             }
             long resolveLandAnchorStart = BeginTimingScope();
             Vector3 landAnchor = ResolveLandAnchor(baseCenter);
+            bool recentlyBombedOrLostStructure = now - _lastStructureLossTime < 28f;
+            if (recentlyBombedOrLostStructure)
+            {
+                landAnchor = ResolveSafeRebuildAnchor(landAnchor, baseCenter);
+            }
             EndTimingScope("ResolveLandAnchor", "base=" + baseCenter + " | land=" + landAnchor, resolveLandAnchorStart, 1.00f);
 
             long strategyInputsStart = BeginTimingScope();
@@ -888,6 +896,23 @@ namespace Hegemonia.AI.BrainMaster
                 && QueueBuildAtLand("village", IA_ZoneType.Economy, landAnchor, 30f, 160f, 68, 22f))
             {
                 return;
+            }
+
+            if (!mobilizingBase
+                && !recentlyBombedOrLostStructure
+                && now >= 110f
+                && cityHall > 0
+                && factories > 0
+                && usinas > 0
+                && CountTeamCities() < 1)
+            {
+                int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 1;
+                string preferredCityId = IA_CityExpansionPolicy.PreferredCityItemId(teamId);
+                if (QueueBuildAtLand(preferredCityId, IA_ZoneType.Core, landAnchor, 65f, 280f, 71, 35f)
+                    || QueueBuildAtLand("cidade nova aurora", IA_ZoneType.Core, landAnchor, 65f, 280f, 71, 35f))
+                {
+                    return;
+                }
             }
 
             bool coastNeeded = shouldOpenNaval
@@ -3541,6 +3566,12 @@ namespace Hegemonia.AI.BrainMaster
 
             if (currentStructures != _lastKnownStructureCount)
             {
+                if (currentStructures < _lastKnownStructureCount)
+                {
+                    _lastStructureLossTime = now;
+                    _rebuildAnchorRotation++;
+                }
+
                 _lastKnownStructureCount = currentStructures;
                 _lastProgressTime = now;
                 _recoveryLevel = 0;
@@ -3551,6 +3582,97 @@ namespace Hegemonia.AI.BrainMaster
 
                 IA_NavalPlacementField.InvalidateAll();
             }
+        }
+
+        private int CountTeamCities()
+        {
+            _activeCitiesBuffer.Clear();
+            CidadeComplexoUrbano.CopiarCidadesAtivas(_activeCitiesBuffer);
+            int teamId = _context != null && _context.Brain != null ? Mathf.Max(1, _context.Brain.TeamId) : 1;
+            int count = 0;
+            for (int i = 0; i < _activeCitiesBuffer.Count; i++)
+            {
+                CidadeComplexoUrbano city = _activeCitiesBuffer[i];
+                if (city != null && city.teamId == teamId)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private Vector3 ResolveSafeRebuildAnchor(Vector3 fallbackAnchor, Vector3 baseCenter)
+        {
+            if (_context == null || _context.WorldState == null)
+            {
+                return fallbackAnchor;
+            }
+
+            // Determina o centro de ameaça inimiga mais recente para reconstruir longe do bombardeio
+            Vector3 threatCenter = Vector3.zero;
+            bool hasThreat = false;
+            List<IA_EnemyObservation> enemies = _context.WorldState.VisibleEnemies;
+            if (enemies != null && enemies.Count > 0)
+            {
+                float maxScore = float.MinValue;
+                for (int i = 0; i < enemies.Count; i++)
+                {
+                    IA_EnemyObservation obs = enemies[i];
+                    if (obs != null && obs.ThreatScore > maxScore)
+                    {
+                        maxScore = obs.ThreatScore;
+                        threatCenter = obs.Position;
+                        hasThreat = true;
+                    }
+                }
+            }
+
+            List<GameObject> structures = _context.WorldState.OwnStructures;
+            if (structures == null || structures.Count == 0)
+            {
+                return fallbackAnchor;
+            }
+
+            Vector3 bestStructurePos = fallbackAnchor;
+            float bestThreatDistSq = -1f;
+            int count = structures.Count;
+            for (int i = 0; i < count; i++)
+            {
+                int idx = (i + _rebuildAnchorRotation) % count;
+                GameObject structure = structures[idx];
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                Vector3 pos = structure.transform.position;
+                if (NavalPlacementResolver.IsWaterAtPosition(pos))
+                {
+                    continue;
+                }
+
+                if (!hasThreat)
+                {
+                    float distFromFallbackSq = (Flatten(pos) - Flatten(fallbackAnchor)).sqrMagnitude;
+                    if (distFromFallbackSq >= 45f * 45f && distFromFallbackSq <= 420f * 420f)
+                    {
+                        return EnsureDryLandAnchor(pos);
+                    }
+                }
+                else
+                {
+                    float distFromThreatSq = (Flatten(pos) - Flatten(threatCenter)).sqrMagnitude;
+                    float distFromBaseSq = (Flatten(pos) - Flatten(baseCenter)).sqrMagnitude;
+                    if (distFromBaseSq <= 650f * 650f && distFromThreatSq > bestThreatDistSq)
+                    {
+                        bestThreatDistSq = distFromThreatSq;
+                        bestStructurePos = pos;
+                    }
+                }
+            }
+
+            return EnsureDryLandAnchor(bestStructurePos);
         }
 
         private bool ShouldUseRecovery(float now, int cityHall)

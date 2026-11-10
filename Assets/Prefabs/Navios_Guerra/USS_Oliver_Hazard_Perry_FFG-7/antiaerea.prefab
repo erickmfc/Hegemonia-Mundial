@@ -870,7 +870,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64c1703c9f75b3b4fb5131b78e2f4f81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TorretaAntiaerea
-  alcanceArea: 1200
+  alcanceArea: 3200
   alturaMinimaVoo: 5
   baseGiratoria: {fileID: 3278311804876309215}
   canoElevacao: {fileID: 4181880412695990659}
@@ -905,7 +905,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71303ae0b6f9fa447951fb8acb05aecc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SistemaAntiMissil
-  alcanceRadar: 2200
+  alcanceRadar: 3200
   tempoDeEscaneamento: 0.3
   velocidadeMinimaAmeaca: 5
   dotMinimoAmeaca: 0.4

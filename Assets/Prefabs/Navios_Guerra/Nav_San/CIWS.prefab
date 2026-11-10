@@ -78,7 +78,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ControleTorreta
   etiquetaAlvo: Aereo
-  alcance: 150
+  alcance: 2200
   velocidadeGiro: 20
   limitarRotacao: 1
   anguloMinimo: -90

@@ -975,7 +975,9 @@ public class CombustivelUnidade : MonoBehaviour
         if (lancadorNaval == null) lancadorNaval = GetComponentInChildren<LancadorNaval>();
         if (lancadorNaval != null)
         {
-            string armas = $"MSL {lancadorNaval.municaoTotal}/{lancadorNaval.municaoMaxima} TOR {lancadorNaval.torpedosTotal}/{lancadorNaval.torpedosMaximos}";
+            string armas = lancadorNaval.prefabMisselCruzeiro != null
+                ? $"MSL {lancadorNaval.MunicaoTridenteAtual}/{lancadorNaval.MunicaoTridenteMaxima} CRZ {lancadorNaval.MunicaoCruzeiroAtual}/{lancadorNaval.MunicaoCruzeiroMaxima} TOR {lancadorNaval.torpedosTotal}/{lancadorNaval.torpedosMaximos}"
+                : $"MSL {lancadorNaval.MunicaoTridenteAtual}/{lancadorNaval.MunicaoTridenteMaxima} TOR {lancadorNaval.torpedosTotal}/{lancadorNaval.torpedosMaximos}";
             return string.IsNullOrEmpty(modo) ? armas : $"{modo} {armas}";
         }
 
