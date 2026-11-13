@@ -318,6 +318,55 @@ namespace Hegemonia.AI.Shared
             return count;
         }
 
+        public static int CountActiveUnassignedMobileOrders(
+            int teamId,
+            System.Predicate<string> isExcludedOrderId,
+            System.Predicate<string> isMobileUnitType,
+            System.Predicate<string> isTankUnitType,
+            out int tankCount)
+        {
+            tankCount = 0;
+            if (teamId <= 0)
+            {
+                return 0;
+            }
+
+            Cleanup(ResolveNow(-1f));
+            int count = 0;
+            foreach (Order order in Orders.Values)
+            {
+                if (order.TeamId != teamId)
+                {
+                    continue;
+                }
+
+                // Orders com ProducerInstanceId != 0 ou ja presentes na fila fisica/CommandQueue
+                // nao devem ser contadas em duplicidade.
+                if (order.State != IAProductionOrderState.Reserved || order.ProducerInstanceId != 0)
+                {
+                    continue;
+                }
+
+                if (isExcludedOrderId != null && isExcludedOrderId(order.Id))
+                {
+                    continue;
+                }
+
+                if (isMobileUnitType != null && !isMobileUnitType(order.UnitType))
+                {
+                    continue;
+                }
+
+                count++;
+                if (isTankUnitType != null && isTankUnitType(order.UnitType))
+                {
+                    tankCount++;
+                }
+            }
+
+            return count;
+        }
+
         public static IAProductionDiagnostics GetDiagnostics(int teamId, string unitType, int desired, int alive)
         {
             Cleanup(ResolveNow(-1f));

@@ -215,13 +215,15 @@ public sealed class ControleAviaoAC130 : ControleAviao
         {
             direcaoDesejada = transform.forward;
         }
-        direcaoDesejada.Normalize();
-
-        Quaternion rotacaoDesejada = Quaternion.LookRotation(direcaoDesejada, Vector3.up);
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            rotacaoDesejada,
-            Mathf.Max(25f, taxaDeGiroLeme * 1.45f) * dt);
+        if (!float.IsNaN(direcaoDesejada.sqrMagnitude) && direcaoDesejada.sqrMagnitude > 0.0001f)
+        {
+            direcaoDesejada.Normalize();
+            Quaternion rotacaoDesejada = Quaternion.LookRotation(direcaoDesejada, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(
+                transform.rotation,
+                rotacaoDesejada,
+                Mathf.Max(25f, taxaDeGiroLeme * 1.45f) * dt);
+        }
 
         float velocidadeOrbita = raio * Mathf.Max(0.05f, velocidadeAngularAtaque);
         float velocidadeCruzeiro = Mathf.Clamp(

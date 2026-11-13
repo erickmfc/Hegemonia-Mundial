@@ -96,6 +96,7 @@ public class IA_ForcaTarefa : MonoBehaviour
             if (heli != null) heli.estaVoando = false; 
             
             Vector3 posicaoCeu = unidadeAncora.position + new Vector3(0, 50, 0);
+            if (float.IsNaN(posicaoCeu.x) || float.IsNaN(posicaoCeu.y) || float.IsNaN(posicaoCeu.z)) continue;
             
             // O helicóptero sempre olha para onde o navio âncora está olhando
             aerea.rotation = Quaternion.Lerp(aerea.rotation, unidadeAncora.rotation, Time.deltaTime * 5f);

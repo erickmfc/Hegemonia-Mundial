@@ -912,7 +912,12 @@ public class C700TransporteAereo : MonoBehaviour
         Vector3 frente = ponto - transform.position;
         frente.y = 0f;
         if (frente.sqrMagnitude < 1f) frente = transform.forward;
-        pistaPousoLivreInterna.transform.SetPositionAndRotation(ponto, Quaternion.LookRotation(frente.normalized, Vector3.up));
+        frente.y = 0f;
+        if (float.IsNaN(frente.sqrMagnitude) || frente.sqrMagnitude <= 0.0001f) frente = Vector3.forward;
+        if (!float.IsNaN(ponto.x) && !float.IsNaN(ponto.y) && !float.IsNaN(ponto.z))
+        {
+            pistaPousoLivreInterna.transform.SetPositionAndRotation(ponto, Quaternion.LookRotation(frente.normalized, Vector3.up));
+        }
         pistaPousoLivreInterna.teamId = ObterTeamId();
         pistaPousoLivreInterna.operacional = true;
         pistaPousoLivreInterna.ReleaseAll(this);

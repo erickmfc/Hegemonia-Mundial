@@ -179,6 +179,53 @@ public class GerenciadorAeroporto : MonoBehaviour
     private float _primeiroEnfileiramentoAeronaveIA = -999f;
     private bool _interacaoManualSolicitada;
 
+    public int ContarUnidadesPendentesIA()
+    {
+        if (_filaSpawnAeronavesIA == null || _filaSpawnAeronavesIA.Count == 0)
+        {
+            return 0;
+        }
+
+        int total = 0;
+        foreach (GameObject prefab in _filaSpawnAeronavesIA)
+        {
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            IdentidadeUnidade idPrefab = prefab.GetComponentInChildren<IdentidadeUnidade>(true);
+            if (idPrefab != null && idPrefab.tipoUnidade == TipoUnidade.Estrutura)
+            {
+                continue;
+            }
+
+            if (prefab.GetComponentInChildren<ControleAviaoComercial>(true) != null)
+            {
+                continue;
+            }
+
+            total++;
+        }
+
+        return total;
+    }
+
+    public int ObterTeamIdSeguro()
+    {
+        if (!_identidadeVerificada || _identidadeCacheada == null)
+        {
+            _identidadeCacheada = GetComponent<IdentidadeUnidade>();
+            if (_identidadeCacheada == null)
+            {
+                _identidadeCacheada = GetComponentInParent<IdentidadeUnidade>();
+            }
+            _identidadeVerificada = true;
+        }
+
+        return _identidadeCacheada != null ? _identidadeCacheada.teamID : 0;
+    }
+
     protected static int RemoveNulls<T>(List<T> lista) where T : class
     {
         if (lista == null)

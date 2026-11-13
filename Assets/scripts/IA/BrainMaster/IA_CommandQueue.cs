@@ -276,6 +276,76 @@ namespace Hegemonia.AI.BrainMaster
             return _history.Reverse().Take(Mathf.Max(1, maxItems)).ToList();
         }
 
+        public int ContarProducoesPendentesMoveis(
+            IA_BackendBridge backend,
+            HashSet<string> orderIdsEnfileiradosOut,
+            out int tanquesPendentes)
+        {
+            tanquesPendentes = 0;
+            if (orderIdsEnfileiradosOut != null)
+            {
+                orderIdsEnfileiradosOut.Clear();
+            }
+
+            int total = 0;
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                ContarRequisicaoProducao(_pending[i], backend, orderIdsEnfileiradosOut, ref total, ref tanquesPendentes);
+            }
+
+            if (_awaitingConfirmation.Count > 0)
+            {
+                foreach (IA_CommandRequest req in _awaitingConfirmation.Values)
+                {
+                    ContarRequisicaoProducao(req, backend, orderIdsEnfileiradosOut, ref total, ref tanquesPendentes);
+                }
+            }
+
+            return total;
+        }
+
+        private static void ContarRequisicaoProducao(
+            IA_CommandRequest req,
+            IA_BackendBridge backend,
+            HashSet<string> orderIdsEnfileiradosOut,
+            ref int total,
+            ref int tanquesPendentes)
+        {
+            if (req == null || req.Type != IA_CommandType.Produce)
+            {
+                return;
+            }
+
+            IA_ProduceOrderData order = req.Payload as IA_ProduceOrderData;
+            if (order == null)
+            {
+                return;
+            }
+
+            if (orderIdsEnfileiradosOut != null && !string.IsNullOrWhiteSpace(order.ProductionOrderId))
+            {
+                orderIdsEnfileiradosOut.Add(order.ProductionOrderId.Trim());
+            }
+
+            DadosConstrucao data = null;
+            if (backend != null && !string.IsNullOrWhiteSpace(order.ItemKey))
+            {
+                backend.TryResolveItem(order.ItemKey, out data);
+            }
+
+            if (!IA_BrainMaster.EhItemUnidadeMilitarMovel(data))
+            {
+                return;
+            }
+
+            int qty = Mathf.Max(1, order.Quantity);
+            total += qty;
+            if (IA_BrainMaster.EhItemTanqueOuBlindado(data))
+            {
+                tanquesPendentes += qty;
+            }
+        }
+
         private void CleanupCooldowns(float now)
         {
             if (_cooldownUntilByDedup.Count == 0)

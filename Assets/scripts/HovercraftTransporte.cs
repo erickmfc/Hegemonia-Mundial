@@ -197,7 +197,7 @@ public class HovercraftTransporte : MonoBehaviour
         dir.y = 0f;
 
         float distancia = dir.magnitude;
-        if (distancia < 8f)
+        if (float.IsNaN(distancia) || distancia < 8f || dir.sqrMagnitude <= 0.0001f)
         {
             temDestino = false;
             rb.linearVelocity = Vector3.Lerp(rb.linearVelocity, Vector3.zero, 0.35f);

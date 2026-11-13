@@ -144,6 +144,8 @@ public class ControleUnidade : MonoBehaviour
     [SerializeField] private string motivoBloqueioAdministrativoQuartel = string.Empty;
     [SerializeField, Min(0.1f)] private float intervaloEntreTentativasOrdem = 2f;
     private bool estaDesligado;
+    private float _proximoLogPatrulhaRejeitadaTime = -999f;
+    private float _proximoLogPreviaNavalTime = -999f;
 
     public bool EstaDesligado => estaDesligado;
 
@@ -1300,7 +1302,11 @@ public class ControleUnidade : MonoBehaviour
                 // prévia A* não conseguiu fechar todas as pernas de uma vez;
                 // isso era especialmente comum nas rotas emitidas pela IA e
                 // no primeiro clique do Menu Satélite.
-                Debug.LogWarning($"[Patrulha][{name}] prévia naval incompleta ({motivoRota}); usando âncoras de água e deixando o controlador recalcular cada perna.");
+                if (Time.unscaledTime >= _proximoLogPreviaNavalTime)
+                {
+                    _proximoLogPreviaNavalTime = Time.unscaledTime + 20f;
+                    Debug.LogWarning($"[Patrulha][{name}] prévia naval incompleta ({motivoRota}); usando âncoras de água e deixando o controlador recalcular cada perna.");
+                }
             }
         }
 
@@ -1423,7 +1429,11 @@ public class ControleUnidade : MonoBehaviour
         DiagnosticoDesempenhoJogo.RegistrarEvento(
             "OrdemRecusada",
             $"{name}: patrulha recusada ({detalhe}) ordem={ordemControleAtual}");
-        Debug.LogWarning($"[Patrulha][{name}] rejeitada por {detalhe}; ordem atual={ordemControleAtual}.");
+        if (Time.unscaledTime >= _proximoLogPatrulhaRejeitadaTime)
+        {
+            _proximoLogPatrulhaRejeitadaTime = Time.unscaledTime + 20f;
+            Debug.LogWarning($"[Patrulha][{name}] rejeitada por {detalhe}; ordem atual={ordemControleAtual}.");
+        }
         return false;
     }
 

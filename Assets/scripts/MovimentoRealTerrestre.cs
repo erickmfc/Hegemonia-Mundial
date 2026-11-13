@@ -148,9 +148,9 @@ public class MovimentoRealTerrestre : MonoBehaviour
 
         // --- LÓGICA DE MOVIMENTO FÍSICO ---
 
-        if (temCaminho)
+        if (temCaminho && vetorDirecao.sqrMagnitude > 0.0001f)
         {
-            Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorDirecao);
+            Quaternion rotacaoAlvo = Quaternion.LookRotation(vetorDirecao.normalized, Vector3.up);
             
             // Calcula o ângulo relativo do alvo (Ex: o alvo está 30 graus à direita)
             float anguloParaAlvo = Vector3.SignedAngle(transform.forward, vetorDirecao, Vector3.up);

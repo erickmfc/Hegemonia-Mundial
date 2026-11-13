@@ -198,7 +198,10 @@ namespace Hegemonia.Aeronaves.C17
         private IEnumerator CorridaDeDecolagem(Vector3 eixoPista, int minhaOperacao)
         {
             float percorrido = 0f;
-            Quaternion alinhado = Quaternion.LookRotation(eixoPista, Vector3.up);
+            Vector3 eixoValido = (!float.IsNaN(eixoPista.sqrMagnitude) && eixoPista.sqrMagnitude > 0.0001f)
+                ? eixoPista.normalized
+                : (Plano(transform.forward).sqrMagnitude > 0.0001f ? Plano(transform.forward).normalized : Vector3.forward);
+            Quaternion alinhado = Quaternion.LookRotation(eixoValido, Vector3.up);
             while (percorrido < distanciaExtraPista)
             {
                 if (minhaOperacao != operacao) yield break;
@@ -288,9 +291,12 @@ namespace Hegemonia.Aeronaves.C17
                 if (minhaOperacao != operacao) yield break;
                 float dt = Mathf.Clamp(Time.deltaTime, 0.001f, 0.05f);
                 Vector3 horizontal = Plano(ponto - transform.position);
-                if (horizontal.sqrMagnitude < 0.001f) horizontal = Plano(transform.forward);
-                Quaternion alvo = Quaternion.LookRotation(horizontal.normalized, Vector3.up);
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, alvo, taxaCurvaVoo * dt);
+                if (float.IsNaN(horizontal.sqrMagnitude) || horizontal.sqrMagnitude < 0.001f) horizontal = Plano(transform.forward);
+                if (!float.IsNaN(horizontal.sqrMagnitude) && horizontal.sqrMagnitude > 0.0001f)
+                {
+                    Quaternion alvo = Quaternion.LookRotation(horizontal.normalized, Vector3.up);
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, alvo, taxaCurvaVoo * dt);
+                }
                 velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeAlvo * ObterMultiplicadorVelocidadeComando(), aceleracaoPista * dt);
                 float vertical = Mathf.Clamp(ponto.y - transform.position.y, -taxaDescida, subindo ? taxaSubida : taxaDescida);
                 Vector3 proxima = transform.position + transform.forward * velocidadeAtual * dt + Vector3.up * vertical * dt;

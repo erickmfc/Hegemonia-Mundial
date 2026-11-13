@@ -254,18 +254,22 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
             vetorHorizontal.y = 0f;
         }
 
-        vetorHorizontal.Normalize();
-        Quaternion rotacaoDesejada = Quaternion.LookRotation(vetorHorizontal, Vector3.up);
-        float erroRumo = Vector3.Angle(transform.forward, vetorHorizontal);
-        float taxaCurva = Mathf.Lerp(taxaCurvaE3, taxaCurvaE3 * 1.35f, Mathf.Clamp01(erroRumo / 120f));
+        float erroRumo = 0f;
+        if (!float.IsNaN(vetorHorizontal.sqrMagnitude) && vetorHorizontal.sqrMagnitude > 0.0001f)
+        {
+            vetorHorizontal.Normalize();
+            Quaternion rotacaoDesejada = Quaternion.LookRotation(vetorHorizontal, Vector3.up);
+            erroRumo = Vector3.Angle(transform.forward, vetorHorizontal);
+            float taxaCurva = Mathf.Lerp(taxaCurvaE3, taxaCurvaE3 * 1.35f, Mathf.Clamp01(erroRumo / 120f));
 
-        // O E-3 nao usa o pitch/roll da raiz para navegar. O deslocamento
-        // vertical e controlado separadamente, portanto a raiz deve ficar
-        // nivelada e alterar somente o rumo.
-        float rumoAtual = transform.eulerAngles.y;
-        float rumoAlvo = rotacaoDesejada.eulerAngles.y;
-        float novoRumo = Mathf.MoveTowardsAngle(rumoAtual, rumoAlvo, taxaCurva * dt);
-        transform.rotation = Quaternion.Euler(0f, novoRumo, 0f);
+            // O E-3 nao usa o pitch/roll da raiz para navegar. O deslocamento
+            // vertical e controlado separadamente, portanto a raiz deve ficar
+            // nivelada e alterar somente o rumo.
+            float rumoAtual = transform.eulerAngles.y;
+            float rumoAlvo = rotacaoDesejada.eulerAngles.y;
+            float novoRumo = Mathf.MoveTowardsAngle(rumoAtual, rumoAlvo, taxaCurva * dt);
+            transform.rotation = Quaternion.Euler(0f, novoRumo, 0f);
+        }
 
         float fatorCurva = Mathf.InverseLerp(100f, 20f, erroRumo);
         float velocidadeAlvo = Mathf.Lerp(velocidadeMinimaEmCurva, velocidadeCruzeiroE3, fatorCurva);

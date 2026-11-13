@@ -52,6 +52,7 @@ public class ControleAviaoComercial : ControleAviao
     [HideInInspector] public VooAgendado vooAssociado;
 
     private EstadoAviao estadoAnterior;
+    private float _proximoLogBloqueioDecolagemTime = -999f;
 
     protected override void Start()
     {
@@ -116,10 +117,20 @@ public class ControleAviaoComercial : ControleAviao
     public void SolicitarDecolagem()
     {
         if (decolagemSolicitada || estadoAtual != EstadoAviao.ProntoNoPatio) return;
-        decolagemSolicitada = true;
 
         if (aeroportoOrigemComercial != null)
         {
+            if (!aeroportoOrigemComercial.PossuiRotaPousoValida())
+            {
+                if (Time.unscaledTime >= _proximoLogBloqueioDecolagemTime)
+                {
+                    _proximoLogBloqueioDecolagemTime = Time.unscaledTime + 25f;
+                    Debug.LogWarning($"[Comercial] {nomeCompanhia} decolagem bloqueada: aeroporto sem rota de pouso válida.");
+                }
+                return;
+            }
+
+            decolagemSolicitada = true;
             PistaComercial pista = aeroportoOrigemComercial.SolicitarPistaParaDecolagem(this);
             if (pista != null)
                 AtribuirPistaEDecolar(pista);
@@ -128,6 +139,17 @@ public class ControleAviaoComercial : ControleAviao
         }
         else
         {
+            if (!PistaDesignadaTemRotaDePouso())
+            {
+                if (Time.unscaledTime >= _proximoLogBloqueioDecolagemTime)
+                {
+                    _proximoLogBloqueioDecolagemTime = Time.unscaledTime + 25f;
+                    Debug.LogWarning($"[Comercial] {nomeCompanhia} decolagem bloqueada: pista sem rota de pouso válida.");
+                }
+                return;
+            }
+
+            decolagemSolicitada = true;
             DefinirDestinoComercial();
             IniciarMissaoCompleta(alvoGPSVoo);
         }
@@ -699,8 +721,12 @@ public class ControleAviaoComercial : ControleAviao
         {
             Vector3 centro = new Vector3(0, novaPos.y, 0);
             alvoGPSVoo = centro;
-            transform.rotation = Quaternion.RotateTowards(transform.rotation,
-                Quaternion.LookRotation((centro - transform.position).normalized), 50f * dt);
+            Vector3 dirCentro = centro - transform.position;
+            if (!float.IsNaN(dirCentro.sqrMagnitude) && dirCentro.sqrMagnitude > 0.0001f)
+            {
+                transform.rotation = Quaternion.RotateTowards(transform.rotation,
+                    Quaternion.LookRotation(dirCentro.normalized), 50f * dt);
+            }
             novaPos = transform.position
                 + transform.forward * (velocidadeMaximaVoo * 0.5f * MultiplicadorVelocidadeComandoHud * dt);
         }

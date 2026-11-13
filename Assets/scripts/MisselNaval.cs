@@ -624,7 +624,20 @@ public class MisselNaval : MonoBehaviour
         if (other.isTrigger) return false;
         // Não transformar uma estrutura atravessada em impacto. Para um
         // alvo fixo, a colisão só vale perto do ponto realmente ordenado.
-        return Vector3.Distance(other.ClosestPoint(transform.position), pontoAlvo) <= 10f;
+        return Vector3.Distance(ObterPontoMaisProximoSeguro(other, transform.position), pontoAlvo) <= 10f;
+    }
+
+    private static Vector3 ObterPontoMaisProximoSeguro(Collider col, Vector3 ponto)
+    {
+        if (col is BoxCollider
+            || col is SphereCollider
+            || col is CapsuleCollider
+            || (col is MeshCollider mc && mc.convex))
+        {
+            return col.ClosestPoint(ponto);
+        }
+
+        return col.bounds.ClosestPoint(ponto);
     }
 
     private void ResetarEstado()

@@ -7,6 +7,8 @@ public static class FluxoInicialJogo
 {
     private static string cenaAutorizada;
     private static bool callbacksRegistrados;
+    public static bool RegistroControllersCenaEmAndamento { get; private set; }
+    public static bool RegistroControllersCenaConcluido { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void GarantirEntradaPeloMenu()
@@ -66,6 +68,8 @@ public static class FluxoInicialJogo
 
         if (ConfiguracaoCenasJogo.EhCenaDeMenu(cena.name))
         {
+            RegistroControllersCenaEmAndamento = false;
+            RegistroControllersCenaConcluido = false;
             if (Object.FindFirstObjectByType<MenuInicialController>() == null)
             {
                 new GameObject("MenuPrincipalBootstrap").AddComponent<MenuInicialController>();
@@ -74,13 +78,23 @@ public static class FluxoInicialJogo
             return;
         }
 
-        if (Object.FindFirstObjectByType<MenuPausaController>() == null)
+        RegistroControllersCenaEmAndamento = true;
+        RegistroControllersCenaConcluido = false;
+        try
         {
-            new GameObject("MenuPausaController").AddComponent<MenuPausaController>();
-        }
+            if (Object.FindFirstObjectByType<MenuPausaController>() == null)
+            {
+                new GameObject("MenuPausaController").AddComponent<MenuPausaController>();
+            }
 
-        GarantirInterfaceTaticaGlobal(cena.name);
-        GarantirSistemasDeCampanha(cena.name);
+            GarantirInterfaceTaticaGlobal(cena.name);
+            GarantirSistemasDeCampanha(cena.name);
+        }
+        finally
+        {
+            RegistroControllersCenaEmAndamento = false;
+            RegistroControllersCenaConcluido = true;
+        }
     }
 
     /// <summary>
@@ -177,6 +191,7 @@ public static class FluxoInicialJogo
                         + " layout=" + (bound.CityLayout != null ? bound.CityLayout.LayoutId : "ausente"));
                 }
             }
+            manager.ConfirmarRegistroControllersCena(true);
             return;
         }
 

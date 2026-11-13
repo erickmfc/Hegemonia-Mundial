@@ -191,6 +191,10 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
 
     // Gerador de números de voo
     private int contadorVoo = 100;
+    private const int RESERVA_MINIMA_DINHEIRO_COMBUSTIVEL = 500;
+    private float _proximoLogSemWaypointsTime = -999f;
+    private float _proximoLogCombustivelTime = -999f;
+    private float _proximoLogPousoTime = -999f;
 
     // ── Inicialização ─────────────────────────────────────────────────
     protected override void Awake()
@@ -244,6 +248,21 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     // ======================================================================
     // SOLICITAÇÃO DE PISTA — chamada pelo ControleAviaoComercial
     // ======================================================================
+    public bool PossuiRotaPousoValida()
+    {
+        for (int i = 0; i < todasPistas.Count; i++)
+        {
+            PistaComercial p = todasPistas[i];
+            if (p == null) continue;
+            p.Inicializar();
+            if (p.waypointsDecida != null && p.waypointsDecida.Count >= 2)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public PistaComercial SolicitarPistaParaDecolagem(ControleAviaoComercial aviao)
     {
         // Prefere pista livre com waypoints válidos; evita conflito com pouso
@@ -265,7 +284,11 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             {
                 p.estado = PistaComercial.EstadoPista.EmDecolagem;
                 p.aviaoNaPista = aviao;
-                Debug.LogWarning($"[Comercial] {p.nomePista} sem waypoints configurados. Avião decolará sem taxi.");
+                if (Time.unscaledTime >= _proximoLogSemWaypointsTime)
+                {
+                    _proximoLogSemWaypointsTime = Time.unscaledTime + 25f;
+                    Debug.LogWarning($"[Comercial] {p.nomePista} sem waypoints configurados. Avião decolará sem taxi.");
+                }
                 return p;
             }
         }
@@ -595,7 +618,11 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         }
 
         estatisticaTurismoDia += voo.passagensVendidas;
-        Debug.Log($"[Comercial] Voo {voo.numeroVoo} pousou: {voo.passageirosTuristas} turistas + {voo.passageirosImigrantes} imigrantes chegaram.");
+        if (Time.unscaledTime >= _proximoLogPousoTime)
+        {
+            _proximoLogPousoTime = Time.unscaledTime + 20f;
+            Debug.Log($"[Comercial] Voo {voo.numeroVoo} pousou: {voo.passageirosTuristas} turistas + {voo.passageirosImigrantes} imigrantes chegaram.");
+        }
     }
 
     // ── Retorno de turistas ────────────────────────────────────────────
@@ -794,31 +821,44 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             }
             else
             {
-                // Consome o estoque restante
-                if (combustivelDisponivel > 0)
-                {
-                    GerenciadorRecursos.Instancia.petroleo = 0;
-                    combustivelNecessario -= combustivelDisponivel;
-                }
-                
-                // Compra o restante usando o dinheiro do país (5% a 15% da renda diária)
+                // Compra automática de combustível somente se houver saldo positivo acima da reserva mínima,
+                // evitando endividamento infinito na virada do dia.
                 int custoFaltante = Mathf.RoundToInt(receitaDia * Random.Range(0.05f, 0.15f));
-                
-                // Aplicar dívida: bypass ValidarLimites subtraindo diretamente.
-                GerenciadorRecursos.Instancia.dinheiro -= custoFaltante;
-                
-                // Também sincroniza com o governo mundial se houver
-                if (SistemaGovernoMundial.Instancia != null && _identidadeCacheada != null)
+                DadosPaisGoverno pais = (SistemaGovernoMundial.Instancia != null && _identidadeCacheada != null)
+                    ? SistemaGovernoMundial.Instancia.ObterPais(_identidadeCacheada.teamID)
+                    : null;
+
+                bool saldoLocalSuficiente = custoFaltante > 0
+                    && GerenciadorRecursos.Instancia.dinheiro > RESERVA_MINIMA_DINHEIRO_COMBUSTIVEL + custoFaltante;
+                bool saldoPaisSuficiente = pais == null
+                    || pais.saldo > RESERVA_MINIMA_DINHEIRO_COMBUSTIVEL + custoFaltante;
+
+                if (saldoLocalSuficiente && saldoPaisSuficiente)
                 {
-                    var pais = SistemaGovernoMundial.Instancia.ObterPais(_identidadeCacheada.teamID);
+                    if (combustivelDisponivel > 0)
+                    {
+                        GerenciadorRecursos.Instancia.petroleo = 0;
+                        combustivelNecessario -= combustivelDisponivel;
+                    }
+
+                    GerenciadorRecursos.Instancia.dinheiro -= custoFaltante;
                     if (pais != null)
                     {
                         pais.saldo -= custoFaltante;
                         pais.petroleo = GerenciadorRecursos.Instancia.petroleo; // 0
                     }
+
+                    if (Time.unscaledTime >= _proximoLogCombustivelTime)
+                    {
+                        _proximoLogCombustivelTime = Time.unscaledTime + 25f;
+                        Debug.Log($"[Comercial] Faltou combustível para o aeroporto! Compra automática consumiu {custoFaltante} de dinheiro.");
+                    }
                 }
-                
-                Debug.Log($"[Comercial] Faltou combustível para o aeroporto! Compra automática consumiu {custoFaltante} de dinheiro, gerando possível dívida.");
+                else if (Time.unscaledTime >= _proximoLogCombustivelTime)
+                {
+                    _proximoLogCombustivelTime = Time.unscaledTime + 25f;
+                    Debug.Log($"[Comercial] Compra automática de combustível ignorada: saldo insuficiente acima da reserva mínima ({RESERVA_MINIMA_DINHEIRO_COMBUSTIVEL}).");
+                }
             }
             
             // Força atualização visual

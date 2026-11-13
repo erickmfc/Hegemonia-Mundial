@@ -61,6 +61,12 @@ namespace Hegemonia.AI.IA01
         private string lastWorldReadyLogReason = string.Empty;
         private const string GlobalTaskId = "ia/ia01/manager";
         private bool registradoNoOrquestrador;
+        private bool registroControllersCenaConcluido;
+
+        public void ConfirmarRegistroControllersCena(bool concluido)
+        {
+            registroControllersCenaConcluido = concluido;
+        }
 
         public static IA01Manager Instancia
         {
@@ -400,6 +406,11 @@ namespace Hegemonia.AI.IA01
 
         public int ExecuteTick(float now, float frameMs, float frameBudgetOverrideMs = -1f)
         {
+            if (FluxoInicialJogo.RegistroControllersCenaEmAndamento)
+            {
+                return 0;
+            }
+
             bool measureTick = DiagnosticoDesempenhoJogo.CapturaAtiva;
             float tickStartedAt = measureTick ? Time.realtimeSinceStartup : 0f;
             PruneInvalidControllers();
@@ -676,6 +687,13 @@ namespace Hegemonia.AI.IA01
 
         private void ReportWorldNotReady(string reason)
         {
+            if (Application.isPlaying
+                && (FluxoInicialJogo.RegistroControllersCenaEmAndamento
+                    || (!registroControllersCenaConcluido && !FluxoInicialJogo.RegistroControllersCenaConcluido && Time.unscaledTime < 2f)))
+            {
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(reason)) reason = "motivo não informado";
             if (lastWorldReadyLogReason == reason) return;
             Debug.LogWarning("[IA01 WorldNotReady] " + reason + ". Nenhuma construção ou slice foi executado.");

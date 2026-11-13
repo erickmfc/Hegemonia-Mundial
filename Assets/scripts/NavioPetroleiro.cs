@@ -415,7 +415,8 @@ public class NavioPetroleiro : ControleUnidade
              
              Vector3 dir = pontoDeSaidaEstaleiro.Value - transform.position;
              dir.y = 0; 
-             if(dir != Vector3.zero) transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), 20f * Time.deltaTime);
+             if (!float.IsNaN(dir.sqrMagnitude) && dir.sqrMagnitude > 0.0001f)
+                 transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir.normalized), 20f * Time.deltaTime);
         }
         else
         {
@@ -546,8 +547,8 @@ public class NavioPetroleiro : ControleUnidade
         // Only the approach steers toward the marker. Within the docking zone
         // the berth heading owns rotation, allowing the final lateral maneuver
         // without alternating between two contradictory headings every frame.
-        bool aproximando = distancia > 15f;
-        Quaternion orientacao = aproximando ? Quaternion.LookRotation(direcao) : alinhamentoFinal;
+        bool aproximando = distancia > 15f && !float.IsNaN(direcao.sqrMagnitude) && direcao.sqrMagnitude > 0.0001f;
+        Quaternion orientacao = aproximando ? Quaternion.LookRotation(direcao.normalized) : alinhamentoFinal;
         transform.rotation = Quaternion.RotateTowards(transform.rotation, orientacao, 60f * deltaTime);
         transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
 
@@ -611,7 +612,8 @@ public class NavioPetroleiro : ControleUnidade
          
          Vector3 dir = alvoSaida.position - transform.position;
          dir.y = 0; 
-         if(dir != Vector3.zero) transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir), 60f * Time.deltaTime);
+         if (!float.IsNaN(dir.sqrMagnitude) && dir.sqrMagnitude > 0.0001f)
+             transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(dir.normalized), 60f * Time.deltaTime);
 
          transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
 

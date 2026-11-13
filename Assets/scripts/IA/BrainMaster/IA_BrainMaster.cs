@@ -82,6 +82,306 @@ namespace Hegemonia.AI.BrainMaster
         [Tooltip("Tempo minimo em segundos que a IA usa para estruturar base e produzir tropas sem atacar.")]
         public float BootstrapMobilizationSeconds = 60f;
 
+        [Header("Controle Rigido de Producao Militar")]
+        [SerializeField] private int limiteMaximoUnidades = 5;
+        [SerializeField, Range(0.1f, 0.5f)] private float percentualMaximoTanques = 0.45f;
+        [SerializeField] private float cooldownCompraMilitarSegundos = 5f;
+
+        public int LimiteMaximoUnidades => Mathf.Max(1, limiteMaximoUnidades);
+        public int LimiteMaximoTanques => Mathf.Max(1, Mathf.FloorToInt(LimiteMaximoUnidades * Mathf.Clamp(percentualMaximoTanques, 0.1f, 0.5f)));
+        public float CooldownCompraMilitarSegundos => Mathf.Max(0f, cooldownCompraMilitarSegundos);
+
+        private float _proximaCompraMilitarPermitida;
+        private readonly List<IdentidadeUnidade> _bufferUnidadesCap = new List<IdentidadeUnidade>(128);
+        private readonly List<Estaleiro> _bufferEstaleirosCap = new List<Estaleiro>(16);
+        private readonly List<GerenciadorAeroporto> _bufferAeroportosCap = new List<GerenciadorAeroporto>(16);
+        private readonly HashSet<int> _bufferIdsUnicosCap = new HashSet<int>();
+        private readonly HashSet<string> _bufferOrdersEmFilaCap = new HashSet<string>(System.StringComparer.Ordinal);
+
+        public static bool EhUnidadeMovelDeCombate(IdentidadeUnidade unidade)
+        {
+            if (unidade == null || !unidade || unidade.gameObject == null || !unidade.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            if (unidade.tipoUnidade == TipoUnidade.Estrutura)
+            {
+                return false;
+            }
+
+            GameObject go = unidade.gameObject;
+            if (go.GetComponent<Fabrica>() != null
+                || go.GetComponent<Estaleiro>() != null
+                || go.GetComponent<GerenciadorAeroporto>() != null
+                || go.GetComponent<GerenciadorAeroportoComercial>() != null
+                || go.GetComponent<Heliporto>() != null
+                || go.GetComponent<PlataformaOffshore>() != null
+                || go.GetComponent<ComplexoGovernamental>() != null
+                || go.GetComponent<MarcadorTerritorio>() != null
+                || go.GetComponent<ControleAviaoComercial>() != null)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static bool EhItemUnidadeMilitarMovel(DadosConstrucao data)
+        {
+            if (data == null || data.PrefabDaUnidade == null)
+            {
+                return false;
+            }
+
+            if (IA_BackendBridge.IsStructureData(data))
+            {
+                return false;
+            }
+
+            if (data.PrefabDaUnidade.GetComponentInChildren<ControleAviaoComercial>(true) != null
+                || data.PrefabDaUnidade.GetComponentInChildren<MarcadorTerritorio>(true) != null)
+            {
+                return false;
+            }
+
+            string normalized = IA_Text.Normalize(data.NomeItem + " " + data.PrefabDaUnidade.name);
+            if (normalized.Contains("comercial") || normalized.Contains("commercial"))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static bool EhItemTanqueOuBlindado(DadosConstrucao data)
+        {
+            if (data == null || !EhItemUnidadeMilitarMovel(data))
+            {
+                return false;
+            }
+
+            if (IA01MilitaryProductionGuard.Classify(data) == IA01MilitaryAssetKind.Tank)
+            {
+                return true;
+            }
+
+            string normalized = IA_Text.Normalize(data.NomeItem + " " + (data.PrefabDaUnidade != null ? data.PrefabDaUnidade.name : string.Empty));
+            return EhTextoTanqueOuBlindado(normalized);
+        }
+
+        public static bool EhUnidadeTanqueOuBlindado(IdentidadeUnidade unidade)
+        {
+            if (!EhUnidadeMovelDeCombate(unidade))
+            {
+                return false;
+            }
+
+            if (unidade.tipoUnidade != TipoUnidade.Veiculo)
+            {
+                return false;
+            }
+
+            string normalized = IA_Text.Normalize(unidade.name);
+            return EhTextoTanqueOuBlindado(normalized);
+        }
+
+        private static bool EhTextoTanqueOuBlindado(string normalizedText)
+        {
+            if (string.IsNullOrEmpty(normalizedText))
+            {
+                return false;
+            }
+
+            string n = IA_Text.Normalize(normalizedText);
+            if (n.Contains("petroleiro") || n.Contains("petrolifero") || n.Contains("tanker"))
+            {
+                return false;
+            }
+
+            return n.Contains("tank")
+                   || n.Contains("tanque")
+                   || n.Contains("mbt")
+                   || n.Contains("blindado")
+                   || n.Contains("bradley")
+                   || n.Contains("abrams")
+                   || n.Contains("leopard")
+                   || n.Contains("t90")
+                   || n.Contains("t-90")
+                   || n.Contains("ifv")
+                   || n.Contains("apc")
+                   || n.Contains("vbtp")
+                   || n.Contains("carro de combate");
+        }
+
+        private bool EhUnitTypeMovel(string unitType)
+        {
+            if (string.IsNullOrWhiteSpace(unitType))
+            {
+                return false;
+            }
+
+            if (_backendBridge != null && _backendBridge.TryResolveItem(unitType, out DadosConstrucao data) && data != null)
+            {
+                return EhItemUnidadeMilitarMovel(data);
+            }
+
+            string n = IA_Text.Normalize(unitType);
+            if (n.Contains("prefeitura")
+                || n.Contains("quartel")
+                || n.Contains("estaleiro")
+                || n.Contains("aeroporto")
+                || n.Contains("heliporto")
+                || n.Contains("fabrica")
+                || n.Contains("refinaria")
+                || n.Contains("plataforma")
+                || n.Contains("torre")
+                || n.Contains("muro")
+                || n.Contains("usina")
+                || n.Contains("energia")
+                || n.Contains("radar")
+                || n.Contains("comercial")
+                || n.Contains("estrutura"))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public int ContarUnidadesTotaisDoTime(int teamId)
+        {
+            return ContarUnidadesTotaisDoTime(teamId, out _, out _, out _);
+        }
+
+        public int ContarUnidadesTotaisDoTime(
+            int teamId,
+            out int ativosMoveis,
+            out int emFilaMoveis,
+            out int tanquesTotais)
+        {
+            ativosMoveis = 0;
+            emFilaMoveis = 0;
+            tanquesTotais = 0;
+
+            if (teamId <= 0)
+            {
+                return 0;
+            }
+
+            // 1. Instancias ativas em cena via registro cacheado (sem FindObjectsOfType)
+            _bufferIdsUnicosCap.Clear();
+            RegistroEntidadesJogo.FillUnidades(_bufferUnidadesCap);
+            for (int i = 0; i < _bufferUnidadesCap.Count; i++)
+            {
+                IdentidadeUnidade unidade = _bufferUnidadesCap[i];
+                if (unidade == null || unidade.teamID != teamId || !EhUnidadeMovelDeCombate(unidade))
+                {
+                    continue;
+                }
+
+                int chave = IA01MilitaryProductionGuard.CanonicalKey(unidade);
+                if (chave == 0 || !_bufferIdsUnicosCap.Add(chave))
+                {
+                    continue;
+                }
+
+                ativosMoveis++;
+                if (EhUnidadeTanqueOuBlindado(unidade))
+                {
+                    tanquesTotais++;
+                }
+            }
+            _bufferUnidadesCap.Clear();
+
+            // 2. Filas fisicas em estaleiros e aeroportos do time
+            RegistroEntidadesJogo.FillEstaleiros(_bufferEstaleirosCap);
+            for (int i = 0; i < _bufferEstaleirosCap.Count; i++)
+            {
+                Estaleiro estaleiro = _bufferEstaleirosCap[i];
+                if (estaleiro != null && estaleiro.gameObject.activeInHierarchy && estaleiro.OwnerTeamId == teamId)
+                {
+                    emFilaMoveis += Mathf.Max(0, estaleiro.ContarUnidadesPendentes());
+                }
+            }
+            _bufferEstaleirosCap.Clear();
+
+            RegistroEntidadesJogo.FillAeroportos(_bufferAeroportosCap);
+            for (int i = 0; i < _bufferAeroportosCap.Count; i++)
+            {
+                GerenciadorAeroporto aeroporto = _bufferAeroportosCap[i];
+                if (aeroporto != null && aeroporto.gameObject.activeInHierarchy && aeroporto.ObterTeamIdSeguro() == teamId)
+                {
+                    emFilaMoveis += Mathf.Max(0, aeroporto.ContarUnidadesPendentesIA());
+                }
+            }
+            _bufferAeroportosCap.Clear();
+
+            // 3. Ordens pendentes na fila de comandos desta IA (somente unidades moveis)
+            _bufferOrdersEmFilaCap.Clear();
+            IA_CommandQueue filaComandos = (teamId == TeamId) ? _commandQueue : null;
+            if (filaComandos != null)
+            {
+                int tanquesEmFila;
+                emFilaMoveis += Mathf.Max(0, filaComandos.ContarProducoesPendentesMoveis(_backendBridge, _bufferOrdersEmFilaCap, out tanquesEmFila));
+                tanquesTotais += tanquesEmFila;
+            }
+
+            // 4. Reservas ainda nao enfileiradas no CommandQueue nem em produtor fisico
+            int tanquesReservados;
+            int reservados = IAAutoProductionRegistry.CountActiveUnassignedMobileOrders(
+                teamId,
+                orderId => _bufferOrdersEmFilaCap.Contains(orderId),
+                EhUnitTypeMovel,
+                EhTextoTanqueOuBlindado,
+                out tanquesReservados);
+            emFilaMoveis += Mathf.Max(0, reservados);
+            tanquesTotais += Mathf.Max(0, tanquesReservados);
+
+            return ativosMoveis + emFilaMoveis;
+        }
+
+        public bool PodeComprarUnidadeMilitar(DadosConstrucao item, out string motivoBloqueio)
+        {
+            motivoBloqueio = string.Empty;
+            if (item == null || !EhItemUnidadeMilitarMovel(item))
+            {
+                return true;
+            }
+
+            if (Time.time < _proximaCompraMilitarPermitida)
+            {
+                motivoBloqueio = "cooldown_compra_militar";
+                return false;
+            }
+
+            int ativos;
+            int emFila;
+            int tanquesTotais;
+            int total = ContarUnidadesTotaisDoTime(TeamId, out ativos, out emFila, out tanquesTotais);
+            if (total >= LimiteMaximoUnidades)
+            {
+                motivoBloqueio = string.Format("hardcap_unidades ({0}+{1}>={2})", ativos, emFila, LimiteMaximoUnidades);
+                return false;
+            }
+
+            if (EhItemTanqueOuBlindado(item) && tanquesTotais >= LimiteMaximoTanques)
+            {
+                motivoBloqueio = string.Format("hardcap_tanques ({0}>={1})", tanquesTotais, LimiteMaximoTanques);
+                return false;
+            }
+
+            return true;
+        }
+
+        public void RegistrarCompraMilitarEfetuada(DadosConstrucao item)
+        {
+            if (item != null && EhItemUnidadeMilitarMovel(item) && CooldownCompraMilitarSegundos > 0f)
+            {
+                _proximaCompraMilitarPermitida = Time.time + CooldownCompraMilitarSegundos;
+            }
+        }
+
         [Header("Debug")]
         public bool EnableVerboseLogs = false;
         public bool EnableBootstrapConsoleTrace = false;
@@ -1003,6 +1303,17 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (_backendBridge != null && !string.IsNullOrWhiteSpace(itemKey))
+            {
+                DadosConstrucao item;
+                if (_backendBridge.TryResolveItem(itemKey, out item)
+                    && item != null
+                    && !PodeComprarUnidadeMilitar(item, out _))
+                {
+                    return false;
+                }
+            }
+
             IA_CommandRequest request = IA_CommandFactory.Create(
                 IA_CommandType.Produce,
                 "IA_BrainMaster",
@@ -1129,6 +1440,11 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool PodeEnfileirarReposicao(DadosConstrucao item, IA01MilitaryAssetKind kind)
         {
+            if (!PodeComprarUnidadeMilitar(item, out _))
+            {
+                return false;
+            }
+
             SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
             if (governo == null || governo.ObterPais(TeamId) == null || item == null || item.PrefabDaUnidade == null)
             {

@@ -44,5 +44,10 @@ namespace Hegemonia.AI.BrainMaster
         public IA_NationalIntentBoard IntentBoard;
         public IA_StrategyArbiter StrategyArbiter;
         public IA_IntentCommandRouter IntentCommandRouter;
+
+        public int ContarUnidadesTotaisDoTime(int teamId)
+        {
+            return Brain != null ? Brain.ContarUnidadesTotaisDoTime(teamId) : 0;
+        }
     }
 }

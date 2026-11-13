@@ -106,6 +106,11 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
+                if (brain != null && brain.ContarUnidadesTotaisDoTime(brain.TeamId) >= brain.LimiteMaximoUnidades)
+                {
+                    return;
+                }
+
                 // A IA03 começa com uma força pequena, utilizável e barata.
                 // Os navios mais caros continuam sujeitos às metas dinâmicas
                 // do BrainMaster, que já consideram ameaça, renda e indústria.
@@ -310,6 +315,14 @@ namespace Hegemonia.AI.BrainMaster
                     tankTarget = Mathf.Clamp(Mathf.Max(tankTarget, stagedTankFloor), 2, 16);
                 }
                 infantryTarget = Mathf.Clamp(infantryTarget, 4, now >= 600f ? 18 : 10);
+                if (brain != null)
+                {
+                    tankTarget = Mathf.Min(tankTarget, brain.LimiteMaximoTanques);
+                    infantryTarget = Mathf.Min(infantryTarget, brain.LimiteMaximoUnidades);
+                    fighterTarget = Mathf.Min(fighterTarget, brain.LimiteMaximoUnidades);
+                    navalTarget = Mathf.Min(navalTarget, brain.LimiteMaximoUnidades);
+                    helicopterTarget = Mathf.Min(helicopterTarget, brain.LimiteMaximoUnidades);
+                }
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("tank_target", tankTarget);
 
                 if (!_timedAirKickoffTriggered && now >= TimedAirKickoffSeconds && hasMilitaryAirport && fighterCount >= TimedAirKickoffTarget)
@@ -634,6 +647,11 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (!_context.Brain.PodeComprarUnidadeMilitar(data, out _))
+            {
+                return false;
+            }
+
             IA_ForceSnapshot snapshot = GetSnapshot();
             int teamId = _context.Brain.TeamId;
             if (!IAAutoProductionRegistry.TryReserveProduction(
@@ -690,6 +708,11 @@ namespace Hegemonia.AI.BrainMaster
             if (data == null)
             {
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_NO_CANDIDATE", "sem item para chaves=" + string.Join(",", keys));
+                return false;
+            }
+
+            if (_context != null && _context.Brain != null && !_context.Brain.PodeComprarUnidadeMilitar(data, out _))
+            {
                 return false;
             }
 
@@ -836,6 +859,11 @@ namespace Hegemonia.AI.BrainMaster
                 return QueueProduceBest(priority, cooldown, "fa1", "g_18m", "g18m", "su11", "supra", "a_20", "a10", "warthog", "g15", "super tuk", "caca", "fighter", "b260");
             }
 
+            if (_context != null && _context.Brain != null && !_context.Brain.PodeComprarUnidadeMilitar(data, out _))
+            {
+                return false;
+            }
+
             int teamId = _context.Brain != null ? _context.Brain.TeamId : 0;
             string orderId;
             if (!IA01MilitaryProductionGuard.TryReserveSingle(teamId, IA01MilitaryAssetKind.Fighter, GetSnapshot().FixedWingAircraft, Time.time, 120f, out orderId))
@@ -949,6 +977,12 @@ namespace Hegemonia.AI.BrainMaster
 
         private bool PublishProductionIntent(IA_CommandRequest request, DadosConstrucao data, int priority, string reasonText, out string reason)
         {
+            if (_context != null && _context.Brain != null && !_context.Brain.PodeComprarUnidadeMilitar(data, out reason))
+            {
+                IA_RuntimeTextTrace.LogCommand(_context.Brain.TeamId, "IA_ProductionDirector", "PROD_CAP_BLOCK", request, reason);
+                return false;
+            }
+
             if (_context.IntentBoard == null)
             {
                 bool direct = _context.CommandQueue.Enqueue(request, Time.time, out reason);

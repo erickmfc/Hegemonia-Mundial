@@ -696,6 +696,12 @@ namespace Hegemonia.AI.DEUSA
                 return false;
             }
 
+            string capReason;
+            if (_context.Brain != null && !_context.Brain.PodeComprarUnidadeMilitar(data, out capReason))
+            {
+                return false;
+            }
+
             IA_ProduceOrderData payload = new IA_ProduceOrderData
             {
                 ItemKey = data.NomeItem,
@@ -834,10 +840,17 @@ namespace Hegemonia.AI.DEUSA
                 if (logarDiagnosticoContinuo || novoResumo != _ultimoResumoLogado)
                 {
                     _ultimoResumoLogado = novoResumo;
+#if IA_DEBUG_LOGS
                     Debug.Log(novoResumo, this);
+#else
+                    if (logarDiagnosticoContinuo)
+                    {
+                        Debug.Log(novoResumo, this);
+                    }
+#endif
                     IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "RESUMO", "observador=" + EscopoObservador + " | proximaPrioridade=" + (prioridadesAtuais != null && prioridadesAtuais.Count > 0 ? prioridadesAtuais[0].ToString() : "Nenhuma") + " | proximaConstrucao=" + (politicaNacional != null ? politicaNacional.proximaConstrucao : "Nenhuma") + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum"));
                 }
-                _proximoLogResumoTime = Time.unscaledTime + 20f;
+                _proximoLogResumoTime = Time.unscaledTime + 30f;
             }
         }
 

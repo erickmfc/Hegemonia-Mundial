@@ -608,6 +608,26 @@ namespace Hegemonia.AI.BrainMaster
 
         private void QueueGroundUnit(string itemKey, int priority)
         {
+            if (_context == null || _context.CommandQueue == null)
+            {
+                return;
+            }
+
+            if (_context.Backend != null && _context.Brain != null)
+            {
+                DadosConstrucao item;
+                if (_context.Backend.TryResolveItem(itemKey, out item)
+                    && item != null
+                    && !_context.Brain.PodeComprarUnidadeMilitar(item, out _))
+                {
+                    return;
+                }
+            }
+
+            float cooldown = _context.Brain != null
+                ? Mathf.Max(5f, _context.Brain.CooldownCompraMilitarSegundos)
+                : 5f;
+
             IA_CommandRequest request = IA_CommandFactory.Create(
                 IA_CommandType.Produce,
                 "IA_DefenseDirector",
@@ -615,8 +635,8 @@ namespace Hegemonia.AI.BrainMaster
                 "reforco terrestre reativo",
                 priority,
                 "production",
-                "ground_reinforce:" + IA_Text.Normalize(itemKey) + ":" + Time.frameCount,
-                4f,
+                "ground_reinforce:" + IA_Text.Normalize(itemKey),
+                cooldown,
                 new IA_ProduceOrderData
                 {
                     ItemKey = itemKey,

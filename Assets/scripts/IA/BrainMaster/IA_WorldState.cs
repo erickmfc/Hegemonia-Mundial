@@ -392,7 +392,10 @@ namespace Hegemonia.AI.BrainMaster
                 _baseProbe = CreateVirtualBaseProbe();
             }
 
-            _baseProbe.position = BaseCenter;
+            if (!float.IsNaN(BaseCenter.x) && !float.IsNaN(BaseCenter.y) && !float.IsNaN(BaseCenter.z))
+            {
+                _baseProbe.position = BaseCenter;
+            }
             VisibilityProviders.Add(new IA_VisibilityProvider
             {
                 Source = _baseProbe,
@@ -1394,7 +1397,10 @@ namespace Hegemonia.AI.BrainMaster
         {
             GameObject holder = new GameObject("IA_WorldState_Probe");
             holder.hideFlags = HideFlags.HideAndDontSave;
-            holder.transform.position = BaseCenter;
+            if (!float.IsNaN(BaseCenter.x) && !float.IsNaN(BaseCenter.y) && !float.IsNaN(BaseCenter.z))
+            {
+                holder.transform.position = BaseCenter;
+            }
             return holder.transform;
         }
 

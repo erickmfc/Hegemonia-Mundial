@@ -859,9 +859,10 @@ public class ControleAviao : MonoBehaviour
                 Vector3 dirForwardLocal = transform.localRotation * Vector3.forward;
                 if (vetorAteDestinoLocal.sqrMagnitude < 16f && Vector3.Dot(dirForwardLocal, vetorAteDestinoLocal.normalized) < 0f) { ultimoMovimentoWaypointConcluido = true; break; }
 
-                Vector3 direcaoHorizonLocal = new Vector3(vetorAteDestinoLocal.x, 0, vetorAteDestinoLocal.z).normalized;
-                if (direcaoHorizonLocal != Vector3.zero && vetorAteDestinoLocal.sqrMagnitude > 0.05f)
+                Vector3 dirPlanoLocal = new Vector3(vetorAteDestinoLocal.x, 0f, vetorAteDestinoLocal.z);
+                if (!float.IsNaN(dirPlanoLocal.sqrMagnitude) && dirPlanoLocal.sqrMagnitude > 0.0001f && vetorAteDestinoLocal.sqrMagnitude > 0.05f)
                 {
+                    Vector3 direcaoHorizonLocal = dirPlanoLocal.normalized;
                     Quaternion rotAlvoLocal = Quaternion.LookRotation(direcaoHorizonLocal);
                     transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rotAlvoLocal, (ignoreRotationSlowdown ? 180f : 120f) * Time.deltaTime);
 
@@ -898,10 +899,11 @@ public class ControleAviao : MonoBehaviour
                 Vector3 vetorAteDestino = (alvoMovel != null) ? (alvoMovel.position - meuPos) : (destinoFixo - meuPos);
                 if (vetorAteDestino.sqrMagnitude < 16f && Vector3.Dot(transform.forward, vetorAteDestino.normalized) < 0f) { ultimoMovimentoWaypointConcluido = true; break; } 
 
-                Vector3 direcaoHorizon = new Vector3(vetorAteDestino.x, 0, vetorAteDestino.z).normalized;
+                Vector3 dirPlano = new Vector3(vetorAteDestino.x, 0f, vetorAteDestino.z);
                 Vector3 proximaPosicao = meuPos;
-                if (direcaoHorizon != Vector3.zero && vetorAteDestino.sqrMagnitude > 0.05f)
+                if (!float.IsNaN(dirPlano.sqrMagnitude) && dirPlano.sqrMagnitude > 0.0001f && vetorAteDestino.sqrMagnitude > 0.05f)
                 {
+                    Vector3 direcaoHorizon = dirPlano.normalized;
                     Quaternion rotAlvo = Quaternion.LookRotation(direcaoHorizon);
                     transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAlvo, (ignoreRotationSlowdown ? 180f : 120f) * Time.deltaTime);
                     
