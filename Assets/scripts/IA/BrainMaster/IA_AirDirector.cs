@@ -538,7 +538,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            // Verifica se ja ha 1 aviao de caca em voo ativo (nao retornando/reabastecendo)
+            IA_BrainMaster brain = _context.Brain;
+            // Escala a patrulha aérea: 2 caças por surtida no modo normal/inicial, escalando com o nível
+            int maxPatrulhaSimultanea = 2;
+            if (brain != null && _ia03Estratega != null)
+            {
+                int nivelConflito = (int)_ia03Estratega.NivelDeConflito;
+                if (nivelConflito >= (int)IA03NivelConflito.AvancoMilitar)
+                    maxPatrulhaSimultanea = 4;
+                else if (nivelConflito >= (int)IA03NivelConflito.ConflitoLimitado)
+                    maxPatrulhaSimultanea = 3;
+            }
+
+            int avioesVoando = 0;
             for (int i = 0; i < units.Count; i++)
             {
                 GameObject u = units[i];
@@ -552,13 +564,18 @@ namespace Hegemonia.AI.BrainMaster
                                    && !aviao.ordemParaRetorno;
                 if (voandoAtivo)
                 {
-                    return;
+                    avioesVoando++;
                 }
             }
 
-            // Se nenhum esta voando em patrulha (ou o anterior entrou em retorno/reabastecimento), lanca o proximo pronto no patio
-            GameObject candidato = null;
-            for (int i = 0; i < units.Count; i++)
+            if (avioesVoando >= maxPatrulhaSimultanea)
+            {
+                return;
+            }
+
+            int vagasParaLancar = maxPatrulhaSimultanea - avioesVoando;
+            _activeAirUnitsBuffer.Clear();
+            for (int i = 0; i < units.Count && _activeAirUnitsBuffer.Count < vagasParaLancar; i++)
             {
                 GameObject u = units[i];
                 if (u == null || IsBomber(u)) continue;
@@ -566,20 +583,15 @@ namespace Hegemonia.AI.BrainMaster
                 ControleAviao aviao = u.GetComponent<ControleAviao>();
                 if (aviao == null || aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
                 {
-                    candidato = u;
-                    break;
+                    _activeAirUnitsBuffer.Add(u);
                 }
             }
 
-            if (candidato == null)
+            if (_activeAirUnitsBuffer.Count == 0)
             {
                 return;
             }
 
-            _activeAirUnitsBuffer.Clear();
-            _activeAirUnitsBuffer.Add(candidato);
-
-            IA_BrainMaster brain = _context.Brain;
             Vector3 pointA;
             Vector3 pointB;
             if (brain != null && brain.HasRecentOilPlatformAttack(Time.time))

@@ -345,15 +345,18 @@ namespace Hegemonia.AI.BrainMaster
                 IA03TipoCreaty.PatrulhaNaval,
                 nivel,
                 IA03DominioEstrategico.Naval);
-            if (_navalCreatyBuffer.Count == 0 && nivel != IA03NivelConflito.Paz)
+            if (_navalCreatyBuffer.Count == 0)
             {
-                RegistroCreatysEstrategicos.PreencherCandidatos(
-                    _navalCreatyBuffer,
-                    teamId,
-                    0,
-                    IA03TipoCreaty.PatrulhaNaval,
-                    IA03NivelConflito.Paz,
-                    IA03DominioEstrategico.Naval);
+                for (int n = 0; n <= (int)IA03NivelConflito.Tensao && _navalCreatyBuffer.Count == 0; n++)
+                {
+                    RegistroCreatysEstrategicos.PreencherCandidatos(
+                        _navalCreatyBuffer,
+                        teamId,
+                        0,
+                        IA03TipoCreaty.PatrulhaNaval,
+                        (IA03NivelConflito)n,
+                        IA03DominioEstrategico.Naval);
+                }
             }
 
             if (_navalCreatyBuffer.Count == 0)
@@ -576,7 +579,7 @@ namespace Hegemonia.AI.BrainMaster
 
                 int id = ship.GetInstanceID();
                 CombustivelUnidade combustivel = ship.GetComponent<CombustivelUnidade>();
-                bool precisaAbastecer = combustivel != null && combustivel.usaCombustivel && combustivel.Percentual <= 0.30f;
+                bool precisaAbastecer = combustivel != null && combustivel.usaCombustivel && combustivel.Percentual <= 0.20f;
                 bool emRecarga = _refuelingShipIds.Contains(id);
 
                 if (precisaAbastecer)

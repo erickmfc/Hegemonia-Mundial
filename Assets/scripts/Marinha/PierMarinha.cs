@@ -1267,6 +1267,12 @@ public class PierMarinha : MonoBehaviour
             return;
         }
 
+        if (vaga.corrotinaAtracagem != null)
+        {
+            StopCoroutine(vaga.corrotinaAtracagem);
+            vaga.corrotinaAtracagem = null;
+        }
+
         if (navioEsperado == null || vaga.navioOcupante == null || vaga.navioOcupante == navioEsperado)
         {
             vaga.navioOcupante = null;
