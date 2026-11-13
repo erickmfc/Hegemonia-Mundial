@@ -231,11 +231,10 @@ public sealed class GlobalWorldDefinition : ScriptableObject
         float distance = SignedCoastDistanceAtWorld(worldX, worldZ);
         if (distance <= 0f)
         {
-            // A seabed rises into a submerged shelf before reaching the
-            // shoreline. The water surface stays at seaLevel; this avoids a
-            // 179 m terrain discontinuity directly under the visible coast.
+            // A seabed rises smoothly into a shallow shoreline shelf.
+            // Keeping the nearshore slope gentle prevents vertical cliffing that breaks NavMesh baking at the beach.
             float offshore = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(-distance / 6500f));
-            return seaLevel - Mathf.Lerp(12f, 175f, offshore);
+            return seaLevel - Mathf.Lerp(1f, 175f, offshore);
         }
 
         float u = Mathf.InverseLerp(MapMinX, MapMaxX, worldX);
@@ -277,8 +276,10 @@ public sealed class GlobalWorldDefinition : ScriptableObject
         float inland = Mathf.Max(55f, 125f + regionalRelief + rollingRelief + fineRelief - valley);
         float foothills = highlandStrength * (1f - ridgeShape) * 180f * mountainFade;
         float mountainRelief = Mathf.Pow(mountainMask, 1.35f) * maximumMountainHeight * mountainFade;
-        float elevation = minimumLandClearance + coastBlend * (inland + foothills) + mountainRelief;
-        return seaLevel + Mathf.Max(minimumLandClearance, elevation);
+        float shorelineBlend = Mathf.Clamp01(distance / 40f);
+        float baseClearance = Mathf.Lerp(0.6f, minimumLandClearance, shorelineBlend);
+        float elevation = baseClearance + coastBlend * (inland + foothills) + mountainRelief;
+        return seaLevel + Mathf.Max(baseClearance, elevation);
     }
 
     /// <summary>Weights correspond to green grass, dry grass, soil, sand, rock, and forest cover.</summary>

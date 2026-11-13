@@ -70,10 +70,10 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     [SerializeField] private float shadowDistanceGameplay = 32f;
     [SerializeField] private int shadowCascadesGameplay = 2;
     [SerializeField] private float lodBiasGameplay = 1.35f;
-    [SerializeField] private float terrainDetailDistanceGameplay = 60f;
+    [SerializeField] private float terrainDetailDistanceGameplay = 120f;
     [SerializeField] private float terrainTreeDistanceGameplay = 5000f;
     [SerializeField] private float terrainBillboardStartGameplay = 5000f;
-    [SerializeField] private float terrainBasemapDistanceGameplay = 350f;
+    [SerializeField] private float terrainBasemapDistanceGameplay = 5000f;
     [SerializeField] private float terrainPixelErrorGameplay = 4f;
 
     private readonly Dictionary<int, EstadoTerrain> _terrainsOriginais = new Dictionary<int, EstadoTerrain>();
@@ -137,6 +137,127 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         AplicarPerfil(_perfilAtual);
+        ExecutarVarreduraOtimizacaoCena();
+    }
+
+    private void Start()
+    {
+        ExecutarVarreduraOtimizacaoCena();
+        // Varreduras tardias para abranger cidades e navios criados de forma assíncrona por corrotinas de bootstrap e produção inicial
+        Invoke(nameof(ExecutarVarreduraOtimizacaoCena), 3.0f);
+        Invoke(nameof(ExecutarVarreduraOtimizacaoCena), 10.0f);
+    }
+
+    private void ExecutarVarreduraOtimizacaoCena()
+    {
+        int cidadesOtimizadas = 0;
+        int naviosOtimizados = 0;
+
+        int totalAtivosAntes = FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
+        int totalMemoriaAntes = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
+
+        GameObject[] todosObjetosAntes = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        // Diagnóstico dos Top 8 GameObjects de topo (root ou grandes grupos) com maior quantidade de filhos
+        List<GameObject> raizesOuGrandesGrupos = new List<GameObject>();
+        for (int i = 0; i < todosObjetosAntes.Length; i++)
+        {
+            GameObject g = todosObjetosAntes[i];
+            if (g != null && (g.transform.parent == null || g.transform.childCount >= 10))
+            {
+                raizesOuGrandesGrupos.Add(g);
+            }
+        }
+
+        raizesOuGrandesGrupos.Sort((a, b) =>
+        {
+            int cB = b != null ? b.GetComponentsInChildren<Transform>(true).Length : 0;
+            int cA = a != null ? a.GetComponentsInChildren<Transform>(true).Length : 0;
+            return cB.CompareTo(cA);
+        });
+
+        System.Text.StringBuilder sbTop8 = new System.Text.StringBuilder();
+        int limiteTop = Mathf.Min(8, raizesOuGrandesGrupos.Count);
+        for (int i = 0; i < limiteTop; i++)
+        {
+            GameObject g = raizesOuGrandesGrupos[i];
+            if (g == null) continue;
+            int filhos = g.GetComponentsInChildren<Transform>(true).Length;
+            int renderers = g.GetComponentsInChildren<Renderer>(true).Length;
+            int colliders = g.GetComponentsInChildren<Collider>(true).Length;
+            sbTop8.Append($"\n  #{i + 1} {g.name}(filhos={filhos}, renderers={renderers}, colliders={colliders})");
+        }
+
+        CidadeComplexoUrbano[] cidades = FindObjectsByType<CidadeComplexoUrbano>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < cidades.Length; i++)
+        {
+            if (cidades[i] != null && Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(cidades[i].gameObject))
+            {
+                cidadesOtimizadas++;
+            }
+        }
+
+        IdentidadeNaval[] navios = FindObjectsByType<IdentidadeNaval>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < navios.Length; i++)
+        {
+            if (navios[i] != null && Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(navios[i].gameObject))
+            {
+                naviosOtimizados++;
+            }
+        }
+
+        ControleNavioRealista[] naviosControle = FindObjectsByType<ControleNavioRealista>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < naviosControle.Length; i++)
+        {
+            if (naviosControle[i] != null && Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(naviosControle[i].gameObject))
+            {
+                naviosOtimizados++;
+            }
+        }
+
+        // Varredura por padrão de nome na cena para capturar grupos City estáticos e navios especiais
+        GameObject[] todosObjetos = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < todosObjetos.Length; i++)
+        {
+            GameObject go = todosObjetos[i];
+            if (go == null) continue;
+
+            string n = go.name;
+            if (n.StartsWith("City", System.StringComparison.OrdinalIgnoreCase)
+                || n.StartsWith("Cidade", System.StringComparison.OrdinalIgnoreCase))
+            {
+                // Só otimiza se for um agrupador com múltiplos MeshFilters ou Renderers
+                if (go.GetComponentsInChildren<MeshRenderer>(true).Length > 1)
+                {
+                    if (Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(go))
+                    {
+                        cidadesOtimizadas++;
+                    }
+                }
+            }
+            else if (n.IndexOf("uss_zumwalt", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("type-45", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("visakhapatnam", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || n.IndexOf("steregushchiy", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(go))
+                {
+                    naviosOtimizados++;
+                }
+            }
+        }
+
+        int totalAtivosDepois = FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
+        int totalMemoriaDepois = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
+
+        Debug.Log($"[Telemetria Performance] Otimização estrutural concluída na cena: " +
+                  $"Transforms ativos={totalAtivosDepois} (antes={totalAtivosAntes}, reducao={totalAtivosAntes - totalAtivosDepois}) | Memória total={totalMemoriaDepois} (antes={totalMemoriaAntes}), " +
+                  $"cidades={cidadesOtimizadas}, navios={naviosOtimizados}, " +
+                  $"malhasConsolidadas={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasConsolidadas}, " +
+                  $"objetosVisuaisDesativados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalObjetosDesativados}, " +
+                  $"colisoresPodados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalColisoresPodados}, " +
+                  $"malhasNaoLegiveisPreservadasNoCulling={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasNaoLegiveis}.\n" +
+                  $"Top 8 Grupos da Cena com Maior Quantidade de Filhos:{sbTop8}");
     }
 
     private void AplicarPerfil(PerfilQualidade perfil)

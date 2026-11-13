@@ -321,7 +321,7 @@ public class MenuInicialController : MonoBehaviour
     private void IniciarCampanhaSelecionada(string codigoDificuldade)
     {
         GameDifficultyManager.Instancia.AplicarCodigo(codigoDificuldade);
-        string cenaCampanha = ConfiguracaoCenasJogo.ResolverCenaCampanhaPadrao();
+        string cenaCampanha = ConfiguracaoCenasJogo.CenaMapaGlobal;
         sistemaSave.IniciarNovoJogo(cenaCampanha);
         DefinirStatus("Iniciando campanha " + GameDifficultyManager.Instancia.NomeDificuldadeAtual() + "...", false);
         CarregarCena(cenaCampanha, LoadingRequestKind.Campanha);

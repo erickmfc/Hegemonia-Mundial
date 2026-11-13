@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using System.Collections;
+using Hegemonia.Aeronaves.C17;
 
 public class ModoDemolicao : MonoBehaviour
 {
@@ -174,30 +175,37 @@ public class ModoDemolicao : MonoBehaviour
             }
 
             Ray raio = cameraPrincipal.ScreenPointToRay(Input.mousePosition);
-            RaycastHit toque;
             int mascara = ~(1 << 2); // tudo menos IgnoreRaycast
+            int waterLayer = LayerMask.NameToLayer("Water");
 
-            if (Physics.Raycast(raio, out toque, 2000f, mascara))
+            RaycastHit[] hits = Physics.RaycastAll(raio, 25000f, mascara, QueryTriggerInteraction.Ignore);
+            if (hits != null && hits.Length > 0)
             {
-                GameObject obj = toque.collider.gameObject;
-
-                // Ignora terreno e água
-                if (obj.GetComponent<Terrain>()  != null) return;
-                if (obj.name.ToLower().Contains("terreno")) return;
-                if (obj.layer == LayerMask.NameToLayer("Water")) return;
-
-                SistemaDeDanos alvoComVida;
-                if (TryEncontrarSistemaDeDanos(obj, out alvoComVida))
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                for (int i = 0; i < hits.Length; i++)
                 {
-                    ExplodirPorDano(alvoComVida);
-                    return;
-                }
+                    Collider col = hits[i].collider;
+                    if (col == null) continue;
+                    GameObject obj = col.gameObject;
 
-                GameObject raiz;
-                if (TryEncontrarAlvoDemolivel(obj, out raiz) || TryEncontrarAlvoUnidade(obj, out raiz))
-                {
-                    ExplodirSemSistemaDeDanos(raiz);
-                    return;
+                    // Ignora terreno e água para permitir clicar em navios/estruturas
+                    if (obj.GetComponent<Terrain>() != null) continue;
+                    if (obj.name.IndexOf("terreno", System.StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                    if (waterLayer >= 0 && obj.layer == waterLayer) continue;
+
+                    SistemaDeDanos alvoComVida;
+                    if (TryEncontrarSistemaDeDanos(obj, out alvoComVida))
+                    {
+                        ExplodirPorDano(alvoComVida);
+                        return;
+                    }
+
+                    GameObject raiz;
+                    if (TryEncontrarAlvoDemolivel(obj, out raiz) || TryEncontrarAlvoUnidade(obj, out raiz))
+                    {
+                        ExplodirSemSistemaDeDanos(raiz);
+                        return;
+                    }
                 }
             }
         }
@@ -279,9 +287,19 @@ public class ModoDemolicao : MonoBehaviour
                 || atual.GetComponent<ControleUnidade>() != null
                 || atual.GetComponent<ControleNavioRealista>() != null
                 || atual.GetComponent<ControleSubmarino>() != null
+                || atual.GetComponent<HovercraftTransporte>() != null
+                || atual.GetComponent<NavioPetroleiro>() != null
+                || atual.GetComponent<NavioGuardaCosteira>() != null
+                || atual.GetComponent<BalsaSalvamento>() != null
                 || atual.GetComponent<ControleAviao>() != null
                 || atual.GetComponent<ControleAviaoCaca>() != null
-                || atual.GetComponent<Helicoptero>() != null)
+                || atual.GetComponent<AviaoBombardeiro>() != null
+                || atual.GetComponent<C700TransporteAereo>() != null
+                || atual.GetComponent<ControleAviaoAC130>() != null
+                || atual.GetComponent<ControleAviaoComercial>() != null
+                || atual.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null
+                || atual.GetComponent<Helicoptero>() != null
+                || atual.GetComponent<LancadorMLRS>() != null)
             {
                 raiz = atual;
                 return true;
@@ -333,8 +351,18 @@ public class ModoDemolicao : MonoBehaviour
         if (obj.GetComponent<Estaleiro>() != null
             || obj.GetComponent<PierMarinha>() != null
             || obj.GetComponent<Fabrica>() != null
+            || obj.GetComponent<Fazenda>() != null
+            || obj.GetComponent<Usina>() != null
+            || obj.GetComponent<GerenciadorQuartel>() != null
+            || obj.GetComponent<ComplexoGovernamental>() != null
+            || obj.GetComponent<CidadeComplexoUrbano>() != null
             || obj.GetComponent<GerenciadorAeroporto>() != null
-            || obj.GetComponent<GerenciadorPortaAvioes>() != null)
+            || obj.GetComponent<GerenciadorAeroportoComercial>() != null
+            || obj.GetComponent<GerenciadorPortaAvioes>() != null
+            || obj.GetComponent<LancadorMisseis>() != null
+            || obj.GetComponent<ControleTorreta>() != null
+            || obj.GetComponent<ControleTorretaModular>() != null
+            || obj.GetComponent<DadosConstrucao>() != null)
         {
             return true;
         }

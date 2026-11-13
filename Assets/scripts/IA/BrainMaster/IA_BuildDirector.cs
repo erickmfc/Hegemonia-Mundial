@@ -47,10 +47,10 @@ namespace Hegemonia.AI.BrainMaster
         // Buscas de colocacao podem chamar validacoes de territorio, NavMesh e
         // fisica. Um candidato que nao apareceu dentro desta janela deve ser
         // tentado novamente pelo cooldown, nunca bloquear o frame inteiro.
-        private const float PlacementSearchBudgetMs = 18f;
-        private const float DirectNavalSearchBudgetMs = 24f;
-        private const float BuildTickSearchBudgetMs = 24f;
-        private const float LegacySearchBudgetMs = 18f;
+        private const float PlacementSearchBudgetMs = 3.0f;
+        private const float DirectNavalSearchBudgetMs = 3.5f;
+        private const float BuildTickSearchBudgetMs = 4.0f;
+        private const float LegacySearchBudgetMs = 3.0f;
         private const float CoastalAnchorCacheCellSize = 96f;
         private const int MaxBootstrapAnchorRefinements = 4;
         private readonly IA_Context _context;
@@ -704,7 +704,7 @@ namespace Hegemonia.AI.BrainMaster
             bool hasCriticalGap = barracks == 0
                                   || factories == 0
                                   || warehouses == 0
-                                  || airports == 0;
+                                  || (airports == 0 && (brain == null || brain.IA03AereoLiberado));
             if (hasCriticalGap
                 && ShouldUseRecovery(now, cityHall))
             {
@@ -746,7 +746,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (hq == 0 && CanTryBuildItem("Quartel General", now) && QueueBuildAtLand("Quartel General", IA_ZoneType.Core, landAnchor, 45f, 130f, 90, 12f))
+            if (hq == 0 && CanTryBuildItem("Quartel General", now) && QueueBuildAtLand("Quartel General", IA_ZoneType.Core, landAnchor, 60f, 220f, 90, 15f))
             {
                 return;
             }
@@ -756,6 +756,7 @@ namespace Hegemonia.AI.BrainMaster
             // ciclo; manter o aeroporto antes dela garante progresso aéreo.
             if (brain != null
                 && brain.TeamId == 2
+                && brain.IA03AereoLiberado
                 && airports < desiredAirports
                 && factories > 0
                 && QueueBuildAtLand("aeroporto militar", IA_ZoneType.Air, landAnchor, 260f, 520f, mobilizingBase ? 95 : 94, mobilizingBase ? 24f : 18f))
@@ -766,7 +767,8 @@ namespace Hegemonia.AI.BrainMaster
             bool earlyNavalOpening = factories > 0
                                      && (barracks > 0 || developedStructures >= 3)
                                      && (coastAvailable || now >= 12f);
-            bool shouldOpenNaval = (estaleiros + piers <= 0 || allowAutomaticNavalExpansion || imperialOilGap || estaleiroManualOverride || pierManualOverride)
+            bool shouldOpenNaval = (brain == null || brain.IA03EstaleiroEPetroleiroLiberado)
+                                   && (estaleiros + piers <= 0 || allowAutomaticNavalExpansion || imperialOilGap || estaleiroManualOverride || pierManualOverride)
                                    && (earlyNavalOpening
                                    || timedNavalOpening
                                    || imperialOilGap
@@ -783,18 +785,13 @@ namespace Hegemonia.AI.BrainMaster
                 }
                 else
                 {
-                    if (!coastAvailable && estaleiros < 1 && piers < 1 && !estaleiroManualOverride && !pierManualOverride)
-                    {
-                        _nextNavalAttemptTime = now + 16f;
-                    }
-                    else
                     {
                         Vector3 navalSearchAnchor = coastAvailable ? navalAnchor : landAnchor;
                         float navalMinRadius = coastAvailable
                             ? (earlyNavalOpening ? 8f : 12f)
                             : (timedNavalOpening ? 45f : 75f);
                         float navalMaxRadius = coastAvailable
-                            ? (earlyNavalOpening ? 320f : (timedNavalOpening ? 360f : 280f))
+                            ? (earlyNavalOpening ? 650f : (timedNavalOpening ? 750f : 600f))
                             : (timedNavalOpening ? 1600f : 1200f);
                         int estaleiroPriority = earlyNavalOpening ? 97 : (timedNavalOpening ? 98 : 91);
                         int pierPriority = imperialOilGap ? 97 : (timedNavalOpening ? 96 : 88);
@@ -820,7 +817,6 @@ namespace Hegemonia.AI.BrainMaster
 
                         if (piers < targetPiers
                             && shouldBuildPierNow
-                            && (coastAvailable || pierManualOverride || estaleiros > 0)
                             && !IsNavalAutoPlacementDisabledForItem("pier", out navalCombatLockReason))
                         {
                             bool queuedPier = QueueBuildAtWater("pier", IA_ZoneType.Naval, navalSearchAnchor, Mathf.Max(20f, navalMinRadius - 24f), navalMaxRadius, pierPriority, 16f);
@@ -829,7 +825,26 @@ namespace Hegemonia.AI.BrainMaster
                             {
                                 _nextRareNavalExpansionWindowTime = now + 90f;
                             }
-                            return;
+                            if (queuedPier)
+                            {
+                                return;
+                            }
+                        }
+
+                        if ((estaleiros > 0 || piers > 0 || (brain != null && brain.DiaAtualJogo >= 10))
+                            && plataformas < targetPlatforms
+                            && !IsNavalAutoPlacementDisabledForItem("PLataforma", out navalCombatLockReason))
+                        {
+                            float platformMinRadius = 300f;
+                            float platformMaxRadius = coastAvailable ? 1100f : 1400f;
+                            int platformPriority = Mathf.Max(96, pierPriority);
+                            bool queuedPlatform = QueueBuildAtWater("PLataforma", IA_ZoneType.Naval, navalSearchAnchor, platformMinRadius, platformMaxRadius, platformPriority, 10f);
+                            _nextNavalAttemptTime = now + (queuedPlatform ? 10f : 14f);
+                            if (queuedPlatform)
+                            {
+                                _nextRareNavalExpansionWindowTime = now + 90f;
+                                return;
+                            }
                         }
                     }
                 }
@@ -879,11 +894,13 @@ namespace Hegemonia.AI.BrainMaster
             // A IA constrói casas após ter prefeitura + ao menos uma estrutura produtiva.
             // Limite de 4 casas (imovel) e 2 prédios/villages por base.
             bool temEstruturaProdutiva = factories > 0 || barracks > 0 || usinas > 0;
+            string houseKey = ResolveFirstAvailableKey("Casa", "imovel");
             if (houses < 4
+                && !string.IsNullOrEmpty(houseKey)
                 && cityHall > 0
                 && temEstruturaProdutiva
                 && !mobilizingBase
-                && QueueBuildAtLand("imovel", IA_ZoneType.Economy, landAnchor, 15f, 130f, 72, 18f))
+                && QueueBuildAtLand(houseKey, IA_ZoneType.Economy, landAnchor, 15f, 130f, 72, 18f))
             {
                 return;
             }
@@ -1396,7 +1413,13 @@ namespace Hegemonia.AI.BrainMaster
             _warningCooldownUntil[key] = now + 20f;
             string message = "[IA03][Valdoria] construção aguardando: " + itemKey + " | motivo=" + reason;
             GlobalWorldDiagnostics.RegisterIA03PlanningFailure(itemKey, reason);
-            Debug.LogWarning(message, _context.Brain);
+#if UNITY_EDITOR
+            // Silenciado por padrão para zerar chamadas pesadas a ExtractStackTraceNoAlloc na Main Thread
+            if (_context != null && _context.Brain != null && _context.Brain.EnableVerboseLogs)
+            {
+                Debug.LogWarning(message, _context.Brain);
+            }
+#endif
             IA_RuntimeTextTrace.LogText(2, "IA_BuildDirector", "BUILD_BLOCKED", itemKey + " | motivo=" + reason);
         }
 
@@ -2272,6 +2295,14 @@ namespace Hegemonia.AI.BrainMaster
                     return true;
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto:
+                    if (!brain.IA03AereoLiberado)
+                    {
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.BuildVehicleFactory,
+                            "cronograma IA03: aeroporto militar liberado apenas apos Dia 4");
+                        return true;
+                    }
+
                     if (airports > 0)
                     {
                         return AdvanceBootstrapAfterTime(
@@ -2429,6 +2460,14 @@ namespace Hegemonia.AI.BrainMaster
                     return true;
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildShipyard:
+                    if (!brain.IA03EstaleiroEPetroleiroLiberado)
+                    {
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.Completed,
+                            "cronograma IA03: estaleiro e petroleiros liberados no Dia 7");
+                        return false;
+                    }
+
                     if (estaleiros > 0)
                     {
                         brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.HoldShipyard, "estaleiro pronto; aguardando 5s antes do navio");
@@ -2472,7 +2511,24 @@ namespace Hegemonia.AI.BrainMaster
                             return true;
                         }
 
-                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker, "pier pronto; abrindo fase do petroleiro");
+                        int bootstrapPlatforms = _context.WorldState != null && _context.WorldState.ForceSnapshot != null
+                            ? _context.WorldState.ForceSnapshot.PlatformCount
+                            : 0;
+                        if (bootstrapPlatforms <= 0 && brain.GetBootstrapStageElapsed(now) < 35f)
+                        {
+                            return TryBootstrapMandatoryWaterBuild(
+                                "PLataforma",
+                                navalAnchor,
+                                IA_ZoneType.Naval,
+                                300f,
+                                950f,
+                                974,
+                                10f,
+                                "PLataforma",
+                                "plataforma");
+                        }
+
+                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker, "estaleiro, pier e plataforma prontos; abrindo fase do petroleiro");
                         return true;
                     }
 
@@ -2512,6 +2568,7 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_BrainMaster.IA_BootstrapStage.ProduceGroundUnits:
                 case IA_BrainMaster.IA_BootstrapStage.HoldGroundUnits:
                 case IA_BrainMaster.IA_BootstrapStage.ProduceAircraft:
+                case IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker:
                 case IA_BrainMaster.IA_BootstrapStage.ProduceShip:
                     // Production is owned by IA_ProductionDirector. Keep the
                     // construction tick available so missing prerequisites
@@ -3283,7 +3340,7 @@ namespace Hegemonia.AI.BrainMaster
                     probes++;
                     IA_MapCell cell = _context.MapAnalyzer.SampleCell(probe);
 
-                    if (!IsTerrainCandidateAccepted(cell, desiredTerrain))
+                    if (desiredTerrain != IA_TerrainType.Water && !IsTerrainCandidateAccepted(cell, desiredTerrain))
                     {
                         terrainRejected++;
                         continue;
@@ -4106,7 +4163,7 @@ namespace Hegemonia.AI.BrainMaster
                     probes++;
                     IA_MapCell cell = _context.MapAnalyzer.SampleCell(probe);
 
-                    if (!IsTerrainCandidateAccepted(cell, desiredTerrain))
+                    if (desiredTerrain != IA_TerrainType.Water && !IsTerrainCandidateAccepted(cell, desiredTerrain))
                     {
                         terrainRejected++;
                         continue;
@@ -5384,9 +5441,7 @@ namespace Hegemonia.AI.BrainMaster
             streak++;
             _placementFailureStreakByKey[retryKey] = streak;
 
-            float retryDelay = desiredTerrain == IA_TerrainType.Water
-                ? ResolveEscalatedRetryDelay(streak)
-                : 7f;
+            float retryDelay = Mathf.Max(4.5f, ResolveEscalatedRetryDelay(streak));
             _placementRetryCooldownUntil[retryKey] = now + retryDelay;
         }
 

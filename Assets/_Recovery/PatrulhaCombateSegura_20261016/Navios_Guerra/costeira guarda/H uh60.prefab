@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1877185062494023285}
+  - component: {fileID: 7099900000000000101}
   m_Layer: 0
   m_Name: helice
   m_TagString: Untagged
@@ -600,3 +601,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7222904761117607183, guid: cc44d899c69edc64aa5486c99df0b003, type: 3}
   m_PrefabInstance: {fileID: 4168024447532989340}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &7099900000000000101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 716693622368485142}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

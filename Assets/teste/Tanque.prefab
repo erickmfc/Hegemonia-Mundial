@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8776381242100586501}
+  - component: {fileID: 7099900000000000101}
   m_Layer: 0
   m_Name: BocaDoCano
   m_TagString: Untagged
@@ -564,3 +565,18 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8542238495502478657, guid: 26c9254e16295904f82785b80fc26662, type: 3}
   m_PrefabInstance: {fileID: 6824852595418628409}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &7099900000000000101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 873703156587178015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

@@ -39,6 +39,9 @@ public class BombaBombardeiro : MonoBehaviour
     //  SEÇÃO 3: DETONAÇÃO
     // =========================================================
     [Header("── Detonação ───────────────────────────")]
+    [Tooltip("Tempo de vida da bomba em segundos antes da autodestruição de segurança.")]
+    public float tempoDeVida = 20f;
+
     [Tooltip("Raio da explosão em metros.")]
     public float raioExplosao = 25f;
 
@@ -47,6 +50,12 @@ public class BombaBombardeiro : MonoBehaviour
 
     [Tooltip("Se verdadeiro, o dano diminui com a distância até o epicentro.")]
     public bool danoComFalloff = true;
+
+    [Tooltip("Altitude (Y) do nível do mar para detonação automática em caso de queda na água.")]
+    public float altitudeNivelMar = 0f;
+
+    [Tooltip("Proximidade do alvo designado para detonar por proximidade.")]
+    public float fusilProximidadeAlvo = 6f;
 
     [Tooltip("Tipo de detonação: 'Impacto' = explode ao tocar algo. 'Penetrante' = penetra X metros antes de explodir.")]
     public TipoDetonacao tipoDetonacao = TipoDetonacao.Impacto;
@@ -83,6 +92,8 @@ public class BombaBombardeiro : MonoBehaviour
     private float penetracaoPercorrida = 0f;
     private bool emPenetracao = false;
     private readonly Collider[] bufferExplosao = new Collider[96];
+    private static readonly RaycastHit[] bufferVarredura = new RaycastHit[16];
+    private static readonly System.Collections.Generic.HashSet<int> alvosDanoProcessados = new System.Collections.Generic.HashSet<int>();
 
     // ──────────────────────────────────────────────────────────
     //  API PÚBLICA
@@ -118,8 +129,8 @@ public class BombaBombardeiro : MonoBehaviour
         if (col != null) col.enabled = false;
         Invoke(nameof(AtivarColisao), 0.5f);
 
-        // Autodestruição de segurança: se cair no mar ou falhar, some em 30s
-        Invoke(nameof(AutodestruirPorTempo), 30f);
+        // Autodestruição de segurança configurada para o tempoDeVida (20 segundos por padrão)
+        Invoke(nameof(AutodestruirPorTempo), Mathf.Max(1f, tempoDeVida));
     }
 
     /// <summary>
@@ -184,8 +195,61 @@ public class BombaBombardeiro : MonoBehaviour
         if (!guiagemAtivaAgora && velocidade.sqrMagnitude > 0.1f)
             transform.rotation = Quaternion.LookRotation(velocidade.normalized);
 
+        // Varredura de colisão contínua (evita atravessar o solo ou alvos por alta velocidade)
+        Vector3 posAtual = transform.position;
+        Vector3 deslocamento = velocidade * dt;
+        float distPasso = deslocamento.magnitude;
+
+        if (distPasso > 0.001f)
+        {
+            int hits = Physics.RaycastNonAlloc(posAtual, deslocamento.normalized, bufferVarredura, distPasso, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits; i++)
+            {
+                RaycastHit hit = bufferVarredura[i];
+                if (hit.collider == null || hit.collider.gameObject == gameObject) continue;
+                if (dono != null && (hit.collider.gameObject == dono || hit.transform.IsChildOf(dono.transform))) continue;
+
+                transform.position = hit.point;
+                for (int k = 0; k < hits; k++) bufferVarredura[k] = default;
+
+                if (tipoDetonacao == TipoDetonacao.Impacto)
+                {
+                    Explodir();
+                    return;
+                }
+                else
+                {
+                    emPenetracao = true;
+                    break;
+                }
+            }
+
+            for (int k = 0; k < hits; k++) bufferVarredura[k] = default;
+        }
+
         // Movimento
-        transform.position += velocidade * dt;
+        transform.position += deslocamento;
+
+        // Detonação por proximidade do alvo designado
+        if (alvoFinal != Vector3.zero)
+        {
+            float distAlvo = Vector3.Distance(transform.position, alvoFinal);
+            if (distAlvo <= Mathf.Max(1f, fusilProximidadeAlvo))
+            {
+                Explodir();
+                return;
+            }
+        }
+
+        // Detonação caso atinja o nível da água / mar
+        if (transform.position.y <= altitudeNivelMar)
+        {
+            Vector3 posMar = transform.position;
+            posMar.y = altitudeNivelMar;
+            transform.position = posMar;
+            Explodir();
+            return;
+        }
 
         // ─── MODO PENETRANTE ──────────────────────────────────
         if (emPenetracao)
@@ -254,6 +318,7 @@ public class BombaBombardeiro : MonoBehaviour
             AudioRuntime.PlayClipAtPoint(somExplosao, transform.position);
 
         // Dano em área
+        alvosDanoProcessados.Clear();
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
         {
@@ -264,6 +329,9 @@ public class BombaBombardeiro : MonoBehaviour
             SistemaDeDanos vida = h.GetComponent<SistemaDeDanos>() ?? h.GetComponentInParent<SistemaDeDanos>();
             if (vida != null)
             {
+                int idVida = vida.GetInstanceID();
+                if (!alvosDanoProcessados.Add(idVida)) continue;
+
                 int danoFinal = danoMaximo;
                 if (danoComFalloff)
                 {

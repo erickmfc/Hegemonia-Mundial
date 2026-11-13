@@ -405,25 +405,31 @@ public class LancadorMisselCaca : MonoBehaviour
     {
         if (alvoTransform == null) return false;
 
+        // OTIMIZAÇÃO: Checagem rápida por IdentidadeUnidade antes de reflection / busca em hierarquia
+        if (idUnidade != null && idUnidade.tipoUnidade == TipoUnidade.Aereo) return true;
+
+        string tag = alvoTransform.tag;
+        if (tag == "Areo" || tag == "Aereo") return true;
+
         string nomeAlvo = alvoTransform.name;
+        if (NomeContem(nomeAlvo, "aviao") ||
+            NomeContem(nomeAlvo, "caca") ||
+            NomeContem(nomeAlvo, "jato") ||
+            NomeContem(nomeAlvo, "heli") ||
+            NomeContem(nomeAlvo, "drone") ||
+            NomeContem(nomeAlvo, "vap") ||
+            NomeContem(nomeAlvo, "bombard") ||
+            NomeContem(nomeAlvo, "bombardeiro") ||
+            NomeContem(nomeAlvo, "bomber"))
+        {
+            return true;
+        }
 
         return alvoTransform.GetComponentInParent<ControleAviao>() != null ||
                alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null ||
                alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
                alvoTransform.GetComponentInParent<Helicoptero>() != null ||
-               alvoTransform.GetComponentInParent<C700TransporteAereo>() != null ||
-               (idUnidade != null && idUnidade.tipoUnidade == TipoUnidade.Aereo) ||
-               NomeContem(nomeAlvo, "aviao") ||
-               NomeContem(nomeAlvo, "caca") ||
-               NomeContem(nomeAlvo, "jato") ||
-               NomeContem(nomeAlvo, "heli") ||
-               NomeContem(nomeAlvo, "drone") ||
-               NomeContem(nomeAlvo, "vap") ||
-               NomeContem(nomeAlvo, "bombard") ||
-               NomeContem(nomeAlvo, "bombardeiro") ||
-               NomeContem(nomeAlvo, "bomber") ||
-               alvoTransform.tag == "Areo" ||
-               alvoTransform.tag == "Aereo";
+               alvoTransform.GetComponentInParent<C700TransporteAereo>() != null;
     }
 
     int ObterPrioridadeAlvo(Transform alvoTransform, IdentidadeUnidade idUnidade)
@@ -431,13 +437,14 @@ public class LancadorMisselCaca : MonoBehaviour
         if (alvoTransform == null) return int.MaxValue;
 
         string nomeAlvo = alvoTransform.name;
-        bool ehBombardeiro = alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null ||
+        bool ehBombardeiro = (idUnidade != null && idUnidade.tipoUnidade == TipoUnidade.Aereo && NomeContem(nomeAlvo, "bomb")) ||
                              NomeContem(nomeAlvo, "bombard") ||
                              NomeContem(nomeAlvo, "bombardeiro") ||
-                             NomeContem(nomeAlvo, "bomber");
+                             NomeContem(nomeAlvo, "bomber") ||
+                             alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null;
 
         if (ehBombardeiro) return 0;
-        if (alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null || NomeContem(nomeAlvo, "caca") || NomeContem(nomeAlvo, "jato")) return 1;
+        if (NomeContem(nomeAlvo, "caca") || NomeContem(nomeAlvo, "jato") || alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null) return 1;
         if (EhAlvoAereo(alvoTransform, idUnidade)) return 2;
         return 3;
     }
@@ -473,7 +480,14 @@ public class LancadorMisselCaca : MonoBehaviour
             AlvoDetectado novo = new AlvoDetectado();
             novo.transform = alvoTransform;
             // Cria string apenas se o menu visual estiver ativo para salvar GC
-            if (radarAtivoVisualmente) novo.nome = (alvoTransform.name.Contains("(Clone)")) ? alvoTransform.name.Replace("(Clone)", "") : alvoTransform.name;
+            if (radarAtivoVisualmente)
+            {
+                novo.nome = (alvoTransform.name.Contains("(Clone)")) ? alvoTransform.name.Replace("(Clone)", "") : alvoTransform.name;
+            }
+            else
+            {
+                novo.nome = string.Empty;
+            }
             novo.distancia = Mathf.Sqrt(distSqr);
             novo.ehAereo = EhAlvoAereo(alvoTransform, idAlvo);
             novo.prioridade = ObterPrioridadeAlvo(alvoTransform, idAlvo);

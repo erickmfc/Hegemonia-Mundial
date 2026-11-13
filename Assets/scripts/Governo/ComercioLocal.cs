@@ -332,17 +332,27 @@ public sealed class SistemaComercioNacional : MonoBehaviour
     public static SistemaComercioNacional Instancia { get; private set; }
     private static readonly HashSet<ComercioLocal> comercios = new HashSet<ComercioLocal>();
     private readonly Dictionary<int, DadosComercioNacional> relatorios = new Dictionary<int, DadosComercioNacional>();
+    private static bool _encerrandoCenaOuApp;
     private float proximoCiclo;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        _encerrandoCenaOuApp = false;
+        Instancia = null;
+        comercios.Clear();
+    }
 
     public static void GarantirInstancia()
     {
-        if (Instancia != null) return;
+        if (Instancia != null || _encerrandoCenaOuApp || !Application.isPlaying) return;
         new GameObject("SistemaComercioNacional").AddComponent<SistemaComercioNacional>();
     }
     public static void Registrar(ComercioLocal comercio) { if (comercio != null) comercios.Add(comercio); }
     public static void Desregistrar(ComercioLocal comercio) { if (comercio != null) comercios.Remove(comercio); }
     public static DadosComercioNacional ObterResumo(int teamId)
     {
+        if (_encerrandoCenaOuApp || !Application.isPlaying) return new DadosComercioNacional();
         GarantirInstancia();
         if (Instancia == null) return new DadosComercioNacional();
         DadosComercioNacional resumo;
@@ -354,6 +364,20 @@ public sealed class SistemaComercioNacional : MonoBehaviour
         if (Instancia != null && Instancia != this) { Destroy(gameObject); return; }
         Instancia = this;
         DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnApplicationQuit()
+    {
+        _encerrandoCenaOuApp = true;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instancia == this)
+        {
+            _encerrandoCenaOuApp = true;
+            Instancia = null;
+        }
     }
 
     private void Update()

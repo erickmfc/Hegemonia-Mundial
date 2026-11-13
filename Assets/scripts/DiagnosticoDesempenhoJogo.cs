@@ -138,7 +138,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] [Min(1)] private int intervaloFramesFrameTiming = 12;
 
     [Header("Saida")]
-    [SerializeField] private bool exibirOverlay = true;
+    [SerializeField] private bool exibirOverlay = false;
     [SerializeField] private bool gravarCsv = false;
     [SerializeField] private bool persistirEntreCenas = true;
     [SerializeField] private KeyCode teclaAlternarOverlay = KeyCode.F8;
@@ -147,7 +147,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] private bool ativarAutomaticamenteQuandoPresenteNaCena = true;
     [Tooltip("Use somente em cenas de medicao. A captura automatica coleta FrameTiming e pode afetar o FPS medido.")]
     [SerializeField] private bool permitirCapturaAutomatica = false;
-    [SerializeField] private bool mostrarOverlayNaAtivacaoAutomatica = true;
+    [SerializeField] private bool mostrarOverlayNaAtivacaoAutomatica = false;
 
     [Header("Eventos")]
     [SerializeField] private bool registrarCarregamentoDeCena = true;
@@ -396,10 +396,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                                  && gameObject.scene.IsValid();
         _capturaAtiva = capturaAtivaNoInicio || ativacaoAutomatica;
 
-        if (ativacaoAutomatica && !capturaAtivaNoInicio && mostrarOverlayNaAtivacaoAutomatica)
-        {
-            exibirOverlay = true;
-        }
+        // Inicia sempre oculto na tela ao iniciar o jogo/build; F9 exibe sob demanda.
+        exibirOverlay = false;
 
         if (_capturaAtiva)
         {
@@ -469,7 +467,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (Input.GetKeyDown(teclaAlternarCaptura))
         {
-            SetCaptureMode(!_capturaAtiva, exibirOverlay);
+            bool mostrarAgora = !(_capturaAtiva && exibirOverlay);
+            SetCaptureMode(mostrarAgora, mostrarAgora);
         }
 
         if (!_capturaAtiva)

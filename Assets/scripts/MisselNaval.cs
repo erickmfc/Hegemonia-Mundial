@@ -123,6 +123,8 @@ public class MisselNaval : MonoBehaviour
             ResolverOrientacaoVisual();
         }
 
+        AssegurarVisibilidadeRenderers();
+
         if (sistemaFumaca != null)
         {
             sistemaFumaca.Stop();
@@ -148,6 +150,7 @@ public class MisselNaval : MonoBehaviour
         jaExplodiu = false;
         emNavegacao = false;
         AtualizarPrazoDeVoo(alvo);
+        AssegurarVisibilidadeRenderers();
         transform.rotation = RotacaoParaDirecao(Vector3.up);
         ReiniciarEfeitosVisuaisVoo();
         CriarEfeitoFumacaLancamento();
@@ -425,6 +428,20 @@ public class MisselNaval : MonoBehaviour
 
         Quaternion rotacaoAlvo = RotacaoParaDirecao(direcao);
         transform.rotation = Quaternion.Slerp(transform.rotation, rotacaoAlvo, velocidadeGiro * Time.fixedDeltaTime);
+    }
+
+    private void AssegurarVisibilidadeRenderers()
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer r = renderers[i];
+            if (r != null && !(r is ParticleSystemRenderer))
+            {
+                if (!r.enabled) r.enabled = true;
+                if (!r.gameObject.activeSelf) r.gameObject.SetActive(true);
+            }
+        }
     }
 
     private void ResolverOrientacaoVisual()

@@ -30,6 +30,9 @@ public class IdentidadeNaval : MonoBehaviour
             // Tenta buscar no pai ou filhos se não estiver no mesmo objeto, mas ideal é estar no root
             agente = GetComponentInChildren<NavMeshAgent>();
         }
+
+        // Auto-injeção segura de otimização de malha/colisor para navios detalhados (ex: Zumwalt, Type-45, Visakhapatnam, Steregushchiy)
+        Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(gameObject);
     }
 
     void OnEnable()

@@ -85,6 +85,12 @@ public class ControleNavioRealista : MonoBehaviour
     private AudioSource fonteAudio;
     private float tempoInatividade = 0f;
     private bool estaDesligado = false;
+    private bool estaAncorado = false;
+    public bool EstaAncorado => estaAncorado;
+    public bool EstaDesligado => estaDesligado;
+    public bool EstaLigando => tempoInicioTransicaoEstado > 0f && (Time.time - tempoInicioTransicaoEstado < DuracaoTransicaoEstado);
+    private float tempoInicioTransicaoEstado = -1f;
+    private const float DuracaoTransicaoEstado = 2.5f;
     private bool paradoPorFaltaDeCombustivel;
     private string ultimoMotivoRecusaDestino = string.Empty;
     public string UltimoMotivoRecusaDestino => ultimoMotivoRecusaDestino;
@@ -520,11 +526,11 @@ public class ControleNavioRealista : MonoBehaviour
             // a marcar temDestino/potenciaAlvo e reativa o caminho completo
             // imediatamente; visual, audio, combustivel e armas continuam
             // sendo processados abaixo.
-            bool precisaSimularMovimento = temDestino
+            bool precisaSimularMovimento = !estaAncorado && !estaDesligado && (temDestino
                 || manobraReAtiva
                 || Mathf.Abs(potenciaAlvo) > 0.05f
                 || Mathf.Abs(potenciaAtual) > 0.05f
-                || velocidadeVetorial.sqrMagnitude > 0.25f;
+                || velocidadeVetorial.sqrMagnitude > 0.25f);
             if (precisaSimularMovimento)
             {
                 // 1. INPUT (IA ou Player via NavMesh)
@@ -535,6 +541,12 @@ public class ControleNavioRealista : MonoBehaviour
 
                 // 3. DIN MICA DE MOVIMENTO (Inércia e Drift)
                 SimularFisicaMovimento();
+            }
+            else
+            {
+                potenciaAtual = Mathf.MoveTowards(potenciaAtual, 0f, Time.deltaTime * 0.8f);
+                anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, 0f, Time.deltaTime * velocidadeLeme * 2f);
+                velocidadeVetorial = Vector3.MoveTowards(velocidadeVetorial, Vector3.zero, Time.deltaTime * 2f);
             }
 
             // 4. VISUAIS
@@ -652,6 +664,28 @@ public class ControleNavioRealista : MonoBehaviour
             return;
         }
 
+        float distanciaDoPontoRota = Vector3.Distance(transform.position, destinoAtual);
+        if (temDestino && destinoAtual != Vector3.zero
+            && (!agente.hasPath || agente.pathStatus == NavMeshPathStatus.PathInvalid)
+            && distanciaDoPontoRota >= distanciaChegada)
+        {
+            Vector3 direcaoDireta = destinoAtual - transform.position;
+            direcaoDireta.y = 0f;
+            if (direcaoDireta.sqrMagnitude > 0.001f)
+            {
+                direcaoDireta.Normalize();
+                float anguloDireto = Vector3.SignedAngle(transform.forward, direcaoDireta, Vector3.up);
+                anguloLemeAtual = Mathf.MoveTowards(
+                    anguloLemeAtual,
+                    Mathf.Clamp(anguloDireto / 30f, -1f, 1f),
+                    Time.deltaTime * velocidadeLeme);
+                potenciaAlvo = distanciaDoPontoRota < 40f
+                    ? Mathf.Clamp01(distanciaDoPontoRota / 40f)
+                    : 1f;
+                return;
+            }
+        }
+
         if (!agente.hasPath && velocidadeVetorial.magnitude < 0.1f)
         {
             potenciaAlvo = 0f;
@@ -662,7 +696,6 @@ public class ControleNavioRealista : MonoBehaviour
         }
 
         float distancia = agente.remainingDistance;
-        float distanciaDoPontoRota = Vector3.Distance(transform.position, destinoAtual);
         
         // Ponto de chegada sem freio brusco longe
         if (distancia < distanciaChegada || distanciaDoPontoRota < distanciaChegada || !agente.hasPath)
@@ -884,13 +917,21 @@ public class ControleNavioRealista : MonoBehaviour
 
         // 1. Rotação (A curva arcada maravilhosa)
         // O navio precisa de velocidade fluindo no leme para girar.
-        float fluxoAgua = Mathf.Abs(velReal) + (Mathf.Abs(potenciaAtual) * 2f); 
-        float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); 
-        
-        float sentidoMotor = velReal >= -0.1f ? 1f : -1f; // Retrocede a curva se der ré
-        float giro = anguloLemeAtual * curvaMaximaGraus * eficienciaLeme * Time.deltaTime * sentidoMotor;
-        
-        transform.Rotate(0, giro, 0);
+        float velocidadeAbsoluta = Mathf.Abs(velReal);
+        if (estaAncorado || estaDesligado || (!temDestino && velocidadeAbsoluta < 0.2f))
+        {
+            anguloLemeAtual = Mathf.MoveTowards(anguloLemeAtual, 0f, Time.deltaTime * velocidadeLeme * 3f);
+        }
+        else
+        {
+            float fluxoAgua = Mathf.Abs(velReal) + (Mathf.Abs(potenciaAtual) * 2f); 
+            float eficienciaLeme = Mathf.Clamp01(fluxoAgua / 2.0f); 
+            
+            float sentidoMotor = velReal >= -0.1f ? 1f : -1f; // Retrocede a curva se der ré
+            float giro = anguloLemeAtual * curvaMaximaGraus * eficienciaLeme * Time.deltaTime * sentidoMotor;
+            
+            transform.Rotate(0, giro, 0);
+        }
 
         // 2. Aceleração (Sempre no eixo Z direcional)
         // Empurra para a potência desejada gradual
@@ -1502,8 +1543,10 @@ public class ControleNavioRealista : MonoBehaviour
             // Se estiver em modo passivo, ele vai começar a contar o tempo de novo quando parar.
             if (!destinoAceito)
             {
-                ultimoMotivoRecusaDestino = "NavMesh naval recusou o destino";
-                Debug.LogWarning($"[ControleNavioRealista] NavMesh rejeitou destino para {name} em {destino}.");
+                ultimoMotivoRecusaDestino = string.Empty;
+                temDestino = destinoAtual != Vector3.zero;
+                Debug.LogWarning($"[ControleNavioRealista] NavMesh rejeitou destino para {name} em {destino}; usando navegação aquática direta.");
+                return temDestino;
             }
             return destinoAceito;
         }
@@ -1553,6 +1596,62 @@ public class ControleNavioRealista : MonoBehaviour
         {
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+        }
+    }
+
+    /// <summary>
+    /// Parada Tática / Ancoragem: cessa imediatamente propulsão, zera o leme e imobiliza o navio,
+    /// impedindo o giro sobre o próprio eixo após atingir o destino.
+    /// </summary>
+    public void AncorarOuPararTatico(bool ancorar)
+    {
+        estaAncorado = ancorar;
+        potenciaAlvo = 0f;
+        potenciaAtual = 0f;
+        anguloLemeAtual = 0f;
+        velocidadeVetorial = Vector3.zero;
+        temDestino = false;
+        rotaAguaAtual.Clear();
+        indiceRotaAgua = 0;
+        manobraReAtiva = false;
+        tempoRestanteManobraRe = 0f;
+
+        if (modoNavegacao == ModoNavegacaoNaval.NavMeshHibrida
+            && agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.ResetPath();
+            agente.isStopped = true;
+            agente.velocity = Vector3.zero;
+        }
+
+        if (rb != null && !rb.isKinematic)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+    }
+
+    /// <summary>
+    /// Alterna o modo Desligar: suspende a simulação ativa, corta radares e propulsão.
+    /// Ao religar, inicia um período de transição/aquecimento de ~2.5 segundos.
+    /// </summary>
+    public void DefinirDesligado(bool desligar)
+    {
+        if (estaDesligado && !desligar)
+        {
+            tempoInicioTransicaoEstado = Time.time;
+        }
+
+        estaDesligado = desligar;
+        if (desligar)
+        {
+            tempoInicioTransicaoEstado = -1f;
+            AncorarOuPararTatico(true);
+        }
+        else
+        {
+            estaAncorado = false;
+            tempoInatividade = 0f;
         }
     }
 

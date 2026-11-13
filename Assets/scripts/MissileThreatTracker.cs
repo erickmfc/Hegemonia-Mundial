@@ -349,22 +349,31 @@ public class MissileThreatTracker : MonoBehaviour
         if (misselTatico != null)
         {
             destruirAoExpirar = false;
-            return 15.5f;
+            return 180f;
         }
 
         MisselICBM misselIcbm = missil.GetComponent<MisselICBM>();
         if (misselIcbm != null)
         {
-            return Mathf.Max(tempoFallback, 30f);
+            destruirAoExpirar = false;
+            return 300f;
+        }
+
+        MisselEstrategicoLongoAlcance misselEstrategico = missil.GetComponent<MisselEstrategicoLongoAlcance>();
+        if (misselEstrategico != null)
+        {
+            destruirAoExpirar = false;
+            return 300f;
         }
 
         MisselLeopardAutomatico misselLeopard = missil.GetComponent<MisselLeopardAutomatico>();
         if (misselLeopard != null)
         {
-            return Mathf.Max(tempoFallback, 20f);
+            destruirAoExpirar = false;
+            return 120f;
         }
 
-        return tempoFallback;
+        return Mathf.Max(tempoFallback, 120f);
     }
 
     static int ResolverTeam(Component origem, Transform raizMissil)

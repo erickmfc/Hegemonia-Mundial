@@ -11,6 +11,9 @@ public class Estaleiro : MonoBehaviour
 {
     private Vector3 _ultimoForwardAgua = Vector3.forward;
 
+    [Header("Diagnóstico e Otimização")]
+    [SerializeField] private bool logarDebug = false;
+
     [Header("Proprietario da estrutura")]
     [Tooltip("Use 0 para ler a IdentidadeUnidade da propria estrutura. Nunca e inferido pela distancia a outra IA.")]
     [SerializeField] private int ownerTeamId;
@@ -775,7 +778,10 @@ public class Estaleiro : MonoBehaviour
         // --- CRIAR BARRA DE PROGRESSO ---
         CriarBarraProgresso(slot);
 
-        Debug.Log($"[Estaleiro] Iniciando construção de {prefab.name} no {slot.nomeSlot}. Aguardando conclusão...");
+        if (logarDebug)
+        {
+            Debug.Log($"[Estaleiro] Iniciando construção de {prefab.name} no {slot.nomeSlot}. Aguardando conclusão...");
+        }
     }
 
     void CriarBarraProgresso(SlotConstrucao slot)
@@ -863,7 +869,10 @@ public class Estaleiro : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[Estaleiro] Construção finalizada no {slot.nomeSlot}! Nascendo no ponto de atracagem.");
+        if (logarDebug)
+        {
+            Debug.Log($"[Estaleiro] Construção finalizada no {slot.nomeSlot}! Nascendo no ponto de atracagem.");
+        }
 
         bool ehNavioGrande = EhNavioGrande(slot.prefabAtual);
         Vector3 waterForward = ObterForwardAgua();
@@ -1065,7 +1074,11 @@ public class Estaleiro : MonoBehaviour
             Instantiate(efeitoConclusao, slot.pontoDeConstrucao != null ? slot.pontoDeConstrucao.position : posFinal, Quaternion.identity);
         }
 
-        Debug.Log($"[Estaleiro] Navio liberado: {navioPronto.name} | atracagem={slot.nomeSlot} | spawn={navioPronto.transform.position} | saida={destinoSaida}");
+        if (logarDebug)
+        {
+            Debug.Log($"[Estaleiro] Navio liberado: {navioPronto.name} | atracagem={slot.nomeSlot} | spawn={navioPronto.transform.position} | saida={destinoSaida}");
+        }
+        Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(navioPronto);
         RegistrarTempoDiagnostico("naval_spawn_init_ms", initStart);
 
         // Libera o slot

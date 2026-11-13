@@ -399,7 +399,7 @@ namespace Hegemonia.RTS
 
             if (contato.trajectory.Count == 0 || Vector3.Distance(contato.trajectory[contato.trajectory.Count - 1], position) >= 20f)
             {
-                if (contato.trajectory.Count >= 32) contato.trajectory.RemoveAt(0);
+                if (contato.trajectory.Count >= 256) contato.trajectory.RemoveAt(0);
                 contato.trajectory.Add(position);
             }
         }
@@ -701,6 +701,8 @@ namespace Hegemonia.RTS
         {
             float menorDistancia = float.PositiveInfinity;
             LancadorMisseis escolhido = null;
+            LancadorMisseis alternativo = null;
+
             for (int i = 0; i < unitsBuffer.Count; i++)
             {
                 IdentidadeUnidade unidade = unitsBuffer[i];
@@ -710,26 +712,26 @@ namespace Hegemonia.RTS
                 if (lancador == null || lancador.municaoAtual <= 0) continue;
 
                 float distancia = (lancador.transform.position - alvo.transform.position).sqrMagnitude;
-                if (distancia >= menorDistancia) continue;
-                menorDistancia = distancia;
-                escolhido = lancador;
+                if (distancia < menorDistancia)
+                {
+                    alternativo = escolhido;
+                    menorDistancia = distancia;
+                    escolhido = lancador;
+                }
+                else if (alternativo == null)
+                {
+                    alternativo = lancador;
+                }
             }
 
             if (escolhido != null
                 && escolhido.TentarLancarCoordenado(alvo.transform.position, alvo.transform, false, out _))
                 return true;
 
-            // Se o mais próximo estiver recarregando ou sem prefab, tenta os
-            // outros lançadores válidos da mesma equipe, mas para no primeiro tiro.
-            for (int i = 0; i < unitsBuffer.Count; i++)
-            {
-                IdentidadeUnidade unidade = unitsBuffer[i];
-                if (unidade == null || unidade.teamID != equipe || !unidade.gameObject.activeInHierarchy) continue;
-                LancadorMisseis lancador = unidade.GetComponent<LancadorMisseis>()
-                    ?? unidade.GetComponentInChildren<LancadorMisseis>(true);
-                if (lancador == null || lancador == escolhido || lancador.municaoAtual <= 0) continue;
-                if (lancador.TentarLancarCoordenado(alvo.transform.position, alvo.transform, false, out _)) return true;
-            }
+            if (alternativo != null
+                && alternativo != escolhido
+                && alternativo.TentarLancarCoordenado(alvo.transform.position, alvo.transform, false, out _))
+                return true;
 
             return false;
         }

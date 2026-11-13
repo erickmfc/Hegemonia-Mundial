@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8413620191433395773}
   - component: {fileID: 1402784766526194507}
   - component: {fileID: 3312113528261180767}
+  - component: {fileID: 7099900000000000101}
   m_Layer: 0
   m_Name: Corveta_01
   m_TagString: Player
@@ -129,3 +130,18 @@ MonoBehaviour:
   combustivelPorHora: 0
   energiaConsumida: 0
   nomeDeBatismo: 
+--- !u!114 &7099900000000000101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4543749552884815094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8cc78294ac33e409d23a0c820b33a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SaveableEntity
+  uniqueId: 
+  prefabKey: 
+  runtimeSpawned: 1

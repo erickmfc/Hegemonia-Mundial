@@ -69,6 +69,7 @@ public class AviaoBombardeiro : MonoBehaviour
     private Vector3 direcaoPassagemFixa = Vector3.zero;
     private bool travouDirecao = false;
     private bool avisoSemArmamentoEmitido = false;
+    private float proximaChecagemPatrulha = 0f;
 
     void Start()
     {
@@ -198,7 +199,11 @@ public class AviaoBombardeiro : MonoBehaviour
                 ChecarAtaqueArea();
                 break;
             case ModoAtaque.Patrulha:
-                ChecarAtaquePatrulha();
+                if (Time.time >= proximaChecagemPatrulha)
+                {
+                    proximaChecagemPatrulha = Time.time + 0.25f;
+                    ChecarAtaquePatrulha();
+                }
                 break;
             case ModoAtaque.AtaqueEmMassa:
                 ChecarAtaqueEmMassa();
@@ -538,13 +543,33 @@ public class AviaoBombardeiro : MonoBehaviour
 
         GameObject objArma = PoolDeObjetosCombate.Spawn(projetilPrefab, comporta.position, comporta.rotation);
 
+        // Se o prefab for uma bomba clássica ou prefab sem script anexado na raiz
+        if (objArma.GetComponent<BombaBombardeiro>() == null 
+            && objArma.GetComponent<MisselBombardeiro>() == null 
+            && objArma.GetComponent<MisselICBM>() == null 
+            && objArma.GetComponent<MisselTatico>() == null 
+            && objArma.GetComponent<Projetil>() == null)
+        {
+            // Se o prefab tiver 'Bomb' no nome, garante o script BombaBombardeiro nele
+            if (objArma.name.IndexOf("bomb", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (objArma.GetComponent<Collider>() == null)
+                {
+                    SphereCollider sc = objArma.AddComponent<SphereCollider>();
+                    sc.radius = 0.5f;
+                }
+                objArma.AddComponent<BombaBombardeiro>();
+            }
+        }
+
         // ─── 1. BOMBA BALÍSTICA DO BOMBARDEIRO ───────────────────
         BombaBombardeiro bomba = objArma.GetComponent<BombaBombardeiro>();
         if (bomba != null)
         {
             bomba.SetDono(this.gameObject);
             // Fornece a velocidade horizontal atual do avião para simular inércia realista
-            Vector3 velHoriz = transform.forward * controleAviao.velocidadeMaximaVoo;
+            float velAviao = controleAviao != null ? controleAviao.velocidadeMaximaVoo : 120f;
+            Vector3 velHoriz = transform.forward * velAviao;
             bomba.IniciarQueda(velHoriz, pontoFinalExato, this.gameObject);
             return;
         }

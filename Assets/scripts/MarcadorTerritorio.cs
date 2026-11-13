@@ -370,6 +370,10 @@ public class MarcadorTerritorio : MonoBehaviour
                 SaveableEntity.Garantir(cidadeObjeto, prefabCidadeInicial.name);
                 RegistrarCidadeGuiaExpansao(teamID, cidade);
                 FinalizarTentativaConstrucaoCidade();
+
+                // Otimização de malhas e colisores na cidade recém-construída
+                Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(cidadeObjeto);
+
                 Destroy(gameObject);
                 Debug.Log($"[Cidade inicial] Nova Aurora criada para o Team {teamID} com {CidadeComplexoUrbano.PopulacaoInicialNovaAurora:N0} habitantes em {cidadeObjeto.transform.position}.", cidadeObjeto);
                 yield break;
@@ -604,10 +608,16 @@ public class MarcadorTerritorio : MonoBehaviour
         areaTranslúcida.transform.localScale = new Vector3(r * 2f, r * 2f, 1f); // Quad mede 1x1, multiplica pra preencher 100%
         
         Renderer rendQuad = areaTranslúcida.GetComponent<Renderer>();
-        rendQuad.material = new Material(Shader.Find("Sprites/Default"));
-        rendQuad.material.color = corFundo;
-        rendQuad.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        rendQuad.receiveShadows = false;
+        if (rendQuad != null)
+        {
+            rendQuad.sharedMaterial = mat;
+            MaterialPropertyBlock block = new MaterialPropertyBlock();
+            rendQuad.GetPropertyBlock(block);
+            block.SetColor("_Color", corFundo);
+            rendQuad.SetPropertyBlock(block);
+            rendQuad.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rendQuad.receiveShadows = false;
+        }
     }
 
     // Desenhar um QUADRADO no editor permanentemente para você conseguir ver o mapa organizando a fase

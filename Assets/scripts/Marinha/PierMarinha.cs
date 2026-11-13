@@ -49,7 +49,8 @@ public class PierMarinha : MonoBehaviour
         [System.NonSerialized] public float timerRecarga = 0f;
         [System.NonSerialized] public float timerRecargaContramedidas = 0f;
         [System.NonSerialized] public float timerRecargaCombustivel = 0f;
-        [System.NonSerialized] public bool atracagemCompleta = false; 
+        [System.NonSerialized] public bool atracagemCompleta = false;
+        [System.NonSerialized] public Coroutine corrotinaAtracagem = null; 
 
         public bool EstaLivre()
         {
@@ -522,7 +523,12 @@ public class PierMarinha : MonoBehaviour
                     if (vaga.timerRecargaCombustivel >= intervaloReabastecimentoCombustivel)
                     {
                         float quantidade = reabastecimentoCombustivelPorSegundo * vaga.timerRecargaCombustivel;
-                        ServicoAbastecimento.TentarAbastecer(combustivel, quantidade, out _);
+                        if (!ServicoAbastecimento.TentarAbastecer(combustivel, quantidade, out _))
+                        {
+                            // Se a rede de combustíveis do país ainda não estiver gerando o recurso no estoque central,
+                            // o píer atua como reserva portuária de emergência para manter as operações e patrulhas ativas.
+                            combustivel.Abastecer(quantidade);
+                        }
                         vaga.timerRecargaCombustivel = 0f;
                     }
                 }
@@ -655,9 +661,15 @@ public class PierMarinha : MonoBehaviour
             return;
         }
 
+        if (vaga.corrotinaAtracagem != null)
+        {
+            StopCoroutine(vaga.corrotinaAtracagem);
+            vaga.corrotinaAtracagem = null;
+        }
+
         vaga.navioOcupante = navio;
         vaga.atracagemCompleta = false; 
-        StartCoroutine(RotinaDeAtracagem(vaga, navio));
+        vaga.corrotinaAtracagem = StartCoroutine(RotinaDeAtracagem(vaga, navio));
     }
 
     IEnumerator RotinaDeAtracagem(VagaDeAtracagem vaga, IdentidadeNaval navio)
@@ -780,7 +792,11 @@ public class PierMarinha : MonoBehaviour
         }
 
         if(agent != null && agent.isActiveAndEnabled) agent.enabled = false;
-        if(controleFisico != null) controleFisico.enabled = false;
+        if(controleFisico != null)
+        {
+            controleFisico.AncorarOuPararTatico(true);
+            controleFisico.enabled = false;
+        }
 
         Vector3 posFinal = vaga.pontoDeAtracagem.position;
         Quaternion rotFinal = vaga.pontoDeAtracagem.rotation;
@@ -844,6 +860,7 @@ public class PierMarinha : MonoBehaviour
         {
             controleFisico.enabled = true; 
             controleFisico.distanciaChegada = distanciaOriginal;
+            controleFisico.AncorarOuPararTatico(true);
         }
 
         vaga.atracagemCompleta = true; 
@@ -877,6 +894,12 @@ public class PierMarinha : MonoBehaviour
         try
         {
             if (saidaDestino == null) saidaDestino = GetSaidaMaisProxima(navio.transform.position);
+
+            ControleNavioRealista controleFisico = navio.GetComponent<ControleNavioRealista>();
+            if (controleFisico != null)
+            {
+                controleFisico.AncorarOuPararTatico(false);
+            }
 
             if (saidaDestino != null) navio.SairDaDoca(saidaDestino.position);
             else navio.SairDaDoca(navio.transform.position - (navio.transform.forward * 50f));

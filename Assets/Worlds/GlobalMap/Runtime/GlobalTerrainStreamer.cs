@@ -17,7 +17,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private const int LocalNavMeshTileSize = 256;
     private const float LocalNavMeshVoxelSize = 4f;
     private const int LandTileDetectionSamplesPerAxis = 64;
-    private const int MaximumCachedTerrainTiles = 9;
+    private const int MaximumCachedTerrainTiles = 28;
     private const int MaximumTerrainRowsPerFrame = 8;
     private const float AltitudeModeHysteresis = 1000f;
 
@@ -56,6 +56,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     [Range(1, 64)] public int alphamapRowsPerFrame = 1;
     [Range(1, 16)] public int vegetationRowsPerFrame = 1;
     public bool showDiagnostics = true;
+
+    // Orçamento máximo de tempo por frame para manter o streaming de terreno dentro de 3ms a 4ms
+    private const double MaxBudgetMsPerFrame = 3.5;
 
     private readonly Dictionary<Vector2Int, Terrain> loadedTiles = new Dictionary<Vector2Int, Terrain>(16);
     private readonly Dictionary<Vector2Int, int> tileLastUsedOrder = new Dictionary<Vector2Int, int>(16);
@@ -879,10 +882,17 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 terrainComponent.detailObjectDistance = 0f;
                 // Keep local field/forest terrain layers active through the requested 5–20 km band.
                 terrainComponent.basemapDistance = 20000f;
+                terrainComponent.heightmapPixelError = 8f;
                 terrainComponent.enabled = false;
-                if (colliderComponent != null) colliderComponent.enabled = false;
+                if (colliderComponent != null)
+                {
+                    colliderComponent.enabled = false;
+                }
             }
             addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - terrainStarted);
+
+            System.Diagnostics.Stopwatch budgetStopwatch = new System.Diagnostics.Stopwatch();
+            budgetStopwatch.Start();
 
             int resolution = data.heightmapResolution;
             float[,] heights;
@@ -917,7 +927,12 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 using (ApplyHeightRowsMarker.Auto())
                     data.SetHeightsDelayLOD(0, rowStart, heightRows);
                 addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
-                yield return null;
+
+                if (budgetStopwatch.Elapsed.TotalMilliseconds >= MaxBudgetMsPerFrame)
+                {
+                    budgetStopwatch.Restart();
+                    yield return null;
+                }
             }
             long syncStarted = System.Diagnostics.Stopwatch.GetTimestamp();
             using (SyncHeightmapMarker.Auto())
@@ -960,7 +975,12 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 using (ApplyAlphamapRowsMarker.Auto())
                     data.SetAlphamaps(0, rowStart, alphaRows);
                 addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
-                yield return null;
+
+                if (budgetStopwatch.Elapsed.TotalMilliseconds >= MaxBudgetMsPerFrame)
+                {
+                    budgetStopwatch.Restart();
+                    yield return null;
+                }
             }
             yield return ConfigureVegetationIncremental(data, minX, minZ, size, addWorkTicks);
 
@@ -1334,6 +1354,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     {
         if (terrain == null) return;
         terrain.drawInstanced = true;
+        terrain.heightmapPixelError = 8f;
         terrain.treeDistance = vegetation ? 250f : 0f;
         terrain.treeBillboardDistance = vegetation ? 250f : 3500f;
         terrain.treeCrossFadeLength = 0f;

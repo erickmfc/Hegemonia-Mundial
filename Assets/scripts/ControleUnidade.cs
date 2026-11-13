@@ -143,6 +143,43 @@ public class ControleUnidade : MonoBehaviour
     [SerializeField] private bool bloqueioAdministrativoQuartel;
     [SerializeField] private string motivoBloqueioAdministrativoQuartel = string.Empty;
     [SerializeField, Min(0.1f)] private float intervaloEntreTentativasOrdem = 2f;
+    private bool estaDesligado;
+
+    public bool EstaDesligado => estaDesligado;
+
+    public void DefinirDesligado(bool desligado)
+    {
+        if (estaDesligado == desligado)
+        {
+            return;
+        }
+
+        estaDesligado = desligado;
+        if (controleNavioRealista != null)
+        {
+            controleNavioRealista.DefinirDesligado(desligado);
+        }
+
+        var radar = GetComponent<Hegemonia.RTS.RadarUnidadeTatica>()
+            ?? GetComponentInChildren<Hegemonia.RTS.RadarUnidadeTatica>(true);
+        if (radar != null && desligado)
+        {
+            radar.DefinirRadar(false);
+        }
+
+        if (desligado)
+        {
+            EmitirOrdemParar();
+            DefinirModoCombate(false);
+            return;
+        }
+
+        DefinirModoCombate(true);
+        if (agente != null && agente.enabled && agente.isOnNavMesh)
+        {
+            agente.isStopped = false;
+        }
+    }
 
     protected virtual void Awake()
     {
@@ -408,6 +445,28 @@ public class ControleUnidade : MonoBehaviour
         ordemControleAtual = OrdemControleUnidade.Parada;
     }
 
+    private static Material _matSpritesDefaultCompartilhado;
+    private static Material ObterMatSpritesDefault()
+    {
+        if (_matSpritesDefaultCompartilhado == null)
+        {
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+            {
+                _matSpritesDefaultCompartilhado = new Material(shader) { name = "Mat_SpritesDefault_Shared" };
+            }
+        }
+        return _matSpritesDefaultCompartilhado;
+    }
+
+    private static MaterialPropertyBlock _propBlockGlobal;
+    private static MaterialPropertyBlock ObterPropBlockGlobal()
+    {
+        if (_propBlockGlobal == null)
+            _propBlockGlobal = new MaterialPropertyBlock();
+        return _propBlockGlobal;
+    }
+
     [Header("Visual")]
     public float tamanhoSelecao = 0f; // 0 = Automatico
     public Color corSelecao = new Color(1f, 1f, 1f, 0.4f); // Branco semi-transparente (estilo padrão)
@@ -458,12 +517,15 @@ public class ControleUnidade : MonoBehaviour
         // Aplica escala (Y achatado para parecer disco)
         anelSelecao.transform.localScale = new Vector3(diametroLocal, 0.02f / escalaParent, diametroLocal);
 
-        // Material e Cor
+        // Material e Cor usando sharedMaterial e MaterialPropertyBlock para evitar duplicação em RAM
         Renderer rend = anelSelecao.GetComponent<Renderer>();
         if (rend != null)
         {
-            rend.material = new Material(Shader.Find("Sprites/Default"));
-            rend.material.color = corSelecao;
+            rend.sharedMaterial = ObterMatSpritesDefault();
+            var block = ObterPropBlockGlobal();
+            rend.GetPropertyBlock(block);
+            block.SetColor("_Color", corSelecao);
+            rend.SetPropertyBlock(block);
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
     }
@@ -471,6 +533,7 @@ public class ControleUnidade : MonoBehaviour
     void Update()
     {
         if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
+        if (estaDesligado && !selecionado) return;
         long inicioUpdate = InfraPerformanceGameplay.MarcarInicioMedicao();
         AtualizarEstadoOtimizacao();
         AtualizarDetalheVeicularDistante();
@@ -1071,6 +1134,12 @@ public class ControleUnidade : MonoBehaviour
             alterouAlgo = true;
         }
 
+        if (controleNavioRealista != null)
+        {
+            controleNavioRealista.AncorarOuPararTatico(true);
+            alterouAlgo = true;
+        }
+
         LimparDestinoOrdenado();
         ordemControleAtual = OrdemControleUnidade.Parada;
         return alterouAlgo;
@@ -1109,6 +1178,11 @@ public class ControleUnidade : MonoBehaviour
     /// </summary>
     public bool EmitirOrdemPatrulha(IList<Vector3> pontosPatrulha, string dono, string id)
     {
+        if (estaDesligado)
+        {
+            DefinirDesligado(false);
+        }
+
         ultimoMotivoRecusaOrdem = string.Empty;
         if (pontosPatrulha == null || pontosPatrulha.Count == 0)
         {
@@ -2088,6 +2162,12 @@ public class ControleUnidade : MonoBehaviour
                     return true;
                 }
 
+                if (hovercraftTransporte != null)
+                {
+                    hovercraftTransporte.DefinirDestino(destino);
+                    return true;
+                }
+
                 // Navegação normal (terrestre ou navio sem o sistema inteligente)
                 AplicarDestinoNavMeshComCooldown(destino, false);
             }
@@ -2462,6 +2542,14 @@ public class ControleUnidade : MonoBehaviour
             }
         }
 
+        if (agente != null && agente.enabled && !agente.isOnNavMesh)
+        {
+            if (NavMesh.SamplePosition(transform.position, out NavMeshHit hitRecuperacao, 35f, NavMesh.AllAreas))
+            {
+                agente.Warp(hitRecuperacao.position);
+            }
+        }
+
         float cooldownBase = EhUnidadeNaval() ? 1.10f : 0.80f;
         float cooldown = InfraPerformanceGameplay.ResolverIntervalo(cooldownBase, estadoOtimizacao, true, true);
         float tolerancia = EhUnidadeNaval() ? 8f : 4.5f;
@@ -2575,10 +2663,10 @@ public class ControleUnidade : MonoBehaviour
             caminhoAutonomiaNavMesh = new NavMeshPath();
 
         float recuoBase = Mathf.Max(MargemInteriorCostaTerrestre, agente.radius * 2f + 4f);
-        float raioNavMesh = Mathf.Max(RaioBuscaNavMeshCostaTerrestre, agente.radius * 4f);
-        for (int tentativa = 0; tentativa < 7; tentativa++)
+        float raioNavMesh = Mathf.Max(35f, agente.radius * 4f);
+        for (int tentativa = 0; tentativa < 8; tentativa++)
         {
-            float recuo = recuoBase * (1 << tentativa);
+            float recuo = recuoBase * (1f + tentativa * 0.8f);
             float tTerra = Mathf.Max(0f, limiteTerra - recuo / distancia);
             Vector3 candidato = origem + deslocamento * tTerra;
             if (!RegistroSuperficieMapa.TryClassify(
@@ -2648,6 +2736,24 @@ public class ControleUnidade : MonoBehaviour
 
         if (!agente.enabled || !agente.isOnNavMesh)
         {
+            if (!agente.enabled)
+            {
+                agente.enabled = true;
+            }
+
+            int mascaraRec = agente.areaMask != 0 ? agente.areaMask : NavMesh.AllAreas;
+            if (!agente.isOnNavMesh && NavMesh.SamplePosition(transform.position, out NavMeshHit hitRec, 45f, mascaraRec))
+            {
+                agente.Warp(hitRec.position);
+            }
+
+            if (agente.enabled && agente.isOnNavMesh)
+            {
+                agente.isStopped = false;
+                agente.SetDestination(ultimoDestinoOrdenado);
+                return;
+            }
+
             controleOrdemMovimento.Falhar("NavMeshAgent indisponivel para recuperacao terrestre", Time.unscaledTime);
             LimparDestinoOrdenado();
             return;
@@ -3146,8 +3252,8 @@ public class ControleUnidade : MonoBehaviour
         linhaAlcance.positionCount = segmentosCirculo + 1;
         linhaAlcance.loop = true;
         
-        // Material simples (unlit) para brilhar
-        linhaAlcance.material = new Material(Shader.Find("Sprites/Default"));
+        // Material simples (unlit) compartilhado para não inflar instâncias
+        linhaAlcance.sharedMaterial = ObterMatSpritesDefault();
         linhaAlcance.startColor = corAlcance;
         linhaAlcance.endColor = corAlcance;
 
@@ -3185,7 +3291,7 @@ public class ControleUnidade : MonoBehaviour
         // CORREÇÃO: começa com 0 pontos para não renderizar lixo antes de ser atualizado
         linhaCaminho.positionCount = 0;
         
-        linhaCaminho.material = new Material(Shader.Find("Sprites/Default"));
+        linhaCaminho.sharedMaterial = ObterMatSpritesDefault();
         linhaCaminho.startColor = corCaminho;
         linhaCaminho.endColor = corCaminho;
         linhaCaminho.gameObject.SetActive(false);
@@ -3701,7 +3807,7 @@ public class ControleUnidade : MonoBehaviour
     // missões ofensivas ainda passam pelo bloqueio administrativo.
     private bool PodeMoverSemTripulacao()
     {
-        return bloqueioAdministrativoQuartel && EhUnidadeNaval();
+        return bloqueioAdministrativoQuartel && (EhUnidadeNaval() || (identidadeUnidade != null && identidadeUnidade.tipoUnidade == TipoUnidade.Infantaria));
     }
 
     private void ValidarConflitosDeControle()

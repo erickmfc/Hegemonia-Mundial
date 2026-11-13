@@ -288,6 +288,7 @@ public class SaveEntityData
     public string ordemMovimentoOwner = string.Empty;
     public string ordemMovimentoId = string.Empty;
     public bool modoCombateAtivo;
+    public bool estaDesligado;
     public bool possuiDestino;
     public SaveVector3 ultimoDestino;
     public List<SaveVector3> pontosPatrulha = new List<SaveVector3>();
@@ -2157,6 +2158,9 @@ public class SistemaSaveGame : MonoBehaviour
         AdicionarCandidatos(IA_UnitySearch.FindAll<Fabrica>().Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(IA_UnitySearch.FindAll<Estaleiro>().Select(c => c != null ? c.gameObject : null));
         AdicionarCandidatos(IA_UnitySearch.FindAll<PierMarinha>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<GerenciadorQuartel>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<PlataformaOffshore>().Select(c => c != null ? c.gameObject : null));
+        AdicionarCandidatos(IA_UnitySearch.FindAll<SiloLancadorEstrategico>().Select(c => c != null ? c.gameObject : null));
 
         foreach (GameObject obj in bufferObjetos)
         {
@@ -2237,6 +2241,7 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         ControleAviao controleAviao = obj.GetComponent<ControleAviao>();
+        ControleNavioRealista navioRealista = obj.GetComponent<ControleNavioRealista>();
         SaveEntityData data = new SaveEntityData
         {
             uniqueId = saveable.UniqueId,
@@ -2271,7 +2276,9 @@ public class SistemaSaveGame : MonoBehaviour
             capacidadeCombustivelAtualizada = true,
             capacidadeNavalAtualizada = true,
             ordemAtual = controle != null ? controle.OrdemAtual : OrdemControleUnidade.Ociosa,
-            modoCombateAtivo = true
+            modoCombateAtivo = true,
+            estaDesligado = (controle != null && controle.EstaDesligado)
+                            || (navioRealista != null && navioRealista.EstaDesligado)
         };
         CapturarDadosCidade(cidade, data);
 
@@ -2594,6 +2601,12 @@ public class SistemaSaveGame : MonoBehaviour
         }
 
         controle.DefinirModoCombate(data.modoCombateAtivo);
+        if (data.estaDesligado)
+        {
+            controle.DefinirDesligado(true);
+            return;
+        }
+
         if (data.ordemAtual == OrdemControleUnidade.Patrulhando && data.pontosPatrulha != null && data.pontosPatrulha.Count > 0)
         {
             List<Vector3> pontos = data.pontosPatrulha.Select(p => p.ToVector3()).ToList();
@@ -2757,9 +2770,21 @@ public class SistemaSaveGame : MonoBehaviour
         if (controle != null)
         {
             controle.DefinirModoCombate(data.modoCombateAtivo);
-            if ((data.ordemAtual == OrdemControleUnidade.Movendo || data.ordemAtual == OrdemControleUnidade.Recuando) && data.possuiDestino)
+            if (data.estaDesligado)
+            {
+                controle.DefinirDesligado(true);
+            }
+            else if ((data.ordemAtual == OrdemControleUnidade.Movendo || data.ordemAtual == OrdemControleUnidade.Recuando) && data.possuiDestino)
             {
                 controle.EmitirOrdemMover(data.ultimoDestino.ToVector3());
+            }
+        }
+        else if (data.estaDesligado)
+        {
+            ControleNavioRealista navio = obj.GetComponent<ControleNavioRealista>();
+            if (navio != null)
+            {
+                navio.DefinirDesligado(true);
             }
         }
 

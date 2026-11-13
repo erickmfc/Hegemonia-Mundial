@@ -86,7 +86,10 @@ namespace Hegemonia.AI.IA01
             if (!registeredSlots.Contains(slot)) registeredSlots.Add(slot);
             slot.AttachLayout(this);
             slot.ConfigureOwner(ownerTeamId, ownerNationId, LayoutVersion);
-            slotRegistry.Register(slot);
+            if (slotRegistry != null)
+            {
+                slotRegistry.Register(slot);
+            }
         }
 
         public void UnregisterSlot(IA01BuildSlot slot)

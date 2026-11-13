@@ -138,8 +138,11 @@ public class ControleAviao : MonoBehaviour
     private GlobalTerrainStreamer streamerLimitesVoo;
     private GlobalWorldDefinition definicaoLimitesVoo;
     private float proximaBuscaLimitesVoo;
-    private Terrain[] terrenosAtivosVoo;
-    private float proximaBuscaTerrenosVoo;
+    private static Terrain[] s_terrenosAtivosCompartilhados;
+    private static float s_proximaBuscaTerrenosGlobal;
+    private Vector3 _ultimaPosicaoAlturaSolo = new Vector3(-99999f, -99999f, -99999f);
+    private float _alturaSoloCacheada;
+    private float _tempoExpiracaoAlturaSolo;
     [HideInInspector] public bool emAtaqueMergulho = false;
     [HideInInspector] public Vector3 alvoDoMergulho;
     [HideInInspector] public bool alvoPrioritarioIA = false; 
@@ -684,15 +687,24 @@ public class ControleAviao : MonoBehaviour
 
     private bool TryObterAlturaSolo(Vector3 posicao, out float alturaSolo)
     {
-        if (terrenosAtivosVoo == null || Time.unscaledTime >= proximaBuscaTerrenosVoo)
+        float agora = Time.unscaledTime;
+        // OTIMIZAÇÃO: Evita calcular SampleHeight a cada frame/chamada se o avião se moveu pouco
+        if (agora < _tempoExpiracaoAlturaSolo && (posicao - _ultimaPosicaoAlturaSolo).sqrMagnitude < 25f)
         {
-            terrenosAtivosVoo = Terrain.activeTerrains;
-            proximaBuscaTerrenosVoo = Time.unscaledTime + 0.5f;
+            alturaSolo = _alturaSoloCacheada;
+            return true;
         }
 
-        for (int i = 0; terrenosAtivosVoo != null && i < terrenosAtivosVoo.Length; i++)
+        // Compartilha a busca de terrenos globalmente entre todas as aeronaves
+        if (s_terrenosAtivosCompartilhados == null || agora >= s_proximaBuscaTerrenosGlobal)
         {
-            Terrain terreno = terrenosAtivosVoo[i];
+            s_terrenosAtivosCompartilhados = Terrain.activeTerrains;
+            s_proximaBuscaTerrenosGlobal = agora + 2.0f;
+        }
+
+        for (int i = 0; s_terrenosAtivosCompartilhados != null && i < s_terrenosAtivosCompartilhados.Length; i++)
+        {
+            Terrain terreno = s_terrenosAtivosCompartilhados[i];
             TerrainData dadosTerreno = terreno != null ? terreno.terrainData : null;
             if (dadosTerreno == null) continue;
 
@@ -705,6 +717,9 @@ public class ControleAviao : MonoBehaviour
             }
 
             alturaSolo = terreno.SampleHeight(posicao) + origem.y;
+            _alturaSoloCacheada = alturaSolo;
+            _ultimaPosicaoAlturaSolo = posicao;
+            _tempoExpiracaoAlturaSolo = agora + 0.15f;
             return true;
         }
 
@@ -713,6 +728,9 @@ public class ControleAviao : MonoBehaviour
             try
             {
                 alturaSolo = definicaoLimitesVoo.HeightAtWorld(posicao.x, posicao.z);
+                _alturaSoloCacheada = alturaSolo;
+                _ultimaPosicaoAlturaSolo = posicao;
+                _tempoExpiracaoAlturaSolo = agora + 0.15f;
                 return true;
             }
             catch (InvalidOperationException)
@@ -723,6 +741,9 @@ public class ControleAviao : MonoBehaviour
         }
 
         alturaSolo = 0f;
+        _alturaSoloCacheada = 0f;
+        _ultimaPosicaoAlturaSolo = posicao;
+        _tempoExpiracaoAlturaSolo = agora + 0.15f;
         return false;
     }
 

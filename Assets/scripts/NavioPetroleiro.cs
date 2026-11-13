@@ -12,6 +12,7 @@ public class NavioPetroleiro : ControleUnidade
     public float tempoDeCarregamento = 5.0f;
 
     [Header("Desempenho")]
+    [SerializeField] private bool logarDebug = false;
     [Tooltip("Multiplicador específico do petroleiro, aplicado uma vez ao iniciar, além do ajuste global da frota.")]
     [Min(0.1f)] public float multiplicadorVelocidade = 2.5f;
     private bool velocidadeInicialAjustada;
@@ -235,7 +236,7 @@ public class NavioPetroleiro : ControleUnidade
             }
 
             statusDebug = "Infraestrutura do time encontrada! Iniciando serviço de logística.";
-            Debug.Log("[Navio Petroleiro] Plataforma e Pier do proprio time detectados! Saindo para trabalhar.");
+            if (logarDebug) Debug.Log("[Navio Petroleiro] Plataforma e Pier do proprio time detectados! Saindo para trabalhar.");
             MudarEstado(EstadoPetroleiro.SAINDO_ESTALEIRO);
         }
         else
@@ -318,7 +319,7 @@ public class NavioPetroleiro : ControleUnidade
                 && novo != EstadoPetroleiro.AGUARDANDO_INFRAESTRUTURA);
         timerEstado = 0f;
         statusDebug = "Iniciando: " + novo.ToString();
-        Debug.Log($"[Navio] Mudando para: {novo}");
+        if (logarDebug) Debug.Log($"[Navio] Mudando para: {novo}");
 
         switch (novo)
         {
@@ -494,7 +495,7 @@ public class NavioPetroleiro : ControleUnidade
         if (!avisoFallbackAquaticoEmitido)
         {
             avisoFallbackAquaticoEmitido = true;
-            Debug.Log("[Navio Petroleiro] Rota aquatica direta ativa para a logistica.", this);
+            if (logarDebug) Debug.Log("[Navio Petroleiro] Rota aquatica direta ativa para a logistica.", this);
         }
 
         Vector3 destino = destinoRotaAquatica;
@@ -685,7 +686,7 @@ public class NavioPetroleiro : ControleUnidade
 
             if (tanqueCheio || tempoEsgotado)
             {
-                Debug.Log($"[Navio] Carregamento concluído. Cheio: {tanqueCheio}, Tempo: {tempoEsgotado}");
+                if (logarDebug) Debug.Log($"[Navio] Carregamento concluído. Cheio: {tanqueCheio}, Tempo: {tempoEsgotado}");
                 MudarEstado(proximo);
             }
         }

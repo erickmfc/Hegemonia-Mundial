@@ -13,6 +13,11 @@ public static class GestorMenusExclusivos
         get { return donoMenuAtivo != null; }
     }
 
+    public static bool EhMenuAeroportoAtivo
+    {
+        get { return donoMenuAtivo is GerenciadorAeroporto; }
+    }
+
     public static void Abrir(Object dono)
     {
         if (dono == null) return;

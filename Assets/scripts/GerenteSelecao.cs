@@ -686,9 +686,16 @@ public class GerenteSelecao : MonoBehaviour
             marcador.transform.localScale = new Vector3(2f, 0.05f, 2f);
             
             Renderer r = marcador.GetComponent<Renderer>();
-            r.material = new Material(Shader.Find("Sprites/Default"));
-            r.material.color = new Color(0f, 1f, 0.5f, 0.6f); // Verde neon
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null && r != null)
+            {
+                r.sharedMaterial = new Material(shader);
+                MaterialPropertyBlock block = new MaterialPropertyBlock();
+                r.GetPropertyBlock(block);
+                block.SetColor("_Color", new Color(0f, 1f, 0.5f, 0.6f)); // Verde neon
+                r.SetPropertyBlock(block);
+            }
+            if (r != null) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             
             marcador.AddComponent<AnimadorMarcador>();
         }
@@ -1156,14 +1163,14 @@ public class GerenteSelecao : MonoBehaviour
                 primeiraAgua = meio;
         }
 
-        for (int tentativa = 0; tentativa < 6; tentativa++)
+        for (int tentativa = 0; tentativa < 8; tentativa++)
         {
-            float recuo = margem * (1 << tentativa);
+            float recuo = margem * (1f + tentativa * 0.8f);
             float distancia = Mathf.Max(0f, ultimaTerra - recuo);
             Vector2 amostra = inicio + direcao * distancia;
             if (mundo.SignedCoastDistanceAtWorld(amostra.x, amostra.y) <= 0f) continue;
             Vector3 candidato = new Vector3(amostra.x, mundo.HeightAtWorld(amostra.x, amostra.y), amostra.y);
-            if (UnityEngine.AI.NavMesh.SamplePosition(candidato, out UnityEngine.AI.NavMeshHit hit, 20f, mascaraNavMesh)
+            if (UnityEngine.AI.NavMesh.SamplePosition(candidato, out UnityEngine.AI.NavMeshHit hit, 35f, mascaraNavMesh)
                 && mundo.SignedCoastDistanceAtWorld(hit.position.x, hit.position.z) > 0f)
             {
                 ponto = hit.position;

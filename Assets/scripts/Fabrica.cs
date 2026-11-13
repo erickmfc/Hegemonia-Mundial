@@ -173,7 +173,17 @@ public class Fabrica : MonoBehaviour
         bool spawnValidado = false;
         UnityEngine.AI.NavMeshHit nh;
         long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
-        if (UnityEngine.AI.NavMesh.SamplePosition(spawn.position, out nh, 10f, UnityEngine.AI.NavMesh.AllAreas))
+        if (ehQuartel && saidaAlvo != null && UnityEngine.AI.NavMesh.SamplePosition(baseSaida, out nh, 20f, UnityEngine.AI.NavMesh.AllAreas))
+        {
+            posSpawnFinal = nh.position;
+            spawnValidado = true;
+        }
+        else if (UnityEngine.AI.NavMesh.SamplePosition(spawn.position, out nh, 15f, UnityEngine.AI.NavMesh.AllAreas))
+        {
+            posSpawnFinal = nh.position;
+            spawnValidado = true;
+        }
+        else if (UnityEngine.AI.NavMesh.SamplePosition(baseSaida, out nh, 25f, UnityEngine.AI.NavMesh.AllAreas))
         {
             posSpawnFinal = nh.position;
             spawnValidado = true;
@@ -290,27 +300,13 @@ public class Fabrica : MonoBehaviour
                 var agente = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
                 if (agente != null && !agente.isOnNavMesh)
                 {
-                    if (spawnJaValidado)
+                    if (UnityEngine.AI.NavMesh.SamplePosition(destino, out UnityEngine.AI.NavMeshHit hitDest, 25.0f, UnityEngine.AI.NavMesh.AllAreas))
                     {
-                        agente.Warp(spawnValidadoPosicao);
+                        agente.Warp(hitDest.position);
                     }
-                    else
+                    else if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out UnityEngine.AI.NavMeshHit hitSpawn, 25f, UnityEngine.AI.NavMesh.AllAreas))
                     {
-                        long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
-                        UnityEngine.AI.NavMeshHit hitSpawn;
-                        if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
-                        {
-                            agente.Warp(hitSpawn.position);
-                        }
-                        else
-                        {
-                            UnityEngine.AI.NavMeshHit hitDest;
-                            if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDest, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
-                            {
-                                agente.Warp(hitDest.position);
-                            }
-                        }
-                        RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
+                        agente.Warp(hitSpawn.position);
                     }
                 }
                 controle.EmitirOrdemMover(destino);
@@ -322,27 +318,13 @@ public class Fabrica : MonoBehaviour
                 {
                     if (!nav.isOnNavMesh)
                     {
-                        if (spawnJaValidado)
+                        if (UnityEngine.AI.NavMesh.SamplePosition(destino, out UnityEngine.AI.NavMeshHit hitDest, 25.0f, UnityEngine.AI.NavMesh.AllAreas))
                         {
-                            nav.Warp(spawnValidadoPosicao);
+                            nav.Warp(hitDest.position);
                         }
-                        else
+                        else if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out UnityEngine.AI.NavMeshHit hitSpawn, 25f, UnityEngine.AI.NavMesh.AllAreas))
                         {
-                            long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
-                            UnityEngine.AI.NavMeshHit hitSpawn;
-                            if (UnityEngine.AI.NavMesh.SamplePosition(unidade.transform.position, out hitSpawn, 10f, UnityEngine.AI.NavMesh.AllAreas))
-                            {
-                                nav.Warp(hitSpawn.position);
-                            }
-                            else
-                            {
-                                UnityEngine.AI.NavMeshHit hitDest;
-                                if (UnityEngine.AI.NavMesh.SamplePosition(destino, out hitDest, 15.0f, UnityEngine.AI.NavMesh.AllAreas))
-                                {
-                                    nav.Warp(hitDest.position);
-                                }
-                            }
-                            RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
+                            nav.Warp(hitSpawn.position);
                         }
                     }
 

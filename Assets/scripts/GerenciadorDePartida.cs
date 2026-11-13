@@ -38,7 +38,6 @@ public class GerenciadorDePartida : MonoBehaviour
         {
             RTSGameSession sessao = RTSGameSession.Instancia;
             sessao?.BeginGameplay(idJogador, idIA, 1);
-            sessao?.SetPaused(true);
 
             SistemaGovernoMundial.GarantirInstancia();
             DadosPaisGoverno paisJogador = SistemaGovernoMundial.Instancia != null
@@ -46,11 +45,16 @@ public class GerenciadorDePartida : MonoBehaviour
                 : null;
             if (paisJogador != null)
             {
-                paisJogador.nomePais = string.Empty;
-                paisJogador.configuracaoInicialConcluida = false;
+                if (string.IsNullOrWhiteSpace(paisJogador.nomePais))
+                {
+                    paisJogador.nomePais = "Republica Atlas";
+                    paisJogador.nomeMoeda = "Atlas";
+                    paisJogador.simboloMoeda = "AT$";
+                    paisJogador.bloco = "Ordem Atlas";
+                }
+                paisJogador.configuracaoInicialConcluida = true;
+                sessao?.SetPaused(false);
                 SistemaGovernoMundial.Instancia.NotificarGovernoAtualizado();
-                HUDAjudaRTS.MostrarMensagemTemporaria(
-                    "CONFIGURE SEU PAÍS\nA partida está pausada. Abra Governo para definir nome, moeda, bandeira e prioridades do orçamento.", 8f);
             }
         }
         Debug.Log("[Gerenciador] Partida iniciada.");

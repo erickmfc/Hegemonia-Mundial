@@ -20,6 +20,8 @@ namespace Hegemonia.AI.BrainMaster
         private int _navalCreatyRotationIndex;
         private Vector3 _coastalGuardPoint;
         private float _nextCoastalGuardRefreshTime;
+        private readonly HashSet<int> _refuelingShipIds = new HashSet<int>();
+        private readonly List<GameObject> _singleShipBuffer = new List<GameObject>(1);
         private float _nextDecisionTime;
 
         public IA_NavalDirector(IA_Context context)
@@ -131,6 +133,20 @@ namespace Hegemonia.AI.BrainMaster
             IA_SquadData escort = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
             IA_SquadData heavy = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
             IA_SquadData submarine = _context.SquadDirector.GetSquad(IA_SquadRole.Submarine);
+
+            if (brain != null && brain.UsaCronogramaIA03)
+            {
+                if (!brain.IA03NavioMilitarLiberado && navalTarget == null)
+                {
+                    return;
+                }
+
+                DispatchIA03NavalSchedule(escort, heavy, navalTarget, baseCenter, now);
+                DispatchSubmarine(subTarget, subPressureTarget, subStage, !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter));
+                InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Naval, tickStart);
+                return;
+            }
+
             bool holdFormation = !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter);
 
             DispatchEscort(escortTarget, escortPressureTarget, escortStage, holdFormation, baseCenter, now);
@@ -506,6 +522,126 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return selected;
+        }
+
+        private void DispatchIA03NavalSchedule(
+            IA_SquadData escort,
+            IA_SquadData heavy,
+            Transform navalTarget,
+            Vector3 baseCenter,
+            float now)
+        {
+            _escortActiveBuffer.Clear();
+            if (HasUnits(escort))
+            {
+                for (int i = 0; i < escort.Units.Count; i++)
+                {
+                    if (escort.Units[i] != null) _escortActiveBuffer.Add(escort.Units[i]);
+                }
+            }
+            if (HasUnits(heavy))
+            {
+                for (int i = 0; i < heavy.Units.Count; i++)
+                {
+                    if (heavy.Units[i] != null && !_escortActiveBuffer.Contains(heavy.Units[i]))
+                    {
+                        _escortActiveBuffer.Add(heavy.Units[i]);
+                    }
+                }
+            }
+
+            if (_escortActiveBuffer.Count == 0)
+            {
+                return;
+            }
+
+            Vector3 pierAnchor;
+            bool hasPier = TryFindOwnStructureAnchor(out pierAnchor, "pier", "estaleiro");
+            Vector3 patrolA = ResolveCoastalGuardPoint(baseCenter, now);
+            Vector3 patrolB = _context.MapAnalyzer.FindPointInTerrain(
+                patrolA != Vector3.zero ? patrolA : baseCenter,
+                IA_TerrainType.Water,
+                160f,
+                420f,
+                20);
+            if (patrolB == Vector3.zero)
+            {
+                patrolB = patrolA + Vector3.forward * 180f;
+            }
+
+            for (int i = 0; i < _escortActiveBuffer.Count; i++)
+            {
+                GameObject ship = _escortActiveBuffer[i];
+                if (ship == null) continue;
+
+                int id = ship.GetInstanceID();
+                CombustivelUnidade combustivel = ship.GetComponent<CombustivelUnidade>();
+                bool precisaAbastecer = combustivel != null && combustivel.usaCombustivel && combustivel.Percentual <= 0.30f;
+                bool emRecarga = _refuelingShipIds.Contains(id);
+
+                if (precisaAbastecer)
+                {
+                    _refuelingShipIds.Add(id);
+                    emRecarga = true;
+                }
+                else if (emRecarga && (combustivel == null || !combustivel.usaCombustivel || combustivel.Percentual >= 0.90f))
+                {
+                    _refuelingShipIds.Remove(id);
+                    emRecarga = false;
+                }
+
+                _singleShipBuffer.Clear();
+                _singleShipBuffer.Add(ship);
+
+                if (emRecarga)
+                {
+                    if (hasPier)
+                    {
+                        QueueMove("ia03_naval_refuel_" + id, _singleShipBuffer, pierAnchor, 92, 6.0f);
+                    }
+                    continue;
+                }
+
+                if (navalTarget != null)
+                {
+                    Vector3 attackPoint = ResolveAttackPoint(patrolA, navalTarget.position, -180f, 320f);
+                    QueueAttack("ia03_naval_combat_" + id, _singleShipBuffer, navalTarget, attackPoint, 90, 4.2f);
+                }
+                else
+                {
+                    QueuePatrol("ia03_naval_patrol_" + id, _singleShipBuffer, patrolA, patrolB, 85, 8.0f);
+                }
+            }
+        }
+
+        private void QueuePatrol(string key, List<GameObject> units, Vector3 pointA, Vector3 pointB, int priority, float cooldown)
+        {
+            List<GameObject> availableUnits = CloneUnits(units);
+            if (availableUnits.Count == 0)
+            {
+                return;
+            }
+
+            IA_PatrolOrderData payload = new IA_PatrolOrderData
+            {
+                Units = availableUnits,
+                PointA = pointA,
+                PointB = pointB
+            };
+
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Patrol,
+                "IA_NavalDirector",
+                "naval",
+                "patrulha naval",
+                priority,
+                "naval",
+                "patrol:" + key,
+                cooldown,
+                payload);
+
+            string reason;
+            _context.CommandQueue.Enqueue(request, Time.time, out reason);
         }
 
         private void QueueMove(string key, List<GameObject> units, Vector3 destination, int priority, float cooldown)

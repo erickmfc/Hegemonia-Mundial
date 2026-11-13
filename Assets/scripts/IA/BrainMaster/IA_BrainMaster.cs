@@ -116,6 +116,73 @@ namespace Hegemonia.AI.BrainMaster
 
         public IA_BootstrapStage BootstrapStage { get; private set; }
 
+        public Vector3 LastOilPlatformAttackPosition { get; private set; }
+        public float LastOilPlatformAttackTime { get; private set; } = -999f;
+        private int _ultimoPlatformCountIA03 = -1;
+        private Vector3 _ultimaPosicaoPlataformaIA03;
+
+        public int DiaAtualJogo => GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
+        public bool UsaCronogramaIA03 => TeamId == 2;
+        public bool IA03Despertou => !UsaCronogramaIA03 || DiaAtualJogo > 2;
+        public bool IA03AereoLiberado => !UsaCronogramaIA03 || DiaAtualJogo > 4;
+        public bool IA03PatrulhaTerrestreAtiva => !UsaCronogramaIA03 || (DiaAtualJogo >= 5 && DiaAtualJogo < 10);
+        public bool IA03EstaleiroEPetroleiroLiberado => !UsaCronogramaIA03 || DiaAtualJogo >= 7;
+        public bool IA03PatrulhaAereaLiberada => !UsaCronogramaIA03 || DiaAtualJogo >= 7;
+        public bool IA03NavioMilitarLiberado => !UsaCronogramaIA03 || DiaAtualJogo >= 10;
+        public int IA03LimitePetroleiros => DiaAtualJogo > 20 ? 4 : 2;
+
+        public bool IA03AlertaAmeacaAtivo
+        {
+            get
+            {
+                if (!UsaCronogramaIA03)
+                {
+                    return false;
+                }
+
+                DadosPaisGoverno country = SistemaGovernoMundial.Instancia != null
+                    ? SistemaGovernoMundial.Instancia.ObterPais(TeamId)
+                    : null;
+                if (country != null && country.emGuerra)
+                {
+                    return true;
+                }
+
+                if (_ia03Estratega != null
+                    && _ia03Estratega.NivelDeConflito != Hegemonia.AI.IA03.IA03NivelConflito.Paz)
+                {
+                    return true;
+                }
+
+                if (Context != null
+                    && Context.CombatPressure != null
+                    && Context.CombatPressure.Estado != EstadoCargaIA.Normal)
+                {
+                    return true;
+                }
+
+                return HasRecentOilPlatformAttack(Time.time);
+            }
+        }
+
+        public bool HasRecentOilPlatformAttack(float now, float windowSeconds = 90f)
+        {
+            return LastOilPlatformAttackPosition != Vector3.zero
+                && LastOilPlatformAttackTime > 0f
+                && (now - LastOilPlatformAttackTime) <= windowSeconds;
+        }
+
+        public void RegistrarAtaquePlataforma(Vector3 position)
+        {
+            if (position == Vector3.zero)
+            {
+                return;
+            }
+
+            LastOilPlatformAttackPosition = position;
+            LastOilPlatformAttackTime = Time.time;
+        }
+
         public IA_Context Context { get; private set; }
         public IA_DeusaPoliticaNacional PoliticaDeusaAtual
         {
@@ -380,6 +447,12 @@ namespace Hegemonia.AI.BrainMaster
 
             UpdateImperialPlanState();
 
+            if (UsaCronogramaIA03 && !IA03Despertou)
+            {
+                BootstrapStatus = "cronograma IA03: aguardando fim do Dia 2 (DiaAtual=" + DiaAtualJogo + ")";
+                return;
+            }
+
             ConfigureSchedulerBudget();
             if (_debugMonitor != null) _debugMonitor.VerboseLogs = EnableVerboseLogs;
 
@@ -588,6 +661,66 @@ namespace Hegemonia.AI.BrainMaster
             if (_ia03Estratega != null)
             {
                 _ia03Estratega.AplicarMetasMilitaresDoPerfil();
+            }
+
+            if (UsaCronogramaIA03)
+            {
+                if (!IA03AereoLiberado)
+                {
+                    TargetAircraft = 0;
+                }
+                else
+                {
+                    TargetAircraft = Mathf.Max(2, TargetAircraft);
+                }
+
+                if (!IA03EstaleiroEPetroleiroLiberado)
+                {
+                    TargetShipyards = 0;
+                    TargetPiers = 0;
+                    TargetPlatforms = 0;
+                    TargetOilTankers = 0;
+                }
+                else
+                {
+                    TargetOilTankers = IA03LimitePetroleiros;
+                }
+
+                if (!IA03NavioMilitarLiberado)
+                {
+                    TargetFleet = 0;
+                    TargetCoastalDefenseShips = 0;
+                }
+                else
+                {
+                    TargetFleet = Mathf.Max(2, TargetFleet);
+                }
+
+                // Monitora perda ou dano em plataformas de petroleo proprias
+                if (_worldState != null && _worldState.OwnStructures != null)
+                {
+                    for (int i = 0; i < _worldState.OwnStructures.Count; i++)
+                    {
+                        GameObject s = _worldState.OwnStructures[i];
+                        if (s == null) continue;
+                        string n = IA_Text.Normalize(s.name);
+                        if (n.Contains("plataforma"))
+                        {
+                            _ultimaPosicaoPlataformaIA03 = s.transform.position;
+                            SistemaDeDanos danos = s.GetComponent<SistemaDeDanos>();
+                            if (danos != null && danos.vidaAtual < danos.vidaMaxima * 0.98f)
+                            {
+                                RegistrarAtaquePlataforma(s.transform.position);
+                            }
+                        }
+                    }
+                }
+
+                if (_ultimoPlatformCountIA03 > 0 && snapshot.PlatformCount < _ultimoPlatformCountIA03 && _ultimaPosicaoPlataformaIA03 != Vector3.zero)
+                {
+                    RegistrarAtaquePlataforma(_ultimaPosicaoPlataformaIA03);
+                }
+                _ultimoPlatformCountIA03 = snapshot.PlatformCount;
             }
 
             bool oilGap = snapshot.PlatformCount < TargetPlatforms

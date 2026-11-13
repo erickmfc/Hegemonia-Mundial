@@ -420,9 +420,39 @@ public class MenuComandoController : MonoBehaviour
             return;
         }
         Instancia = this;
+        if (transform.parent == null)
+        {
+            DontDestroyOnLoad(gameObject);
+        }
         RegistroEntidadesJogo.EntidadesAlteradas += MarcarCachesEntidadesSujo;
 
         ResolverDocumento();
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    public static void GarantirInstanciaGlobal()
+    {
+        if (Instancia != null) return;
+        MenuComandoController existente = FindFirstObjectByType<MenuComandoController>(FindObjectsInactive.Include);
+        if (existente != null)
+        {
+            Instancia = existente;
+            existente.gameObject.SetActive(true);
+            return;
+        }
+
+        VisualTreeAsset uxml = Resources.Load<VisualTreeAsset>("MenuComando/MenuComando");
+        if (uxml != null)
+        {
+            GameObject go = new GameObject("menucomando_global");
+            UIDocument doc = go.AddComponent<UIDocument>();
+            doc.visualTreeAsset = uxml;
+            PanelSettings ps = Resources.Load<PanelSettings>("PanelSettings");
+            if (ps != null) doc.panelSettings = ps;
+            doc.sortingOrder = 500;
+            go.AddComponent<MenuComandoController>();
+            DontDestroyOnLoad(go);
+        }
     }
 
     /// <summary>
@@ -1518,14 +1548,20 @@ public class MenuComandoController : MonoBehaviour
         }
     }
 
+    private static bool MenuExclusivoTelaCheiaAberto()
+    {
+        return Construtor.EmModoConstrucaoAtivo
+            || GerenciadorQuartel.InterfaceAberta
+            || QuartelMenuUIController.EntradaGlobalBloqueada
+            || MenuGoverno.EstaAberto
+            || MenuConstrucao.EstaAberto;
+    }
+
     private void AtualizarBarraComandoContextual()
     {
         if (barraComandoContextual == null) return;
 
-        bool outraInterfaceAberta = Construtor.EmModoConstrucaoAtivo
-            || GerenciadorQuartel.InterfaceAberta
-            || MenuGoverno.EstaAberto
-            || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
+        bool outraInterfaceAberta = MenuExclusivoTelaCheiaAberto();
         AtualizarVisibilidadeHudTatico();
         if (menuAberto || outraInterfaceAberta)
         {
@@ -1649,11 +1685,7 @@ public class MenuComandoController : MonoBehaviour
 
     private void AtualizarVisibilidadeHudTatico()
     {
-        bool podeExibir = !menuAberto
-            && !Construtor.EmModoConstrucaoAtivo
-            && !GerenciadorQuartel.InterfaceAberta
-            && !MenuGoverno.EstaAberto
-            && !IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto;
+        bool podeExibir = !menuAberto && !MenuExclusivoTelaCheiaAberto();
         if (barraComandoContextual != null)
             barraComandoContextual.style.display = podeExibir && hudExpandida ? DisplayStyle.Flex : DisplayStyle.None;
         if (hudDockReabrir != null)
@@ -1708,6 +1740,8 @@ public class MenuComandoController : MonoBehaviour
         DefinirTextoHudLocalizado("hud-roe-free", "roe.free", "○  FOGO LIVRE");
         DefinirTextoHudLocalizado("hud-card-sensors", "card.sensors", "SENSORES / EMCON");
         DefinirTextoHudLocalizado("hud-radar", "sensor.radar", "◉ RADAR");
+        DefinirTextoHudLocalizado("hud-ancoragem", "sensor.anchor", "⚓ ANCORAGEM");
+        DefinirTextoHudLocalizado("hud-desligar", "sensor.power", "⚡ ESTADO");
         DefinirTextoHud("hud-sonar", string.Format(TextoHud("sensor.row", "{0}  {1}"), "◎ " + TextoHud("sensor.sonar", "SONAR"), TextoHud("state.na", "N/D")));
         DefinirTextoHud("hud-esm", string.Format(TextoHud("sensor.row", "{0}  {1}"), "▥ " + TextoHud("sensor.esm", "ESM"), TextoHud("state.na", "N/D")));
         DefinirTextoHud("hud-datalink", string.Format(TextoHud("sensor.row", "{0}  {1}"), "⊕ " + TextoHud("sensor.datalink", "LINK DE DADOS"), TextoHud("state.na", "N/D")));
@@ -1883,6 +1917,8 @@ public class MenuComandoController : MonoBehaviour
     private void VincularHudTatico()
     {
         VincularBotaoHud("hud-radar", () => ExecutarOrdemContextual("RADAR_ALTERNAR"));
+        VincularBotaoHud("hud-ancoragem", () => ExecutarOrdemContextual("ANCORAGEM_ALTERNAR"));
+        VincularBotaoHud("hud-desligar", () => ExecutarOrdemContextual("DESLIGAR_ALTERNAR"));
         VincularBotaoHud("hud-roe-hold", () => AplicarModoCombateHud(MenuCombateNaval.Modo.Passivo));
         VincularBotaoHud("hud-roe-defensive", () => AplicarModoCombateHud(MenuCombateNaval.Modo.Manual));
         VincularBotaoHud("hud-roe-tight", () => AplicarModoCombateHud(MenuCombateNaval.Modo.Automatico, true));
@@ -1954,7 +1990,11 @@ public class MenuComandoController : MonoBehaviour
     private void VincularBotaoHud(string nome, Action acao)
     {
         Button botao = root != null ? root.Q<Button>(nome) : null;
-        if (botao != null) botao.clicked += acao;
+        if (botao != null)
+        {
+            botao.pickingMode = PickingMode.Position;
+            botao.clicked += acao;
+        }
     }
 
     private void VincularExpansaoCardsHud()
@@ -2905,6 +2945,53 @@ public class MenuComandoController : MonoBehaviour
                 TextoHud("sensor.row", "{0}  {1}"),
                 "◉ " + TextoHud("sensor.radar", "RADAR"),
                 estado);
+        }
+
+        Button botaoAncoragem = root.Q<Button>("hud-ancoragem");
+        if (botaoAncoragem != null)
+        {
+            ControleNavioRealista navioComponente = unidade.GetComponent<ControleNavioRealista>();
+            bool disponivel = (navioComponente != null || unidade.EhUnidadeNaval()) && time == TimeJogadorAtual;
+            botaoAncoragem.SetEnabled(disponivel);
+            string estadoAncora = !disponivel
+                ? TextoHud("state.na", "N/D")
+                : (navioComponente != null && navioComponente.EstaAncorado)
+                    ? "ANCORADO"
+                    : "LIVRE";
+            botaoAncoragem.text = string.Format(
+                TextoHud("sensor.row", "{0}  {1}"),
+                "⚓ " + TextoHud("sensor.anchor", "ANCORAGEM"),
+                estadoAncora);
+        }
+
+        Button botaoDesligar = root.Q<Button>("hud-desligar");
+        if (botaoDesligar != null)
+        {
+            bool disponivel = time == TimeJogadorAtual;
+            botaoDesligar.SetEnabled(disponivel);
+            ControleNavioRealista navioComponente = unidade.GetComponent<ControleNavioRealista>();
+            string estadoPower;
+            if (!disponivel)
+            {
+                estadoPower = TextoHud("state.na", "N/D");
+            }
+            else if (navioComponente != null && navioComponente.EstaLigando)
+            {
+                estadoPower = "LIGANDO...";
+            }
+            else if (unidade.EstaDesligado || (navioComponente != null && navioComponente.EstaDesligado))
+            {
+                estadoPower = "DESLIGADO";
+            }
+            else
+            {
+                estadoPower = "LIGADO";
+            }
+
+            botaoDesligar.text = string.Format(
+                TextoHud("sensor.row", "{0}  {1}"),
+                "⚡ " + TextoHud("sensor.power", "ESTADO"),
+                estadoPower);
         }
 
         int mslNaval = 0, torpedos = 0, mslCaca = 0, mslAereo = 0;
@@ -5048,6 +5135,79 @@ public class MenuComandoController : MonoBehaviour
                 AtualizarBotaoRadarVisual();
                 break;
 
+            case "ANCORAGEM_ALTERNAR":
+                bool deveAncorar = false;
+                for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+                {
+                    ControleNavioRealista nav = unidadesSelecionadasMenu[i] != null
+                        ? unidadesSelecionadasMenu[i].GetComponent<ControleNavioRealista>()
+                        : null;
+                    if (nav != null && !nav.EstaAncorado)
+                    {
+                        deveAncorar = true;
+                        break;
+                    }
+                }
+                int naviosAncorados = 0;
+                for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+                {
+                    ControleNavioRealista nav = unidadesSelecionadasMenu[i] != null
+                        ? unidadesSelecionadasMenu[i].GetComponent<ControleNavioRealista>()
+                        : null;
+                    if (nav != null)
+                    {
+                        nav.AncorarOuPararTatico(deveAncorar);
+                        naviosAncorados++;
+                    }
+                    else if (unidadesSelecionadasMenu[i] != null)
+                    {
+                        unidadesSelecionadasMenu[i].EmitirOrdemParar();
+                        naviosAncorados++;
+                    }
+                }
+                SetText(ordemFeedback, naviosAncorados > 0
+                    ? (deveAncorar ? "⚓ Parada Tática: Ancorado" : "⚓ Âncora recolhida: Livre para navegar")
+                    : "⚠ Nenhuma unidade naval selecionada");
+                break;
+
+            case "DESLIGAR_ALTERNAR":
+                bool deveDesligar = false;
+                for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+                {
+                    ControleUnidade uCheck = unidadesSelecionadasMenu[i];
+                    if (uCheck == null) continue;
+                    ControleNavioRealista navCheck = uCheck.GetComponent<ControleNavioRealista>();
+                    bool estaDesligada = uCheck.EstaDesligado || (navCheck != null && navCheck.EstaDesligado);
+                    if (!estaDesligada)
+                    {
+                        deveDesligar = true;
+                        break;
+                    }
+                }
+                int unidadesDesligadas = 0;
+                for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+                {
+                    ControleUnidade u = unidadesSelecionadasMenu[i];
+                    if (u == null) continue;
+                    u.DefinirDesligado(deveDesligar);
+                    ControleNavioRealista nav = u.GetComponent<ControleNavioRealista>();
+                    if (nav != null)
+                    {
+                        nav.DefinirDesligado(deveDesligar);
+                    }
+                    RadarUnidadeTatica r = u.GetComponent<RadarUnidadeTatica>();
+                    if (r != null && deveDesligar)
+                    {
+                        r.DefinirRadar(false);
+                    }
+                    unidadesDesligadas++;
+                }
+                SetText(ordemFeedback, unidadesDesligadas > 0
+                    ? (deveDesligar ? "⚡ Unidade(s) desligada(s) / Hibernação" : "⚡ Unidade(s) ligada(s) / Operacional")
+                    : "⚡ Estado de energia alternado");
+                AtualizarBarraComandoContextual();
+                break;
+
             case "ATIVO":
                 foreach (var u in unidadesSelecionadasMenu)
                 {
@@ -5422,7 +5582,7 @@ public class MenuComandoController : MonoBehaviour
         // apareçam no mundo, mas faltem no catálogo satélite.
         if (agora >= proximaBuscaUnidadesCenaFallback)
         {
-            proximaBuscaUnidadesCenaFallback = agora + 2f;
+            proximaBuscaUnidadesCenaFallback = agora + 8f;
             cacheUnidadesCenaFallback.Clear();
             cacheUnidadesCenaFallback.AddRange(FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None));
         }

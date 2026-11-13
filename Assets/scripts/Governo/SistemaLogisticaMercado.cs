@@ -65,9 +65,8 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     public const float FretePercentual = 0.05f;
 
     [Header("Configuracao")]
-    // A logistica nao precisa disputar o mesmo frame com a simulacao taticamente.
-    // Um ciclo de 1 s mantem a entrega responsiva e evita reprocessamento excessivo.
-    public float intervaloProcessamento = 1f;
+    // A logistica roda em tick espacado (0.5s a 1.0s) para nao pesar a Main Thread da CPU.
+    public float intervaloProcessamento = 1.0f;
     public float tempoEmbarque = 1.25f;
     public float tempoDesembarque = 1.25f;
     public int intervaloRepeticaoDias = 2;
@@ -83,6 +82,7 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
     private readonly Dictionary<string, List<PedidoMercadoLogistico>> gruposBuffer = new Dictionary<string, List<PedidoMercadoLogistico>>(StringComparer.Ordinal);
     private readonly List<string> chavesGruposBuffer = new List<string>(16);
     private readonly Dictionary<int, PierMarinha> cachePiersPorTeam = new Dictionary<int, PierMarinha>();
+    private readonly Dictionary<string, float> cooldownSemPierPorRota = new Dictionary<string, float>(StringComparer.Ordinal);
     private float proximoProcessamento;
     private float proximoLogSemPorto;
     private float proximaAtualizacaoCachePiers = -1f;
@@ -401,7 +401,10 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
             if (!ok && Time.unscaledTime >= proximoLogSemPorto)
             {
                 proximoLogSemPorto = Time.unscaledTime + 20f;
-                Debug.Log("[LogisticaMercado] Repeticao aguardando: " + mensagem);
+#if UNITY_EDITOR
+                // Silenciado em builds para zerar chamadas a ExtractStackTraceNoAlloc
+                // Debug.Log("[LogisticaMercado] Repeticao aguardando: " + mensagem);
+#endif
             }
         }
     }
@@ -435,19 +438,23 @@ public sealed class SistemaLogisticaMercado : MonoBehaviour
             if (grupo == null || grupo.Count == 0 || GrupoJaEmViagem(grupo))
                 continue;
 
+            // Se ja verificamos recentemente que esta rota nao tem pier de origem ou destino, pula a checagem
+            if (cooldownSemPierPorRota.TryGetValue(chaveGrupo, out float cooldownAte) && Time.unscaledTime < cooldownAte)
+                continue;
+
             PedidoMercadoLogistico primeiro = grupo[0];
             if (primeiro == null) continue;
             PierMarinha origem = EncontrarPier(primeiro.vendedorTeamId);
             PierMarinha destino = EncontrarPier(primeiro.compradorTeamId);
             if (origem == null || destino == null)
             {
-                if (Time.unscaledTime >= proximoLogSemPorto)
-                {
-                    proximoLogSemPorto = Time.unscaledTime + 20f;
-                    Debug.Log("[LogisticaMercado] Aguardando pier de origem/destino para a rota " + chaveGrupo);
-                }
+                // Cache de 5 segundos para nao re-escanear nem floodar stack trace
+                cooldownSemPierPorRota[chaveGrupo] = Time.unscaledTime + 5f;
                 continue;
             }
+
+            // Se encontrou ambos os piers, remove do cooldown de falta de pier
+            cooldownSemPierPorRota.Remove(chaveGrupo);
 
             NavioCargaMercado navio = EncontrarNavioDisponivel(primeiro.compradorTeamId);
             bool fretado = false;

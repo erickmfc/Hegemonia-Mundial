@@ -125,6 +125,9 @@ public class CidadeComplexoUrbano : MonoBehaviour
         populacaoRegistrada = true;
 
         NotificarSeCapacidadeHabitacionalAtingida();
+
+        // Otimização estrutural automática da cidade pré-montada (consolidação de malhas e culling)
+        Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(gameObject);
     }
 
     private void AlinharBaseAoTerrenoDoMapaGlobal()

@@ -291,8 +291,7 @@ public class CameraController : MonoBehaviour
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         // --- 4. Rotação e Inclinação (Botão Direito, Meio ou Teclas Q/E) ---
         bool podeRotacionar = !outrosMenusAbertos
-            && !MapaGeralController.EstaAberto
-            && unidadeSeguindo == null;
+            && !MapaGeralController.EstaAberto;
         InteractionModeSnapshot snapshotInteracao = InteractionModeService.CurrentSnapshot();
         if (snapshotInteracao.Policy.bloqueiaRotacaoCamera)
         {
@@ -301,24 +300,57 @@ public class CameraController : MonoBehaviour
 
         if (podeRotacionar)
         {
-            UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
-            bool mouseEmCimaDeUI = eventSystem != null && eventSystem.IsPointerOverGameObject();
-            if (!mouseEmCimaDeUI && !BloquearRotacaoPorMiraManual() && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
+            if (unidadeSeguindo != null && unidadeSeguindo.gameObject.activeInHierarchy)
             {
-                // Mouse X gira a câmera no eixo Y global (olhar para lados)
-                float rotX = Input.GetAxis("Mouse X") * velocidadeRotacao * Time.deltaTime * 2f; // *2f para sensibilidade
-                transform.Rotate(Vector3.up, rotX, Space.World);
+                Vector3 alvo = unidadeSeguindo.position;
+                float rotYaw = 0f;
+                if (Input.GetKey(KeyCode.Q)) rotYaw -= velocidadeRotacao * Time.deltaTime;
+                if (Input.GetKey(KeyCode.E)) rotYaw += velocidadeRotacao * Time.deltaTime;
+                if (Mathf.Abs(rotYaw) > 0.0001f)
+                {
+                    transform.RotateAround(alvo, Vector3.up, rotYaw);
+                }
 
-                // Mouse Y inclina a câmera (olhar para cima/baixo)
-                float rotY = Input.GetAxis("Mouse Y") * velocidadeRotacao * Time.deltaTime * 2f;
-                // Inverter rotY se quiser "inverter eixo Y"
-                transform.Rotate(Vector3.left, rotY, Space.Self);
+                float rotPitch = 0f;
+                if (Input.GetKey(KeyCode.W)) rotPitch += velocidadeRotacao * Time.deltaTime;
+                if (Input.GetKey(KeyCode.S)) rotPitch -= velocidadeRotacao * Time.deltaTime;
+                if (Mathf.Abs(rotPitch) > 0.0001f)
+                {
+                    Vector3 offsetAntes = transform.position - alvo;
+                    Quaternion rotAntes = transform.rotation;
+                    transform.RotateAround(alvo, transform.right, rotPitch);
+
+                    // Impede inverter a câmera ou afundar abaixo do alvo
+                    float anguloX = transform.eulerAngles.x;
+                    if (anguloX > 180f) anguloX -= 360f;
+                    if (anguloX < 5f || anguloX > 85f || transform.position.y < alvo.y + 1.5f)
+                    {
+                        transform.position = alvo + offsetAntes;
+                        transform.rotation = rotAntes;
+                    }
+                }
             }
             else
             {
-                // Teclas para rotacionar apenas no eixo Y
-                if (Input.GetKey(KeyCode.Q)) transform.Rotate(Vector3.up, -velocidadeRotacao * Time.deltaTime, Space.World);
-                if (Input.GetKey(KeyCode.E)) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
+                UnityEngine.EventSystems.EventSystem eventSystem = UnityEngine.EventSystems.EventSystem.current;
+                bool mouseEmCimaDeUI = eventSystem != null && eventSystem.IsPointerOverGameObject();
+                if (!mouseEmCimaDeUI && !BloquearRotacaoPorMiraManual() && (Input.GetMouseButton(1) || Input.GetMouseButton(2)))
+                {
+                    // Mouse X gira a câmera no eixo Y global (olhar para lados)
+                    float rotX = Input.GetAxis("Mouse X") * velocidadeRotacao * Time.deltaTime * 2f; // *2f para sensibilidade
+                    transform.Rotate(Vector3.up, rotX, Space.World);
+
+                    // Mouse Y inclina a câmera (olhar para cima/baixo)
+                    float rotY = Input.GetAxis("Mouse Y") * velocidadeRotacao * Time.deltaTime * 2f;
+                    // Inverter rotY se quiser "inverter eixo Y"
+                    transform.Rotate(Vector3.left, rotY, Space.Self);
+                }
+                else
+                {
+                    // Teclas para rotacionar apenas no eixo Y
+                    if (Input.GetKey(KeyCode.Q)) transform.Rotate(Vector3.up, -velocidadeRotacao * Time.deltaTime, Space.World);
+                    if (Input.GetKey(KeyCode.E)) transform.Rotate(Vector3.up, velocidadeRotacao * Time.deltaTime, Space.World);
+                }
             }
         }
 

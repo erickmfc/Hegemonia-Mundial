@@ -2064,7 +2064,14 @@ public class Construtor : MonoBehaviour
 
     private static bool AlinharCidadeAoPontoDoTerreno(GameObject objeto, float alturaTerreno)
     {
-        if (objeto == null || objeto.GetComponentInChildren<CidadeComplexoUrbano>(true) == null)
+        if (objeto == null || objeto.GetComponentInChildren<RuaConectora>(true) != null)
+        {
+            return false;
+        }
+
+        bool ehNaval = objeto.GetComponentInChildren<Estaleiro>(true) != null
+            || objeto.GetComponentInChildren<PierMarinha>(true) != null;
+        if (ehNaval && alturaTerreno <= NavalPlacementResolver.ResolveSeaLevel() + 0.35f)
         {
             return false;
         }
@@ -2072,6 +2079,7 @@ public class Construtor : MonoBehaviour
         Renderer[] renderers = objeto.GetComponentsInChildren<Renderer>(true);
         bool encontrouMalhaVisivel = false;
         float menorY = float.PositiveInfinity;
+        Bounds boundsTotais = new Bounds(objeto.transform.position, Vector3.zero);
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
@@ -2081,15 +2089,40 @@ public class Construtor : MonoBehaviour
                 continue;
             }
 
+            if (!encontrouMalhaVisivel)
+            {
+                boundsTotais = renderer.bounds;
+            }
+            else
+            {
+                boundsTotais.Encapsulate(renderer.bounds);
+            }
+
             encontrouMalhaVisivel = true;
             menorY = Mathf.Min(menorY, renderer.bounds.min.y);
         }
 
         if (!encontrouMalhaVisivel || float.IsInfinity(menorY)) return false;
 
-        float deslocamentoVertical = alturaTerreno - menorY;
+        float alturaAlvo = alturaTerreno;
+        Terrain terreno = Terrain.activeTerrain;
+        if (terreno != null)
+        {
+            float baseY = terreno.transform.position.y;
+            float hCentro = terreno.SampleHeight(boundsTotais.center) + baseY;
+            float minCanto = hCentro;
+            Vector3 minB = boundsTotais.min;
+            Vector3 maxB = boundsTotais.max;
+            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(minB.x, 0f, minB.z)) + baseY);
+            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(maxB.x, 0f, minB.z)) + baseY);
+            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(minB.x, 0f, maxB.z)) + baseY);
+            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(maxB.x, 0f, maxB.z)) + baseY);
+            alturaAlvo = Mathf.Max(hCentro - 1.5f, Mathf.Min(alturaTerreno, minCanto));
+        }
+
+        float deslocamentoVertical = alturaAlvo - menorY;
         // Corrige pivôs deslocados sem deixar uma ficha mal configurada
-        // teleportar a cidade para outra região do mapa.
+        // teleportar a estrutura para outra região do mapa.
         if (Mathf.Abs(deslocamentoVertical) > 250f) return false;
         Vector3 posicao = objeto.transform.position;
         posicao.y += deslocamentoVertical;

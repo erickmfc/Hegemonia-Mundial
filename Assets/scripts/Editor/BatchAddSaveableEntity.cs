@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public class BatchAddSaveableEntity : EditorWindow
 {
-    [MenuItem("Tools/Otimização/Adicionar SaveableEntity (Em Todas as Unidades)")]
+    [MenuItem("Tools/Otimização/Adicionar SaveableEntity (Em Todas as Unidades e Imóveis)")]
     public static void ShowWindow()
     {
         AdicionarEmTodasAsUnidades();
@@ -12,7 +12,7 @@ public class BatchAddSaveableEntity : EditorWindow
 
     private static void AdicionarEmTodasAsUnidades()
     {
-        string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs" });
+        string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" });
         int adicionados = 0;
         int jaPossui = 0;
 
@@ -23,11 +23,19 @@ public class BatchAddSaveableEntity : EditorWindow
 
             if (prefab != null)
             {
-                // Verifica se o prefab é uma unidade do jogo (se tem IdentidadeUnidade ou ControleUnidade)
-                bool isUnidade = prefab.GetComponent<IdentidadeUnidade>() != null || 
-                                 prefab.GetComponent<ControleUnidade>() != null;
+                bool isEntidadeSalvavel = prefab.GetComponent<IdentidadeUnidade>() != null
+                                          || prefab.GetComponent<ControleUnidade>() != null
+                                          || prefab.GetComponent<IdentidadeNaval>() != null
+                                          || prefab.GetComponent<Imovel>() != null
+                                          || prefab.GetComponent<Fabrica>() != null
+                                          || prefab.GetComponent<Estaleiro>() != null
+                                          || prefab.GetComponent<PierMarinha>() != null
+                                          || prefab.GetComponent<GerenciadorAeroporto>() != null
+                                          || prefab.GetComponent<GerenciadorQuartel>() != null
+                                          || prefab.GetComponent<PlataformaOffshore>() != null
+                                          || prefab.GetComponent<SiloLancadorEstrategico>() != null;
 
-                if (isUnidade)
+                if (isEntidadeSalvavel)
                 {
                     SaveableEntity saveScript = prefab.GetComponent<SaveableEntity>();
 

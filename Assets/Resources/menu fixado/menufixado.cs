@@ -59,6 +59,7 @@ public class MenuFixadoController : MonoBehaviour
     private const string NotificacaoFechadaPrefix = "hegemonia.notificacao.fechada.";
 
     private bool _activeInScene = true;
+    private bool _ocultoPorAeroporto;
     private float proximaVerificacaoLayout;
     private int ultimaLarguraLayout = -1;
     private int ultimaAlturaLayout = -1;
@@ -982,6 +983,19 @@ public class MenuFixadoController : MonoBehaviour
     private void Update()
     {
         if (!uiPronta || !_activeInScene) return;
+
+        bool aeroportoAberto = GestorMenusExclusivos.EhMenuAeroportoAtivo;
+        if (aeroportoAberto != _ocultoPorAeroporto)
+        {
+            _ocultoPorAeroporto = aeroportoAberto;
+            var displayValor = aeroportoAberto
+                ? new StyleEnum<DisplayStyle>(DisplayStyle.None)
+                : new StyleEnum<DisplayStyle>(StyleKeyword.Null);
+            if (decisionBanner != null) decisionBanner.style.display = displayValor;
+            if (tutorialBanner != null) tutorialBanner.style.display = displayValor;
+            if (quickActions != null) quickActions.style.display = displayValor;
+            if (notificationPanel != null) notificationPanel.style.display = displayValor;
+        }
 
         if (Time.frameCount % 30 == 0) RegistrarEventos();
 

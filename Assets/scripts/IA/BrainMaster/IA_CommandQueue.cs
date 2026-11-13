@@ -206,11 +206,15 @@ namespace Hegemonia.AI.BrainMaster
             PushHistory(request, finalStatus, now, message);
             IA_RuntimeTextTrace.LogCommand(TraceTeamId, "CommandQueue", success ? "COMPLETE_OK" : "COMPLETE_FAIL", request, message);
 
-            if (!string.IsNullOrEmpty(request.DedupKey) && request.CooldownSeconds > 0f)
+            if (!string.IsNullOrEmpty(request.DedupKey))
             {
-                _cooldownUntilByDedup[request.DedupKey] = now + Mathf.Max(0.1f, request.CooldownSeconds);
-                PushHistory(request, IA_CommandStatus.CoolingDown, now, "cooldown");
-                IA_RuntimeTextTrace.LogCommand(TraceTeamId, "CommandQueue", "COOLDOWN", request, "cooldown");
+                float baseCooldown = request.CooldownSeconds > 0f ? request.CooldownSeconds : 5f;
+                // Em caso de falha, aplica um backoff obrigatorio de pelo menos 20 segundos
+                // para impedir loops de retry que sobrecarregam a fila e derrubam o FPS.
+                float cooldownAplicar = success ? Mathf.Max(0.1f, baseCooldown) : Mathf.Max(20f, baseCooldown * 3f);
+                _cooldownUntilByDedup[request.DedupKey] = now + cooldownAplicar;
+                PushHistory(request, IA_CommandStatus.CoolingDown, now, success ? "cooldown" : "cooldown_falha");
+                IA_RuntimeTextTrace.LogCommand(TraceTeamId, "CommandQueue", "COOLDOWN", request, success ? "cooldown" : "cooldown_falha");
             }
         }
 

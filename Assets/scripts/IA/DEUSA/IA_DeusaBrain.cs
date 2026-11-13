@@ -55,6 +55,8 @@ namespace Hegemonia.AI.DEUSA
         private bool? _ultimoModoObservadorLogado;
         private DeusaEstagio _ultimoEstagioLogado = (DeusaEstagio)(-1);
         private float _proximoLogResumoTime;
+        private string _ultimoResumoLogado;
+        [SerializeField] private bool logarDiagnosticoContinuo = false;
 
         public string Name
         {
@@ -824,13 +826,17 @@ namespace Hegemonia.AI.DEUSA
 
             if (Time.unscaledTime >= _proximoLogResumoTime)
             {
-                Debug.Log(
-                    "[DEUSA][Team " + identidade.teamID + "] resumo | observador=" + EscopoObservador
+                string novoResumo = "[DEUSA][Team " + identidade.teamID + "] resumo | observador=" + EscopoObservador
                     + " | proximaPrioridade=" + (prioridadesAtuais != null && prioridadesAtuais.Count > 0 ? prioridadesAtuais[0].ToString() : "Nenhuma")
                     + " | proximaConstrucao=" + (politicaNacional != null ? politicaNacional.proximaConstrucao : "Nenhuma")
-                    + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum"),
-                    this);
-                IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "RESUMO", "observador=" + EscopoObservador + " | proximaPrioridade=" + (prioridadesAtuais != null && prioridadesAtuais.Count > 0 ? prioridadesAtuais[0].ToString() : "Nenhuma") + " | proximaConstrucao=" + (politicaNacional != null ? politicaNacional.proximaConstrucao : "Nenhuma") + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum"));
+                    + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum");
+
+                if (logarDiagnosticoContinuo || novoResumo != _ultimoResumoLogado)
+                {
+                    _ultimoResumoLogado = novoResumo;
+                    Debug.Log(novoResumo, this);
+                    IA_RuntimeTextTrace.LogText(identidade.teamID, "DEUSA", "RESUMO", "observador=" + EscopoObservador + " | proximaPrioridade=" + (prioridadesAtuais != null && prioridadesAtuais.Count > 0 ? prioridadesAtuais[0].ToString() : "Nenhuma") + " | proximaConstrucao=" + (politicaNacional != null ? politicaNacional.proximaConstrucao : "Nenhuma") + " | alvo=" + (politicaNacional != null ? politicaNacional.alvoPrioritario : "Nenhum"));
+                }
                 _proximoLogResumoTime = Time.unscaledTime + 20f;
             }
         }

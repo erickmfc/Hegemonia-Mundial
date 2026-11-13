@@ -12,18 +12,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
   m_Name: Dados_Heliporto
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
-  nomeItem: Heliporto
-  descricao: "Base para opera\xE7\xF5es a\xE9reas. Permite compra e reabastecimento
-    de helic\xF3pteros."
-  icone: {fileID: 21300000, guid: 5b9717dc73a52e34caaa766a0132a9f4, type: 3}
-  itemId: ''
-  aliases: ''
+  nomeItem: Nome da Unidade
+  descricao: "Descri\xE7\xE3o curta..."
+  icone: {fileID: 0}
+  itemId: 
+  aliases: 
   capacidades: 0
-  prefabDaUnidade: {fileID: 8749062362275969107, guid: 1133f690dfb30e740ab8431e8cb395d9, type: 3}
-  preco: 500
+  prefabDaUnidade: {fileID: 0}
+  preco: 100
   precoDefinitivo: 0
-  categoria: 4
+  categoria: 0
   escalaPoder: 0
   strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
+  receitaProducao:
+    configurada: 0
+    materiaisNecessarios: []
+    energiaNecessaria: 0
+    diasNecessarios: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

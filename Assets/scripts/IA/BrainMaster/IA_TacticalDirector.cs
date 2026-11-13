@@ -93,14 +93,41 @@ namespace Hegemonia.AI.BrainMaster
             }
             Vector3 threatSector = _context.ThreatAnalyzer.GetHighestThreatSectorCenter();
 
+            IA_BrainMaster brain = _context.Brain;
+            bool ia03Cronograma = brain != null && brain.UsaCronogramaIA03;
+            bool ia03PatrulhaPermitida = true;
+            if (ia03Cronograma)
+            {
+                bool alertaAtivo = brain.IA03AlertaAmeacaAtivo;
+                if (brain.DiaAtualJogo < 5 && !alertaAtivo)
+                {
+                    ia03PatrulhaPermitida = false;
+                }
+                else if (brain.DiaAtualJogo >= 10 && !alertaAtivo)
+                {
+                    ia03PatrulhaPermitida = false;
+                    AplicarEstadoHibernacaoTerrestreIA03(true);
+                }
+                else
+                {
+                    AplicarEstadoHibernacaoTerrestreIA03(false);
+                }
+            }
+
             long reconStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchRecon(baseCenter, priorityEnemy, strategicObjective);
             RegistrarTempoDispatch("tactical_recon_ms", reconStart);
             long localDefenseStart = InfraPerformanceGameplay.MarcarInicioMedicao();
-            DispatchLocalDefense(baseCenter, threatSector, priorityEnemy);
+            if (ia03PatrulhaPermitida)
+            {
+                DispatchLocalDefense(baseCenter, threatSector, priorityEnemy);
+            }
             RegistrarTempoDispatch("tactical_local_defense_ms", localDefenseStart);
             long borderPatrolStart = InfraPerformanceGameplay.MarcarInicioMedicao();
-            DispatchBorderPatrol(baseCenter, strategicObjective);
+            if (ia03PatrulhaPermitida)
+            {
+                DispatchBorderPatrol(baseCenter, strategicObjective);
+            }
             RegistrarTempoDispatch("tactical_border_patrol_ms", borderPatrolStart);
             long armoredStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             DispatchArmoredAssault(baseCenter, priorityEnemy, strategicObjective);
@@ -204,6 +231,35 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             QueueMove("defense_local", squad.Units, target, 82, 3.8f);
+        }
+
+        private void AplicarEstadoHibernacaoTerrestreIA03(bool desligar)
+        {
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnCombatUnits == null)
+            {
+                return;
+            }
+
+            List<GameObject> units = _context.WorldState.OwnCombatUnits;
+            for (int i = 0; i < units.Count; i++)
+            {
+                GameObject unit = units[i];
+                if (unit == null)
+                {
+                    continue;
+                }
+
+                ControleUnidade ctrl = unit.GetComponent<ControleUnidade>();
+                if (ctrl == null || ctrl.DominioAtual != DominioControleUnidade.Terrestre || ctrl.EhUnidadeNaval())
+                {
+                    continue;
+                }
+
+                if (ctrl.EstaDesligado != desligar)
+                {
+                    ctrl.DefinirDesligado(desligar);
+                }
+            }
         }
 
         private void DispatchBorderPatrol(Vector3 baseCenter, Vector3 strategicObjective)

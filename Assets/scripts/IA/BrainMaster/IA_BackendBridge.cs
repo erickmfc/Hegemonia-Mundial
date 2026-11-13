@@ -882,22 +882,8 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Quaternion resolvedRotation = requestedRotation;
-            if (RequiresCoastalPlacement(data))
-            {
-                NavalPlacementResolver.StructurePose pose;
-                if (!NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, position, resolvedRotation, out pose))
-                {
-                    reason = string.IsNullOrEmpty(pose.Reason) ? "costa invalida" : pose.Reason;
-                    return false;
-                }
-
-                position = pose.Position;
-                resolvedRotation = pose.Rotation;
-                if (!ValidateCoastalPlacementOnMap(data.PrefabDaUnidade, position, resolvedRotation, map, out reason))
-                {
-                    return false;
-                }
-            }
+            // Removida a exigencia de leitura/validacao de costa para estruturas navais da IA
+            // (estaleiro, pier, plataforma), permitindo criacao direta mesmo sobre terra/Creaty.
 
             if (!ValidateTerritoryRules(data, position, out reason))
             {
@@ -914,16 +900,7 @@ namespace Hegemonia.AI.BrainMaster
 
             IA_MapCell cell = map.SampleCell(position);
             bool isNaval = IsNaval(data);
-            bool directNavalTerrainAccepted = false;
-            if (isNaval && cell.Terrain != IA_TerrainType.Water && cell.Terrain != IA_TerrainType.Coast)
-            {
-                directNavalTerrainAccepted = IsNavalPlacementAcceptedDirectly(data, position);
-                if (!directNavalTerrainAccepted)
-                {
-                    reason = "terreno invalido";
-                    return false;
-                }
-            }
+            bool directNavalTerrainAccepted = isNaval;
 
             if (!isNaval && cell.Terrain == IA_TerrainType.Water)
             {
@@ -943,24 +920,15 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (isNaval)
+            if (!isNaval)
             {
-                float minEdgeDistance = RequiresCoastalPlacement(data) ? 145f : 105f;
-                if (NavalPlacementResolver.IsNearMapEdge(position, minEdgeDistance))
+                float minOffshoreDistance = ResolveMinimumOffshoreDistance(data, zone, isNaval);
+                if (minOffshoreDistance > 0.01f && HasDryLandWithinRadius(position, minOffshoreDistance, map))
                 {
-                    reason = "muito perto da borda do mapa";
+                    int meters = Mathf.RoundToInt(minOffshoreDistance);
+                    reason = "muito perto da terra | min=" + meters + "m";
                     return false;
                 }
-            }
-
-            float minOffshoreDistance = ResolveMinimumOffshoreDistance(data, zone, isNaval);
-            if (minOffshoreDistance > 0.01f && HasDryLandWithinRadius(position, minOffshoreDistance, map))
-            {
-                int meters = Mathf.RoundToInt(minOffshoreDistance);
-                reason = IsOffshorePlatform(data)
-                    ? ("plataforma muito perto da costa | min=" + meters + "m")
-                    : ("muito perto da terra | min=" + meters + "m");
-                return false;
             }
 
             Vector2 halfExtents = map.EstimateFootprint(data.PrefabDaUnidade, 10f);
@@ -1153,18 +1121,7 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            if (!forceManualPlacement && RequiresCoastalPlacement(data))
-            {
-                NavalPlacementResolver.StructurePose pose;
-                if (!NavalPlacementResolver.TryResolveStructurePose(data.PrefabDaUnidade, position, rotation, out pose))
-                {
-                    reason = string.IsNullOrEmpty(pose.Reason) ? "costa invalida" : pose.Reason;
-                    return false;
-                }
-
-                position = pose.Position;
-                rotation = pose.Rotation;
-            }
+            // Sem exigencia de leitura de costa para estaleiro/pier/plataforma da IA
 
             if (!ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
             {

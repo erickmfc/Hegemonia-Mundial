@@ -1335,6 +1335,13 @@ public class Helicoptero : MonoBehaviour
     IEnumerator RotinaEmbarque(GameObject s, NavMeshAgent nav)
     {
         if(s == null || nav == null) yield break;
+        if (!nav.isOnNavMesh)
+        {
+            if (NavMesh.SamplePosition(s.transform.position, out NavMeshHit hitNav, 35f, NavMesh.AllAreas))
+            {
+                nav.Warp(hitNav.position);
+            }
+        }
         if (nav.isOnNavMesh) nav.isStopped = false; 
         nav.speed = 12f; 
 

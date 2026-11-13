@@ -163,8 +163,15 @@ public class PixelMapTerrain : MonoBehaviour {
 		m.RecalculateNormals();
 		m.Optimize();
 		
-		if(gameObject.GetComponent<MeshFilter>())
-			DestroyImmediate(gameObject.GetComponent<MeshFilter>());
+		MeshFilter mf = gameObject.GetComponent<MeshFilter>();
+		if (mf != null)
+		{
+			if (mf.sharedMesh != null)
+			{
+				DestroyImmediate(mf.sharedMesh);
+			}
+			DestroyImmediate(mf);
+		}
 		if(gameObject.GetComponent<MeshRenderer>())
 			DestroyImmediate(gameObject.GetComponent<MeshRenderer>());
 

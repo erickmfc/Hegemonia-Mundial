@@ -44,6 +44,8 @@ public class MenuPausaController : MonoBehaviour
     private float velocidadeHUDAnterior = -1f;
     private float velocidadeFallbackAtual = 1f;
     private bool estadoPausaHUDAnterior;
+    private bool tempoOcultoPorAeroporto;
+    private bool estadoTempoAntesAeroporto = true;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void CriarBootstrap()
@@ -124,7 +126,29 @@ public class MenuPausaController : MonoBehaviour
             AlternarMenu();
         }
 
+        AtualizarVisibilidadeTempoPorAeroporto();
         AtualizarHUDTempo();
+    }
+
+    private void AtualizarVisibilidadeTempoPorAeroporto()
+    {
+        if (hudTempoObject == null) return;
+
+        bool aeroportoAberto = GestorMenusExclusivos.EhMenuAeroportoAtivo;
+        if (aeroportoAberto)
+        {
+            if (!tempoOcultoPorAeroporto)
+            {
+                estadoTempoAntesAeroporto = hudTempoObject.activeSelf;
+                hudTempoObject.SetActive(false);
+                tempoOcultoPorAeroporto = true;
+            }
+        }
+        else if (tempoOcultoPorAeroporto)
+        {
+            hudTempoObject.SetActive(estadoTempoAntesAeroporto);
+            tempoOcultoPorAeroporto = false;
+        }
     }
 
     private void OnDestroy()

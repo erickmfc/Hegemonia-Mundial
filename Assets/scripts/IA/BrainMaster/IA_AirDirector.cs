@@ -249,6 +249,18 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             bool includeBombers = false; // Bombardeiros são gerenciados separadamente em DispatchStrategicBombers
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            if (brain != null && brain.UsaCronogramaIA03 && !brain.IA03PatrulhaAereaLiberada && airEnemy == null && fallbackEnemy == null)
+            {
+                return;
+            }
+
+            if (brain != null && brain.UsaCronogramaIA03 && airEnemy == null && fallbackEnemy == null)
+            {
+                DispatchIA03SingleAirPatrol(squad.Units, baseCenter, pressureTarget);
+                return;
+            }
+
             if (!TrySelectActiveAirUnits(squad.Units, _activeAirUnitsBuffer, false, includeBombers))
             {
                 return;
@@ -287,17 +299,15 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 patrol = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
-                Vector3 fallback = pressureTarget != Vector3.zero ? pressureTarget : patrol;
-                int fallbackTeamId = pressureTarget != Vector3.zero ? pressureTargetTeamId : 0;
-                QueueAttack(
-                    "air_intercept",
+                Vector3 patrolA = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
+                Vector3 patrolB = pressureTarget != Vector3.zero ? pressureTarget : _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 220f, 450f, 20);
+                QueuePatrol(
+                    "air_intercept_patrol",
                     _activeAirUnitsBuffer,
-                    null,
-                    fallback + Vector3.up * 20f,
+                    patrolA,
+                    patrolB,
                     80,
-                    12f,
-                    fallbackTeamId);
+                    10f);
             }
         }
 
@@ -519,6 +529,104 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             return selected;
+        }
+
+        private void DispatchIA03SingleAirPatrol(List<GameObject> units, Vector3 baseCenter, Vector3 pressureTarget)
+        {
+            if (units == null || units.Count == 0 || _context == null)
+            {
+                return;
+            }
+
+            // Verifica se ja ha 1 aviao de caca em voo ativo (nao retornando/reabastecendo)
+            for (int i = 0; i < units.Count; i++)
+            {
+                GameObject u = units[i];
+                if (u == null || IsBomber(u)) continue;
+
+                ControleAviao aviao = u.GetComponent<ControleAviao>();
+                if (aviao == null) continue;
+
+                bool voandoAtivo = (aviao.estadoAtual == ControleAviao.EstadoAviao.Decolando
+                                    || aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+                                   && !aviao.ordemParaRetorno;
+                if (voandoAtivo)
+                {
+                    return;
+                }
+            }
+
+            // Se nenhum esta voando em patrulha (ou o anterior entrou em retorno/reabastecimento), lanca o proximo pronto no patio
+            GameObject candidato = null;
+            for (int i = 0; i < units.Count; i++)
+            {
+                GameObject u = units[i];
+                if (u == null || IsBomber(u)) continue;
+
+                ControleAviao aviao = u.GetComponent<ControleAviao>();
+                if (aviao == null || aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    candidato = u;
+                    break;
+                }
+            }
+
+            if (candidato == null)
+            {
+                return;
+            }
+
+            _activeAirUnitsBuffer.Clear();
+            _activeAirUnitsBuffer.Add(candidato);
+
+            IA_BrainMaster brain = _context.Brain;
+            Vector3 pointA;
+            Vector3 pointB;
+            if (brain != null && brain.HasRecentOilPlatformAttack(Time.time))
+            {
+                // Se plataforma foi atingida, envia patrulha ate a ultima deteccao/area atingida
+                pointA = brain.LastOilPlatformAttackPosition;
+                pointB = baseCenter != Vector3.zero ? baseCenter : pointA + Vector3.forward * 220f;
+            }
+            else
+            {
+                pointA = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 140f, 320f, 20);
+                pointB = pressureTarget != Vector3.zero
+                    ? pressureTarget
+                    : _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 260f, 480f, 20);
+            }
+
+            QueuePatrol("ia03_air_patrol_single", _activeAirUnitsBuffer, pointA, pointB, 84, 6f);
+        }
+
+        private void QueuePatrol(string key, List<GameObject> units, Vector3 pointA, Vector3 pointB, int priority, float cooldown)
+        {
+            List<GameObject> availableUnits = CloneUnits(units);
+            if (availableUnits.Count == 0)
+            {
+                return;
+            }
+
+            IA_PatrolOrderData payload = new IA_PatrolOrderData
+            {
+                Units = availableUnits,
+                PointA = pointA,
+                PointB = pointB
+            };
+
+            IA_CommandRequest request = IA_CommandFactory.Create(
+                IA_CommandType.Patrol,
+                "IA_AirDirector",
+                "air",
+                "patrulha aerea",
+                priority,
+                "air",
+                "patrol:" + key,
+                cooldown,
+                payload);
+
+            string reason;
+            _context.CommandQueue.Enqueue(request, Time.time, out reason);
         }
 
         private void QueueMove(string key, List<GameObject> units, Vector3 destination, int priority, float cooldown)

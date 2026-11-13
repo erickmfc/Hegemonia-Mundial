@@ -63,6 +63,7 @@ public class CameraUnidadeHUD : MonoBehaviour
     private int layerMaskMarcacao;
     private bool neblinaSuprimidaDuranteRender;
     private bool neblinaOriginalDuranteRender;
+    private float distanciaSombraOriginalRender = -1f;
 
     [Header("Configurações de Foco")]
     [SerializeField] private Vector3 offsetBase = new Vector3(0f, 15f, -25f);
@@ -118,6 +119,8 @@ public class CameraUnidadeHUD : MonoBehaviour
 
         neblinaOriginalDuranteRender = RenderSettings.fog;
         RenderSettings.fog = false;
+        distanciaSombraOriginalRender = QualitySettings.shadowDistance;
+        QualitySettings.shadowDistance = 0f;
         neblinaSuprimidaDuranteRender = true;
     }
 
@@ -137,6 +140,11 @@ public class CameraUnidadeHUD : MonoBehaviour
         }
 
         RenderSettings.fog = neblinaOriginalDuranteRender;
+        if (distanciaSombraOriginalRender >= 0f)
+        {
+            QualitySettings.shadowDistance = distanciaSombraOriginalRender;
+            distanciaSombraOriginalRender = -1f;
+        }
         neblinaSuprimidaDuranteRender = false;
     }
 

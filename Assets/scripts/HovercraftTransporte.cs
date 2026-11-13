@@ -80,6 +80,13 @@ public class HovercraftTransporte : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         controleUnidade = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>();
+        var navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (navAgent != null)
+        {
+            navAgent.updatePosition = false;
+            navAgent.updateRotation = false;
+            navAgent.enabled = false;
+        }
         rb.useGravity = false; rb.isKinematic = false; 
         rb.linearDamping = 1f; 
         rb.angularDamping = 2f; 

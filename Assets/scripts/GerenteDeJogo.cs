@@ -352,6 +352,11 @@ public class GerenteDeJogo : MonoBehaviour
             ? unidadeParaConstruir.name.ToLowerInvariant()
             : nomeNormalizado;
 
+        if (nome.Contains("tank") || nome.Contains("tanque") || nome.Contains("blindado") || nome.Contains("hover"))
+        {
+            return false;
+        }
+
         if (unidadeParaConstruir.CompareTag("Soldado"))
         {
             return true;

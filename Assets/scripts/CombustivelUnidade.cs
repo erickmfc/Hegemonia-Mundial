@@ -877,9 +877,9 @@ public class CombustivelUnidade : MonoBehaviour
             return 12f; // Transporte aereo pesado: 3.600
         }
 
-        if (GetComponent<AviaoBombardeiro>() != null || NomeContem("bomb"))
+        if (GetComponent<AviaoBombardeiro>() != null || NomeContem("bomb") || NomeContem("b260") || NomeContem("b-260"))
         {
-            return 9f; // B260: 2.700
+            return 18f; // B260: 5.400 (dobrado de 2.700)
         }
 
         if (GetComponent<ControleDroneHasaf>() != null || NomeContem("hasaf"))

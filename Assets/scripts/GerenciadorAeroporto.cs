@@ -62,6 +62,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         Transporte
     }
 
+    [Header("Diagnóstico")]
+    [SerializeField] private bool logarDiagnosticoDetalhado = false;
+
     [Header("Hierarquia do Aeroporto (Vincular do Inspector)")]
     [Tooltip("Grupo pai contendo as marcações 'Parada' a 'Parada 4'")]
     public Transform patio;
@@ -495,9 +498,12 @@ public class GerenciadorAeroporto : MonoBehaviour
             Debug.LogWarning($"[Aeroporto Militar] {name}: referências incompletas:{aviso}", this);
         }
 
-        LogarPontosOperacionais("Vaga", waypointsPatio);
-        LogarPontosOperacionais("Decolagem", waypointsDecolagem);
-        LogarPontosOperacionais("Pouso", waypointsDecida);
+        if (logarDiagnosticoDetalhado)
+        {
+            LogarPontosOperacionais("Vaga", waypointsPatio);
+            LogarPontosOperacionais("Decolagem", waypointsDecolagem);
+            LogarPontosOperacionais("Pouso", waypointsDecida);
+        }
 
         Transform[] filhos = GetComponentsInChildren<Transform>(true);
         int creates = 0;
@@ -506,10 +512,13 @@ public class GerenciadorAeroporto : MonoBehaviour
             Transform filho = filhos[i];
             if (filho == null || !filho.name.StartsWith("Create Patrulha Aerea", System.StringComparison.OrdinalIgnoreCase)) continue;
             creates++;
-            Debug.Log($"[Aeroporto Militar] {name}: {filho.name} pos={filho.position.ToString("F1")} setor local={filho.localPosition.ToString("F1")}", filho);
+            if (logarDiagnosticoDetalhado)
+            {
+                Debug.Log($"[Aeroporto Militar] {name}: {filho.name} pos={filho.position.ToString("F1")} setor local={filho.localPosition.ToString("F1")}", filho);
+            }
         }
 
-        if (creates == 0)
+        if (creates == 0 && logarDiagnosticoDetalhado)
         {
             Debug.Log($"[Aeroporto Militar] {name}: nenhum Create de patrulha no prefab; o diretor da IA poderá criá-los em runtime.", this);
         }

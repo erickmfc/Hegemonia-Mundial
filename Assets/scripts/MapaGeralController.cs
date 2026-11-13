@@ -128,10 +128,50 @@ public class MapaGeralController : MonoBehaviour
     // --- Modo de seguir unidade selecionada ---
     private bool _seguindoAlvo = false;
     private Transform _alvoSeguir = null;
+
+    // --- Ícones Táticos de Unidades e Sensores ---
+    private Texture2D _texAviao;
+    private Texture2D _texHelicoptero;
+    private Texture2D _texNavioGuerra;
+    private Texture2D _texSubmarino;
+    private Texture2D _texRadar;
+    private Texture2D _texMissil;
+    private Texture2D _texPortaAvioes;
+    private Texture2D _texTransporteTropas;
+    private Texture2D _texPetroleiro;
+    private Texture2D _texCargueiro;
+    private Texture2D _texMarcadorUnidade;
+    private Texture2D _texInfoUnidade;
+    private Texture2D _texCameraIcone;
+    private bool _texturasTaticasCarregadas = false;
+
+    private void GarantirTexturasTaticas()
+    {
+        if (_texturasTaticasCarregadas) return;
+        _texturasTaticasCarregadas = true;
+        _texAviao = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/01_aviao_icon");
+        _texHelicoptero = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/02_helicoptero_icon");
+        _texNavioGuerra = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/03_navio_guerra_icon");
+        _texSubmarino = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/04_submarino_icon");
+        _texRadar = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/05_instalacao_radar_icon");
+        _texInfoUnidade = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/06_info_unidade_icon");
+        _texMissil = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/14_arma_missil_icon");
+        _texMarcadorUnidade = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/16_marcador_unidade_azul_icon");
+        _texPortaAvioes = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/19_navio_porta_avioes_icon");
+        _texTransporteTropas = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/20_navio_transporte_tropas_icon");
+        _texPetroleiro = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/21_navio_petroleiro_icon");
+        _texCargueiro = Resources.Load<Texture2D>("UI/MenuUnidadesTatico/22_navio_carga_icon");
+    }
     private const int MaximoMarcacoesCamera = 3;
     private const float DistanciaMinimaArrastoMarcacao = 7f;
     private static readonly string[] RotulosMarcacaoCamera = { "1", "2", "3" };
     private readonly List<Vector3> _marcacoesCamera = new List<Vector3>(MaximoMarcacoesCamera);
+    public static IReadOnlyList<Vector3> ObterMarcacoesCameraGlobais()
+    {
+        if (Instancia != null)
+            return Instancia._marcacoesCamera;
+        return null;
+    }
     private bool _modoMarcarCamera;
     private int _proximoIndiceMarcacaoCamera;
     private int _indiceMarcacaoSelecionada = -1;
@@ -1261,6 +1301,7 @@ public class MapaGeralController : MonoBehaviour
             "ALIADO  ·  HOSTIL DETECTADO  ·  ÚLTIMA POSIÇÃO", _legendaMapaStyle);
         DesenharPainelRastreamentoMissil();
         DesenharMarcacoesCamera();
+        DesenharCameraJogadorNoMapa();
     }
 
     private void DesenharMarcacoesCamera()
@@ -1295,6 +1336,168 @@ public class MapaGeralController : MonoBehaviour
             GUI.color = Color.white;
             GUI.Label(cabeca, RotulosMarcacaoCamera[i], _numeroMarcacaoCameraStyle);
         }
+    }
+
+    private void DesenharCameraJogadorNoMapa()
+    {
+        if (cameraMapa == null || Event.current.type != EventType.Repaint) return;
+
+        Vector3 posMundo = snapshotCameraPrincipalValido
+            ? cameraPrincipalPosicaoAntesDoMapa
+            : (cameraPrincipal != null ? cameraPrincipal.transform.position : Vector3.zero);
+
+        Quaternion rotMundo = snapshotCameraPrincipalValido
+            ? cameraPrincipalRotacaoAntesDoMapa
+            : (cameraPrincipal != null ? cameraPrincipal.transform.rotation : Quaternion.identity);
+
+        Vector3 tela = cameraMapa.WorldToScreenPoint(posMundo);
+        if (tela.z <= 0f || tela.x < -100f || tela.x > Screen.width + 100f
+            || tela.y < -100f || tela.y > Screen.height + 100f)
+        {
+            return;
+        }
+
+        float cx = tela.x;
+        float cy = Screen.height - tela.y;
+
+        // Ângulo horizontal (yaw) da câmera principal
+        Vector3 forward = rotMundo * Vector3.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+        forward.Normalize();
+        float anguloYaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+
+        // Comprimento e abertura do cone em V
+        float comprimentoV = 48f;
+        float fovMetade = (cameraPrincipalFovAntesDoMapa > 10f ? cameraPrincipalFovAntesDoMapa : 60f) * 0.5f;
+
+        float anguloEsquerda = (anguloYaw - fovMetade) * Mathf.Deg2Rad;
+        float anguloDireita = (anguloYaw + fovMetade) * Mathf.Deg2Rad;
+
+        Vector2 pontaE = new Vector2(cx + Mathf.Sin(anguloEsquerda) * comprimentoV, cy - Mathf.Cos(anguloEsquerda) * comprimentoV);
+        Vector2 pontaD = new Vector2(cx + Mathf.Sin(anguloDireita) * comprimentoV, cy - Mathf.Cos(anguloDireita) * comprimentoV);
+        Vector2 centro = new Vector2(cx, cy);
+
+        Color corCone = new Color(0.22f, 0.74f, 0.97f, 0.85f);
+        Color corSombra = new Color(0f, 0f, 0f, 0.6f);
+
+        // Desenha sombra do cone em V
+        DesenharLinhaTela(centro + new Vector2(1f, 1f), pontaE + new Vector2(1f, 1f), corSombra, 3.5f);
+        DesenharLinhaTela(centro + new Vector2(1f, 1f), pontaD + new Vector2(1f, 1f), corSombra, 3.5f);
+        DesenharLinhaTela(pontaE + new Vector2(1f, 1f), pontaD + new Vector2(1f, 1f), corSombra, 2f);
+
+        // Desenha linhas do cone em V com brilho ciano
+        DesenharLinhaTela(centro, pontaE, corCone, 2.4f);
+        DesenharLinhaTela(centro, pontaD, corCone, 2.4f);
+        DesenharLinhaTracejada(pontaE, pontaD, new Color(0.22f, 0.74f, 0.97f, 0.55f), 1.6f, 5f, 4f);
+
+        // Seta de proa na direção central de visada
+        float anguloCentroRad = anguloYaw * Mathf.Deg2Rad;
+        Vector2 pontaCentral = new Vector2(cx + Mathf.Sin(anguloCentroRad) * 22f, cy - Mathf.Cos(anguloCentroRad) * 22f);
+        DesenharLinhaTela(centro, pontaCentral, new Color(1f, 1f, 1f, 0.9f), 2.2f);
+
+        // Ícone da Câmera (vetorial com fundo transparente)
+        GarantirTexturaIconeCamera();
+        float tamIcone = 26f;
+        if (_texCameraIcone != null)
+        {
+            DesenharTexturaRotacionada(cx, cy, tamIcone, tamIcone, _texCameraIcone, Color.white, anguloYaw, false);
+        }
+        else
+        {
+            // Fallback elegante com desenho vetorial se textura não estiver pronta
+            DesenharLinhaIcone(cx, cy, 14f, anguloYaw, new Vector2(-0.6f, -0.4f), new Vector2(0.6f, -0.4f), corCone, false);
+            DesenharLinhaIcone(cx, cy, 14f, anguloYaw, new Vector2(0.6f, -0.4f), new Vector2(0.6f, 0.5f), corCone, false);
+            DesenharLinhaIcone(cx, cy, 14f, anguloYaw, new Vector2(0.6f, 0.5f), new Vector2(-0.6f, 0.5f), corCone, false);
+            DesenharLinhaIcone(cx, cy, 14f, anguloYaw, new Vector2(-0.6f, 0.5f), new Vector2(-0.6f, -0.4f), corCone, false);
+        }
+    }
+
+    private void GarantirTexturaIconeCamera()
+    {
+        if (_texCameraIcone != null) return;
+
+        const int res = 64;
+        _texCameraIcone = new Texture2D(res, res, TextureFormat.RGBA32, false);
+        _texCameraIcone.filterMode = FilterMode.Bilinear;
+        _texCameraIcone.wrapMode = TextureWrapMode.Clamp;
+
+        Color[] pixels = new Color[res * res];
+        Color transparente = new Color(0f, 0f, 0f, 0f);
+        Color cianoCorpo = new Color32(56, 189, 248, 255);
+        Color azulCentro = new Color32(15, 23, 42, 235);
+        Color brancoLente = new Color32(255, 255, 255, 255);
+        Color vermelhoRec = new Color32(239, 68, 68, 255);
+
+        for (int y = 0; y < res; y++)
+        {
+            for (int x = 0; x < res; x++)
+            {
+                float nx = (x - res * 0.5f);
+                float ny = (y - res * 0.5f);
+                float distOrigem = Mathf.Sqrt(nx * nx + ny * ny);
+
+                Color pixel = transparente;
+
+                // Círculo base externo com borda ciano
+                if (distOrigem <= 27f && distOrigem >= 23.5f)
+                {
+                    pixel = cianoCorpo;
+                }
+                else if (distOrigem < 23.5f)
+                {
+                    pixel = azulCentro;
+                }
+
+                // Corpo da câmera (retângulo centrado)
+                if (Mathf.Abs(nx) <= 12f && ny >= -8f && ny <= 9f)
+                {
+                    // Borda do corpo da câmera
+                    if (Mathf.Abs(nx) >= 10f || ny <= -6f || ny >= 7f)
+                    {
+                        pixel = brancoLente;
+                    }
+                    else
+                    {
+                        pixel = new Color32(30, 41, 59, 255);
+                    }
+                }
+
+                // Lente no topo da câmera (apontando para cima / direção de visão)
+                if (Mathf.Abs(nx) <= 5f && ny >= 9f && ny <= 14f)
+                {
+                    pixel = brancoLente;
+                }
+
+                // Lente central circular
+                float distCentroLente = Mathf.Sqrt(nx * nx + (ny - 0.5f) * (ny - 0.5f));
+                if (distCentroLente <= 4.8f)
+                {
+                    pixel = cianoCorpo;
+                }
+                if (distCentroLente <= 2.2f)
+                {
+                    pixel = brancoLente;
+                }
+
+                // Ponto vermelho (LED de câmera ativa)
+                if (Mathf.Abs(nx - 7f) <= 1.6f && Mathf.Abs(ny - 5f) <= 1.6f)
+                {
+                    pixel = vermelhoRec;
+                }
+
+                // Indicador de seta/proa na frente
+                if (ny >= 21f && ny <= 26f && Mathf.Abs(nx) <= (26f - ny) * 1.2f)
+                {
+                    pixel = cianoCorpo;
+                }
+
+                pixels[y * res + x] = pixel;
+            }
+        }
+
+        _texCameraIcone.SetPixels(pixels);
+        _texCameraIcone.Apply(false, true);
     }
 
     private string ObterDescricaoZoomMapa()
@@ -1374,34 +1577,37 @@ public class MapaGeralController : MonoBehaviour
             if (regiao == null || !regiao.PossuiPoligono) continue;
             Color cor = CorPoliticaDaRegiao(gerente, regiao);
             bool limiteMaritimo = regiao.tipo == TipoRegiaoPolitica.AguasTerritoriais;
-            float espessura = limiteMaritimo ? 0.65f : (visaoGlobal ? 0.75f : (visaoMedia ? 0.9f : 1.05f));
-            Vector3 anterior = Vector3.zero;
-            bool anteriorVisivel = false;
-            for (int v = 0; v <= regiao.vertices.Count; v++)
+
+            // Mantém apenas o contorno marítimo principal (fronteira marítima do país),
+            // eliminando linhas terrestres internas duplicadas sobre o relevo das ilhas.
+            if (limiteMaritimo)
             {
-                Vector2 uv = regiao.vertices[v % regiao.vertices.Count];
-                Vector3 mundo = MapUvToWorldCartografico(gerente, uv);
-                Vector3 tela = cameraMapa.WorldToScreenPoint(mundo);
-                if (tela.z <= 0f)
+                float espessura = 0.85f;
+                Vector3 anterior = Vector3.zero;
+                bool anteriorVisivel = false;
+                for (int v = 0; v <= regiao.vertices.Count; v++)
                 {
-                    anteriorVisivel = false;
-                    continue;
-                }
-                Vector2 atual = new Vector2(tela.x, Screen.height - tela.y);
-                if (anteriorVisivel)
-                {
-                    float comprimento = Vector2.Distance(anterior, atual);
-                    float comprimentoMinimo = visaoGlobal ? 3.5f : (visaoMedia ? 1.5f : 0.65f);
-                    if (comprimento >= comprimentoMinimo)
+                    Vector2 uv = regiao.vertices[v % regiao.vertices.Count];
+                    Vector3 mundo = MapUvToWorldCartografico(gerente, uv);
+                    Vector3 tela = cameraMapa.WorldToScreenPoint(mundo);
+                    if (tela.z <= 0f)
                     {
-                        if (limiteMaritimo && !visaoGlobal)
-                            DesenharLinhaTracejada(anterior, atual, cor, espessura, 9f, 6f);
-                        else
-                            DesenharLinhaTela(anterior, atual, cor, espessura);
+                        anteriorVisivel = false;
+                        continue;
                     }
+                    Vector2 atual = new Vector2(tela.x, Screen.height - tela.y);
+                    if (anteriorVisivel)
+                    {
+                        float comprimento = Vector2.Distance(anterior, atual);
+                        float comprimentoMinimo = visaoGlobal ? 3.5f : (visaoMedia ? 1.5f : 0.65f);
+                        if (comprimento >= comprimentoMinimo)
+                        {
+                            DesenharLinhaTela(anterior, atual, cor, espessura);
+                        }
+                    }
+                    anterior = atual;
+                    anteriorVisivel = true;
                 }
-                anterior = atual;
-                anteriorVisivel = true;
             }
 
             if (regiao.tipo == TipoRegiaoPolitica.Terra && DeveExibirRotuloTerritorio(regiao, visaoGlobal, visaoMedia))
@@ -1496,31 +1702,53 @@ public class MapaGeralController : MonoBehaviour
 
     private void DesenharCamadasMapa()
     {
-        Rect painel = new Rect(Screen.width - 212f, 44f, 200f, Screen.height - 84f);
-        GUI.color = corPainelMapa;
+        Rect painel = new Rect(Screen.width - 232f, 44f, 220f, Screen.height - 84f);
+
+        // Fundo estilo HUD tático militar com transparência fosca
+        GUI.color = new Color(0.02f, 0.05f, 0.08f, 0.90f);
         GUI.DrawTexture(painel, Texture2D.whiteTexture);
-        GUI.color = new Color32(88, 152, 158, 220);
-        GUI.DrawTexture(new Rect(painel.x, painel.y, 2f, painel.height), Texture2D.whiteTexture);
+
+        // Borda e linhas de destaque em ciano neon
+        GUI.color = new Color32(42, 192, 204, 255);
+        GUI.DrawTexture(new Rect(painel.x, painel.y, 3f, painel.height), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(painel.x, painel.y, painel.width, 2f), Texture2D.whiteTexture);
+        GUI.DrawTexture(new Rect(painel.x, painel.yMax - 2f, painel.width, 2f), Texture2D.whiteTexture);
+
+        // Linha sutil à direita
+        GUI.color = new Color(0.16f, 0.75f, 0.80f, 0.35f);
+        GUI.DrawTexture(new Rect(painel.xMax - 1f, painel.y, 1f, painel.height), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        GUILayout.BeginArea(new Rect(painel.x + 12f, painel.y + 10f, painel.width - 22f, painel.height - 18f));
-        GUILayout.Label("CAMADAS", _camadaMapaStyle);
-        camadaFronteiras = GUILayout.Toggle(camadaFronteiras, "Fronteiras políticas", _toggleCamadaStyle);
-        camadaCidades = GUILayout.Toggle(camadaCidades, "Cidades", _toggleCamadaStyle);
-        camadaBases = GUILayout.Toggle(camadaBases, "Bases", _toggleCamadaStyle);
-        camadaPortos = GUILayout.Toggle(camadaPortos, "Portos", _toggleCamadaStyle);
-        camadaAeroportos = GUILayout.Toggle(camadaAeroportos, "Aeroportos", _toggleCamadaStyle);
-        camadaRadares = GUILayout.Toggle(camadaRadares, "Radares", _toggleCamadaStyle);
-        camadaUnidades = GUILayout.Toggle(camadaUnidades, "Unidades", _toggleCamadaStyle);
-        GUILayout.Space(8f);
-        GUILayout.Label("CAMADAS ADICIONAIS", _estiloMiniMapa);
-        camadaRecursos = GUILayout.Toggle(camadaRecursos, "Recursos", _toggleCamadaStyle);
-        camadaEconomia = GUILayout.Toggle(camadaEconomia, "Economia", _toggleCamadaStyle);
-        camadaPopulacao = GUILayout.Toggle(camadaPopulacao, "População", _toggleCamadaStyle);
-        camadaInteligencia = GUILayout.Toggle(camadaInteligencia, "Inteligência", _toggleCamadaStyle);
-        camadaLogistica = GUILayout.Toggle(camadaLogistica, "Logística", _toggleCamadaStyle);
-        camadaAreasPatrulha = GUILayout.Toggle(camadaAreasPatrulha, "Áreas de patrulha", _toggleCamadaStyle);
+
+        GUILayout.BeginArea(new Rect(painel.x + 14f, painel.y + 12f, painel.width - 26f, painel.height - 24f));
+        GUILayout.Label("FILTRO DE CAMADAS", _camadaMapaStyle);
+        GUILayout.Space(4f);
+
+        camadaFronteiras = GUILayout.Toggle(camadaFronteiras, "⛨ Fronteiras Marítimas", _toggleCamadaStyle);
+        camadaCidades = GUILayout.Toggle(camadaCidades, "🏛 Cidades", _toggleCamadaStyle);
+        camadaBases = GUILayout.Toggle(camadaBases, "🚩 Bases Militares", _toggleCamadaStyle);
+        camadaPortos = GUILayout.Toggle(camadaPortos, "⚓ Portos e Píeres", _toggleCamadaStyle);
+        camadaAeroportos = GUILayout.Toggle(camadaAeroportos, "✈ Aeroportos", _toggleCamadaStyle);
+        camadaRadares = GUILayout.Toggle(camadaRadares, "📡 Radares", _toggleCamadaStyle);
+        camadaUnidades = GUILayout.Toggle(camadaUnidades, "⚔ Forças Ativas", _toggleCamadaStyle);
+
+        GUILayout.Space(12f);
+        GUI.color = new Color(0.16f, 0.75f, 0.80f, 0.4f);
+        GUILayout.Box(GUIContent.none, GUILayout.Height(1f), GUILayout.ExpandWidth(true));
+        GUI.color = Color.white;
+        GUILayout.Space(6f);
+
+        GUILayout.Label("INTELIGÊNCIA & DADOS", _estiloMiniMapa);
+        GUILayout.Space(4f);
+
+        camadaRecursos = GUILayout.Toggle(camadaRecursos, "• Recursos Naturais", _toggleCamadaStyle);
+        camadaEconomia = GUILayout.Toggle(camadaEconomia, "• Economia e Finanças", _toggleCamadaStyle);
+        camadaPopulacao = GUILayout.Toggle(camadaPopulacao, "• Demografia", _toggleCamadaStyle);
+        camadaInteligencia = GUILayout.Toggle(camadaInteligencia, "• Inteligência Militar", _toggleCamadaStyle);
+        camadaLogistica = GUILayout.Toggle(camadaLogistica, "• Rotas de Suprimento", _toggleCamadaStyle);
+        camadaAreasPatrulha = GUILayout.Toggle(camadaAreasPatrulha, "• Rotas de Patrulha", _toggleCamadaStyle);
+
         GUILayout.FlexibleSpace();
-        GUILayout.Label("Contatos hostis seguem a inteligência disponível.", _estiloMiniMapa);
+        GUILayout.Label("Soberania e limites de águas territoriais sob varredura de satélite.", _estiloMiniMapa);
         GUILayout.EndArea();
     }
 
@@ -1858,7 +2086,7 @@ public class MapaGeralController : MonoBehaviour
             {
                 DesenharIconeUnidade(sx, sy, zoom < 9000f ? 10f : 8f, tipo,
                     contatoAnonimoRecon ? (TipoUnidade)255 : (ehPredio ? TipoUnidade.Estrutura : id.tipoUnidade),
-                    cor, angulo, classe == 3);
+                    cor, angulo, classe == 3, id, ehPredio, categoria);
             }
         }
 
@@ -1902,13 +2130,102 @@ public class MapaGeralController : MonoBehaviour
         return ehAliado || ehNeutro || contatoAtual || contatoMemorizado;
     }
 
-    private void DesenharIconeUnidade(float x, float y, float tamanho, int codigoSimbolo,
-        TipoUnidade tipo, Color cor, float angulo, bool ultimaPosicaoConhecida)
+    private void DesenharTexturaRotacionada(float cx, float cy, float largura, float altura, Texture2D tex, Color cor, float angulo, bool ultimaPosicaoConhecida)
     {
+        if (tex == null) return;
+        Color c = cor;
+        if (ultimaPosicaoConhecida) c.a *= 0.55f;
+
+        Matrix4x4 matrizOriginal = GUI.matrix;
+        if (Mathf.Abs(angulo) > 0.01f)
+        {
+            GUIUtility.RotateAroundPivot(angulo, new Vector2(cx, cy));
+        }
+
+        Color corOriginal = GUI.color;
+        GUI.color = c;
+        GUI.DrawTexture(new Rect(cx - largura * 0.5f, cy - altura * 0.5f, largura, altura), tex, ScaleMode.ScaleToFit, true);
+        GUI.color = corOriginal;
+        GUI.matrix = matrizOriginal;
+    }
+
+    private Texture2D SelecionarTexturaUnidade(IdentidadeUnidade id, TipoUnidade tipo, bool ehPredio, int categoria)
+    {
+        GarantirTexturasTaticas();
+        if (ehPredio || tipo == TipoUnidade.Estrutura)
+        {
+            if ((categoria & 32) != 0 && _texRadar != null) return _texRadar;
+            if ((categoria & 16) != 0 && _texAviao != null) return _texAviao;
+            if ((categoria & 8) != 0 && _texNavioGuerra != null) return _texNavioGuerra;
+            return _texInfoUnidade != null ? _texInfoUnidade : _texMarcadorUnidade;
+        }
+
+        if (id != null)
+        {
+            string nome = id.gameObject.name;
+            if (id.tipoUnidade == TipoUnidade.Aereo)
+            {
+                if (id.GetComponent<Helicoptero>() != null || id.GetComponent<VooHelicoptero>() != null || nome.IndexOf("heli", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    if (_texHelicoptero != null) return _texHelicoptero;
+                }
+                if (_texAviao != null) return _texAviao;
+            }
+            else if (id.tipoUnidade == TipoUnidade.Naval)
+            {
+                if (id.GetComponent<ControleSubmarino>() != null || nome.IndexOf("sub", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    if (_texSubmarino != null) return _texSubmarino;
+                }
+                if (nome.IndexOf("porta", System.StringComparison.OrdinalIgnoreCase) >= 0 || nome.IndexOf("carrier", System.StringComparison.OrdinalIgnoreCase) >= 0 || id.GetComponent("GerenciadorPortaAvioes") != null)
+                {
+                    if (_texPortaAvioes != null) return _texPortaAvioes;
+                }
+                if (nome.IndexOf("petrol", System.StringComparison.OrdinalIgnoreCase) >= 0 || nome.IndexOf("tanker", System.StringComparison.OrdinalIgnoreCase) >= 0 || id.GetComponent("NavioPetroleiro") != null)
+                {
+                    if (_texPetroleiro != null) return _texPetroleiro;
+                }
+                if (nome.IndexOf("carga", System.StringComparison.OrdinalIgnoreCase) >= 0 || nome.IndexOf("cargo", System.StringComparison.OrdinalIgnoreCase) >= 0 || id.GetComponent("NavioCargaMercado") != null)
+                {
+                    if (_texCargueiro != null) return _texCargueiro;
+                }
+                if (nome.IndexOf("transporte", System.StringComparison.OrdinalIgnoreCase) >= 0 || nome.IndexOf("tropa", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    if (_texTransporteTropas != null) return _texTransporteTropas;
+                }
+                if (_texNavioGuerra != null) return _texNavioGuerra;
+            }
+            else if (id.tipoUnidade == TipoUnidade.Infantaria || id.tipoUnidade == TipoUnidade.Veiculo)
+            {
+                if (_texMarcadorUnidade != null) return _texMarcadorUnidade;
+            }
+        }
+        else
+        {
+            if (tipo == TipoUnidade.Aereo && _texAviao != null) return _texAviao;
+            if (tipo == TipoUnidade.Naval && _texNavioGuerra != null) return _texNavioGuerra;
+            if ((tipo == TipoUnidade.Infantaria || tipo == TipoUnidade.Veiculo) && _texMarcadorUnidade != null) return _texMarcadorUnidade;
+        }
+
+        return null;
+    }
+
+    private void DesenharIconeUnidade(float x, float y, float tamanho, int codigoSimbolo,
+        TipoUnidade tipo, Color cor, float angulo, bool ultimaPosicaoConhecida,
+        IdentidadeUnidade id = null, bool ehPredio = false, int categoria = 0)
+    {
+        Texture2D tex = SelecionarTexturaUnidade(id, tipo, ehPredio || ((codigoSimbolo & 0x80) != 0) || tipo == TipoUnidade.Estrutura, categoria != 0 ? categoria : (codigoSimbolo & 0x7f));
+        if (tex != null)
+        {
+            float tamPx = Mathf.Clamp(tamanho * 2.5f, 20f, 32f);
+            DesenharTexturaRotacionada(x, y, tamPx, tamPx, tex, cor, angulo, ultimaPosicaoConhecida);
+            return;
+        }
+
         if ((codigoSimbolo & 0x80) != 0 || tipo == TipoUnidade.Estrutura)
         {
-            int categoria = codigoSimbolo & 0x7f;
-            DesenharIconeEstrutura(x, y, tamanho, categoria, cor, ultimaPosicaoConhecida);
+            int cat = codigoSimbolo & 0x7f;
+            DesenharIconeEstrutura(x, y, tamanho, cat, cor, ultimaPosicaoConhecida);
         }
         else if (tipo == TipoUnidade.Naval)
         {
@@ -2300,7 +2617,16 @@ public class MapaGeralController : MonoBehaviour
                     angulo = Mathf.Atan2(direcaoTela.x, -direcaoTela.y) * Mathf.Rad2Deg;
             }
         }
-        DesenharIcone(sx, sy, selecionado ? 11f : 8f, cor, angulo);
+        GarantirTexturasTaticas();
+        if (_texMissil != null)
+        {
+            float tamMissil = selecionado ? 26f : 20f;
+            DesenharTexturaRotacionada(sx, sy, tamMissil, tamMissil, _texMissil, cor, angulo, ultimoConhecido);
+        }
+        else
+        {
+            DesenharIcone(sx, sy, selecionado ? 11f : 8f, cor, angulo);
+        }
         if (selecionado)
         {
             GUI.color = cor;
