@@ -41,6 +41,20 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<string, IA_NationalIntent> _byKey = new Dictionary<string, IA_NationalIntent>();
         public int PendingCount { get { return _pending.Count; } }
 
+        public bool HasPendingKind(IA_IntentKind kind)
+        {
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                IA_NationalIntent intent = _pending[i];
+                if (intent != null && intent.Kind == kind)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool Publish(IA_NationalIntent intent, float now, out string reason)
         {
             reason = string.Empty;

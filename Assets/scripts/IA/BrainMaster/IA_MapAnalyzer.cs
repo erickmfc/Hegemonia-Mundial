@@ -419,7 +419,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             height = position.y;
-            int hitCount = Physics.RaycastNonAlloc(new Vector3(position.x, 1200f, position.z), Vector3.down, _raycastBuffer, 2500f, ~0, QueryTriggerInteraction.Collide);
+            int hitCount = Physics.RaycastNonAlloc(new Vector3(position.x, 2200f, position.z), Vector3.down, _raycastBuffer, 4000f, ~0, QueryTriggerInteraction.Collide);
             if (hitCount == 0)
             {
                 return IA_TerrainType.Unknown;
@@ -522,6 +522,14 @@ namespace Hegemonia.AI.BrainMaster
 
         private float SampleHeight(Vector3 position)
         {
+            global::GlobalTerrainStreamer streamer = global::GlobalTerrainStreamer.Instance;
+            if (streamer != null
+                && streamer.isActiveAndEnabled
+                && streamer.TrySampleWorldHeight(position, out float globalHeight))
+            {
+                return globalHeight;
+            }
+
             float alturaMarcada;
             if (RegistroSuperficieMapa.TryGetAltura(position, TipoSuperficieMapa.Chao, out alturaMarcada))
             {
@@ -529,7 +537,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             RaycastHit hit;
-            if (Physics.Raycast(new Vector3(position.x, 1000f, position.z), Vector3.down, out hit, 2000f, ~0, QueryTriggerInteraction.Ignore))
+            if (Physics.Raycast(new Vector3(position.x, 2200f, position.z), Vector3.down, out hit, 4000f, ~0, QueryTriggerInteraction.Ignore))
             {
                 return hit.point.y;
             }

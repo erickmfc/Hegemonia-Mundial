@@ -956,26 +956,65 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         if (menuAeroportoUI != null && menuAeroportoUI.activeInHierarchy) return;
 
         bool menuAtivo = false;
+        System.Reflection.FieldInfo fi = null;
         try
         {
-            var fi = this.GetType().BaseType.GetField("menuAtivo",
+            fi = this.GetType().BaseType.GetField("menuAtivo",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (fi != null) menuAtivo = (bool)fi.GetValue(this);
         }
         catch { return; }
         if (!menuAtivo) return;
+        if (!GestorMenusExclusivos.EstaAtivo(this))
+        {
+            try { fi?.SetValue(this, false); } catch { }
+            return;
+        }
 
-        float w = Mathf.Max(900f, Screen.width * 0.58f);
-        float x = 25f, y = 60f;
-        float h = Screen.height - 80f;
+        float topoHud = MenuFixadoController.ObterMargemSuperiorHudNaTela(82f);
+        float baseHud = MenuComandoController.ObterMargemInferiorHudGlobalNaTela(180f);
+        float topSafe = Mathf.Max(8f, topoHud + 10f);
+        float bottomSafe = Mathf.Max(12f, baseHud + 14f);
+        float alturaDisponivel = Screen.height - topSafe - bottomSafe;
+        if (alturaDisponivel < 260f)
+        {
+            topSafe = Mathf.Min(topSafe, Mathf.Max(6f, topoHud + 4f));
+            bottomSafe = Mathf.Min(bottomSafe, Mathf.Max(10f, baseHud + 8f));
+            alturaDisponivel = Mathf.Max(210f, Screen.height - topSafe - bottomSafe);
+        }
+
+        float x = Screen.width < 1000f ? 12f : 22f;
+        float wMax = Mathf.Max(340f, Screen.width - x * 2f);
+        float w = Mathf.Min(Mathf.Clamp(Screen.width * 0.62f, 840f, 1020f), wMax);
+        float y = topSafe;
+        float h = Mathf.Min(alturaDisponivel, Mathf.Max(460f, Screen.height * 0.72f));
         Rect janela = new Rect(x, y, w, h);
+        GestorMenusExclusivos.RegistrarAreaBloqueio(this, janela);
 
-        // Fundo escuro
-        DrawRect(janela, new Color(0.05f, 0.07f, 0.12f, 0.97f));
-        DrawRect(new Rect(x, y, w, 48f), new Color(0.08f, 0.18f, 0.35f, 1f));
+        // Fundo escuro + moldura tática alinhada ao HUD
+        DrawRect(janela, new Color(0.027f, 0.066f, 0.105f, 0.96f));
+        DrawRect(new Rect(x, y, w, 46f), new Color(0.043f, 0.105f, 0.165f, 0.98f));
+        DrawRect(new Rect(x, y, w, 2f), new Color(0.0f, 0.898f, 1.0f, 0.95f));
+        Color borda = new Color(0.243f, 0.486f, 0.596f, 0.92f);
+        DrawRect(new Rect(x, janela.yMax - 1f, w, 1f), borda);
+        DrawRect(new Rect(x, y, 1f, h), borda);
+        DrawRect(new Rect(janela.xMax - 1f, y, 1f, h), borda);
+        DrawRect(new Rect(x, y + 46f, w, 1f), borda);
 
-        GUI.Label(new Rect(x + 15, y + 10, w - 30, 32),
-            "<size=20><b>✈  CENTRO DE CONTROLE — AEROPORTO COMERCIAL</b></size>");
+        GUI.Label(new Rect(x + 15f, y + 9f, Mathf.Max(180f, w - 72f), 30f),
+            "<size=18><b>✈  CENTRO DE CONTROLE — AEROPORTO COMERCIAL</b></size>");
+
+        Color bgPrev = GUI.backgroundColor;
+        GUI.backgroundColor = new Color(0.75f, 0.22f, 0.24f, 1f);
+        if (GUI.Button(new Rect(janela.xMax - 40f, y + 10f, 30f, 26f), "<b>✕</b>"))
+        {
+            GUI.backgroundColor = bgPrev;
+            try { fi?.SetValue(this, false); } catch { }
+            GestorMenusExclusivos.Fechar(this);
+            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+            return;
+        }
+        GUI.backgroundColor = bgPrev;
 
         // Abas — 3 abas comerciais
         float tabY = y + 52f;
@@ -984,13 +1023,13 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         for (int i = 0; i < abas.Length; i++)
         {
             Rect tabRect = new Rect(x + 15 + i * tabW, tabY, tabW - 2f, 30f);
-            Color tabColor = (abaMenuComercial == i) ? new Color(0.2f, 0.5f, 1f) : new Color(0.1f, 0.15f, 0.25f);
+            Color tabColor = (abaMenuComercial == i) ? new Color(0.08f, 0.36f, 0.52f) : new Color(0.06f, 0.13f, 0.20f);
             DrawRect(tabRect, tabColor);
             if (GUI.Button(tabRect, abas[i])) abaMenuComercial = i;
         }
 
         // Conteúdo
-        Rect conteudo = new Rect(x + 10, tabY + 36f, w - 20, h - 100f);
+        Rect conteudo = new Rect(x + 10f, tabY + 36f, w - 20f, Mathf.Max(120f, h - 98f));
         GUILayout.BeginArea(conteudo);
 
         switch (abaMenuComercial)

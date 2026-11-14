@@ -1172,9 +1172,9 @@ public static class NavalPlacementResolver
         bool sawSolid = false;
 
         RaycastHit[] hits = Physics.RaycastAll(
-            new Vector3(position.x, seaLevel + 1000f, position.z),
+            new Vector3(position.x, seaLevel + 2200f, position.z),
             Vector3.down,
-            3000f,
+            4000f,
             BuildRayMask(),
             QueryTriggerInteraction.Collide);
 
@@ -1254,11 +1254,16 @@ public static class NavalPlacementResolver
     /// </summary>
     public static bool IsWaterAtPositionForDryLandPlacement(Vector3 position, float seaLevel)
     {
+        if (TryClassifyWaterFromGlobalMap(position, out bool waterFromGlobalMap))
+        {
+            return waterFromGlobalMap;
+        }
+
         int hitCount = Physics.RaycastNonAlloc(
-            new Vector3(position.x, seaLevel + 1000f, position.z),
+            new Vector3(position.x, seaLevel + 2200f, position.z),
             Vector3.down,
             PhysicalWaterProbeHits,
-            3000f,
+            4000f,
             BuildRayMask(),
             QueryTriggerInteraction.Collide);
 
@@ -1304,11 +1309,6 @@ public static class NavalPlacementResolver
         {
             float effectiveWaterHeight = Mathf.Max(seaLevel, waterSurfaceHeight);
             return !foundSolid || solidSurfaceHeight <= effectiveWaterHeight - VisibleWaterDepthTolerance;
-        }
-
-        if (TryClassifyWaterFromGlobalMap(position, out bool waterFromGlobalMap))
-        {
-            return waterFromGlobalMap;
         }
 
         if (RegistroSuperficieMapa.TryClassify(
@@ -1404,15 +1404,24 @@ public static class NavalPlacementResolver
     public static bool TryGetGlobalSignedCoastDistanceAtPosition(Vector3 position, out float signedCoastDistance)
     {
         signedCoastDistance = 0f;
-        float now = Time.realtimeSinceStartup;
-        if (_cachedGlobalTerrainStreamer == null && now >= _nextGlobalTerrainLookupTime)
+        GlobalTerrainStreamer streamer = GlobalTerrainStreamer.Instance;
+        if (streamer != null)
         {
-            _cachedGlobalTerrainStreamer = UnityEngine.Object.FindFirstObjectByType<GlobalTerrainStreamer>();
-            _nextGlobalTerrainLookupTime = now + GlobalTerrainLookupRetrySeconds;
+            _cachedGlobalTerrainStreamer = streamer;
+        }
+        else
+        {
+            float now = Time.realtimeSinceStartup;
+            if (_cachedGlobalTerrainStreamer == null && now >= _nextGlobalTerrainLookupTime)
+            {
+                _cachedGlobalTerrainStreamer = UnityEngine.Object.FindFirstObjectByType<GlobalTerrainStreamer>();
+                _nextGlobalTerrainLookupTime = now + GlobalTerrainLookupRetrySeconds;
+            }
+            streamer = _cachedGlobalTerrainStreamer;
         }
 
-        GlobalWorldDefinition world = _cachedGlobalTerrainStreamer != null
-            ? _cachedGlobalTerrainStreamer.world
+        GlobalWorldDefinition world = streamer != null
+            ? streamer.world
             : null;
         if (world == null
             || !world.TryWorldToMapUv(position, out _, out bool insideFootprint)
@@ -1824,9 +1833,9 @@ public static class NavalPlacementResolver
         }
 
         RaycastHit[] hits = Physics.RaycastAll(
-            new Vector3(position.x, fallback + 1000f, position.z),
+            new Vector3(position.x, fallback + 2200f, position.z),
             Vector3.down,
-            3000f,
+            4000f,
             BuildRayMask(),
             QueryTriggerInteraction.Collide);
 

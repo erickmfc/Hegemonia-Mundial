@@ -537,7 +537,7 @@ namespace Hegemonia.AI.IA03
                 }
 
                 Fabrica fabrica = estrutura.GetComponent<Fabrica>() ?? estrutura.GetComponentInChildren<Fabrica>(true);
-                if (fabrica != null && fabrica.PossuiEnergiaParaProduzir())
+                if (fabrica != null && fabrica.PossuiEnergiaParaProduzir() && !fabrica.PossuiPainelIndustrial)
                 {
                     if (fabrica.ehQuartel)
                     {

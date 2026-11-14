@@ -1844,6 +1844,43 @@ public class MenuComandoController : MonoBehaviour
         AtualizarBarraComandoContextual();
     }
 
+    public float ObterMargemInferiorHudNaTela()
+    {
+        if (menuAberto || MenuExclusivoTelaCheiaAberto()) return 0f;
+
+        VisualElement alvo = hudExpandida ? barraComandoContextual : hudDockReabrir;
+        if (alvo == null || alvo.resolvedStyle.display == DisplayStyle.None)
+        {
+            return 0f;
+        }
+
+        if (alvo.panel != null && alvo.panel.visualTree != null)
+        {
+            float alturaPainel = alvo.panel.visualTree.worldBound.height;
+            Rect limite = alvo.worldBound;
+            if (alturaPainel > 1f && limite.height > 1f && !float.IsNaN(limite.y))
+            {
+                return Mathf.Clamp(((alturaPainel - limite.y) / alturaPainel) * Screen.height, 0f, Screen.height * 0.4f);
+            }
+        }
+
+        if (!hudExpandida) return 54f;
+        float alturaDesejada = Mathf.Clamp(Screen.height * 0.19f, 160f, 200f);
+        return Mathf.Min(alturaDesejada, Screen.height * 0.26f);
+    }
+
+    public static float ObterMargemInferiorHudGlobalNaTela(float fallback = 180f)
+    {
+        if (Instancia != null)
+        {
+            return Instancia.ObterMargemInferiorHudNaTela();
+        }
+
+        float alturaDesejada = Mathf.Clamp(Screen.height * 0.19f, 160f, 200f);
+        float alturaHud = Mathf.Min(alturaDesejada, Screen.height * 0.26f);
+        return alturaHud > 0f ? alturaHud : Mathf.Clamp(fallback, 0f, Screen.height * 0.4f);
+    }
+
     private void AtualizarAlturaHudResponsiva()
     {
         hudLarguraResolucao = Screen.width;

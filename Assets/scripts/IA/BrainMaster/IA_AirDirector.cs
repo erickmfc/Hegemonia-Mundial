@@ -35,6 +35,8 @@ namespace Hegemonia.AI.BrainMaster
         private readonly List<GameObject> _airRaidC = new List<GameObject>(4);
         private readonly Dictionary<GerenciadorAeroporto, int> _readyAircraftByAirport = new Dictionary<GerenciadorAeroporto, int>(8);
         private readonly List<GameObject> _activeBombersBuffer = new List<GameObject>(8);
+        private readonly List<CreatyEstrategico> _airCreatyBuffer = new List<CreatyEstrategico>(8);
+        private int _airCreatyRotationIndex;
         private float _nextDecisionTime;
         private DecisionPhase _decisionPhase;
         private Vector3 _decisionBaseCenter;
@@ -299,15 +301,23 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                Vector3 patrolA = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
-                Vector3 patrolB = pressureTarget != Vector3.zero ? pressureTarget : _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 220f, 450f, 20);
-                QueuePatrol(
-                    "air_intercept_patrol",
-                    _activeAirUnitsBuffer,
-                    patrolA,
-                    patrolB,
-                    80,
-                    10f);
+                if (TrySelectUnitsForRoutineAirPatrol(_activeAirUnitsBuffer))
+                {
+                    Vector3 patrolA;
+                    Vector3 patrolB;
+                    if (!TryResolveAirCreatyPatrolRoute(baseCenter, pressureTarget, out patrolA, out patrolB))
+                    {
+                        patrolA = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 120f, 330f, 20);
+                        patrolB = pressureTarget != Vector3.zero ? pressureTarget : _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 220f, 450f, 20);
+                    }
+                    QueuePatrol(
+                        "air_intercept_patrol",
+                        _activeAirUnitsBuffer,
+                        patrolA,
+                        patrolB,
+                        80,
+                        10f);
+                }
             }
         }
 
@@ -580,11 +590,12 @@ namespace Hegemonia.AI.BrainMaster
                 GameObject u = units[i];
                 if (u == null || IsBomber(u)) continue;
 
-                ControleAviao aviao = u.GetComponent<ControleAviao>();
-                if (aviao == null || aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                if (!CanAircraftAcceptRoutinePatrol(u))
                 {
-                    _activeAirUnitsBuffer.Add(u);
+                    continue;
                 }
+
+                _activeAirUnitsBuffer.Add(u);
             }
 
             if (_activeAirUnitsBuffer.Count == 0)
@@ -600,7 +611,7 @@ namespace Hegemonia.AI.BrainMaster
                 pointA = brain.LastOilPlatformAttackPosition;
                 pointB = baseCenter != Vector3.zero ? baseCenter : pointA + Vector3.forward * 220f;
             }
-            else
+            else if (!TryResolveAirCreatyPatrolRoute(baseCenter, pressureTarget, out pointA, out pointB))
             {
                 pointA = _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 140f, 320f, 20);
                 pointB = pressureTarget != Vector3.zero
@@ -609,6 +620,190 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             QueuePatrol("ia03_air_patrol_single", _activeAirUnitsBuffer, pointA, pointB, 84, 6f);
+        }
+
+        private bool TrySelectUnitsForRoutineAirPatrol(List<GameObject> units)
+        {
+            if (units == null || units.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = units.Count - 1; i >= 0; i--)
+            {
+                if (!CanAircraftAcceptRoutinePatrol(units[i]))
+                {
+                    units.RemoveAt(i);
+                }
+            }
+
+            return units.Count > 0;
+        }
+
+        private static bool CanAircraftAcceptRoutinePatrol(GameObject unit)
+        {
+            if (unit == null)
+            {
+                return false;
+            }
+
+            if (unit.GetComponentInChildren<C700TransporteAereo>(true) != null)
+            {
+                return false;
+            }
+
+            ControleUnidade controller = unit.GetComponent<ControleUnidade>();
+            if (controller != null && controller.OrdemAtual != OrdemControleUnidade.Ociosa)
+            {
+                return false;
+            }
+
+            ControleAviao aviao = unit.GetComponent<ControleAviao>();
+            if (aviao != null)
+            {
+                if (aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    return false;
+                }
+
+                if (aviao.aeroportoOrigem != null && aviao.aeroportoOrigem.semEnergia)
+                {
+                    return false;
+                }
+            }
+
+            CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(unit);
+            if (combustivel != null && combustivel.usaCombustivel && !combustivel.combustivelInfinito && combustivel.Percentual < 0.40f)
+            {
+                if (aviao != null && aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+                {
+                    aviao.ReabastecerSeAbaixoDe(0.95f);
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryResolveAirCreatyPatrolRoute(Vector3 baseCenter, Vector3 pressureTarget, out Vector3 pointA, out Vector3 pointB)
+        {
+            pointA = Vector3.zero;
+            pointB = Vector3.zero;
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            if (brain == null)
+            {
+                return false;
+            }
+
+            int teamId = brain.TeamId;
+            IA03NivelConflito nivel = _ia03Estratega != null
+                ? _ia03Estratega.NivelDeConflito
+                : IA03NivelConflito.Tensao;
+
+            _airCreatyBuffer.Clear();
+            RegistroCreatysEstrategicos.PreencherCandidatos(
+                _airCreatyBuffer,
+                teamId,
+                0,
+                IA03TipoCreaty.PatrulhaAerea,
+                nivel,
+                IA03DominioEstrategico.Aereo);
+
+            if (_airCreatyBuffer.Count == 0)
+            {
+                RegistroCreatysEstrategicos.PreencherCandidatos(
+                    _airCreatyBuffer,
+                    teamId,
+                    0,
+                    IA03TipoCreaty.PatrulhaAerea,
+                    nivel,
+                    IA03DominioEstrategico.Combinado);
+            }
+
+            if (_airCreatyBuffer.Count == 0)
+            {
+                for (int n = 0; n <= (int)IA03NivelConflito.GuerraTotal && _airCreatyBuffer.Count == 0; n++)
+                {
+                    RegistroCreatysEstrategicos.PreencherCandidatos(
+                        _airCreatyBuffer,
+                        teamId,
+                        0,
+                        IA03TipoCreaty.PatrulhaAerea,
+                        (IA03NivelConflito)n,
+                        IA03DominioEstrategico.Aereo);
+                }
+            }
+
+            if (_airCreatyBuffer.Count > 0)
+            {
+                int idxA = Mathf.Abs(_airCreatyRotationIndex++) % _airCreatyBuffer.Count;
+                CreatyEstrategico creatyA = _airCreatyBuffer[idxA];
+                pointA = creatyA != null ? creatyA.transform.position : baseCenter;
+                if (_airCreatyBuffer.Count >= 2)
+                {
+                    CreatyEstrategico creatyB = _airCreatyBuffer[(idxA + 1) % _airCreatyBuffer.Count];
+                    pointB = creatyB != null ? creatyB.transform.position : pointA;
+                }
+                else
+                {
+                    Vector3 anchorDir = pressureTarget != Vector3.zero
+                        ? (pressureTarget - pointA)
+                        : (baseCenter != Vector3.zero ? (pointA - baseCenter) : Vector3.forward);
+                    anchorDir.y = 0f;
+                    if (anchorDir.sqrMagnitude < 4f)
+                    {
+                        anchorDir = Vector3.forward;
+                    }
+                    pointB = pointA + anchorDir.normalized * 260f;
+                }
+
+                return pointA != Vector3.zero;
+            }
+
+            if (brain.UseManualBuildPoints)
+            {
+                IA_ManualBuildPoint[] manualPoints = Object.FindObjectsByType<IA_ManualBuildPoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                Vector3 firstPoint = Vector3.zero;
+                Vector3 secondPoint = Vector3.zero;
+                int foundCount = 0;
+                for (int i = 0; i < manualPoints.Length; i++)
+                {
+                    IA_ManualBuildPoint mp = manualPoints[i];
+                    if (mp == null || mp.ManualRole != IA_ManualBuildPoint.OperationalRole.PatrulhaAerea)
+                    {
+                        continue;
+                    }
+
+                    IA_BrainMaster ownerBrain = mp.GetComponentInParent<IA_BrainMaster>(true);
+                    CreatyEstrategico creaty = mp.GetComponent<CreatyEstrategico>() ?? mp.GetComponentInParent<CreatyEstrategico>();
+                    bool ownedByTeam = ownerBrain == brain || (creaty != null && creaty.PaisProprietarioTeamId == brain.TeamId);
+                    if (!ownedByTeam)
+                    {
+                        continue;
+                    }
+
+                    if (!mp.AllowInactiveObject && (!mp.gameObject.activeInHierarchy || !mp.enabled))
+                    {
+                        continue;
+                    }
+
+                    if (foundCount == 0) firstPoint = mp.transform.position;
+                    else if (foundCount == 1) secondPoint = mp.transform.position;
+                    foundCount++;
+                }
+
+                if (foundCount > 0)
+                {
+                    pointA = firstPoint;
+                    pointB = foundCount >= 2
+                        ? secondPoint
+                        : firstPoint + (baseCenter != Vector3.zero ? (firstPoint - baseCenter).normalized : Vector3.forward) * 260f;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void QueuePatrol(string key, List<GameObject> units, Vector3 pointA, Vector3 pointB, int priority, float cooldown)

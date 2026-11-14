@@ -19,7 +19,7 @@ public class IA_OtimizadorUnidade : MonoBehaviour
     public float distanciaDistante = 350f;
 
     [Tooltip("Acima desta distância, renderers são desligados completamente (Culling). 0 = desabilitado.")]
-    public float distanciaCulling = 600f;
+    public float distanciaCulling = 1000f;
 
     [Header("Modo Atual (Debug)")]
     [SerializeField] private string _modoAtual = "Proximo";

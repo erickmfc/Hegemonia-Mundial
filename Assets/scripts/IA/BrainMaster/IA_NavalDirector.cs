@@ -58,7 +58,11 @@ namespace Hegemonia.AI.BrainMaster
             _heavyActiveBuffer.Clear();
             _subActiveBuffer.Clear();
             _coastalGuardBuffer.Clear();
-            if (_context.Brain != null && _context.Brain.IsBootstrapActive && (int)_context.Brain.BootstrapStage < (int)IA_BrainMaster.IA_BootstrapStage.ProduceShip)
+            if (_context.Brain != null
+                && !_context.Brain.UsaCronogramaIA03
+                && _context.Brain.IsBootstrapActive
+                && (int)_context.Brain.BootstrapStage < (int)IA_BrainMaster.IA_BootstrapStage.ProduceShip
+                && (_context.WorldState == null || _context.WorldState.OwnCombatUnits.Count == 0))
             {
                 return;
             }

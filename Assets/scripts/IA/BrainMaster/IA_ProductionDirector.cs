@@ -40,6 +40,7 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextTransportPlanRefreshTime;
         private float _nextCapacityRefreshTime;
         private float _nextValdoriaAirportBlockLogTime;
+        private float _nextGroundFactoryBlockLogTime;
         private int _cachedAircraftCapacity = BaseAircraftCapacity;
         private int _cachedNavalCapacity = BaseNavalCapacity;
         private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
@@ -205,13 +206,15 @@ namespace Hegemonia.AI.BrainMaster
                 int patrolShipTarget = hasNavalBase ? 1 : 0;
                 int navalBaseline = 1 + Mathf.RoundToInt(counter.NavalWeight * 4f);
                 int navalTarget = hasNavalBase ? Mathf.Max(1, navalBaseline) : 0;
-                int oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? 1 : 0;
+                int oilTankerTarget = hasNavalBase ? 1 : 0;
                 if (brain != null)
                 {
                     fighterTarget = hasMilitaryAirport ? Mathf.Max(fighterTarget, brain.TargetAircraft) : 0;
                     navalTarget = hasNavalBase ? Mathf.Max(navalTarget, brain.TargetFleet) : 0;
-                    oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0
-                        ? Mathf.Max(oilTankerTarget, brain.TargetOilTankers)
+                    oilTankerTarget = hasNavalBase
+                        ? (snapshot.PlatformCount > 0 && snapshot.PierCount > 0
+                            ? Mathf.Max(oilTankerTarget, brain.TargetOilTankers)
+                            : 1)
                         : 0;
                         
                     if (brain.ActiveImperialPlan == "invasao_anfibia_combinada")
@@ -241,8 +244,10 @@ namespace Hegemonia.AI.BrainMaster
                     }
                     else
                     {
-                        oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0
-                            ? brain.IA03LimitePetroleiros
+                        oilTankerTarget = hasNavalBase
+                            ? (snapshot.PlatformCount > 0 && snapshot.PierCount > 0
+                                ? Mathf.Max(1, brain.IA03LimitePetroleiros)
+                                : 1)
                             : 0;
                     }
 
@@ -260,8 +265,8 @@ namespace Hegemonia.AI.BrainMaster
                 {
                     // Este pacote pede um petroleiro nacional de cada vez; a
                     // meta maior da IA continua aplicável às demais classes.
-                    oilTankerTarget = hasNavalBase && snapshot.PlatformCount > 0 && snapshot.PierCount > 0
-                        ? Mathf.Min(1, oilTankerTarget)
+                    oilTankerTarget = hasNavalBase
+                        ? (snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? Mathf.Min(1, oilTankerTarget) : 1)
                         : 0;
                 }
                 int subTarget = (brain == null || brain.IA03NavioMilitarLiberado)
@@ -344,16 +349,23 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                bool awaitingFirstOilTanker = hasNavalBase
-                                              && oilTankerCount < 1
-                                              && snapshot.RecentCombatSeconds >= 25f;
+                bool oilTankerAvailable = HasOilTankerCatalog();
+                bool canQueueAdditionalTanker = snapshot.PlatformCount > 0 && snapshot.PierCount > 0;
+                bool queuedFirstOilTankerThisTick = hasNavalBase
+                                                    && oilTankerTarget > 0
+                                                    && (oilTankerCount < 1 || canQueueAdditionalTanker)
+                                                    && oilTankerCount < oilTankerTarget
+                                                    && QueueOilTanker(99, 5.0f);
 
-                if (hasNavalBase
-                    && oilTankerCount < oilTankerTarget
-                    && QueueOilTanker(99, 5.0f))
+                if (queuedFirstOilTankerThisTick)
                 {
                     return;
                 }
+
+                bool awaitingFirstOilTanker = hasNavalBase
+                                              && oilTankerTarget > 0
+                                              && oilTankerCount < 1
+                                              && oilTankerAvailable;
 
                 if (!_timedNavalKickoffTriggered
                     && !awaitingFirstOilTanker
@@ -428,24 +440,53 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                // Garante que o aeroporto NUNCA fique vazio, reposição cadenciada
-                if (hasMilitaryAirport && fighterCount < 6 && QueuePreferredAircraft(93, 6.5f))
+                // Avalia cada dominio produtivo de forma independente (naval, aereo e terrestre)
+                // para evitar que infanteria/tanques/cacas impecam eternamente o Estaleiro de produzir navios.
+                if (hasNavalBase)
                 {
-                    return;
+                    if ((oilTankerCount < 1 || (snapshot.PlatformCount > 0 && snapshot.PierCount > 0))
+                        && oilTankerCount < oilTankerTarget
+                        && QueueOilTanker(89, 8.0f))
+                    {
+                    }
+                    else if (!awaitingFirstOilTanker && navalCount < patrolShipTarget && QueueSurfaceFleetStep(navalCount, 85, 5.0f))
+                    {
+                    }
+                    else if (!awaitingFirstOilTanker && !suppressExpansion && navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 5.0f))
+                    {
+                    }
+                    else if (!awaitingFirstOilTanker && submarineCount < subTarget && QueueProduceBest(84, 14f, "uss mako", "submarino", "uss wraith", "uss leviathan"))
+                    {
+                    }
+                    else if (!awaitingFirstOilTanker
+                             && transportPlan != null
+                             && transportPlan.AvailableCapacity < transportPlan.RequiredCapacity
+                             && QueueTransportLift(76, 12f))
+                    {
+                    }
                 }
 
-                if (hasNavalBase
-                    && oilTankerCount < oilTankerTarget
-                    && QueueOilTanker(89, 8.0f))
+                // Mantem o aeroporto ativo sem bloquear o restante da producao
+                if (hasMilitaryAirport && fighterCount < 6)
                 {
-                    return;
+                    QueuePreferredAircraft(93, 6.5f);
+                }
+                else if (EnableHelicopterProduction
+                         && hasHeliport
+                         && helicopterCount < helicopterTarget
+                         && QueueProduceBest(83, 3.2f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
+                {
+                }
+                else if (hasMilitaryAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget)
+                {
+                    QueuePreferredAircraft(89, 2.1f);
                 }
 
                 if (shouldPauseGroundMass)
                 {
-                    if (truckCount < truckTarget && hasFactory && QueueProduceBest(80, 12f, "caminhao de transporte", "transporte", "truck"))
+                    if (truckCount < truckTarget && hasFactory)
                     {
-                        return;
+                        QueueProduceBest(80, 12f, "caminhao de transporte", "transporte", "truck");
                     }
 
                     return;
@@ -471,51 +512,9 @@ namespace Hegemonia.AI.BrainMaster
                     return;
                 }
 
-                if (hasNavalBase
-                    && transportPlan != null
-                    && transportPlan.AvailableCapacity < transportPlan.RequiredCapacity
-                    && QueueTransportLift(76, 12f))
-                {
-                    return;
-                }
-
                 if (hoverCount < hoverTarget && infantryCount >= 14 && fleetCombatCount >= 4 && QueueProduceBest(76, 12f, "hover"))
                 {
                     return;
-                }
-
-                if (EnableHelicopterProduction && hasHeliport && helicopterCount < helicopterTarget && QueueProduceBest(83, 3.2f, "vans", "helicoptero de combate", "helicoptero ray", "ray", "helicoptero"))
-                {
-                    return;
-                }
-
-                // Mantém a produção rodando até bater o teto dinâmico (buffer extra), não mais bloqueado por AirWeight
-                if (hasMilitaryAirport && fighterCount < fighterTarget && airCount < helicopterTarget + fighterTarget && QueuePreferredAircraft(89, 2.1f))
-                {
-                    return;
-                }
-
-                if (hasNavalBase)
-                {
-                    if (navalCount < patrolShipTarget && QueueSurfaceFleetStep(navalCount, 85, 5.0f))
-                    {
-                        return;
-                    }
-
-                    if (submarineCount < subTarget && QueueProduceBest(84, 14f, "uss mako", "submarino", "uss wraith", "uss leviathan"))
-                    {
-                        return;
-                    }
-
-                    if (!suppressExpansion && navalCount < navalTarget && QueueSurfaceFleetStep(navalCount, 80, 5.0f))
-                    {
-                        return;
-                    }
-
-                    if (oilTankerCount < oilTankerTarget && QueueOilTanker(82, 10f))
-                    {
-                        return;
-                    }
                 }
             }
             finally
@@ -592,27 +591,23 @@ namespace Hegemonia.AI.BrainMaster
             // Só publique compras navais depois de haver um estaleiro próprio;
             // antes disso o serviço de produção as recusaria e queimaria a
             // janela de tentativa da IA. O petroleiro DEVE ser o primeiro navio
-            // produzido após estaleiro + píer + plataforma serem criados.
+            // produzido assim que o estaleiro existir, antes de navios militares e cargueiros.
             bool hasNavalBase = (snapshot.HasNavalBase || HasImmediateNavalBase())
                                 && snapshot.ShipyardCount > 0;
-            int targetTankers = brain.UsaCronogramaIA03 ? brain.IA03LimitePetroleiros : 1;
-            if (hasNavalBase && snapshot.OilTankers < targetTankers)
+            int targetTankers = brain.UsaCronogramaIA03 ? Mathf.Max(1, brain.IA03LimitePetroleiros) : 1;
+            bool oilTankerAvailable = HasOilTankerCatalog();
+            if (hasNavalBase && targetTankers > 0 && snapshot.OilTankers < 1 && oilTankerAvailable)
             {
-                if (snapshot.PierCount > 0 && snapshot.PlatformCount > 0)
-                {
-                    if (QueueOilTanker(999, 5.0f))
-                    {
-                        return true;
-                    }
-                }
+                return QueueOilTanker(999, 5.0f);
+            }
 
-                // Enquanto a tríade costeira (estaleiro + píer + plataforma) e o
-                // primeiro petroleiro não saírem, não ocupe o estaleiro com outros
-                // navios em tempo de paz.
-                if (snapshot.RecentCombatSeconds >= 25f)
-                {
-                    return false;
-                }
+            if (hasNavalBase
+                && snapshot.PierCount > 0
+                && snapshot.PlatformCount > 0
+                && snapshot.OilTankers < targetTankers
+                && QueueOilTanker(999, 5.0f))
+            {
+                return true;
             }
 
             if (brain.IA03NavioMilitarLiberado
@@ -627,6 +622,21 @@ namespace Hegemonia.AI.BrainMaster
                    && snapshot.PierCount > 0
                    && snapshot.CargoShips < 1
                    && QueueCargoShip(997, 8.0f);
+        }
+
+        private bool HasOilTankerCatalog()
+        {
+            if (_context == null || _context.Backend == null)
+            {
+                return false;
+            }
+
+            DadosConstrucao unused;
+            return _context.Backend.TryResolveItem("petroleiro", out unused)
+                   || _context.Backend.TryResolveItem("navio petroleiro", out unused)
+                   || _context.Backend.TryResolveItem("navio petrolifero", out unused)
+                   || _context.Backend.TryResolveItem("oil tanker", out unused)
+                   || _context.Backend.TryResolveItem("tanker", out unused);
         }
 
         private bool QueueCargoShip(int priority, float cooldown)
@@ -714,6 +724,25 @@ namespace Hegemonia.AI.BrainMaster
             if (_context != null && _context.Brain != null && !_context.Brain.PodeComprarUnidadeMilitar(data, out _))
             {
                 return false;
+            }
+
+            if (_context != null && _context.Backend != null && _context.Backend.ProductionService != null)
+            {
+                string factoryBlockReason;
+                if (!_context.Backend.ProductionService.CanProduceGroundUnitAtFactory(data, out factoryBlockReason))
+                {
+                    if (Time.time >= _nextGroundFactoryBlockLogTime)
+                    {
+                        _nextGroundFactoryBlockLogTime = Time.time + 15f;
+                        IA_RuntimeTextTrace.LogText(
+                            _context.Brain != null ? _context.Brain.TeamId : -1,
+                            "IA_ProductionDirector",
+                            "PROD_FACTORY_HOLD",
+                            "item=" + data.NomeItem + " | motivo=" + factoryBlockReason);
+                    }
+
+                    return false;
+                }
             }
 
             IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
@@ -1154,9 +1183,8 @@ namespace Hegemonia.AI.BrainMaster
             IA_ForceSnapshot snapshot = GetSnapshot();
             if (snapshot != null
                 && snapshot.ShipyardCount > 0
-                && snapshot.PierCount > 0
-                && snapshot.PlatformCount > 0
-                && snapshot.OilTankers < 1)
+                && snapshot.OilTankers < 1
+                && HasOilTankerCatalog())
             {
                 return QueueOilTanker(priority, cooldown);
             }
@@ -1181,9 +1209,8 @@ namespace Hegemonia.AI.BrainMaster
             IA_ForceSnapshot snapshot = GetSnapshot();
             if (snapshot != null
                 && snapshot.ShipyardCount > 0
-                && snapshot.PierCount > 0
-                && snapshot.PlatformCount > 0
-                && snapshot.OilTankers < 1)
+                && snapshot.OilTankers < 1
+                && HasOilTankerCatalog())
             {
                 return QueueOilTanker(priority, cooldown);
             }
@@ -1397,6 +1424,18 @@ namespace Hegemonia.AI.BrainMaster
                     if (fighterCount >= 2)
                     {
                         brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.BuildShipyard, "dois cacas prontos; liberando construcao obrigatoria do estaleiro");
+                        return true;
+                    }
+
+                    if (!hasMilitaryAirport && brain.GetBootstrapStageElapsed(Time.time) >= 12f)
+                    {
+                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.BuildShipyard, "aeroporto militar pendente; liberando construcao do estaleiro");
+                        return true;
+                    }
+
+                    if (brain.GetBootstrapStageElapsed(Time.time) >= 25f)
+                    {
+                        brain.SetBootstrapStage(IA_BrainMaster.IA_BootstrapStage.BuildShipyard, "tempo limite de producao de cacas; liberando construcao do estaleiro");
                         return true;
                     }
 

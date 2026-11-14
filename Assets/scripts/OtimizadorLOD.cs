@@ -8,7 +8,7 @@ public class OtimizadorLOD : MonoBehaviour
     public float distanciaParaSimplificar = 100f; // 100 metros é um bom começo
     
     [Tooltip("Distância para parar de desenhar o objeto completamente (Culling). 0 para desativar.")]
-    public float distanciaSsumir = 500f;
+    public float distanciaSsumir = 1000f;
 
     [Header("O que esconder?")]
     [Tooltip("Arraste aqui objetos pequenos: Antenas, Barris, Luzes, Partículas, Tripulação.")]

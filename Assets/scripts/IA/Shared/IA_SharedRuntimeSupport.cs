@@ -184,7 +184,19 @@ namespace Hegemonia.AI.Shared
                 return "tenda militar";
             }
 
-            if (normalized.Contains("construtor de veiculos") || normalized.Contains("fabrica") || normalized.Contains("factory"))
+            bool isEconomicFactory = normalized == "fabrica"
+                                     || normalized.Contains("industria")
+                                     || normalized.Contains("alimento")
+                                     || normalized.Contains("comida")
+                                     || normalized.Contains("food")
+                                     || normalized.Contains("minerio")
+                                     || normalized.Contains("pesca");
+            if (!isEconomicFactory
+                && (normalized.Contains("construtor de veiculos")
+                    || normalized.Contains("fabrica de veiculos")
+                    || normalized.Contains("militar.fabrica_veiculos")
+                    || normalized.Contains("vehicle factory")
+                    || normalized.Contains("factory")))
             {
                 return "construtor de veiculos";
             }

@@ -17,7 +17,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private const int LocalNavMeshTileSize = 256;
     private const float LocalNavMeshVoxelSize = 4f;
     private const int LandTileDetectionSamplesPerAxis = 64;
-    private const int MaximumCachedTerrainTiles = 28;
+    private const int MaximumCachedTerrainTiles = 9;
     private const int MaximumTerrainRowsPerFrame = 8;
     private const float AltitudeModeHysteresis = 1000f;
 
@@ -64,7 +64,13 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private readonly Dictionary<Vector2Int, int> tileLastUsedOrder = new Dictionary<Vector2Int, int>(16);
     private readonly HashSet<Vector2Int> desiredTiles = new HashSet<Vector2Int>();
     private readonly List<Vector2Int> removalBuffer = new List<Vector2Int>(16);
+    private readonly List<Vector2Int> tileSignatureBuffer = new List<Vector2Int>(16);
     private readonly float[] alphaWeights = new float[6];
+    private float[,] heightBufferScratch;
+    private float[,] fullHeightRowBuffer;
+    private float[,] trailingHeightRowBuffer;
+    private float[,,] fullAlphaRowBuffer;
+    private float[,,] trailingAlphaRowBuffer;
     private Coroutine streamingLoop;
     private Camera farClipCamera;
     private float farClipBeforeLocalStreaming;
@@ -129,6 +135,41 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             return count;
         }
     }
+    public static GlobalTerrainStreamer Instance { get; private set; }
+
+    public bool TrySampleWorldHeight(Vector3 position, out float surfaceHeight)
+    {
+        surfaceHeight = position.y;
+        if (world == null
+            || position.x < world.MapMinX || position.x > world.MapMaxX
+            || position.z < world.MapMinZ || position.z > world.MapMaxZ)
+        {
+            return false;
+        }
+
+        surfaceHeight = world.HeightAtWorld(position.x, position.z);
+        return true;
+    }
+
+    public bool TrySampleLandHeight(Vector3 position, out float surfaceHeight)
+    {
+        surfaceHeight = position.y;
+        if (world == null
+            || position.x < world.MapMinX || position.x > world.MapMaxX
+            || position.z < world.MapMinZ || position.z > world.MapMaxZ)
+        {
+            return false;
+        }
+
+        if (!world.IsLandAtWorld(position.x, position.z))
+        {
+            return false;
+        }
+
+        surfaceHeight = world.HeightAtWorld(position.x, position.z);
+        return true;
+    }
+
     public int LastGenerationMilliseconds => lastGenerationMilliseconds;
     public int LastLocalNavMeshBuildMilliseconds => lastLocalNavMeshBuildMilliseconds;
 
@@ -204,6 +245,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
     private void OnEnable()
     {
+        Instance = this;
         altitudeModeInitialized = false;
         macroTerrainMode = false;
         localTerrainSuspended = false;
@@ -215,6 +257,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
     private void OnDisable()
     {
+        if (Instance == this)
+            Instance = null;
+
         if (streamingLoop != null)
         {
             StopCoroutine(streamingLoop);
@@ -229,6 +274,11 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             if (globalTerrain != null)
                 globalTerrain.enabled = true;
         }
+        heightBufferScratch = null;
+        fullHeightRowBuffer = null;
+        trailingHeightRowBuffer = null;
+        fullAlphaRowBuffer = null;
+        trailingAlphaRowBuffer = null;
         altitudeModeInitialized = false;
         macroTerrainMode = false;
         localTerrainSuspended = false;
@@ -636,12 +686,14 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     {
         using (BuildTileSetSignatureMarker.Auto())
         {
-            List<Vector2Int> sorted = new List<Vector2Int>(desiredTiles);
-            sorted.Sort((a, b) => a.y == b.y ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+            tileSignatureBuffer.Clear();
+            foreach (Vector2Int coordinate in desiredTiles)
+                tileSignatureBuffer.Add(coordinate);
+            tileSignatureBuffer.Sort((a, b) => a.y == b.y ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
 
-            StringBuilder signature = new StringBuilder(sorted.Count * 8);
-            for (int i = 0; i < sorted.Count; i++)
-                signature.Append(sorted[i].x).Append(',').Append(sorted[i].y).Append(';');
+            StringBuilder signature = new StringBuilder(tileSignatureBuffer.Count * 8);
+            for (int i = 0; i < tileSignatureBuffer.Count; i++)
+                signature.Append(tileSignatureBuffer[i].x).Append(',').Append(tileSignatureBuffer[i].y).Append(';');
             return signature.ToString();
         }
     }
@@ -829,6 +881,68 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         failedNavMeshTileSet = null;
     }
 
+    private float[,] RentHeightBuffer(int resolution)
+    {
+        if (heightBufferScratch == null
+            || heightBufferScratch.GetLength(0) != resolution
+            || heightBufferScratch.GetLength(1) != resolution)
+        {
+            heightBufferScratch = new float[resolution, resolution];
+        }
+
+        return heightBufferScratch;
+    }
+
+    private float[,] RentHeightRowBuffer(int rowCount, int resolution, int fullRowsPerFrame)
+    {
+        if (rowCount == fullRowsPerFrame)
+        {
+            if (fullHeightRowBuffer == null
+                || fullHeightRowBuffer.GetLength(0) != rowCount
+                || fullHeightRowBuffer.GetLength(1) != resolution)
+            {
+                fullHeightRowBuffer = new float[rowCount, resolution];
+            }
+
+            return fullHeightRowBuffer;
+        }
+
+        if (trailingHeightRowBuffer == null
+            || trailingHeightRowBuffer.GetLength(0) != rowCount
+            || trailingHeightRowBuffer.GetLength(1) != resolution)
+        {
+            trailingHeightRowBuffer = new float[rowCount, resolution];
+        }
+
+        return trailingHeightRowBuffer;
+    }
+
+    private float[,,] RentAlphaRowBuffer(int rowCount, int alphaResolution, int layerCount, int fullRowsPerFrame)
+    {
+        if (rowCount == fullRowsPerFrame)
+        {
+            if (fullAlphaRowBuffer == null
+                || fullAlphaRowBuffer.GetLength(0) != rowCount
+                || fullAlphaRowBuffer.GetLength(1) != alphaResolution
+                || fullAlphaRowBuffer.GetLength(2) != layerCount)
+            {
+                fullAlphaRowBuffer = new float[rowCount, alphaResolution, layerCount];
+            }
+
+            return fullAlphaRowBuffer;
+        }
+
+        if (trailingAlphaRowBuffer == null
+            || trailingAlphaRowBuffer.GetLength(0) != rowCount
+            || trailingAlphaRowBuffer.GetLength(1) != alphaResolution
+            || trailingAlphaRowBuffer.GetLength(2) != layerCount)
+        {
+            trailingAlphaRowBuffer = new float[rowCount, alphaResolution, layerCount];
+        }
+
+        return trailingAlphaRowBuffer;
+    }
+
     private IEnumerator CreateLocalTileIncremental(
         Vector2Int coordinate,
         System.Action<Terrain> onComplete,
@@ -897,7 +1011,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             int resolution = data.heightmapResolution;
             float[,] heights;
             using (AllocateHeightBufferMarker.Auto())
-                heights = new float[resolution, resolution];
+                heights = RentHeightBuffer(resolution);
             // Keep authored scene values intact while limiting the amount of
             // terrain sampling performed in one frame during streamed loads.
             int rowsPerFrame = Mathf.Clamp(terrainRowsPerFrame, 1, MaximumTerrainRowsPerFrame);
@@ -906,7 +1020,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 int rowCount = Mathf.Min(rowsPerFrame, resolution - rowStart);
                 float[,] heightRows;
                 using (AllocateHeightRowBufferMarker.Auto())
-                    heightRows = new float[rowCount, resolution];
+                    heightRows = RentHeightRowBuffer(rowCount, resolution, rowsPerFrame);
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 using (GenerateHeightRowsMarker.Auto())
                 {
@@ -948,7 +1062,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 int rowCount = Mathf.Min(alphaRowsPerFrame, alphaResolution - rowStart);
                 float[,,] alphaRows;
                 using (AllocateAlphamapRowBufferMarker.Auto())
-                    alphaRows = new float[rowCount, alphaResolution, layerCount];
+                    alphaRows = RentAlphaRowBuffer(rowCount, alphaResolution, layerCount, alphaRowsPerFrame);
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 using (GenerateAlphamapRowsMarker.Auto())
                 {

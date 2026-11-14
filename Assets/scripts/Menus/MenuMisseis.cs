@@ -69,6 +69,7 @@ public class MenuMisseis : MonoBehaviour
         {
             if (siloSlecionado != null && misselParaLancar != null)
             {
+                PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(toque.point, 18f, 4f);
                 siloSlecionado.DispararMissel(misselParaLancar, toque.point);
                 CancelarLancamento(); // Reseta tudo após o tiro
             }

@@ -65,6 +65,8 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextRecoveryAttemptTime;
         private float _nextCoastScanTime;
         private float _nextNavalAttemptTime;
+        private float _nextDirectCreatyBuildTime;
+        private readonly Dictionary<int, float> _directCreatyQueuedUntil = new Dictionary<int, float>();
         private float _nextNavalExpansionAttemptTime;
         private float _nextRareNavalExpansionWindowTime;
         private int _recoveryLevel;
@@ -82,6 +84,7 @@ namespace Hegemonia.AI.BrainMaster
         private readonly Dictionary<string, int> _navalFailureStreakByKey = new Dictionary<string, int>();
         private readonly Dictionary<string, string> _navalFailureLastReasonByKey = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _navalAutoPlacementDisabledReasonByItem = new Dictionary<string, string>();
+        private readonly Dictionary<string, float> _navalAutoPlacementDisabledUntilByItem = new Dictionary<string, float>();
         private readonly List<Estaleiro> _registeredShipyardBuffer = new List<Estaleiro>();
         private readonly List<PierMarinha> _registeredPierBuffer = new List<PierMarinha>();
         private readonly Collider[] _legacySpaceHits = new Collider[128];
@@ -89,6 +92,7 @@ namespace Hegemonia.AI.BrainMaster
         private GlobalWorldDefinition _manualPlacementWorld;
         private Quaternion _pendingManualBuildRotation = Quaternion.identity;
         private bool _pendingManualNavalPoseResolved;
+        private bool _lastManualBuildAreaBlocked;
         private int _cachedApproxCombatUnitCount = -1;
         private int _cachedApproxCombatSourceCount = -1;
         private float _cachedApproxCombatUnitUntil;
@@ -100,6 +104,7 @@ namespace Hegemonia.AI.BrainMaster
         private string _lastSlowSectionSummary = string.Empty;
         private long _buildTickStartTimestamp;
         private bool _buildTickBudgetExceeded;
+        private bool _retriedShipyardDuringBootstrap;
 
         private static bool _navalFieldConfigured;
 
@@ -348,10 +353,20 @@ namespace Hegemonia.AI.BrainMaster
 
             if (_navalAutoPlacementDisabledReasonByItem.TryGetValue(normalized, out reason))
             {
-                NavalAutoPlacementDisabled = true;
-                NavalAutoPlacementDisabledReason = reason;
-                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("naval_auto_disabled_reason", reason);
-                return true;
+                float until;
+                if (_navalAutoPlacementDisabledUntilByItem.TryGetValue(normalized, out until) && Time.time >= until)
+                {
+                    _navalAutoPlacementDisabledReasonByItem.Remove(normalized);
+                    _navalAutoPlacementDisabledUntilByItem.Remove(normalized);
+                    reason = string.Empty;
+                }
+                else
+                {
+                    NavalAutoPlacementDisabled = true;
+                    NavalAutoPlacementDisabledReason = reason;
+                    DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("naval_auto_disabled_reason", reason);
+                    return true;
+                }
             }
 
             NavalAutoPlacementDisabled = false;
@@ -666,6 +681,28 @@ namespace Hegemonia.AI.BrainMaster
                 "handled=" + bootstrapHandled + (_context.Brain != null ? " | stage=" + _context.Brain.BootstrapStage : string.Empty),
                 bootstrapStart,
                 1.50f);
+
+            bool hasPendingBuildWork = (_context.IntentBoard != null && _context.IntentBoard.HasPendingKind(IA_IntentKind.Build))
+                                       || (_context.CommandQueue != null && _context.CommandQueue.HasPendingType(IA_CommandType.Build));
+            if (!hasPendingBuildWork)
+            {
+                bool allowDirectCreatysNow = _context.Brain == null
+                    || !_context.Brain.IsBootstrapActive
+                    || (cityHall == 0 && _context.Brain.GetBootstrapElapsed(now) >= BootstrapPrefeituraTime)
+                    || (cityHall > 0 && _context.Brain.GetBootstrapElapsed(now) >= BootstrapAeroportoTime);
+                if (allowDirectCreatysNow && TryQueueDirectConfiguredCreaty(now, cityHall, usinas, airports))
+                {
+                    return;
+                }
+            }
+
+            if (_context.Brain != null
+                && (_context.Brain.UseManualBuildPoints || _context.Brain.UsaCronogramaIA03)
+                && (hasPendingBuildWork || now < _nextDirectCreatyBuildTime))
+            {
+                return;
+            }
+
             if (bootstrapHandled)
             {
                 return;
@@ -718,7 +755,7 @@ namespace Hegemonia.AI.BrainMaster
             int desiredBarracks = 1;
             int desiredFactories = mobilizingBase ? 2 : 1;
             int desiredAirports = 1;
-            int desiredUsinas = factories > 0 ? 2 : 1;
+            int desiredUsinas = (factories > 0 || airports > 0) ? 2 : 1;
 
             // A IA precisa garantir ao menos uma fonte nuclear: contar uma
             // usina solar/carvão como se fosse nuclear deixava energia estável
@@ -729,9 +766,10 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            string secondaryPowerKey = ResolveSecondaryPowerItemKey();
             if (usinasNucleares > 0
                 && usinas < desiredUsinas
-                && QueueBuildAtLand("usina", IA_ZoneType.Core, landAnchor, 25f, 220f, mobilizingBase ? 97 : 96, 10f))
+                && QueueBuildAtLand(secondaryPowerKey, IA_ZoneType.Core, landAnchor, 25f, 220f, mobilizingBase ? 97 : 96, 10f))
             {
                 return;
             }
@@ -741,7 +779,7 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (factories < desiredFactories && QueueBuildAtLand("fabrica", IA_ZoneType.Military, landAnchor, 35f, 140f, mobilizingBase ? 97 : 92, mobilizingBase ? 12f : 8f))
+            if (factories < desiredFactories && QueueBuildAtLand("construtor de veiculos", IA_ZoneType.Military, landAnchor, 35f, 140f, mobilizingBase ? 97 : 92, mobilizingBase ? 12f : 8f))
             {
                 return;
             }
@@ -831,11 +869,14 @@ namespace Hegemonia.AI.BrainMaster
                             }
                         }
 
-                        if ((estaleiros > 0 || piers > 0 || (brain != null && brain.DiaAtualJogo >= 10))
+                        if ((estaleiros > 0
+                                || piers > 0
+                                || HasManualBuildOverrideForItem("PLataforma")
+                                || (brain != null && (brain.UseManualBuildPoints || brain.DiaAtualJogo >= 3)))
                             && plataformas < targetPlatforms
                             && !IsNavalAutoPlacementDisabledForItem("PLataforma", out navalCombatLockReason))
                         {
-                            float platformMinRadius = 300f;
+                            float platformMinRadius = 140f;
                             float platformMaxRadius = coastAvailable ? 1100f : 1400f;
                             int platformPriority = Mathf.Max(96, pierPriority);
                             bool queuedPlatform = QueueBuildAtWater("PLataforma", IA_ZoneType.Naval, navalSearchAnchor, platformMinRadius, platformMaxRadius, platformPriority, 10f);
@@ -943,7 +984,7 @@ namespace Hegemonia.AI.BrainMaster
                 && !IsNavalAutoPlacementDisabledForItem("PLataforma", out navalCombatLockReason))
             {
                 Vector3 coastalBuildAnchor = coastAvailable ? navalAnchor : landAnchor;
-                float platformMinRadius = 300f;
+                float platformMinRadius = 140f;
                 float platformMaxRadius = coastAvailable ? 900f : 1200f;
                 int platformPriority = imperialOilGap ? 96 : 78;
                 if (plataformas < targetPlatforms && QueueBuildAtWater("PLataforma", IA_ZoneType.Naval, coastalBuildAnchor, platformMinRadius, platformMaxRadius, platformPriority, imperialOilGap ? 10f : 18f))
@@ -1061,7 +1102,7 @@ namespace Hegemonia.AI.BrainMaster
                     barracks++;
                 }
 
-                if ((hasMetadata && metadata.IsFactory) || name.Contains("construtor de veiculos") || name.Contains("construtor") || name.Contains("fabrica") || name.Contains("factory") || name.Contains("vehicle factory"))
+                if ((hasMetadata && metadata.IsFactory) || name.Contains("construtor de veiculos") || name.Contains("fabrica de veiculos") || name.Contains("vehicle factory"))
                 {
                     factories++;
                 }
@@ -1252,7 +1293,7 @@ namespace Hegemonia.AI.BrainMaster
         {
             float now = Time.time;
             bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
-            if (!CanTryBuildItem(itemKey, now) || (!hasManualOverride && !CanRetryPlacementSearch(itemKey, IA_TerrainType.Choke, now)))
+            if (!CanTryBuildItem(itemKey, now) || !CanRetryPlacementSearch(itemKey, IA_TerrainType.Choke, now))
             {
                 return false;
             }
@@ -1260,7 +1301,7 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 candidate;
             if (!TryFindValidatedCandidate(itemKey, IA_ZoneType.Defense, anchor, IA_TerrainType.Choke, 55f, 190f, out candidate))
             {
-                MarkPlacementSearchFailure(itemKey, IA_TerrainType.Choke, now);
+                MarkPlacementSearchFailure(itemKey, IA_TerrainType.Choke, now, hasManualOverride);
                 return false;
             }
 
@@ -1349,7 +1390,7 @@ namespace Hegemonia.AI.BrainMaster
         {
             float now = Time.time;
             bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
-            if (!CanTryBuildItem(itemKey, now) || (!hasManualOverride && !CanRetryPlacementSearch(itemKey, desiredTerrain, now)))
+            if (!CanTryBuildItem(itemKey, now) || !CanRetryPlacementSearch(itemKey, desiredTerrain, now))
             {
                 return false;
             }
@@ -1358,7 +1399,7 @@ namespace Hegemonia.AI.BrainMaster
             string candidateFailure;
             if (!TryFindValidatedCandidate(itemKey, zone, anchor, desiredTerrain, minRadius, maxRadius, out candidate, out candidateFailure))
             {
-                MarkPlacementSearchFailure(itemKey, desiredTerrain, now);
+                MarkPlacementSearchFailure(itemKey, desiredTerrain, now, hasManualOverride);
                 ReportValdoriaBuildBlock(itemKey, string.IsNullOrEmpty(candidateFailure) ? "nenhum ponto válido" : candidateFailure);
                 return false;
             }
@@ -1380,10 +1421,16 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
+            bool placedByManualCreaty = structure.GetComponent<IA_ManualPlacementTag>() != null;
+            bool manualMode = _context != null
+                && _context.Brain != null
+                && (_context.Brain.UseManualBuildPoints || _context.Brain.UsaCronogramaIA03);
             int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 0;
-            if (NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
-                structure.transform.position,
-                NavalPlacementResolver.ResolveSeaLevel()))
+            if (!placedByManualCreaty
+                && !manualMode
+                && NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
+                    structure.transform.position,
+                    NavalPlacementResolver.ResolveSeaLevel()))
             {
                 if (teamId == 2)
                 {
@@ -1445,10 +1492,20 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
 
             if (manualPoint == null
-                || manualPoint.ManualRole != IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar)
+                || (manualPoint.ManualRole != IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar
+                    && !manualPoint.HasPrefabOverride))
             {
                 reason = "IA03 exige o Creaty manual próprio do aeroporto militar; busca geral bloqueada";
                 return false;
+            }
+
+            if (manualPoint.ShouldForceExactCreatyPlacement)
+            {
+                float exactTolerance = manualPoint.UsesPlacementArea ? Mathf.Max(5f, manualPoint.PlacementAreaRadius) : 5f;
+                if (Vector3.Distance(Flatten(candidate), Flatten(manualPoint.transform.position)) <= exactTolerance + 0.1f)
+                {
+                    return true;
+                }
             }
 
             float maxDistance = Mathf.Max(1f, manualPoint.PlacementAreaRadius);
@@ -1484,6 +1541,59 @@ namespace Hegemonia.AI.BrainMaster
             _pendingManualNavalPoseResolved = false;
         }
 
+        private static IA_ManualBuildPoint[] CollectManualPointsForBrain(IA_BrainMaster brain)
+        {
+            if (brain == null)
+            {
+                return System.Array.Empty<IA_ManualBuildPoint>();
+            }
+
+            IA_ManualBuildPoint[] childPoints = brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            IA_ManualBuildPoint[] scenePoints = UnityEngine.Object.FindObjectsByType<IA_ManualBuildPoint>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            if (scenePoints == null || scenePoints.Length == 0)
+            {
+                return childPoints ?? System.Array.Empty<IA_ManualBuildPoint>();
+            }
+
+            var combined = new List<IA_ManualBuildPoint>(childPoints != null ? childPoints.Length : 4);
+            var seen = new HashSet<IA_ManualBuildPoint>();
+            if (childPoints != null)
+            {
+                for (int i = 0; i < childPoints.Length; i++)
+                {
+                    IA_ManualBuildPoint point = childPoints[i];
+                    if (point != null && seen.Add(point))
+                    {
+                        combined.Add(point);
+                    }
+                }
+            }
+
+            for (int i = 0; i < scenePoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = scenePoints[i];
+                if (point == null || seen.Contains(point))
+                {
+                    continue;
+                }
+
+                Hegemonia.AI.IA03.CreatyEstrategico creaty = point.GetComponent<Hegemonia.AI.IA03.CreatyEstrategico>();
+                if (creaty == null)
+                {
+                    creaty = point.GetComponentInParent<Hegemonia.AI.IA03.CreatyEstrategico>();
+                }
+
+                if (creaty != null && creaty.PaisProprietarioTeamId == brain.TeamId && seen.Add(point))
+                {
+                    combined.Add(point);
+                }
+            }
+
+            return combined.ToArray();
+        }
+
         private bool HasManualBuildOverrideForItem(string itemKey)
         {
             IA_BrainMaster brain = _context.Brain;
@@ -1498,7 +1608,7 @@ namespace Hegemonia.AI.BrainMaster
                 _context.Backend.TryResolveItem(itemKey, out resolvedData);
             }
 
-            IA_ManualBuildPoint[] manualPoints = brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            IA_ManualBuildPoint[] manualPoints = CollectManualPointsForBrain(brain);
             for (int i = 0; i < manualPoints.Length; i++)
             {
                 IA_ManualBuildPoint point = manualPoints[i];
@@ -1544,7 +1654,7 @@ namespace Hegemonia.AI.BrainMaster
                 return ManualBuildCandidateStatus.None;
             }
 
-            IA_ManualBuildPoint[] manualPoints = brain.GetComponentsInChildren<IA_ManualBuildPoint>(true);
+            IA_ManualBuildPoint[] manualPoints = CollectManualPointsForBrain(brain);
             if (manualPoints == null || manualPoints.Length == 0)
             {
                 return ManualBuildCandidateStatus.None;
@@ -1575,7 +1685,8 @@ namespace Hegemonia.AI.BrainMaster
                 if (point == null || !point.TargetsItem(brain, itemKey, resolvedData))
                     continue;
                 if (RequiresValdoriaMilitaryAirportSlot(itemKey)
-                    && point.ManualRole != IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar)
+                    && point.ManualRole != IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar
+                    && !point.HasPrefabOverride)
                     continue;
                 if (!point.AllowInactiveObject && (!point.gameObject.activeInHierarchy || !point.enabled))
                     continue;
@@ -1587,17 +1698,84 @@ namespace Hegemonia.AI.BrainMaster
                 Vector3 pointCandidate = point.transform.position;
                 Quaternion pointRotation = point.transform.rotation;
                 bool pointNavalPoseResolved = false;
-                if (point.UsesPlacementArea)
+                bool forceExactCreaty = point.ShouldForceExactCreatyPlacement;
+                bool allowManualNeutralTerritory = point.UsesPlacementArea || forceExactCreaty;
+                bool requiresCoastalPoseBeforeValidate = zone == IA_ZoneType.Naval
+                    && resolvedData != null
+                    && resolvedData.PrefabDaUnidade != null
+                    && NavalPlacementResolver.RequiresCoastalPlacement(resolvedData.PrefabDaUnidade);
+
+                if (forceExactCreaty)
+                {
+                    if (zone == IA_ZoneType.Naval)
+                    {
+                        pointCandidate.y = NavalPlacementResolver.ResolveSeaLevel();
+                    }
+                    else
+                    {
+                        float groundHeight;
+                        if (TryResolveManualLandHeight(pointCandidate, out groundHeight))
+                        {
+                            pointCandidate.y = groundHeight;
+                        }
+                    }
+
+                    string exactReason = string.Empty;
+                    bool exactTerritoryOk = _context.Backend != null
+                        && _context.Backend.BuildService != null
+                        && _context.Backend.BuildService.ValidateTerritoryProbe(
+                            itemKey,
+                            pointCandidate,
+                            out exactReason,
+                            true,
+                            true,
+                            point.PrefabConstrucao);
+                    bool exactPlacementOk = exactTerritoryOk
+                        && _context.Backend.BuildService.ValidatePlacement(
+                            itemKey,
+                            pointCandidate,
+                            pointRotation,
+                            zone,
+                            _context.WorldState,
+                            _context.MapAnalyzer,
+                            _context.ThreatAnalyzer,
+                            out exactReason,
+                            true,
+                            true,
+                            point.PrefabConstrucao);
+                    if (exactPlacementOk)
+                    {
+                        pointNavalPoseResolved = true;
+                    }
+                    else
+                    {
+                        hasBlockedArea = true;
+                        if (!string.IsNullOrWhiteSpace(exactReason))
+                            lastAreaBlockReason = exactReason;
+                        continue;
+                    }
+                }
+                else if (point.UsesPlacementArea)
                 {
                     hasBlockedArea = true;
                     // O centro e uma amostra radial deterministica cobrem a area
                     // sem transformar cada decisao da IA em uma busca aleatoria.
-                    const int rings = 2;
+                    const int rings = 4;
                     const int samplesPerRing = 12;
                     float areaRadius = Mathf.Max(1f, point.PlacementAreaRadius);
                     bool foundInsideArea = false;
+                    long areaWatchdogStart = BeginTimingScope();
                     for (int sample = 0; sample <= rings * samplesPerRing; sample++)
                     {
+                        if (sample > 0 && (IsBuildTickBudgetExceeded() || ElapsedMilliseconds(areaWatchdogStart) >= PlacementSearchBudgetMs))
+                        {
+                            if (string.IsNullOrWhiteSpace(lastAreaBlockReason))
+                            {
+                                lastAreaBlockReason = "busca manual interrompida pelo orçamento do tick";
+                            }
+                            break;
+                        }
+
                         int ring = sample == 0 ? 0 : ((sample - 1) / samplesPerRing) + 1;
                         int ringSample = sample == 0 ? 0 : (sample - 1) % samplesPerRing;
                         float radial = sample == 0 ? 0f : areaRadius * (ring / (float)rings);
@@ -1625,16 +1803,27 @@ namespace Hegemonia.AI.BrainMaster
                         }
 
                         string validationReason = string.Empty;
-                        // ValidatePlacement já inclui as mesmas regras territoriais. Evita
-                        // consultar a camada política duas vezes para cada ponto da área.
-                        bool valid = _context.Backend != null
-                            && _context.Backend.BuildService != null
-                            && _context.Backend.BuildService.ValidatePlacement(itemKey, testCandidate, zone, _context.WorldState, _context.MapAnalyzer, _context.ThreatAnalyzer, out validationReason);
-                        if (!valid)
+                        // Estruturas costeiras (estaleiro, pier, plataforma) precisam resolver
+                        // a pose costeira antes de validar afastamento da costa/territorio.
+                        if (!requiresCoastalPoseBeforeValidate)
                         {
-                            if (!string.IsNullOrWhiteSpace(validationReason))
-                                lastAreaBlockReason = validationReason;
-                            continue;
+                            bool valid = _context.Backend != null
+                                && _context.Backend.BuildService != null
+                                && _context.Backend.BuildService.ValidatePlacement(
+                                    itemKey,
+                                    testCandidate,
+                                    zone,
+                                    _context.WorldState,
+                                    _context.MapAnalyzer,
+                                    _context.ThreatAnalyzer,
+                                    out validationReason,
+                                    allowManualNeutralTerritory);
+                            if (!valid)
+                            {
+                                if (!string.IsNullOrWhiteSpace(validationReason))
+                                    lastAreaBlockReason = validationReason;
+                                continue;
+                            }
                         }
 
                         bool poseResolved;
@@ -1680,9 +1869,18 @@ namespace Hegemonia.AI.BrainMaster
                             testCandidate.y = NavalPlacementResolver.ResolveSeaLevel();
                             Vector3 fieldCandidatePosition = testCandidate;
                             string validationReason = string.Empty;
-                            bool valid = _context.Backend != null
-                                && _context.Backend.BuildService != null
-                                && _context.Backend.BuildService.ValidatePlacement(itemKey, testCandidate, zone, _context.WorldState, _context.MapAnalyzer, _context.ThreatAnalyzer, out validationReason);
+                            bool valid = requiresCoastalPoseBeforeValidate
+                                || (_context.Backend != null
+                                    && _context.Backend.BuildService != null
+                                    && _context.Backend.BuildService.ValidatePlacement(
+                                        itemKey,
+                                        testCandidate,
+                                        zone,
+                                        _context.WorldState,
+                                        _context.MapAnalyzer,
+                                        _context.ThreatAnalyzer,
+                                        out validationReason,
+                                        allowManualNeutralTerritory));
                             Quaternion candidateRotation = point.transform.rotation;
                             bool poseResolved = false;
                             if (valid && TryResolveManualNavalPose(
@@ -1805,7 +2003,9 @@ namespace Hegemonia.AI.BrainMaster
 
             if (_manualPlacementWorld == null)
             {
-                GlobalTerrainStreamer streamer = Object.FindFirstObjectByType<GlobalTerrainStreamer>();
+                global::GlobalTerrainStreamer streamer = global::GlobalTerrainStreamer.Instance != null
+                    ? global::GlobalTerrainStreamer.Instance
+                    : Object.FindFirstObjectByType<global::GlobalTerrainStreamer>();
                 _manualPlacementWorld = streamer != null ? streamer.world : null;
             }
 
@@ -1840,12 +2040,15 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             poseResolved = true;
-            if (!TryResolveBuildPose(itemKey, ref candidate, ref rotation, out reason))
+            if (!TryResolveBuildPose(itemKey, ref candidate, ref rotation, out reason)
+                && !TryResolveWaterOnlyManualNavalPose(manualPoint, data, ref candidate, ref rotation, out reason))
+            {
                 return false;
+            }
 
             if (manualPoint != null && manualPoint.UsesPlacementArea
                 && Vector3.Distance(Flatten(candidate), Flatten(manualPoint.transform.position))
-                   > Mathf.Max(1f, manualPoint.PlacementAreaRadius) + 0.1f)
+                   > GetManualNavalPoseMaxDistance(manualPoint, data))
             {
                 reason = "pose naval saiu do raio da área manual";
                 return false;
@@ -1858,7 +2061,8 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (!buildService.ValidateTerritoryProbe(itemKey, candidate, out reason))
+            bool allowManualNeutralTerritory = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ForceExactPlacement);
+            if (!buildService.ValidateTerritoryProbe(itemKey, candidate, out reason, allowManualNeutralTerritory))
                 return false;
 
             if (!buildService.ValidatePlacement(
@@ -1868,12 +2072,117 @@ namespace Hegemonia.AI.BrainMaster
                     _context.WorldState,
                     _context.MapAnalyzer,
                     _context.ThreatAnalyzer,
-                    out reason))
+                    out reason,
+                    allowManualNeutralTerritory))
             {
                 return false;
             }
 
             return true;
+        }
+
+        private static float GetManualNavalPoseMaxDistance(IA_ManualBuildPoint manualPoint, DadosConstrucao data)
+        {
+            float baseRadius = manualPoint != null ? Mathf.Max(1f, manualPoint.PlacementAreaRadius) : 1f;
+            bool requiresCoast = data != null
+                && data.PrefabDaUnidade != null
+                && NavalPlacementResolver.RequiresCoastalPlacement(data.PrefabDaUnidade);
+            // Margem limitada para estruturas costeiras cujo pivô desloca até a linha d'água/terra ao alinhar o estaleiro.
+            float coastalMargin = requiresCoast ? Mathf.Min(90f, baseRadius * 0.45f) : 0f;
+            return baseRadius + coastalMargin + 0.1f;
+        }
+
+        private static bool TryResolveWaterOnlyManualNavalPose(
+            IA_ManualBuildPoint manualPoint,
+            DadosConstrucao data,
+            ref Vector3 candidate,
+            ref Quaternion rotation,
+            out string reason)
+        {
+            reason = string.Empty;
+            if (manualPoint == null || data == null || data.PrefabDaUnidade == null)
+            {
+                reason = "area manual naval invalida";
+                return false;
+            }
+
+            float seaLevel = NavalPlacementResolver.ResolveSeaLevel();
+            Vector3 waterCandidate = new Vector3(candidate.x, seaLevel, candidate.z);
+            if (!NavalPlacementResolver.IsWaterAtPosition(waterCandidate, seaLevel))
+            {
+                reason = "area manual naval fora da agua";
+                return false;
+            }
+
+            Vector3 preferredForward = rotation * Vector3.forward;
+            preferredForward.y = 0f;
+            if (preferredForward.sqrMagnitude < 0.01f)
+            {
+                preferredForward = Vector3.forward;
+            }
+            preferredForward.Normalize();
+
+            Vector3 waterForward;
+            Vector3 unusedPoint;
+            float resolvedSeaLevel;
+            if (!NavalPlacementResolver.TryResolveWaterDirection(
+                    waterCandidate,
+                    preferredForward,
+                    15f,
+                    180f,
+                    out waterForward,
+                    out unusedPoint,
+                    out resolvedSeaLevel))
+            {
+                waterForward = preferredForward;
+                resolvedSeaLevel = seaLevel;
+            }
+
+            waterForward.y = 0f;
+            waterForward = waterForward.sqrMagnitude >= 0.01f ? waterForward.normalized : preferredForward;
+
+            float frontOffset;
+            float unusedBack;
+            NavalPlacementResolver.ResolveCoastalOffsets(data.PrefabDaUnidade, out frontOffset, out unusedBack);
+            Vector3 launchProbe = new Vector3(
+                waterCandidate.x + (waterForward.x * Mathf.Max(20f, Mathf.Abs(frontOffset))),
+                resolvedSeaLevel,
+                waterCandidate.z + (waterForward.z * Mathf.Max(20f, Mathf.Abs(frontOffset))));
+            if (!NavalPlacementResolver.IsWaterAtPosition(launchProbe, resolvedSeaLevel))
+            {
+                reason = "frente sem agua na area manual naval";
+                return false;
+            }
+
+            candidate = new Vector3(waterCandidate.x, resolvedSeaLevel, waterCandidate.z);
+            rotation = Quaternion.LookRotation(waterForward, Vector3.up);
+            return true;
+        }
+
+        private string ResolveSecondaryPowerItemKey()
+        {
+            if (_context.Backend == null)
+            {
+                return "energia.usina.carvao";
+            }
+
+            DadosConstrucao item;
+            if (_context.Backend.TryResolveItemExact("energia.inicial", out item))
+            {
+                return "energia.inicial";
+            }
+
+            if (_context.Backend.TryResolveItemExact("energia.usina.carvao", out item))
+            {
+                return "energia.usina.carvao";
+            }
+
+            if (_context.Backend.TryResolveItemExact("usina de carvao", out item))
+            {
+                return "usina de carvao";
+            }
+
+            return "energia";
         }
 
         private bool PrepareManualBuildPoseForDispatch(
@@ -1887,6 +2196,35 @@ namespace Hegemonia.AI.BrainMaster
             reason = string.Empty;
             if (manualPoint == null || zone != IA_ZoneType.Naval)
                 return true;
+
+            if (manualPoint.ShouldForceExactCreatyPlacement)
+            {
+                candidate.y = NavalPlacementResolver.ResolveSeaLevel();
+                rotation = manualPoint.transform.rotation;
+                _pendingManualNavalPoseResolved = true;
+                _pendingManualBuildRotation = rotation;
+
+                var exactBuildService = _context.Backend != null ? _context.Backend.BuildService : null;
+                if (exactBuildService == null)
+                {
+                    reason = "serviço de construção indisponível para validar ponto manual";
+                    return false;
+                }
+
+                return exactBuildService.ValidateTerritoryProbe(itemKey, candidate, out reason, true, true, manualPoint.PrefabConstrucao)
+                    && exactBuildService.ValidatePlacement(
+                        itemKey,
+                        candidate,
+                        rotation,
+                        zone,
+                        _context.WorldState,
+                        _context.MapAnalyzer,
+                        _context.ThreatAnalyzer,
+                        out reason,
+                        true,
+                        true,
+                        manualPoint.PrefabConstrucao);
+            }
 
             DadosConstrucao data;
             if (_context.Backend == null || !_context.Backend.TryResolveItem(itemKey, out data) || data == null)
@@ -1924,7 +2262,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (manualPoint.UsesPlacementArea
                 && Vector3.Distance(Flatten(candidate), Flatten(manualPoint.transform.position))
-                   > Mathf.Max(1f, manualPoint.PlacementAreaRadius) + 0.1f)
+                   > GetManualNavalPoseMaxDistance(manualPoint, data))
             {
                 reason = "pose naval fora do raio da área manual";
                 return false;
@@ -1937,7 +2275,8 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            return buildService.ValidateTerritoryProbe(itemKey, candidate, out reason)
+            bool allowManualNeutralTerritory = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ForceExactPlacement);
+            return buildService.ValidateTerritoryProbe(itemKey, candidate, out reason, allowManualNeutralTerritory)
                 && buildService.ValidatePlacement(
                     itemKey,
                     candidate,
@@ -1945,7 +2284,64 @@ namespace Hegemonia.AI.BrainMaster
                     _context.WorldState,
                     _context.MapAnalyzer,
                     _context.ThreatAnalyzer,
-                    out reason);
+                    out reason,
+                    allowManualNeutralTerritory);
+        }
+
+        public bool TryResolveBuildOrderPlacementForExternalModule(
+            string itemKey,
+            IA_ZoneType zone,
+            Vector3 anchor,
+            IA_TerrainType desiredTerrain,
+            out Vector3 candidate,
+            out Quaternion rotation,
+            out bool forceManualPlacement,
+            out string manualPointLabel,
+            out bool blockedByManualArea,
+            out string reason)
+        {
+            candidate = anchor;
+            rotation = Quaternion.identity;
+            forceManualPlacement = false;
+            manualPointLabel = string.Empty;
+            blockedByManualArea = false;
+            reason = string.Empty;
+
+            if (_context == null || _context.Backend == null || _context.Backend.BuildService == null)
+            {
+                reason = "backend indisponivel";
+                return false;
+            }
+
+            if (!TryFindValidatedCandidate(itemKey, zone, anchor, desiredTerrain, 18f, 160f, out candidate, out reason))
+            {
+                blockedByManualArea = _lastManualBuildAreaBlocked;
+                ClearPendingManualBuildPoint();
+                return false;
+            }
+
+            IA_ManualBuildPoint manualPoint = _pendingManualBuildPoint;
+            forceManualPlacement = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ForceExactPlacement);
+            rotation = manualPoint != null
+                ? (_pendingManualNavalPoseResolved ? _pendingManualBuildRotation : manualPoint.transform.rotation)
+                : Quaternion.identity;
+
+            if (!PrepareManualBuildPoseForDispatch(itemKey, zone, manualPoint, ref candidate, ref rotation, out reason))
+            {
+                blockedByManualArea = manualPoint != null && manualPoint.UsesPlacementArea;
+                ClearPendingManualBuildPoint();
+                return false;
+            }
+
+            if (!forceManualPlacement && !TryResolveBuildPose(itemKey, ref candidate, ref rotation, out reason))
+            {
+                ClearPendingManualBuildPoint();
+                return false;
+            }
+
+            manualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty;
+            ClearPendingManualBuildPoint();
+            return true;
         }
 
         private bool TryFindValidatedCandidate(
@@ -1973,6 +2369,7 @@ namespace Hegemonia.AI.BrainMaster
         {
             candidate = anchor;
             failureReason = "nenhum ponto valido";
+            _lastManualBuildAreaBlocked = false;
             ClearPendingManualBuildPoint();
 
             if (anchor == Vector3.zero && _context.Brain != null)
@@ -1994,10 +2391,15 @@ namespace Hegemonia.AI.BrainMaster
                     return false;
                 }
 
-                if (manualPoint.ManualRole != IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar
-                    || NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
-                        candidate,
-                        NavalPlacementResolver.ResolveSeaLevel()))
+                bool isMilitaryAirportManualPoint =
+                    manualPoint.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar
+                    || manualPoint.HasPrefabOverride;
+                bool skipDryLandAirportCheck = manualPoint.ShouldForceExactCreatyPlacement;
+                if (!isMilitaryAirportManualPoint
+                    || (!skipDryLandAirportCheck
+                        && NavalPlacementResolver.IsWaterAtPositionForDryLandPlacement(
+                            candidate,
+                            NavalPlacementResolver.ResolveSeaLevel())))
                 {
                     failureReason = "Creaty do aeroporto militar sem posição terrestre válida; construção bloqueada";
                     ReportValdoriaBuildBlock(itemKey, failureReason);
@@ -2008,16 +2410,32 @@ namespace Hegemonia.AI.BrainMaster
             if (manualStatus == ManualBuildCandidateStatus.Found)
             {
                 string manualValidationReason;
-                bool manualTerritoryOk = _context.Backend.BuildService.ValidateTerritoryProbe(itemKey, candidate, out manualValidationReason);
+                bool forceExactCreaty = manualPoint != null && manualPoint.ShouldForceExactCreatyPlacement;
+                bool allowManualNeutralTerritory = manualPoint != null && (manualPoint.UsesPlacementArea || forceExactCreaty);
+                Quaternion manualRotation = _pendingManualNavalPoseResolved
+                    ? _pendingManualBuildRotation
+                    : (manualPoint != null ? manualPoint.transform.rotation : Quaternion.identity);
+                GameObject manualPrefab = manualPoint != null ? manualPoint.PrefabConstrucao : null;
+                bool manualTerritoryOk = _context.Backend.BuildService.ValidateTerritoryProbe(
+                    itemKey,
+                    candidate,
+                    out manualValidationReason,
+                    allowManualNeutralTerritory,
+                    forceExactCreaty,
+                    manualPrefab);
                 bool manualPlacementOk = manualTerritoryOk
                                          && _context.Backend.BuildService.ValidatePlacement(
                                              itemKey,
                                              candidate,
+                                             manualRotation,
                                              zone,
                                              _context.WorldState,
                                              _context.MapAnalyzer,
                                              _context.ThreatAnalyzer,
-                                             out manualValidationReason);
+                                             out manualValidationReason,
+                                             allowManualNeutralTerritory,
+                                             forceExactCreaty,
+                                             manualPrefab);
 
                 if (!manualPlacementOk)
                 {
@@ -2050,6 +2468,7 @@ namespace Hegemonia.AI.BrainMaster
 
             if (manualStatus == ManualBuildCandidateStatus.Blocked)
             {
+                _lastManualBuildAreaBlocked = true;
                 bool trackNavalDiagnostics = ShouldTrackNavalDiagnostic(itemKey, desiredTerrain);
                 if (trackNavalDiagnostics)
                 {
@@ -2246,6 +2665,14 @@ namespace Hegemonia.AI.BrainMaster
                         return true;
                     }
 
+                    if (brain.GetBootstrapStageElapsed(now) >= 18f)
+                    {
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.BuildUsina,
+                            "prefeitura adiada; abrindo fase da usina e retomando depois");
+                        return true;
+                    }
+
                     return TryBootstrapMandatoryLandBuild(
                         "prefeitura",
                         landAnchor != Vector3.zero ? landAnchor : baseCenter,
@@ -2259,7 +2686,7 @@ namespace Hegemonia.AI.BrainMaster
                         "capital");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildUsina:
-                    if (usinasNucleares > 0)
+                    if (usinasNucleares > 0 || (usinas > 0 && HasManualBuildOverrideForItem("usina")))
                     {
                         return AdvanceBootstrapAfterTime(
                             elapsed,
@@ -2272,6 +2699,14 @@ namespace Hegemonia.AI.BrainMaster
                     if (elapsed < 6f)
                     {
                         brain.SetBootstrapStatus("aguardando t=6s para iniciar usina");
+                        return true;
+                    }
+
+                    if (brain.GetBootstrapStageElapsed(now) >= 18f)
+                    {
+                        brain.SetBootstrapStage(
+                            IA_BrainMaster.IA_BootstrapStage.BuildAeroporto,
+                            "usina adiada; abrindo fase do aeroporto militar e retomando depois");
                         return true;
                     }
 
@@ -2374,8 +2809,8 @@ namespace Hegemonia.AI.BrainMaster
                         4f,
                         "Construtor de Veiculos",
                         "construtor de veiculos",
-                        "construtor",
-                        "fabrica");
+                        "fabrica de veiculos",
+                        "militar.fabrica_veiculos");
 
                 case IA_BrainMaster.IA_BootstrapStage.BuildSupportHangar:
                     if (heliports > 0 || warehouses > 0)
@@ -2503,8 +2938,9 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_BrainMaster.IA_BootstrapStage.BuildPier:
                     if (piers > 0)
                     {
-                        if (estaleiros <= 0)
+                        if (estaleiros <= 0 && !_retriedShipyardDuringBootstrap)
                         {
+                            _retriedShipyardDuringBootstrap = true;
                             brain.SetBootstrapStage(
                                 IA_BrainMaster.IA_BootstrapStage.BuildShipyard,
                                 "píer pronto; retomando tentativas do estaleiro");
@@ -2520,7 +2956,7 @@ namespace Hegemonia.AI.BrainMaster
                                 "PLataforma",
                                 navalAnchor,
                                 IA_ZoneType.Naval,
-                                300f,
+                                140f,
                                 950f,
                                 974,
                                 10f,
@@ -2532,11 +2968,20 @@ namespace Hegemonia.AI.BrainMaster
                         return true;
                     }
 
-                    if (estaleiros <= 0 && brain.GetBootstrapStageElapsed(now) >= 40f)
+                    if (brain.GetBootstrapStageElapsed(now) >= 40f)
                     {
+                        if (estaleiros <= 0 && !_retriedShipyardDuringBootstrap)
+                        {
+                            _retriedShipyardDuringBootstrap = true;
+                            brain.SetBootstrapStage(
+                                IA_BrainMaster.IA_BootstrapStage.BuildShipyard,
+                                "píer sem posição válida; retomando tentativas do estaleiro");
+                            return true;
+                        }
+
                         brain.SetBootstrapStage(
-                            IA_BrainMaster.IA_BootstrapStage.BuildShipyard,
-                            "píer sem posição válida; retomando tentativas do estaleiro");
+                            IA_BrainMaster.IA_BootstrapStage.ProduceOilTanker,
+                            "píer adiado no bootstrap; seguindo produção naval e retomando em segundo plano");
                         return true;
                     }
 
@@ -2695,8 +3140,6 @@ namespace Hegemonia.AI.BrainMaster
                     965,
                     5f,
                     out reason,
-                    "Hangar",
-                    "hangar",
                     "Heliporto",
                     "heliporto"))
                 {
@@ -3237,7 +3680,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             bool hasManualOverride = HasManualBuildOverrideForItem(itemKey);
-            if (!hasManualOverride && !CanRetryPlacementSearch(itemKey, terrain, now))
+            if (!CanRetryPlacementSearch(itemKey, terrain, now))
             {
                 reason = "busca em cooldown";
                 if (trackNavalDiagnostics)
@@ -3251,7 +3694,7 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 candidate;
             if (!TryFindValidatedCandidate(itemKey, zone, anchor, terrain, minRadius, maxRadius, out candidate, out reason))
             {
-                MarkPlacementSearchFailure(itemKey, terrain, now);
+                MarkPlacementSearchFailure(itemKey, terrain, now, hasManualOverride);
                 if (trackNavalDiagnostics)
                 {
                     NavalDiagnosticLine("busca falhou: " + reason);
@@ -3312,6 +3755,9 @@ namespace Hegemonia.AI.BrainMaster
             int totalRings = Mathf.Max(1, rings);
             int totalSamples = Mathf.Max(8, samplesPerRing);
             float baseAngleOffset = (Time.frameCount % totalSamples) * (360f / totalSamples);
+            global::GlobalTerrainStreamer globalStreamer = global::GlobalTerrainStreamer.Instance;
+            bool globalMapActive = globalStreamer != null && globalStreamer.isActiveAndEnabled;
+            int waterLayerMask = globalMapActive ? 0 : LayerMask.GetMask("Water");
 
             for (int ring = 0; ring < totalRings; ring++)
             {
@@ -3359,9 +3805,12 @@ namespace Hegemonia.AI.BrainMaster
                             candidateY = groundHeight;
                         }
 
-                        // Protecao extra: Raycast fisico para evitar layer Water em construcoes terrestres
-                        RaycastHit waterHit;
-                        if (Physics.Raycast(probe + Vector3.up * 50f, Vector3.down, out waterHit, 100f, LayerMask.GetMask("Water")))
+                        // Protecao extra em mapas classicos: Raycast fisico ancorado na cota
+                        // amostrada para evitar layer Water em construcoes terrestres.
+                        if (!globalMapActive
+                            && waterLayerMask != 0
+                            && Physics.Raycast(new Vector3(probe.x, candidateY + 60f, probe.z), Vector3.down, out RaycastHit waterHit, 120f, waterLayerMask)
+                            && waterHit.point.y >= candidateY - 0.15f)
                         {
                             terrainRejected++;
                             if (trackNavalDiagnostics)
@@ -3458,7 +3907,7 @@ namespace Hegemonia.AI.BrainMaster
                 NavalDiagnosticPoint(candidate, "fila: candidato bruto", new Color(0.95f, 0.95f, 0.95f, 1f), 2.6f, false);
             }
 
-            bool forceManualPlacement = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ForceExactPlacement);
+            bool forceManualPlacement = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ShouldForceExactCreatyPlacement);
             Quaternion rotation = manualPoint != null
                 ? (_pendingManualNavalPoseResolved ? _pendingManualBuildRotation : manualPoint.transform.rotation)
                 : Quaternion.identity;
@@ -3502,7 +3951,8 @@ namespace Hegemonia.AI.BrainMaster
                 Rotation = rotation,
                 Zone = zone,
                 ForceManualPlacement = forceManualPlacement,
-                ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty
+                ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty,
+                PrefabOverride = manualPoint != null ? manualPoint.PrefabConstrucao : null
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -3780,7 +4230,7 @@ namespace Hegemonia.AI.BrainMaster
             }
             else if (factories == 0)
             {
-                built = TryEmergencyBuild(baseCenter, IA_ZoneType.Military, IA_TerrainType.Land, 120f, 260f, "fabrica", "construtor de veiculos", "construtor");
+                built = TryEmergencyBuild(baseCenter, IA_ZoneType.Military, IA_TerrainType.Land, 120f, 260f, "construtor de veiculos", "fabrica de veiculos", "construtor");
             }
             else if (warehouses == 0)
             {
@@ -3928,7 +4378,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            bool forceManualPlacement = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ForceExactPlacement);
+            bool forceManualPlacement = manualPoint != null && (manualPoint.UsesPlacementArea || manualPoint.ShouldForceExactCreatyPlacement);
             Quaternion rotation = manualPoint != null
                 ? (_pendingManualNavalPoseResolved ? _pendingManualBuildRotation : manualPoint.transform.rotation)
                 : Quaternion.identity;
@@ -3952,7 +4402,8 @@ namespace Hegemonia.AI.BrainMaster
                 Rotation = rotation,
                 Zone = zone,
                 ForceManualPlacement = forceManualPlacement,
-                ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty
+                ManualPointLabel = manualPoint != null ? manualPoint.GetDisplayLabel() : string.Empty,
+                PrefabOverride = manualPoint != null ? manualPoint.PrefabConstrucao : null
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -5052,7 +5503,7 @@ namespace Hegemonia.AI.BrainMaster
             int sampledWaterPoints = 0;
             int territoryApproved = 0;
             // Reduzido de 6 raios x 16 amostras para 4 raios x 12 amostras
-            float[] radii = { 120f, 280f, 480f, 680f };
+            float[] radii = { 120f, 280f, 480f, 680f, 920f, 1200f };
             for (int r = 0; r < radii.Length; r++)
             {
                 if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs || IsBuildTickBudgetExceeded()) { break; }
@@ -5088,7 +5539,7 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             // Scan de estruturas limitado a 5 estruturas e 3 anéis x 12 amostras (era 4 anéis x 20 x N estruturas)
-            int structureLimit = Mathf.Min(_context.WorldState.OwnStructures.Count, 5);
+            int structureLimit = Mathf.Min(_context.WorldState.OwnStructures.Count, 12);
             for (int i = 0; i < structureLimit; i++)
             {
                 if (watchdog.Elapsed.TotalMilliseconds > MaxBudgetMs || IsBuildTickBudgetExceeded()) { break; }
@@ -5318,14 +5769,22 @@ namespace Hegemonia.AI.BrainMaster
         private bool CanTryBuildItem(string itemKey, float now)
         {
             string normalized = IA_Text.Normalize(itemKey);
+            bool hasManualPrefabOverride = HasManualPrefabOverrideForItem(itemKey);
             bool bootstrapActive = _context != null && _context.Brain != null && _context.Brain.IsBootstrapActive;
             if (!bootstrapActive
+                && !hasManualPrefabOverride
                 && ShouldRespectRuntimeLock()
                 && DiagnosticoDesempenhoJogo.RuntimeSobPressao()
                 && !IsCriticalRuntimeInfrastructure(normalized)
                 && IsHeavyNonEssentialRuntimeBuild(normalized))
             {
                 return false;
+            }
+
+            if (hasManualPrefabOverride)
+            {
+                _missingItemCooldownUntil.Remove(normalized);
+                return true;
             }
 
             float cooldownUntil;
@@ -5349,7 +5808,7 @@ namespace Hegemonia.AI.BrainMaster
                 && _context.Backend.Catalog.Count > 0
                 && now >= _nextCatalogRefreshAfterMiss)
             {
-                _nextCatalogRefreshAfterMiss = now + 5f;
+                _nextCatalogRefreshAfterMiss = now + (now >= 15f ? 60f : 12f);
                 _context.Backend.RefreshCatalog();
                 if (_context.Backend.TryResolveItem(itemKey, out data) && data != null)
                 {
@@ -5358,14 +5817,453 @@ namespace Hegemonia.AI.BrainMaster
                 }
             }
 
-            _missingItemCooldownUntil[normalized] = now + 10f;
+            _missingItemCooldownUntil[normalized] = now + (now >= 15f ? 60f : 12f);
             ReportValdoriaBuildBlock(itemKey, "item de construção ausente do catálogo nacional");
             return false;
         }
 
+        private bool HasManualPrefabOverrideForItem(string itemKey)
+        {
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            if (brain == null || !brain.UseManualBuildPoints)
+            {
+                return false;
+            }
+
+            IA_ManualBuildPoint[] manualPoints = CollectManualPointsForBrain(brain);
+            if (manualPoints == null || manualPoints.Length == 0)
+            {
+                return false;
+            }
+
+            DadosConstrucao resolvedData = null;
+            if (_context.Backend != null)
+            {
+                _context.Backend.TryResolveItem(itemKey, out resolvedData);
+            }
+
+            string normalizedItem = IA_Text.Normalize(itemKey);
+            for (int i = 0; i < manualPoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = manualPoints[i];
+                if (point == null || point.PrefabConstrucao == null)
+                {
+                    continue;
+                }
+
+                if (!point.AllowInactiveObject && (!point.gameObject.activeInHierarchy || !point.enabled))
+                {
+                    continue;
+                }
+
+                if (point.TargetsItem(brain, itemKey, resolvedData)
+                    || (!string.IsNullOrEmpty(normalizedItem)
+                        && string.Equals(IA_Text.Normalize(point.PrefabConstrucao.name), normalizedItem, System.StringComparison.Ordinal)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryQueueDirectConfiguredCreaty(float now, int cityHall, int usinas, int airports)
+        {
+            if (now < _nextDirectCreatyBuildTime || !HasBrainMasterAuthority())
+            {
+                return false;
+            }
+
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            if (brain == null || !brain.UseManualBuildPoints || _context.Backend == null || _context.Backend.BuildService == null)
+            {
+                return false;
+            }
+
+            IA_ManualBuildPoint[] manualPoints = CollectManualPointsForBrain(brain);
+            if (manualPoints == null || manualPoints.Length == 0)
+            {
+                return false;
+            }
+
+            int shipyards = CountRegisteredShipyards();
+            int piers = CountRegisteredPiers();
+            int platforms = CountOffshorePlatformsDirect();
+
+            IA_ManualBuildPoint bestPoint = null;
+            string bestKey = null;
+            IA_ZoneType bestZone = IA_ZoneType.Core;
+            int bestOrderWeight = int.MaxValue;
+
+            for (int i = 0; i < manualPoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = manualPoints[i];
+                if (point == null)
+                {
+                    continue;
+                }
+
+                bool hasConfiguredConstruction = point.PrefabConstrucao != null
+                    || point.IsConstructionAreaRole
+                    || !string.IsNullOrWhiteSpace(point.ItemFilters);
+                if (!hasConfiguredConstruction)
+                {
+                    continue;
+                }
+
+                if (!point.AllowInactiveObject && (!point.gameObject.activeInHierarchy || !point.enabled))
+                {
+                    continue;
+                }
+
+                if (point.RestrictToBootstrapStage && brain.IsBootstrapActive && point.BootstrapStage != brain.BootstrapStage)
+                {
+                    continue;
+                }
+
+                float pointBlockedUntil;
+                if (_directCreatyQueuedUntil.TryGetValue(point.GetInstanceID(), out pointBlockedUntil) && pointBlockedUntil > now)
+                {
+                    continue;
+                }
+
+                if (!point.IsCurrentlyAvailable(brain, _context.WorldState))
+                {
+                    continue;
+                }
+
+                string itemKey;
+                IA_ZoneType zone;
+                int orderWeight;
+                bool withinLimit;
+                ResolveDirectCreatyMetadata(
+                    point,
+                    manualPoints,
+                    brain,
+                    cityHall,
+                    usinas,
+                    airports,
+                    shipyards,
+                    piers,
+                    platforms,
+                    out itemKey,
+                    out zone,
+                    out orderWeight,
+                    out withinLimit);
+                if (!withinLimit || string.IsNullOrEmpty(itemKey))
+                {
+                    continue;
+                }
+
+                if (cityHall == 0 && orderWeight > 1)
+                {
+                    continue;
+                }
+
+                if (!CanTryBuildItem(itemKey, now))
+                {
+                    continue;
+                }
+
+                if (orderWeight < bestOrderWeight)
+                {
+                    bestOrderWeight = orderWeight;
+                    bestPoint = point;
+                    bestKey = itemKey;
+                    bestZone = zone;
+                }
+            }
+
+            if (bestPoint == null || string.IsNullOrEmpty(bestKey))
+            {
+                return false;
+            }
+
+            Vector3 candidate = bestPoint.transform.position;
+            Quaternion exactRotation = bestPoint.transform.rotation;
+            if (!bestPoint.ShouldForceExactCreatyPlacement && bestPoint.UsesPlacementArea)
+            {
+                IA_TerrainType desiredTerrain = bestZone == IA_ZoneType.Naval ? IA_TerrainType.Water : IA_TerrainType.Land;
+                float areaRadius = Mathf.Max(20f, bestPoint.PlacementAreaRadius);
+                if (!TryFindValidatedCandidate(bestKey, bestZone, bestPoint.transform.position, desiredTerrain, 0f, areaRadius, out candidate))
+                {
+                    _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 5f;
+                    return false;
+                }
+            }
+            else
+            {
+                if (bestZone == IA_ZoneType.Naval)
+                {
+                    candidate.y = NavalPlacementResolver.ResolveSeaLevel();
+                }
+                else
+                {
+                    float groundHeight;
+                    if (TryResolveManualLandHeight(candidate, out groundHeight))
+                    {
+                        candidate.y = groundHeight;
+                    }
+                }
+
+                string validationReason;
+                bool valid = _context.Backend.BuildService.ValidateTerritoryProbe(
+                                 bestKey,
+                                 candidate,
+                                 out validationReason,
+                                 true,
+                                 true,
+                                 bestPoint.PrefabConstrucao)
+                             && _context.Backend.BuildService.ValidatePlacement(
+                                 bestKey,
+                                 candidate,
+                                 exactRotation,
+                                 bestZone,
+                                 _context.WorldState,
+                                 _context.MapAnalyzer,
+                                 _context.ThreatAnalyzer,
+                                 out validationReason,
+                                 true,
+                                 true,
+                                 bestPoint.PrefabConstrucao);
+                if (!valid)
+                {
+                    _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 4f;
+                    ReportValdoriaBuildBlock(bestKey, validationReason);
+                    return false;
+                }
+
+                _pendingManualNavalPoseResolved = false;
+                _pendingManualBuildRotation = exactRotation;
+            }
+
+            if (!QueueBuild(bestKey, candidate, bestZone, 985, 2.5f, bestPoint))
+            {
+                _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 4f;
+                return false;
+            }
+
+            _nextDirectCreatyBuildTime = now + 2.5f;
+            _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 25f;
+            return true;
+        }
+
+        private int CountOffshorePlatformsDirect()
+        {
+            if (_context == null || _context.WorldState == null || _context.WorldState.OwnStructures == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            List<GameObject> structures = _context.WorldState.OwnStructures;
+            for (int i = 0; i < structures.Count; i++)
+            {
+                GameObject structure = structures[i];
+                if (structure == null)
+                {
+                    continue;
+                }
+
+                if (structure.GetComponentInChildren<PlataformaOffshore>(true) != null)
+                {
+                    count++;
+                    continue;
+                }
+
+                IA_ConstructionMetadata metadata = structure.GetComponent<IA_ConstructionMetadata>();
+                string identity = metadata != null
+                    ? IA_Text.Normalize(metadata.ItemId + " " + metadata.DisplayName + " " + metadata.SourcePrefabName)
+                    : IA_Text.Normalize(structure.name);
+                if (identity.Contains("plataforma") || identity.Contains("offshore"))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountManualRoleBuildPoints(
+            IA_ManualBuildPoint[] manualPoints,
+            IA_BrainMaster brain,
+            IA_ManualBuildPoint.OperationalRole role)
+        {
+            if (manualPoints == null || role == IA_ManualBuildPoint.OperationalRole.Nenhum)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < manualPoints.Length; i++)
+            {
+                IA_ManualBuildPoint point = manualPoints[i];
+                if (point == null || point.ManualRole != role)
+                {
+                    continue;
+                }
+
+                if (!point.AllowInactiveObject && (!point.gameObject.activeInHierarchy || !point.enabled))
+                {
+                    continue;
+                }
+
+                if (point.RestrictToBootstrapStage && brain != null && brain.IsBootstrapActive && point.BootstrapStage != brain.BootstrapStage)
+                {
+                    continue;
+                }
+
+                count++;
+            }
+
+            return count;
+        }
+
+        private void ResolveDirectCreatyMetadata(
+            IA_ManualBuildPoint point,
+            IA_ManualBuildPoint[] manualPoints,
+            IA_BrainMaster brain,
+            int cityHall,
+            int usinas,
+            int airports,
+            int shipyards,
+            int piers,
+            int platforms,
+            out string itemKey,
+            out IA_ZoneType zone,
+            out int orderWeight,
+            out bool withinLimit)
+        {
+            GameObject prefab = point.PrefabConstrucao;
+            string joined = IA_Text.Normalize(point.name + " " + point.ItemFilters + " " + (prefab != null ? prefab.name : string.Empty));
+            withinLimit = true;
+
+            if (point.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoCidade
+                || joined.Contains("prefeitura")
+                || joined.Contains("governo")
+                || joined.Contains("capital"))
+            {
+                zone = IA_ZoneType.Core;
+                itemKey = ResolveFirstMatchingCreatyKey(point, "Prefeitura", "prefeitura", "governo", "capital");
+                int cap = Mathf.Max(1, CountManualRoleBuildPoints(manualPoints, brain, IA_ManualBuildPoint.OperationalRole.ConstrucaoCidade));
+                withinLimit = cityHall < cap;
+                orderWeight = cityHall == 0 ? 0 : 60;
+                return;
+            }
+
+            if (point.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoEnergia
+                || (prefab != null && prefab.GetComponentInChildren<Usina>(true) != null)
+                || joined.Contains("usina")
+                || joined.Contains("energia"))
+            {
+                zone = IA_ZoneType.Core;
+                itemKey = usinas == 0
+                    ? ResolveFirstMatchingCreatyKey(point, "Usina Nuclear", "usina nuclear", "usina", "energia")
+                    : ResolveFirstMatchingCreatyKey(point, "energia.inicial", "energia.usina.carvao", "usina de carvao", "energia");
+                int cap = Mathf.Max(2, CountManualRoleBuildPoints(manualPoints, brain, IA_ManualBuildPoint.OperationalRole.ConstrucaoEnergia));
+                withinLimit = usinas < cap;
+                orderWeight = usinas == 0 ? 5 : 55;
+                return;
+            }
+
+            if (point.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoEstaleiro
+                || (prefab != null && prefab.GetComponentInChildren<Estaleiro>(true) != null)
+                || joined.Contains("estaleiro"))
+            {
+                zone = IA_ZoneType.Naval;
+                itemKey = ResolveFirstMatchingCreatyKey(point, "Estaleiro Naval", "Estaleiros navais", "estaleiro");
+                int targetShipyards = brain != null ? Mathf.Max(1, brain.TargetShipyards) : 1;
+                int cap = Mathf.Max(targetShipyards, CountManualRoleBuildPoints(manualPoints, brain, IA_ManualBuildPoint.OperationalRole.ConstrucaoEstaleiro));
+                withinLimit = shipyards < cap;
+                orderWeight = shipyards == 0 ? 15 : 56;
+                return;
+            }
+
+            if (point.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoPier
+                || (prefab != null && prefab.GetComponentInChildren<PierMarinha>(true) != null)
+                || joined.Contains("pier"))
+            {
+                zone = IA_ZoneType.Naval;
+                itemKey = ResolveFirstMatchingCreatyKey(point, "pier", "Pier", "dock");
+                int targetPiers = brain != null ? Mathf.Max(1, brain.TargetPiers) : 1;
+                int cap = Mathf.Max(targetPiers, CountManualRoleBuildPoints(manualPoints, brain, IA_ManualBuildPoint.OperationalRole.ConstrucaoPier));
+                withinLimit = piers < cap;
+                orderWeight = piers == 0 ? 20 : 57;
+                return;
+            }
+
+            if (point.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoPlataforma
+                || (prefab != null && prefab.GetComponentInChildren<PlataformaOffshore>(true) != null)
+                || joined.Contains("plataforma"))
+            {
+                zone = IA_ZoneType.Naval;
+                itemKey = ResolveFirstMatchingCreatyKey(point, "PLataforma", "plataforma");
+                int targetPlatforms = brain != null ? Mathf.Max(1, brain.TargetPlatforms) : 1;
+                int cap = Mathf.Max(targetPlatforms, CountManualRoleBuildPoints(manualPoints, brain, IA_ManualBuildPoint.OperationalRole.ConstrucaoPlataforma));
+                withinLimit = platforms < cap;
+                orderWeight = platforms == 0 ? 25 : 58;
+                return;
+            }
+
+            if (point.ManualRole == IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar
+                || joined.Contains("aeroporto")
+                || joined.Contains("airport")
+                || joined.Contains("heliporto")
+                || joined.Contains("airbase"))
+            {
+                zone = IA_ZoneType.Air;
+                itemKey = ResolveFirstMatchingCreatyKey(point, "aeroporto militar", "aeroporto comercial", "aeroporto", "heliporto");
+                int cap = Mathf.Max(1, CountManualRoleBuildPoints(manualPoints, brain, IA_ManualBuildPoint.OperationalRole.ConstrucaoAeroportoMilitar));
+                withinLimit = airports < cap;
+                orderWeight = airports == 0 ? 30 : 59;
+                return;
+            }
+
+            zone = IA_ZoneType.Military;
+            itemKey = ResolveFirstMatchingCreatyKey(point, prefab != null ? prefab.name : point.name);
+            if (!point.ReusePoint)
+            {
+                withinLimit = CountStructures(itemKey) < 1;
+            }
+            orderWeight = 65;
+        }
+
+        private string ResolveFirstMatchingCreatyKey(IA_ManualBuildPoint point, params string[] fallbackKeys)
+        {
+            if (point != null && !string.IsNullOrWhiteSpace(point.ItemFilters))
+            {
+                string[] customFilters = point.ItemFilters.Split(',', ';', '\n');
+                for (int i = 0; i < customFilters.Length; i++)
+                {
+                    string filter = customFilters[i] != null ? customFilters[i].Trim() : string.Empty;
+                    if (!string.IsNullOrEmpty(filter))
+                    {
+                        string catalogMatch = ResolveFirstAvailableKey(filter);
+                        if (!string.IsNullOrEmpty(catalogMatch))
+                        {
+                            return catalogMatch;
+                        }
+                    }
+                }
+            }
+
+            string fallbackCatalogMatch = ResolveFirstAvailableKey(fallbackKeys);
+            if (!string.IsNullOrEmpty(fallbackCatalogMatch))
+            {
+                return fallbackCatalogMatch;
+            }
+
+            if (point != null && point.PrefabConstrucao != null && !string.IsNullOrEmpty(point.PrefabConstrucao.name))
+            {
+                return point.PrefabConstrucao.name;
+            }
+
+            return point != null ? point.GetDisplayLabel() : "construcao_manual";
+        }
+
         private static bool IsHeavyNonEssentialRuntimeBuild(string normalizedItemKey)
         {
-            if (string.IsNullOrEmpty(normalizedItemKey))
+            if (string.IsNullOrEmpty(normalizedItemKey) || IsCriticalRuntimeInfrastructure(normalizedItemKey))
             {
                 return false;
             }
@@ -5387,6 +6285,10 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsCriticalRuntimeInfrastructure(string normalizedItemKey)
         {
             return normalizedItemKey.Contains("radar")
+                   || normalizedItemKey.Contains("construtor de veiculo")
+                   || normalizedItemKey.Contains("fabrica de veiculo")
+                   || normalizedItemKey.Contains("vehicle factory")
+                   || normalizedItemKey.Contains("militar.fabrica_veiculos")
                    || normalizedItemKey.Contains("estaleiro")
                    || normalizedItemKey.Contains("shipyard")
                    || normalizedItemKey.Contains("pier")
@@ -5433,7 +6335,7 @@ namespace Hegemonia.AI.BrainMaster
             return !_placementRetryCooldownUntil.TryGetValue(retryKey, out cooldownUntil) || cooldownUntil <= now;
         }
 
-        private void MarkPlacementSearchFailure(string itemKey, IA_TerrainType desiredTerrain, float now)
+        private void MarkPlacementSearchFailure(string itemKey, IA_TerrainType desiredTerrain, float now, bool isManual = false)
         {
             string retryKey = BuildPlacementRetryKey(itemKey, desiredTerrain);
             int streak = 0;
@@ -5441,7 +6343,9 @@ namespace Hegemonia.AI.BrainMaster
             streak++;
             _placementFailureStreakByKey[retryKey] = streak;
 
-            float retryDelay = Mathf.Max(4.5f, ResolveEscalatedRetryDelay(streak));
+            float retryDelay = isManual
+                ? 2.5f
+                : Mathf.Max(4.5f, ResolveEscalatedRetryDelay(streak));
             _placementRetryCooldownUntil[retryKey] = now + retryDelay;
         }
 
@@ -5549,12 +6453,15 @@ namespace Hegemonia.AI.BrainMaster
                 && streak >= 3
                 && !HasManualBuildOverrideForItem(itemKey))
             {
-                string disableReason = "auto-placement naval desativado: " + reason;
+                const float temporaryAutoDisableSeconds = 45f;
+                string disableReason = "auto-placement naval em pausa temporaria (45s): " + reason;
                 _navalAutoPlacementDisabledReasonByItem[normalizedItem] = disableReason;
+                _navalAutoPlacementDisabledUntilByItem[normalizedItem] = now + temporaryAutoDisableSeconds;
+                _navalFailureStreakByKey[key] = 0;
                 NavalAutoPlacementDisabled = true;
                 NavalAutoPlacementDisabledReason = disableReason;
                 DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("naval_auto_disabled_reason", disableReason);
-                DiagnosticoDesempenhoJogo.RegistrarEvento("IA_BuildDirector", normalizedItem + " auto-placement desativado | motivo=" + reason);
+                DiagnosticoDesempenhoJogo.RegistrarEvento("IA_BuildDirector", normalizedItem + " auto-placement pausado 45s | motivo=" + reason);
             }
 
             float escalatedDelay = ResolveEscalatedRetryDelay(streak);
@@ -5588,6 +6495,13 @@ namespace Hegemonia.AI.BrainMaster
             _navalFailureStreakByKey.Remove(localKey);
             _navalFailureLastReasonByKey.Remove(globalKey);
             _navalFailureLastReasonByKey.Remove(localKey);
+            _navalAutoPlacementDisabledReasonByItem.Remove(normalizedItem);
+            _navalAutoPlacementDisabledUntilByItem.Remove(normalizedItem);
+            if (_navalAutoPlacementDisabledReasonByItem.Count == 0)
+            {
+                NavalAutoPlacementDisabled = false;
+                NavalAutoPlacementDisabledReason = string.Empty;
+            }
         }
 
         private static float ResolveNavalSearchBackoffSeconds(string normalizedReason)

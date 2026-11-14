@@ -28,6 +28,7 @@ namespace Hegemonia.AI.BrainMaster
         private static List<DadosConstrucao> _editorCatalogSource;
 #endif
         private static DadosConstrucao[] _resourceCatalogSource;
+        private static DadosConstrucao[] _resourceRootCatalogSource;
 
         /// <summary>
         /// Ativado somente por um teste controlado para medir a montagem do
@@ -112,17 +113,9 @@ namespace Hegemonia.AI.BrainMaster
             _catalogByKey.Clear();
             _catalogPrefabs.Clear();
 
-            if (MenuConstrucao.catalogoGlobal != null)
-            {
-                for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
-                {
-                    AddCatalogItem(MenuConstrucao.catalogoGlobal[i]);
-                }
-            }
-
-            // O catálogo serializado da interface pode ser parcial em cenas
-            // sem MenuConstrucao (ou em builds). Inclui fichas de Resources
-            // para que instalações como o estaleiro existam em runtime.
+            // Carrega Resources/Construcoes primeiro para que fichas oficiais curadas
+            // (ex.: Food_Industry_Level1, Ares_Ar) garantam prioridade de prefab e aliases
+            // sobre fichas legadas do MenuConstrucao.catalogoGlobal.
             if (_resourceCatalogSource == null || _resourceCatalogSource.Length == 0)
             {
                 _resourceCatalogSource = Resources.LoadAll<DadosConstrucao>("Construcoes");
@@ -132,29 +125,44 @@ namespace Hegemonia.AI.BrainMaster
                 AddCatalogItem(_resourceCatalogSource[i]);
             }
 
-#if UNITY_EDITOR
-            if (_catalog.Count == 0)
+            if (MenuConstrucao.catalogoGlobal != null)
             {
-                long assetDatabaseStart = DetailedCatalogTimingEnabled
-                    ? System.Diagnostics.Stopwatch.GetTimestamp()
-                    : 0L;
-                List<DadosConstrucao> editorCatalog = GetEditorCatalogSource();
-                RecordDetailedCatalogMetric(
-                    "ia_backend_catalog_assetdatabase_ms",
-                    ElapsedMilliseconds(assetDatabaseStart));
-
-                long localIndexStart = DetailedCatalogTimingEnabled
-                    ? System.Diagnostics.Stopwatch.GetTimestamp()
-                    : 0L;
-                for (int i = 0; i < editorCatalog.Count; i++)
+                for (int i = 0; i < MenuConstrucao.catalogoGlobal.Count; i++)
                 {
-                    AddCatalogItem(editorCatalog[i]);
+                    AddCatalogItem(MenuConstrucao.catalogoGlobal[i]);
                 }
-
-                RecordDetailedCatalogMetric(
-                    "ia_backend_catalog_local_index_ms",
-                    ElapsedMilliseconds(localIndexStart));
             }
+
+            // Tambem carrega assets na raiz de Resources (ex.: Usina Carvao.asset).
+            if (_resourceRootCatalogSource == null || _resourceRootCatalogSource.Length == 0)
+            {
+                _resourceRootCatalogSource = Resources.LoadAll<DadosConstrucao>("");
+            }
+            for (int i = 0; i < _resourceRootCatalogSource.Length; i++)
+            {
+                AddCatalogItem(_resourceRootCatalogSource[i]);
+            }
+
+#if UNITY_EDITOR
+            long assetDatabaseStart = DetailedCatalogTimingEnabled
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0L;
+            List<DadosConstrucao> editorCatalog = GetEditorCatalogSource();
+            RecordDetailedCatalogMetric(
+                "ia_backend_catalog_assetdatabase_ms",
+                ElapsedMilliseconds(assetDatabaseStart));
+
+            long localIndexStart = DetailedCatalogTimingEnabled
+                ? System.Diagnostics.Stopwatch.GetTimestamp()
+                : 0L;
+            for (int i = 0; i < editorCatalog.Count; i++)
+            {
+                AddCatalogItem(editorCatalog[i]);
+            }
+
+            RecordDetailedCatalogMetric(
+                "ia_backend_catalog_local_index_ms",
+                ElapsedMilliseconds(localIndexStart));
 #endif
 
             if (_catalog.Count == 0)
@@ -465,7 +473,7 @@ namespace Hegemonia.AI.BrainMaster
 
             RecordDetailedCatalogMetric("ia_backend_catalog_editor_cache_miss", 1f);
 
-            string[] preferredFolders = { "Assets/Prefabs", "Assets/Resources" };
+            string[] preferredFolders = { "Assets/Resources", "Assets/Prefabs", "Assets/Library/Prefabs" };
             var existingFolders = new List<string>();
             for (int i = 0; i < preferredFolders.Length; i++)
             {
@@ -554,7 +562,19 @@ namespace Hegemonia.AI.BrainMaster
                 return "tenda militar";
             }
 
-            if (normalized.Contains("construtor de veiculos") || normalized.Contains("fabrica") || normalized.Contains("factory"))
+            bool isEconomicFactory = normalized == "fabrica"
+                                     || normalized.Contains("industria")
+                                     || normalized.Contains("alimento")
+                                     || normalized.Contains("comida")
+                                     || normalized.Contains("food")
+                                     || normalized.Contains("minerio")
+                                     || normalized.Contains("pesca");
+            if (!isEconomicFactory
+                && (normalized.Contains("construtor de veiculos")
+                    || normalized.Contains("fabrica de veiculos")
+                    || normalized.Contains("militar.fabrica_veiculos")
+                    || normalized.Contains("vehicle factory")
+                    || normalized.Contains("factory")))
             {
                 return "construtor de veiculos";
             }
@@ -712,11 +732,14 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("barracks");
             }
 
-            if (joined.Contains("construtor de veiculos") || joined.Contains("vehicle factory") || joined.Contains("factory"))
+            if (item.HasCapability(IA_ConstructionCapability.Factory)
+                || joined.Contains("construtor de veiculos")
+                || joined.Contains("fabrica de veiculos")
+                || joined.Contains("militar.fabrica_veiculos")
+                || joined.Contains("vehicle factory"))
             {
                 aliases.Add("construtor de veiculos");
-                aliases.Add("fabrica");
-                aliases.Add("factory");
+                aliases.Add("fabrica de veiculos");
                 aliases.Add("vehicle factory");
             }
 
@@ -733,7 +756,15 @@ namespace Hegemonia.AI.BrainMaster
                 aliases.Add("torre de radar");
             }
 
-            if (joined.Contains("torreta") || joined.Contains("sentinela") || joined.Contains("artilharia"))
+            string rawStableId = item.GetStableId() ?? string.Empty;
+            string stableId = IA_Text.Normalize(rawStableId);
+            bool isMobileArtillery = rawStableId.IndexOf("artilharia_ar", System.StringComparison.OrdinalIgnoreCase) >= 0
+                || stableId.Contains("artilharia ar")
+                || IA_Text.Normalize(item.name).Contains("artilharia ar");
+
+            if (joined.Contains("torreta")
+                || joined.Contains("sentinela")
+                || (joined.Contains("artilharia") && !isMobileArtillery))
             {
                 aliases.Add("torreta");
                 aliases.Add("torre sentinela");
@@ -885,7 +916,7 @@ namespace Hegemonia.AI.BrainMaster
     public sealed class BuildService
     {
         private const float NavalMinOffshoreDistance = 70f;
-        private const float PlatformMinOffshoreDistance = 300f;
+        private const float PlatformMinOffshoreDistance = 140f;
 
         private struct BuildReservation
         {
@@ -915,7 +946,20 @@ namespace Hegemonia.AI.BrainMaster
             IA_ThreatAnalyzer threat,
             out string reason)
         {
-            return ValidatePlacement(itemKey, position, Quaternion.identity, zone, world, map, threat, out reason);
+            return ValidatePlacement(itemKey, position, Quaternion.identity, zone, world, map, threat, out reason, false);
+        }
+
+        public bool ValidatePlacement(
+            string itemKey,
+            Vector3 position,
+            IA_ZoneType zone,
+            IA_WorldState world,
+            IA_MapAnalyzer map,
+            IA_ThreatAnalyzer threat,
+            out string reason,
+            bool allowManualNeutralTerritory)
+        {
+            return ValidatePlacement(itemKey, position, Quaternion.identity, zone, world, map, threat, out reason, allowManualNeutralTerritory);
         }
 
         public bool ValidatePlacement(
@@ -928,20 +972,62 @@ namespace Hegemonia.AI.BrainMaster
             IA_ThreatAnalyzer threat,
             out string reason)
         {
+            return ValidatePlacement(itemKey, position, requestedRotation, zone, world, map, threat, out reason, false);
+        }
+
+        public bool ValidatePlacement(
+            string itemKey,
+            Vector3 position,
+            Quaternion requestedRotation,
+            IA_ZoneType zone,
+            IA_WorldState world,
+            IA_MapAnalyzer map,
+            IA_ThreatAnalyzer threat,
+            out string reason,
+            bool allowManualNeutralTerritory,
+            bool relaxManualConstraints = false,
+            GameObject prefabOverride = null)
+        {
             reason = string.Empty;
+
+            if (relaxManualConstraints)
+            {
+                if (!ValidateManualOverrideTerritoryOnly(position, out reason, allowManualNeutralTerritory || relaxManualConstraints))
+                {
+                    return false;
+                }
+
+                float manualNow = Time.time;
+                if (manualNow >= _nextCleanupTime)
+                {
+                    CleanupReservations(manualNow);
+                    _nextCleanupTime = manualNow + 5f;
+                }
+
+                if (IsExactPointReserved(position, 6f))
+                {
+                    reason = "area reservada";
+                    return false;
+                }
+
+                return true;
+            }
 
             DadosConstrucao data;
             if (!_bridge.TryResolveItem(itemKey, out data))
             {
-                reason = "item nao encontrado";
-                return false;
+                if (prefabOverride == null)
+                {
+                    reason = "item nao encontrado";
+                    return false;
+                }
             }
 
             Quaternion resolvedRotation = requestedRotation;
             // Removida a exigencia de leitura/validacao de costa para estruturas navais da IA
             // (estaleiro, pier, plataforma), permitindo criacao direta mesmo sobre terra/Creaty.
 
-            if (!ValidateTerritoryRules(data, position, out reason))
+            if (!ValidateTerritoryRules(data, position, out reason, allowManualNeutralTerritory))
             {
                 return false;
             }
@@ -976,7 +1062,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (!isNaval)
+            if (isNaval)
             {
                 float minOffshoreDistance = ResolveMinimumOffshoreDistance(data, zone, isNaval);
                 if (minOffshoreDistance > 0.01f && HasDryLandWithinRadius(position, minOffshoreDistance, map))
@@ -1138,7 +1224,8 @@ namespace Hegemonia.AI.BrainMaster
             IA_MapAnalyzer map,
             IA_ThreatAnalyzer threat,
             out GameObject created,
-            out string reason)
+            out string reason,
+            GameObject prefabOverride = null)
         {
             created = null;
             reason = string.Empty;
@@ -1150,13 +1237,22 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             DadosConstrucao data;
-            if (!_bridge.TryResolveItem(itemKey, out data))
+            if (!_bridge.TryResolveItem(itemKey, out data) && prefabOverride == null)
             {
                 reason = "item nao encontrado";
                 return false;
             }
 
-            if (IA_CityExpansionPolicy.IsCityConstruction(data))
+            GameObject prefabToBuild = prefabOverride != null
+                ? prefabOverride
+                : (data != null ? data.PrefabDaUnidade : null);
+            if (prefabToBuild == null)
+            {
+                reason = "prefab da construcao nao encontrado";
+                return false;
+            }
+
+            if (data != null && IA_CityExpansionPolicy.IsCityConstruction(data))
             {
                 SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
                 DadosPaisGoverno pais = governo != null ? governo.ObterPais(_teamId) : null;
@@ -1168,7 +1264,7 @@ namespace Hegemonia.AI.BrainMaster
                     _teamId,
                     pais,
                     economia,
-                    data.PrefabDaUnidade,
+                    prefabToBuild,
                     false,
                     out avaliacaoCidade))
                 {
@@ -1179,7 +1275,19 @@ namespace Hegemonia.AI.BrainMaster
 
             // Sem exigencia de leitura de costa para estaleiro/pier/plataforma da IA
 
-            if (!ValidatePlacement(itemKey, position, rotation, zone, world, map, threat, out reason))
+            bool relaxManualConstraints = forceManualPlacement || prefabOverride != null;
+            if (!ValidatePlacement(
+                itemKey,
+                position,
+                rotation,
+                zone,
+                world,
+                map,
+                threat,
+                out reason,
+                relaxManualConstraints,
+                relaxManualConstraints,
+                prefabOverride))
             {
                 if (!string.IsNullOrEmpty(reason)
                     && (reason.Contains("territorio") || reason.Contains("jurisdicao") || reason.Contains("costa sob pressao")))
@@ -1196,13 +1304,13 @@ namespace Hegemonia.AI.BrainMaster
             bool rawInstantiate = false;
             if (construtor != null)
             {
-                created = construtor.ConstruirEstruturaIA(data.PrefabDaUnidade, position, rotation);
+                created = construtor.ConstruirEstruturaIA(prefabToBuild, position, rotation);
             }
             else
             {
                 rawInstantiate = true;
                 long instantiateStart = System.Diagnostics.Stopwatch.GetTimestamp();
-                created = UnityEngine.Object.Instantiate(data.PrefabDaUnidade, position, rotation);
+                created = UnityEngine.Object.Instantiate(prefabToBuild, position, rotation);
                 RegistrarTempoDiagnostico("spawn_structure_ms", instantiateStart);
             }
 
@@ -1232,9 +1340,15 @@ namespace Hegemonia.AI.BrainMaster
                 manualTag.SourceLabel = manualPointLabel ?? string.Empty;
             }
 
-            IA_BackendBridge.AttachConstructionMetadata(created, data);
+            if (data != null)
+            {
+                IA_BackendBridge.AttachConstructionMetadata(created, data);
+            }
             _bridge.EnsureIdentity(created);
-            IA_RuntimeConstructionIntegration.Apply(created, data);
+            if (data != null)
+            {
+                IA_RuntimeConstructionIntegration.Apply(created, data);
+            }
             AtivarDefesasAereas(created);
             Estaleiro createdShipyard = created.GetComponent<Estaleiro>();
             if (createdShipyard != null) createdShipyard.OwnerTeamId = _teamId;
@@ -1249,9 +1363,10 @@ namespace Hegemonia.AI.BrainMaster
                 estaleiro.AtualizarReferenciasLitoraneas();
             }
 
+            float minSpacing = data != null ? GetMinimumStructureSpacing(data, zone) : 12f;
             float reserveRadius = Mathf.Max(
-                map.EstimateFootprint(data.PrefabDaUnidade, 12f).magnitude,
-                GetMinimumStructureSpacing(data, zone));
+                map.EstimateFootprint(prefabToBuild, 12f).magnitude,
+                minSpacing);
             Reserve(position, reserveRadius, Time.time + 20f);
             world.MarkDirty();
             if (rawInstantiate)
@@ -1280,16 +1395,62 @@ namespace Hegemonia.AI.BrainMaster
 
         public bool ValidateTerritoryProbe(string itemKey, Vector3 position, out string reason)
         {
+            return ValidateTerritoryProbe(itemKey, position, out reason, false);
+        }
+
+        public bool ValidateTerritoryProbe(
+            string itemKey,
+            Vector3 position,
+            out string reason,
+            bool allowManualNeutralTerritory,
+            bool relaxManualConstraints = false,
+            GameObject prefabOverride = null)
+        {
             reason = string.Empty;
+
+            if (relaxManualConstraints)
+            {
+                return ValidateManualOverrideTerritoryOnly(position, out reason, allowManualNeutralTerritory || relaxManualConstraints);
+            }
 
             DadosConstrucao data;
             if (!_bridge.TryResolveItem(itemKey, out data) || data == null)
             {
+                if (prefabOverride != null)
+                {
+                    return ValidateManualOverrideTerritoryOnly(position, out reason, allowManualNeutralTerritory);
+                }
+
                 reason = "item nao encontrado";
                 return false;
             }
 
-            return ValidateTerritoryRules(data, position, out reason);
+            return ValidateTerritoryRules(data, position, out reason, allowManualNeutralTerritory);
+        }
+
+        private bool ValidateManualOverrideTerritoryOnly(Vector3 position, out string reason, bool allowNeutral)
+        {
+            reason = string.Empty;
+            GerenteDeTerritorio territory = EnsureTerritoryManager();
+            if (territory == null)
+            {
+                return true;
+            }
+
+            int owner = territory.ObterDonoDoPonto(position);
+            if (owner != 0 && owner != _teamId)
+            {
+                reason = "territorio inimigo";
+                return false;
+            }
+
+            if (!allowNeutral && owner == 0)
+            {
+                reason = "territorio nao reivindicado";
+                return false;
+            }
+
+            return true;
         }
 
         private bool IsNaval(DadosConstrucao data)
@@ -1374,7 +1535,7 @@ namespace Hegemonia.AI.BrainMaster
                    || joined.Contains("armazem");
         }
 
-        private bool ValidateTerritoryRules(DadosConstrucao data, Vector3 position, out string reason)
+        private bool ValidateTerritoryRules(DadosConstrucao data, Vector3 position, out string reason, bool allowManualNeutralTerritory = false)
         {
             reason = string.Empty;
 
@@ -1415,11 +1576,16 @@ namespace Hegemonia.AI.BrainMaster
 
             if (IsOffshorePlatform(data) || IsNaval(data) || RequiresCoastalPlacement(data))
             {
-                return ValidateCoastalTerritoryRules(position, territory, owner, out reason);
+                return ValidateCoastalTerritoryRules(position, territory, owner, out reason, allowManualNeutralTerritory);
             }
 
             if (owner != _teamId)
             {
+                if (allowManualNeutralTerritory && owner == 0)
+                {
+                    return true;
+                }
+
                 reason = owner == 0 ? "territorio nao reivindicado" : "territorio inimigo";
                 return false;
             }
@@ -1431,7 +1597,8 @@ namespace Hegemonia.AI.BrainMaster
             Vector3 position,
             GerenteDeTerritorio territory,
             int owner,
-            out string reason)
+            out string reason,
+            bool allowManualNeutralTerritory = false)
         {
             reason = string.Empty;
 
@@ -1446,10 +1613,16 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (allowManualNeutralTerritory)
+            {
+                return true;
+            }
+
             float nearestFriendlyDistance;
             float nearestEnemyDistance;
-            bool hasFriendlyTerritory = TryFindNearbyTerritory(territory, position, true, 420f, out nearestFriendlyDistance);
-            bool hasEnemyTerritory = TryFindNearbyTerritory(territory, position, false, 420f, out nearestEnemyDistance);
+            const float CoastalTerritorySearchRadius = 760f;
+            bool hasFriendlyTerritory = TryFindNearbyTerritory(territory, position, true, CoastalTerritorySearchRadius, out nearestFriendlyDistance);
+            bool hasEnemyTerritory = TryFindNearbyTerritory(territory, position, false, CoastalTerritorySearchRadius, out nearestEnemyDistance);
 
             if (hasFriendlyTerritory && (!hasEnemyTerritory || nearestFriendlyDistance + 8f < nearestEnemyDistance))
             {
@@ -1485,7 +1658,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            float[] radii = { 0f, 16f, 32f, 48f, 72f, 96f, 128f, 160f, 192f, 224f, 256f, 320f, 384f, 420f };
+            float[] radii = { 0f, 16f, 32f, 48f, 72f, 96f, 128f, 160f, 192f, 224f, 256f, 320f, 384f, 420f, 520f, 640f, 760f };
             for (int r = 0; r < radii.Length; r++)
             {
                 float radius = radii[r];
@@ -1798,12 +1971,27 @@ namespace Hegemonia.AI.BrainMaster
                     float offsetZ = Mathf.Lerp(-extentZ, extentZ, tz);
                     Vector3 samplePosition = position + rotation * new Vector3(offsetX, 0f, offsetZ);
 
-                    // A classificacao marcada e reutilizada pela validacao
-                    // fisica abaixo. Antes o mesmo ponto era consultado duas
-                    // vezes por amostra, o que multiplicava o custo da busca.
+                    // Classifica e valida terra/agua antes de instanciar ou consultar IA_MapCell completo.
                     ClassificacaoSuperficieMapa classificacao;
                     float altura;
                     bool superficieClassificada = RegistroSuperficieMapa.TryClassify(samplePosition, out classificacao, out altura);
+                    if (superficieClassificada)
+                    {
+                        if (classificacao == ClassificacaoSuperficieMapa.Agua)
+                        {
+                            return false;
+                        }
+
+                        if (rejectCoast && classificacao == ClassificacaoSuperficieMapa.Costa)
+                        {
+                            return false;
+                        }
+                    }
+
+                    if (!IsPhysicallyDryLandPoint(samplePosition, rejectCoast, airport, superficieClassificada, classificacao))
+                    {
+                        return false;
+                    }
 
                     if (map != null)
                     {
@@ -1818,24 +2006,10 @@ namespace Hegemonia.AI.BrainMaster
                             return false;
                         }
 
-                        // Protecao Extra: Verifica a classificacao real da superficie
-                        if (superficieClassificada)
-                        {
-                            if (classificacao == ClassificacaoSuperficieMapa.Agua)
-                            {
-                                return false;
-                            }
-                        }
-
                         if (rejectCoast && sample.Terrain == IA_TerrainType.Coast)
                         {
                             return false;
                         }
-                    }
-
-                    if (!IsPhysicallyDryLandPoint(samplePosition, rejectCoast, airport, superficieClassificada, classificacao))
-                    {
-                        return false;
                     }
                 }
             }
@@ -2033,6 +2207,25 @@ namespace Hegemonia.AI.BrainMaster
             return false;
         }
 
+        private bool IsExactPointReserved(Vector3 position, float tolerance)
+        {
+            for (int i = 0; i < _reservations.Count; i++)
+            {
+                BuildReservation reservation = _reservations[i];
+                if (reservation.Until <= Time.time)
+                {
+                    continue;
+                }
+
+                if (Vector3.Distance(Flatten(reservation.Position), Flatten(position)) <= tolerance)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void CleanupReservations(float now)
         {
             for (int i = _reservations.Count - 1; i >= 0; i--)
@@ -2160,15 +2353,50 @@ namespace Hegemonia.AI.BrainMaster
             return ProduceLandUnit(data, out reason, productionOrderId, onPhysicalAcceptance);
         }
 
+        public bool CanProduceGroundUnitAtFactory(DadosConstrucao data, out string reason)
+        {
+            if (data == null || data.PrefabDaUnidade == null)
+            {
+                reason = "prefab invalido";
+                return false;
+            }
+
+            if (IsStructure(data) || IsNaval(data) || IsFighter(data) || IsHelicopter(data))
+            {
+                reason = string.Empty;
+                return true;
+            }
+
+            return TryProduceOrValidateLandUnit(data, false, out _, out reason, string.Empty, null);
+        }
+
         private GameObject ProduceLandUnit(
             DadosConstrucao data,
             out string reason,
             string productionOrderId,
             System.Action onPhysicalAcceptance)
         {
+            GameObject unit;
+            return TryProduceOrValidateLandUnit(data, true, out unit, out reason, productionOrderId, onPhysicalAcceptance)
+                ? unit
+                : null;
+        }
+
+        private bool TryProduceOrValidateLandUnit(
+            DadosConstrucao data,
+            bool executeSpawn,
+            out GameObject spawnedUnit,
+            out string reason,
+            string productionOrderId,
+            System.Action onPhysicalAcceptance)
+        {
+            spawnedUnit = null;
             reason = string.Empty;
             bool needsBarracks = IsInfantry(data);
             RegistroEntidadesJogo.FillFabricas(_factoryBuffer);
+            bool sawEligibleFactory = false;
+            bool sawPoweredFactory = false;
+            bool sawManpowerFactory = false;
 
             for (int i = 0; i < _factoryBuffer.Count; i++)
             {
@@ -2183,6 +2411,34 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
+                if (!needsBarracks && factory.PossuiPainelIndustrial)
+                {
+                    continue;
+                }
+
+                sawEligibleFactory = true;
+                if (!factory.PossuiEnergiaParaProduzir())
+                {
+                    continue;
+                }
+
+                sawPoweredFactory = true;
+                if (!factory.PossuiEfetivoParaProducao(data.PrefabDaUnidade))
+                {
+                    continue;
+                }
+
+                sawManpowerFactory = true;
+                if (!factory.PossuiNavMeshParaProducao(data.PrefabDaUnidade))
+                {
+                    continue;
+                }
+
+                if (!executeSpawn)
+                {
+                    return true;
+                }
+
                 GameObject unit = factory.ProduzirUnidadeRastreada(
                     data.PrefabDaUnidade,
                     onPhysicalAcceptance,
@@ -2193,12 +2449,29 @@ namespace Hegemonia.AI.BrainMaster
                     _bridge.EnsureIdentity(unit);
                     IAAutoProductionRegistry.Complete(productionOrderId, Time.time);
                     IA_WorldState.NotifyEntityChanged(unit.GetComponent<IdentidadeUnidade>());
-                    return unit;
+                    spawnedUnit = unit;
+                    return true;
                 }
             }
 
-            reason = "fabrica adequada nao encontrada";
-            return null;
+            if (!sawEligibleFactory)
+            {
+                reason = "fabrica adequada nao encontrada";
+            }
+            else if (!sawPoweredFactory)
+            {
+                reason = "fabrica sem energia";
+            }
+            else if (!sawManpowerFactory)
+            {
+                reason = "efetivo insuficiente";
+            }
+            else
+            {
+                reason = "sem NavMesh carregada na fabrica";
+            }
+
+            return false;
         }
 
         private GameObject ProduceNaval(
@@ -2651,29 +2924,35 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             DadosConstrucao item;
-            if (!_bridge.TryResolveItem(payload.ItemKey, out item))
+            if (!_bridge.TryResolveItem(payload.ItemKey, out item) && payload.PrefabOverride == null)
             {
                 message = "item nao encontrado";
                 return false;
             }
 
             string runtimeBuildReason;
-            if (ShouldFreezeNonEssentialBuild(context, item, payload.ItemKey, out runtimeBuildReason))
+            if (!payload.ForceManualPlacement
+                && payload.PrefabOverride == null
+                && item != null
+                && ShouldFreezeNonEssentialBuild(context, item, payload.ItemKey, out runtimeBuildReason))
             {
                 message = "build pausado: " + runtimeBuildReason;
                 return false;
             }
 
-            long buildCost = item.ObterPrecoEfetivo();
-            if (!context.Brain.TrySpend(buildCost))
+            long buildCost = item != null ? item.ObterPrecoEfetivo() : 0L;
+            if (buildCost > 0L && !context.Brain.TrySpend(buildCost))
             {
                 message = "credito insuficiente";
                 return false;
             }
 
-            if (item.PrefabDaUnidade != null)
+            GameObject prefabDiagnostic = payload.PrefabOverride != null
+                ? payload.PrefabOverride
+                : (item != null ? item.PrefabDaUnidade : null);
+            if (prefabDiagnostic != null)
             {
-                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", item.PrefabDaUnidade.name);
+                DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefabDiagnostic.name);
             }
 
             long metricStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -2691,9 +2970,10 @@ namespace Hegemonia.AI.BrainMaster
                     context.MapAnalyzer,
                     context.ThreatAnalyzer,
                     out built,
-                    out message);
+                    out message,
+                    payload.PrefabOverride);
 
-                if (!ok)
+                if (!ok && buildCost > 0L)
                 {
                     context.Brain.Refund(buildCost);
                 }
@@ -3068,10 +3348,30 @@ namespace Hegemonia.AI.BrainMaster
                 + (data != null ? data.NomeItem : string.Empty) + " "
                 + (data != null && data.PrefabDaUnidade != null ? data.PrefabDaUnidade.name : string.Empty));
 
-            return normalized.Contains("torreta")
+            return normalized.Contains("prefeitura")
+                   || normalized.Contains("city hall")
+                   || normalized.Contains("town hall")
+                   || normalized.Contains("quartel general")
+                   || normalized.Contains("quartel_general")
+                   || normalized.Contains("headquarters")
+                   || normalized == "hq"
+                   || normalized.Contains("tenda")
+                   || normalized.Contains("barracks")
+                   || normalized.Contains("armazem")
+                   || normalized.Contains("warehouse")
+                   || normalized.Contains("usina")
+                   || normalized.Contains("energia")
+                   || normalized.Contains("power")
+                   || normalized.Contains("food industry")
+                   || normalized.Contains("industria de alimentos")
+                   || normalized.Contains("torreta")
                    || normalized.Contains("sentinela")
                    || normalized.Contains("ciws")
                    || normalized.Contains("radar")
+                   || normalized.Contains("construtor de veiculo")
+                   || normalized.Contains("fabrica de veiculo")
+                   || normalized.Contains("vehicle factory")
+                   || normalized.Contains("militar.fabrica_veiculos")
                    || normalized.Contains("estaleiro")
                    || normalized.Contains("shipyard")
                    || normalized.Contains("pier")

@@ -20,6 +20,20 @@ namespace Hegemonia.AI.BrainMaster
             get { return _pending.Count; }
         }
 
+        public bool HasPendingType(IA_CommandType type)
+        {
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                IA_CommandRequest request = _pending[i];
+                if (request != null && request.Type == type)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public int CooldownCount
         {
             get { return _cooldownUntilByDedup.Count; }

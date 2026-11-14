@@ -142,10 +142,15 @@ public static class FluxoInicialJogo
         if (manager == null)
         {
 #if UNITY_2023_1_OR_NEWER
-            manager = Object.FindFirstObjectByType<IA01Manager>(FindObjectsInactive.Include);
+            manager = Object.FindFirstObjectByType<IA01Manager>(FindObjectsInactive.Exclude);
 #else
             manager = Object.FindObjectOfType<IA01Manager>();
 #endif
+        }
+
+        if (manager != null && !manager.gameObject.activeInHierarchy)
+        {
+            manager = null;
         }
 
         if (manager != null)
@@ -155,12 +160,14 @@ public static class FluxoInicialJogo
                 manager.enabled = true;
             }
 
-            IA01Controller[] controllers = Object.FindObjectsByType<IA01Controller>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            // Nao registre controllers em GameObjects desativados na hierarquia (ex.: ia01 (1) em GlobalMapRTS),
+            // caso contrario o IA01 reclama autoridade de producao e dispara WorldNotReady na cena do BrainMaster.
+            IA01Controller[] controllers = Object.FindObjectsByType<IA01Controller>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             int controllersRegistered = 0;
             for (int i = 0; i < controllers.Length; i++)
             {
                 IA01Controller controller = controllers[i];
-                if (controller == null) continue;
+                if (controller == null || !controller.gameObject.activeInHierarchy) continue;
                 if (!controller.enabled)
                 {
                     controller.enabled = true;

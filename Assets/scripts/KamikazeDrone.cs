@@ -70,24 +70,38 @@ public class KamikazeDrone : MonoBehaviour
 
     void CriarMarcadorDeArea(Vector3 pos)
     {
-        marcadorArea = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Destroy(marcadorArea.GetComponent<Collider>());
-        
-        marcadorArea.transform.position = new Vector3(pos.x, pos.y + 0.1f, pos.z);
-        marcadorArea.transform.localScale = new Vector3(raioExplosao * 2f, 0.05f, raioExplosao * 2f);
-        
-        Renderer rend = marcadorArea.GetComponent<Renderer>();
-        if (rend != null)
+        GameObject prefabMarcador = PoolDeObjetosCombate.ResolverMarcadorPatrulhaAerea();
+        if (prefabMarcador == null)
         {
-            // Usa shader default do Unity p/ suportar cor com alpha
-            rend.material = new Material(Shader.Find("Sprites/Default"));
-            rend.material.color = new Color(1f, 0.1f, 0f, 0.2f);
+            return;
+        }
+
+        marcadorArea = PoolDeObjetosCombate.Spawn(prefabMarcador, new Vector3(pos.x, pos.y + 0.1f, pos.z), Quaternion.identity);
+        if (marcadorArea == null)
+        {
+            return;
+        }
+
+        float escala = Mathf.Max(12f, raioExplosao * 0.8f);
+        marcadorArea.transform.localScale = new Vector3(escala, escala, escala);
+
+        ParticleSystem[] particulas = marcadorArea.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < particulas.Length; i++)
+        {
+            ParticleSystem ps = particulas[i];
+            if (ps == null) continue;
+            ps.Clear(true);
+            ps.Play(true);
         }
     }
 
     void OnDestroy()
     {
-        if (marcadorArea != null) Destroy(marcadorArea);
+        if (marcadorArea != null)
+        {
+            PoolDeObjetosCombate.Release(marcadorArea);
+            marcadorArea = null;
+        }
     }
 
     void ProcurarAlvo()

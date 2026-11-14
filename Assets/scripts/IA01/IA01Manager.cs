@@ -62,6 +62,8 @@ namespace Hegemonia.AI.IA01
         private const string GlobalTaskId = "ia/ia01/manager";
         private bool registradoNoOrquestrador;
         private bool registroControllersCenaConcluido;
+        private float nextBrainMasterSceneProbeTime;
+        private bool brainMasterExclusiveScene;
 
         public void ConfirmarRegistroControllersCena(bool concluido)
         {
@@ -175,6 +177,8 @@ namespace Hegemonia.AI.IA01
 
         private void OnEnable()
         {
+            nextBrainMasterSceneProbeTime = 0f;
+            brainMasterExclusiveScene = false;
             RegistrarNoOrquestradorGlobal();
             RefreshServiceDiagnostics(true);
             if (ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name))
@@ -185,7 +189,7 @@ namespace Hegemonia.AI.IA01
             {
                 BindSceneControllers();
             }
-            if (autoSpawnFromGovernment)
+            if (autoSpawnFromGovernment && !IsBrainMasterExclusiveScene())
             {
                 SpawnConfiguredGovernmentControllers();
             }
@@ -213,6 +217,8 @@ namespace Hegemonia.AI.IA01
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            nextBrainMasterSceneProbeTime = 0f;
+            brainMasterExclusiveScene = false;
             worldReady = false;
             worldReadyReason = "cena alterada; aguardando novo layout";
             lastWorldReadyLogReason = string.Empty;
@@ -224,7 +230,7 @@ namespace Hegemonia.AI.IA01
             {
                 BindSceneControllers();
             }
-            if (autoSpawnFromGovernment)
+            if (autoSpawnFromGovernment && !IsBrainMasterExclusiveScene())
             {
                 SpawnConfiguredGovernmentControllers();
             }
@@ -419,6 +425,15 @@ namespace Hegemonia.AI.IA01
                 BindSceneControllers();
             }
 
+            if (controllers.Count == 0 && IsBrainMasterExclusiveScene())
+            {
+                worldReady = false;
+                worldReadyReason = "cena controlada por IA_BrainMaster";
+                telemetry.RecordFrame(frameMs);
+                ReportTickCost(measureTick, tickStartedAt);
+                return 0;
+            }
+
             RefreshServiceDiagnostics(false, now);
 
             if (!TryPrepareWorld(out string notReadyReason))
@@ -608,11 +623,40 @@ namespace Hegemonia.AI.IA01
 
         private void BindSceneControllers()
         {
-            IA01Controller[] found = UnityEngine.Object.FindObjectsByType<IA01Controller>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            // Ignora controllers em objetos inativos (ex.: ia01 (1) mantido desativado em GlobalMapRTS).
+            IA01Controller[] found = UnityEngine.Object.FindObjectsByType<IA01Controller>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < found.Length; i++)
             {
-                RegisterController(found[i]);
+                IA01Controller controller = found[i];
+                if (controller != null && controller.gameObject.activeInHierarchy)
+                {
+                    RegisterController(controller);
+                }
             }
+        }
+
+        private bool IsBrainMasterExclusiveScene()
+        {
+            if (controllers.Count > 0)
+            {
+                brainMasterExclusiveScene = false;
+                return false;
+            }
+
+            if (!Application.isPlaying || Time.unscaledTime >= nextBrainMasterSceneProbeTime)
+            {
+#if UNITY_2023_1_OR_NEWER
+                Hegemonia.AI.BrainMaster.IA_BrainMaster brainMaster = UnityEngine.Object.FindFirstObjectByType<Hegemonia.AI.BrainMaster.IA_BrainMaster>(FindObjectsInactive.Exclude);
+                IA01Controller activeController = UnityEngine.Object.FindFirstObjectByType<IA01Controller>(FindObjectsInactive.Exclude);
+#else
+                Hegemonia.AI.BrainMaster.IA_BrainMaster brainMaster = UnityEngine.Object.FindObjectOfType<Hegemonia.AI.BrainMaster.IA_BrainMaster>();
+                IA01Controller activeController = UnityEngine.Object.FindObjectOfType<IA01Controller>();
+#endif
+                brainMasterExclusiveScene = brainMaster != null && brainMaster.isActiveAndEnabled && activeController == null;
+                nextBrainMasterSceneProbeTime = Time.unscaledTime + 2f;
+            }
+
+            return brainMasterExclusiveScene;
         }
 
         private void PruneInvalidControllers()
@@ -687,6 +731,11 @@ namespace Hegemonia.AI.IA01
 
         private void ReportWorldNotReady(string reason)
         {
+            if (IsBrainMasterExclusiveScene())
+            {
+                return;
+            }
+
             if (Application.isPlaying
                 && (FluxoInicialJogo.RegistroControllersCenaEmAndamento
                     || (!registroControllersCenaConcluido && !FluxoInicialJogo.RegistroControllersCenaConcluido && Time.unscaledTime < 2f)))

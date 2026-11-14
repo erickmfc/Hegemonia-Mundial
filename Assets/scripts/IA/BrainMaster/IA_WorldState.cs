@@ -1552,7 +1552,10 @@ namespace Hegemonia.AI.BrainMaster
                 _workingForceSnapshot.BarracksCount++;
             }
 
-            if (entry.IsFactory || n.Contains("construtor de veiculo") || n.Contains("vehicle factory") || ((n.Contains("fabrica") || n.Contains("factory")) && !n.Contains("minerio") && !n.Contains("alimento") && !n.Contains("pesca") && !n.Contains("comida")))
+            if (entry.IsFactory
+                || n.Contains("construtor de veiculo")
+                || n.Contains("fabrica de veiculo")
+                || n.Contains("vehicle factory"))
             {
                 _workingForceSnapshot.FactoryCount++;
             }
@@ -1737,6 +1740,17 @@ namespace Hegemonia.AI.BrainMaster
                                || isHover
                                || n.Contains("liberty");
 
+            Fabrica fabricaComponent = obj.GetComponent<Fabrica>();
+            bool isEconomicFactoryPanel = (fabricaComponent != null && fabricaComponent.PossuiPainelIndustrial)
+                                          || n.Contains("industria")
+                                          || n.Contains("minerio")
+                                          || n.Contains("alimento")
+                                          || n.Contains("pesca")
+                                          || n.Contains("comida")
+                                          || n == "fabrica"
+                                          || n.StartsWith("fabrica(");
+            bool isMilitaryVehicleFactoryByComponent = fabricaComponent != null && !fabricaComponent.ehQuartel && !fabricaComponent.PossuiPainelIndustrial;
+
             entry = new EntityRuntimeCacheEntry
             {
                 NormalizedName = n,
@@ -1755,14 +1769,20 @@ namespace Hegemonia.AI.BrainMaster
                 IsShipyard = hasMetadata ? metadata.IsShipyard : n.Contains("estaleiro") || n.Contains("shipyard"),
                 IsPier = hasMetadata ? metadata.IsPier : n.Contains("pier"),
                 IsPlatform = hasMetadata ? metadata.IsPlatform : n.Contains("plataforma") || n.Contains("offshore platform"),
-                IsFactory = hasMetadata ? metadata.IsFactory : n.Contains("construtor de veiculo") || n.Contains("vehicle factory") || ((n.Contains("fabrica") || n.Contains("factory")) && !n.Contains("minerio") && !n.Contains("alimento") && !n.Contains("pesca") && !n.Contains("comida")),
+                IsFactory = hasMetadata
+                    ? metadata.IsFactory && !isEconomicFactoryPanel
+                    : isMilitaryVehicleFactoryByComponent
+                      || n.Contains("construtor de veiculo")
+                      || n.Contains("fabrica de veiculo")
+                      || n.Contains("vehicle factory")
+                      || ((n.Contains("fabrica") || n.Contains("factory")) && !isEconomicFactoryPanel),
                 IsBarracks = hasMetadata ? metadata.IsBarracks : n.Contains("tenda") || n.Contains("barraca") || n.Contains("quartel") || n.Contains("barracks"),
                 IsWarehouse = hasMetadata ? metadata.IsWarehouse : n.Contains("armazem") || n.Contains("warehouse") || n.Contains("galpao"),
                 IsPower = hasMetadata ? metadata.IsPower : n.Contains("usina") || n.Contains("energia") || n.Contains("power plant") || n.Contains("power"),
                 IsDefense = hasMetadata ? metadata.IsDefense : n.Contains("radar") || n.Contains("ciws") || n.Contains("phalanx") || n.Contains("antia") || n.Contains("torreta") || n.Contains("sentinela"),
                 IsCommercial = hasMetadata ? metadata.IsCommercial : n.Contains("comercial") || n.Contains("commercial"),
                 IsCivil = hasMetadata ? metadata.IsCivil : n.Contains("civil") || n.Contains("resid") || n.Contains("moradia") || n.Contains("casa") || n.Contains("imovel") || n.Contains("village"),
-                IsMilitary = hasMetadata ? metadata.IsMilitary : n.Contains("militar") || n.Contains("quartel") || n.Contains("fabrica") || n.Contains("tenda") || n.Contains("aeroporto"),
+                IsMilitary = hasMetadata ? metadata.IsMilitary : n.Contains("militar") || n.Contains("quartel") || n.Contains("construtor de veiculo") || n.Contains("fabrica de veiculo") || n.Contains("tenda") || n.Contains("aeroporto"),
                 IsTransport = isTransport,
                 IsOilTanker = isOilTanker,
                 IsCargoShip = hasCargoShip,
@@ -1772,7 +1792,21 @@ namespace Hegemonia.AI.BrainMaster
                 IsAircraftCarrier = hasCarrierComponent,
                 IsSubmarine = hasSubmarine || n.Contains("sub"),
                 IsInfantry = n.Contains("sold") || n.Contains("rifle") || n.Contains("infan"),
-                IsTank = n.Contains("tank") || n.Contains("mbt") || n.Contains("south") || n.Contains("arthur") || n.Contains("c1"),
+                IsTank = !isStructure
+                         && domain == IA_Domain.Land
+                         && !isOilTanker
+                         && (n.Contains("tank")
+                             || n.Contains("tanque")
+                             || n.Contains("mbt")
+                             || n.Contains("blindado")
+                             || n.Contains("leonc")
+                             || n.Contains("leon c1")
+                             || n.Contains("south")
+                             || n.Contains("arthur")
+                             || n.Contains("c1")
+                             || n.Contains("codex")
+                             || n.Contains("ubu")
+                             || n.Contains("antigravity")),
                 IsArtillery = n.Contains("artilh") || n.Contains("hack") || n.Contains("mlrs") || n.Contains("lancador"),
                 IsHelicopter = hasHelicopter || n.Contains("heli") || n.Contains("ray") || n.Contains("vans"),
                 IsFixedWing = !isCommercialAircraft && (isAereoFromComp || hasAircraft || isFixedWingByName || n.Contains("jet") || n.Contains("aviao") || isDrone),

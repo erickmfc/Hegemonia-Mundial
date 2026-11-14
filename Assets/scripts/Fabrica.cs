@@ -90,41 +90,69 @@ public class Fabrica : MonoBehaviour
         return ProduzirUnidadeRastreada(prefab, null, string.Empty);
     }
 
-    public GameObject ProduzirUnidadeRastreada(
-        GameObject prefab,
-        System.Action onPhysicalAcceptance,
-        string productionOrderId)
+    private struct PlanejamentoSpawnFabrica
     {
-        if (prefab == null) return null;
-        if (!PossuiEnergiaParaProduzir()) return null;
+        public Transform spawn;
+        public Transform saidaAlvo;
+        public bool usarSaidaExtra;
+        public int slotsUsados;
+        public Vector3 posSlot;
+        public bool destinoValidado;
+        public Vector3 posSpawnFinal;
+        public bool spawnValidado;
+    }
 
-        IdentidadeUnidade identidadeFabrica = GetComponentInParent<IdentidadeUnidade>();
-        bool prefabVeiculoTerrestreSemIdentidade = prefab.GetComponentInChildren<IdentidadeUnidade>(true) == null
+    private static bool EhPrefabVeiculoTerrestreSemIdentidade(GameObject prefab)
+    {
+        return prefab != null
+            && prefab.GetComponentInChildren<IdentidadeUnidade>(true) == null
             && (prefab.GetComponent<MovimentoRealTerrestre>() != null
                 || prefab.GetComponent<CaminhaoTanqueAbastecimento>() != null);
-        int efetivoNecessario = prefabVeiculoTerrestreSemIdentidade
+    }
+
+    public bool PossuiEfetivoParaProducao(GameObject prefab)
+    {
+        return PossuiEfetivoParaProducao(prefab, out _, out _, out _, out _);
+    }
+
+    private bool PossuiEfetivoParaProducao(
+        GameObject prefab,
+        out IdentidadeUnidade identidadeFabrica,
+        out bool prefabVeiculoTerrestreSemIdentidade,
+        out int efetivoNecessario,
+        out SistemaGovernoMundial governoParaEfetivo)
+    {
+        identidadeFabrica = GetComponentInParent<IdentidadeUnidade>();
+        prefabVeiculoTerrestreSemIdentidade = EhPrefabVeiculoTerrestreSemIdentidade(prefab);
+        efetivoNecessario = 0;
+        governoParaEfetivo = null;
+        if (prefab == null) return false;
+
+        efetivoNecessario = prefabVeiculoTerrestreSemIdentidade
             ? SistemaGovernoMundial.ObterEfetivoNecessario(prefab, TipoUnidade.Veiculo)
             : SistemaGovernoMundial.ObterEfetivoNecessario(prefab);
-        SistemaGovernoMundial governoParaEfetivo = null;
-        if (efetivoNecessario > 0)
-        {
-            governoParaEfetivo = SistemaGovernoMundial.Instancia;
-            bool possuiEfetivoNacional = identidadeFabrica != null && governoParaEfetivo != null
-                && (prefabVeiculoTerrestreSemIdentidade
-                    ? governoParaEfetivo.PodeProduzirUnidadeComEfetivo(
-                        identidadeFabrica.teamID, prefab, 1, TipoUnidade.Veiculo)
-                    : governoParaEfetivo.PodeProduzirUnidadeComEfetivo(identidadeFabrica.teamID, prefab));
-            if (!possuiEfetivoNacional)
-            {
-                return null;
-            }
-        }
+        if (efetivoNecessario <= 0) return true;
 
-        long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
-        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefab.name);
+        governoParaEfetivo = SistemaGovernoMundial.Instancia;
+        return identidadeFabrica != null
+            && governoParaEfetivo != null
+            && (prefabVeiculoTerrestreSemIdentidade
+                ? governoParaEfetivo.PodeProduzirUnidadeComEfetivo(
+                    identidadeFabrica.teamID, prefab, 1, TipoUnidade.Veiculo)
+                : governoParaEfetivo.PodeProduzirUnidadeComEfetivo(identidadeFabrica.teamID, prefab));
+    }
 
+    public bool PossuiNavMeshParaProducao(GameObject prefab)
+    {
+        if (prefab == null) return false;
+        if (prefab.GetComponentInChildren<UnityEngine.AI.NavMeshAgent>(true) == null) return true;
+        return PlanejarSpawnENavMesh(prefab, false).spawnValidado;
+    }
+
+    private PlanejamentoSpawnFabrica PlanejarSpawnENavMesh(GameObject prefab, bool registrarMetricas)
+    {
         Transform spawn = (pontoNascimento != null) ? pontoNascimento : transform;
-        
+
         // Escolhe o próximo ponto de saída (Round Robin entre os 5 disponíveis)
         Transform saidaAlvo = pontoSaida;
         bool usarSaidaExtra = pontosSaidaExtras != null && pontosSaidaExtras.Count > 0;
@@ -159,20 +187,23 @@ public class Fabrica : MonoBehaviour
 
         Vector3 posSlot = baseSaida + (direcaoSaida * (5f + slotIdx * espacamento));
         bool destinoValidado = false;
-        long navmeshDestinoStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        long navmeshDestinoStart = registrarMetricas ? System.Diagnostics.Stopwatch.GetTimestamp() : 0L;
         UnityEngine.AI.NavMeshHit hitDestino;
         if (UnityEngine.AI.NavMesh.SamplePosition(posSlot, out hitDestino, 6f, UnityEngine.AI.NavMesh.AllAreas))
         {
             posSlot = hitDestino.position;
             destinoValidado = true;
         }
-        RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshDestinoStart);
+        if (registrarMetricas)
+        {
+            RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshDestinoStart);
+        }
 
         // Validação NavMesh para Spawn
         Vector3 posSpawnFinal = spawn.position;
         bool spawnValidado = false;
         UnityEngine.AI.NavMeshHit nh;
-        long navmeshSpawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        long navmeshSpawnStart = registrarMetricas ? System.Diagnostics.Stopwatch.GetTimestamp() : 0L;
         if (ehQuartel && saidaAlvo != null && UnityEngine.AI.NavMesh.SamplePosition(baseSaida, out nh, 20f, UnityEngine.AI.NavMesh.AllAreas))
         {
             posSpawnFinal = nh.position;
@@ -188,7 +219,54 @@ public class Fabrica : MonoBehaviour
             posSpawnFinal = nh.position;
             spawnValidado = true;
         }
-        RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
+        if (registrarMetricas)
+        {
+            RegistrarTempoDiagnostico("navmesh_spawn_ms", navmeshSpawnStart);
+        }
+
+        return new PlanejamentoSpawnFabrica
+        {
+            spawn = spawn,
+            saidaAlvo = saidaAlvo,
+            usarSaidaExtra = usarSaidaExtra,
+            slotsUsados = slotsUsados,
+            posSlot = posSlot,
+            destinoValidado = destinoValidado,
+            posSpawnFinal = posSpawnFinal,
+            spawnValidado = spawnValidado
+        };
+    }
+
+    public GameObject ProduzirUnidadeRastreada(
+        GameObject prefab,
+        System.Action onPhysicalAcceptance,
+        string productionOrderId)
+    {
+        if (prefab == null) return null;
+        if (!PossuiEnergiaParaProduzir()) return null;
+
+        if (!PossuiEfetivoParaProducao(
+                prefab,
+                out IdentidadeUnidade identidadeFabrica,
+                out bool prefabVeiculoTerrestreSemIdentidade,
+                out int efetivoNecessario,
+                out SistemaGovernoMundial governoParaEfetivo))
+        {
+            return null;
+        }
+
+        long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        DiagnosticoDesempenhoJogo.RegistrarTextoMetrica("spawn_prefab_name", prefab.name);
+
+        PlanejamentoSpawnFabrica planejamento = PlanejarSpawnENavMesh(prefab, true);
+        Transform spawn = planejamento.spawn;
+        Transform saidaAlvo = planejamento.saidaAlvo;
+        bool usarSaidaExtra = planejamento.usarSaidaExtra;
+        int slotsUsados = planejamento.slotsUsados;
+        Vector3 posSlot = planejamento.posSlot;
+        bool destinoValidado = planejamento.destinoValidado;
+        Vector3 posSpawnFinal = planejamento.posSpawnFinal;
+        bool spawnValidado = planejamento.spawnValidado;
 
         // Terrenos dinâmicos só mantêm NavMesh na região carregada. Não crie
         // agentes terrestres fora dela: a instância nasceria sem executor e a

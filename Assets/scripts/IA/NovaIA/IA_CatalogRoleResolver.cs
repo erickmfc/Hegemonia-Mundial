@@ -79,7 +79,7 @@ namespace Hegemonia.AI.Master
 
             ResolveRole(IA_CatalogRole.Core, "prefeitura", "capital", "governo");
             ResolveRole(IA_CatalogRole.Barracks, "quartel", "tenda militar", "tenda");
-            ResolveRole(IA_CatalogRole.Factory, "fabrica", "construtor de veiculos");
+            ResolveRole(IA_CatalogRole.Factory, "construtor de veiculos", "fabrica de veiculos", "vehicle factory");
             ResolveRole(IA_CatalogRole.Warehouse, "armazem", "galpao");
             ResolveRole(IA_CatalogRole.Radar, "radar", "torre de radar");
             ResolveRole(IA_CatalogRole.Ciws, "ciws", "phalanx");

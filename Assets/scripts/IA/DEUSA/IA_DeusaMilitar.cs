@@ -29,6 +29,11 @@ namespace Hegemonia.AI.DEUSA
 
             brain.TargetFleet = Mathf.Max(brain.TargetFleet, Mathf.CeilToInt(Mathf.Max(marinha != null ? marinha.MetaNavios : 0, enemyNaval * 1.20f) * mult));
             brain.TargetAircraft = Mathf.Max(brain.TargetAircraft, Mathf.CeilToInt(Mathf.Max(aerea != null ? aerea.MetaAeronaves : 0, enemyAir * 1.25f) * mult));
+            bool deusaQuerMarinha = marinha != null && (marinha.MetaNavios > 0 || marinha.MetaPiers > 0 || marinha.MetaPlataformas > 0);
+            if (deusaQuerMarinha)
+            {
+                brain.TargetShipyards = Mathf.Max(brain.TargetShipyards, 1);
+            }
             brain.TargetOilTankers = Mathf.Max(brain.TargetOilTankers, marinha != null ? marinha.MetaPetroleiros : 0);
             brain.TargetPiers = Mathf.Max(brain.TargetPiers, marinha != null ? marinha.MetaPiers : 0);
             brain.TargetPlatforms = Mathf.Max(brain.TargetPlatforms, marinha != null ? marinha.MetaPlataformas : 0);

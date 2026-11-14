@@ -220,6 +220,76 @@ public static class PoolDeObjetosCombate
         return instancia;
     }
 
+    private const string CaminhoMarcadorPatrulhaAerea = "Assets/animacao click/Map track markers VFX/Prefabs/Marker 5 Circle Loop.prefab";
+    private static GameObject _marcadorPatrulhaAereaPrefab;
+
+    public static void RegistrarMarcadorPatrulhaAerea(GameObject prefab)
+    {
+        if (prefab != null)
+        {
+            _marcadorPatrulhaAereaPrefab = prefab;
+        }
+    }
+
+    public static GameObject ResolverMarcadorPatrulhaAerea(GameObject preferido = null)
+    {
+        if (preferido != null)
+        {
+            return preferido;
+        }
+
+        if (_marcadorPatrulhaAereaPrefab != null)
+        {
+            return _marcadorPatrulhaAereaPrefab;
+        }
+
+        GerenciadorAeroporto[] aeroportos = Object.FindObjectsByType<GerenciadorAeroporto>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < aeroportos.Length; i++)
+        {
+            GerenciadorAeroporto aeroporto = aeroportos[i];
+            if (aeroporto == null)
+            {
+                continue;
+            }
+
+            GameObject candidato = aeroporto.ObterPrefabMarcadorPatrulhaAviao();
+            if (candidato != null)
+            {
+                _marcadorPatrulhaAereaPrefab = candidato;
+                return _marcadorPatrulhaAereaPrefab;
+            }
+        }
+
+#if UNITY_EDITOR
+        _marcadorPatrulhaAereaPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(CaminhoMarcadorPatrulhaAerea);
+        if (_marcadorPatrulhaAereaPrefab != null)
+        {
+            return _marcadorPatrulhaAereaPrefab;
+        }
+#endif
+
+        return null;
+    }
+
+    public static GameObject SpawnarMarcadorOrdemAerea(Vector3 posicao, float escala = 12f, float duracao = 4f, GameObject preferido = null)
+    {
+        GameObject prefab = ResolverMarcadorPatrulhaAerea(preferido);
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        float escalaFinal = Mathf.Max(0.1f, escala);
+        float duracaoFinal = Mathf.Max(0.25f, duracao);
+        return SpawnTemporario(
+            prefab,
+            posicao + Vector3.up * 0.1f,
+            Quaternion.identity,
+            duracaoFinal,
+            new Vector3(escalaFinal, escalaFinal, escalaFinal)
+        );
+    }
+
     private static void GarantirLink(GameObject instancia, GameObject prefab)
     {
         if (instancia == null)

@@ -27,6 +27,8 @@ namespace Hegemonia.AI.BrainMaster
         }
 
         [Header("Manual Build")]
+        [Tooltip("Prefab opcional da construcao. Quando preenchido, a IA usa este prefab diretamente neste Creaty/ponto.")]
+        public GameObject PrefabConstrucao;
         [Tooltip("Se vazio, usa o nome do objeto. Aceita varios filtros separados por virgula, ; ou quebra de linha.")]
         [TextArea(1, 3)] public string ItemFilters = string.Empty;
         [Tooltip("Papel estrategico do ponto no mapa. Se ItemFilters estiver vazio, este papel define os filtros default.")]
@@ -118,15 +120,10 @@ namespace Hegemonia.AI.BrainMaster
                 return true;
             }
 
-            if (UsesPlacementArea)
-            {
-                // A validação de ocupação será feita em cada posição candidata da zona.
-                return true;
-            }
-
             Vector3 flatPoint = Flatten(transform.position);
             // Para navios e estaleiros é normal ter coisas em volta (como defesas). Diminuimos o raio ocupado mínimo sugerido de 18 para algo que evite bugs.
             float minDistance = ReusePoint ? 1f : Mathf.Max(OccupiedRadius * 0.5f, 1f);
+            float areaCheckRadius = UsesPlacementArea ? Mathf.Max(PlacementAreaRadius * 1.1f, minDistance) : minDistance;
             for (int i = 0; i < worldState.OwnStructures.Count; i++)
             {
                 GameObject structure = worldState.OwnStructures[i];
@@ -135,13 +132,96 @@ namespace Hegemonia.AI.BrainMaster
                     continue;
                 }
 
-                if (Vector3.Distance(flatPoint, Flatten(structure.transform.position)) <= minDistance)
+                float distance = Vector3.Distance(flatPoint, Flatten(structure.transform.position));
+                if (!UsesPlacementArea)
+                {
+                    if (distance <= minDistance)
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                // Em áreas de Creaty não reutilizáveis, bloqueia apenas se uma estrutura equivalente já ocupar o setor
+                // (evita que Cidade_Prefeitura e Energia em áreas próximas bloqueiem uma à outra).
+                if (distance <= areaCheckRadius && MatchesExistingStructure(structure))
                 {
                     return false;
                 }
             }
 
             return true;
+        }
+
+        private bool MatchesExistingStructure(GameObject structure)
+        {
+            if (structure == null)
+            {
+                return false;
+            }
+
+            switch (ManualRole)
+            {
+                case OperationalRole.ConstrucaoCidade:
+                    if (structure.GetComponentInChildren<CidadeComplexoUrbano>(true) != null)
+                    {
+                        return true;
+                    }
+                    break;
+                case OperationalRole.ConstrucaoEnergia:
+                    if (structure.GetComponentInChildren<Usina>(true) != null)
+                    {
+                        return true;
+                    }
+                    break;
+                case OperationalRole.ConstrucaoPier:
+                    if (structure.GetComponentInChildren<PierMarinha>(true) != null)
+                    {
+                        return true;
+                    }
+                    break;
+                case OperationalRole.ConstrucaoEstaleiro:
+                    if (structure.GetComponentInChildren<Estaleiro>(true) != null)
+                    {
+                        return true;
+                    }
+                    break;
+                case OperationalRole.ConstrucaoPlataforma:
+                    if (structure.GetComponentInChildren<PlataformaOffshore>(true) != null)
+                    {
+                        return true;
+                    }
+                    break;
+                case OperationalRole.ConstrucaoAeroportoMilitar:
+                    GerenciadorAeroporto airport = structure.GetComponentInChildren<GerenciadorAeroporto>(true);
+                    if (airport != null && !(airport is GerenciadorAeroportoComercial))
+                    {
+                        return true;
+                    }
+                    break;
+            }
+
+            string normalizedStructure = IA_Text.Normalize(structure.name.Replace("(Clone)", string.Empty));
+            if (PrefabConstrucao != null)
+            {
+                string normalizedPrefab = IA_Text.Normalize(PrefabConstrucao.name);
+                if (!string.IsNullOrEmpty(normalizedPrefab) && normalizedStructure.Contains(normalizedPrefab))
+                {
+                    return true;
+                }
+            }
+
+            if (MatchesItem(structure.name))
+            {
+                return true;
+            }
+
+            IA_ConstructionMetadata metadata = structure.GetComponent<IA_ConstructionMetadata>();
+            return metadata != null
+                && (MatchesItem(metadata.ItemId)
+                    || MatchesItem(metadata.DisplayName)
+                    || MatchesItem(metadata.SourcePrefabName));
         }
 
         public string GetDisplayLabel()
@@ -206,13 +286,13 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroporto:
                     return "aeroporto militar, base aerea, military airport, airport, pista";
                 case IA_BrainMaster.IA_BootstrapStage.BuildVehicleFactory:
-                    return "construtor de veiculos, construtor, fabrica, factory";
+                    return "construtor de veiculos, fabrica de veiculos, construtor, vehicle factory";
                 case IA_BrainMaster.IA_BootstrapStage.BuildSupportHangar:
                     return "hangar, heliporto, heliport, armazem";
                 case IA_BrainMaster.IA_BootstrapStage.BuildTent:
                     return "quartel, tenda, barraca, barracks";
                 case IA_BrainMaster.IA_BootstrapStage.BuildShipyard:
-                    return "estaleiro, estaleiros, pier, shipyard, dock";
+                    return "estaleiro, estaleiro naval, estaleiros, shipyard";
                 case IA_BrainMaster.IA_BootstrapStage.BuildUsina:
                     return "usina, energia, power plant";
                 case IA_BrainMaster.IA_BootstrapStage.BuildAeroportoComercial:
@@ -299,6 +379,22 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (PrefabConstrucao != null)
+            {
+                if (data != null && data.PrefabDaUnidade == PrefabConstrucao && IsStageCompatible(data, normalizedItem))
+                {
+                    return true;
+                }
+
+                string normalizedPrefab = IA_Text.Normalize(PrefabConstrucao.name);
+                if (!string.IsNullOrEmpty(normalizedPrefab)
+                    && (normalizedItem.Contains(normalizedPrefab) || normalizedPrefab.Contains(normalizedItem))
+                    && IsStageCompatible(data, normalizedItem))
+                {
+                    return true;
+                }
+            }
+
             string source = GetEffectiveFilterSource();
             if (string.IsNullOrWhiteSpace(source))
             {
@@ -332,6 +428,10 @@ namespace Hegemonia.AI.BrainMaster
 
             return false;
         }
+
+        public bool HasPrefabOverride => PrefabConstrucao != null;
+
+        public bool ShouldForceExactCreatyPlacement => ForceExactPlacement || (PrefabConstrucao != null && !UsesPlacementArea);
 
         private bool IsStageCompatible(DadosConstrucao data, string normalizedItem)
         {

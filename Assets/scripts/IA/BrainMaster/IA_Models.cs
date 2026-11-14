@@ -229,6 +229,7 @@ namespace Hegemonia.AI.BrainMaster
         public IA_ZoneType Zone;
         public bool ForceManualPlacement;
         public string ManualPointLabel;
+        public GameObject PrefabOverride;
     }
 
     [Serializable]

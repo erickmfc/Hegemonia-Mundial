@@ -216,20 +216,6 @@ public class ComplexoGovernamental : MonoBehaviour
             MenuGoverno.Instancia.AlternarMenu(false);
         }
 
-        if (objetivoFinal != null)
-        {
-            objetivoFinal.RegistrarDestruicao();
-        }
-        else
-        {
-            SistemaFimDeJogo.RegistrarResultado(
-                TipoObjetivoFinal.Prefeitura,
-                ehDoJogador,
-                nomeDoPais,
-                "Prefeitura"
-            );
-        }
-
         if (ehDoJogador)
         {
             Debug.Log("Prefeitura principal destruída; a partida continua.");

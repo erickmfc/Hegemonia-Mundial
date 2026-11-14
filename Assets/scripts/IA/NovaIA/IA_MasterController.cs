@@ -1566,7 +1566,7 @@ namespace Hegemonia.AI.Master
         {
             string core = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Core, "Prefeitura");
             string barracks = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Barracks, "quartel");
-            string factory = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Factory, "fabrica");
+            string factory = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Factory, "construtor de veiculos");
             string warehouse = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Warehouse, "armazem");
 
             if (snapshot.CityHallCount <= 0)
@@ -1695,7 +1695,7 @@ namespace Hegemonia.AI.Master
         private void QueueEconomicGrowth(IA_WorldStateCache.WorldSnapshot snapshot)
         {
             string warehouse = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Warehouse, "armazem");
-            string factory = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Factory, "fabrica");
+            string factory = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.Factory, "construtor de veiculos");
             string airport = IA_CatalogRoleResolver.ResolveOrFallback(IA_CatalogRole.AirportMilitary, "aeroporto militar");
 
             if (snapshot.WarehouseCount <= 1)

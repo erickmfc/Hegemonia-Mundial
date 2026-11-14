@@ -83,6 +83,7 @@ public class LancadorMisseis : MonoBehaviour
                 }
                 else if (cronometroRecarga <= 0)
                 {
+                    PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(marcadorFantasma.transform.position, 14f, 4f);
                     Disparar(marcadorFantasma.transform.position);
 
                     // Finaliza mira

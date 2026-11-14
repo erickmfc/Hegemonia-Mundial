@@ -1218,6 +1218,12 @@ public class Construtor : MonoBehaviour
     bool EhEstruturaCosteiraPrefab(GameObject prefab)
     {
         if (prefab == null) return false;
+        if (prefab.GetComponentInChildren<Estaleiro>(true) != null
+            || prefab.GetComponentInChildren<PierMarinha>(true) != null
+            || prefab.GetComponentInChildren<PlataformaOffshore>(true) != null)
+        {
+            return true;
+        }
         string nome = prefab.name.ToLower();
         return nome.Contains("estaleiro") || nome.Contains("pier") || nome.Contains("plataforma") || nome.Contains("offshore");
     }
@@ -1493,6 +1499,14 @@ public class Construtor : MonoBehaviour
         if (EhEstruturaCosteiraPrefab(prefab))
         {
             posicao.y = NavalPlacementResolver.ResolveSeaLevel();
+        }
+        else if (prefab.GetComponentInChildren<PlataformaOffshore>(true) == null
+                 && GlobalTerrainStreamer.Instance != null
+                 && GlobalTerrainStreamer.Instance.isActiveAndEnabled
+                 && GlobalTerrainStreamer.Instance.TrySampleLandHeight(posicao, out float alturaGlobal)
+                 && Mathf.Abs(posicao.y - alturaGlobal) > 0.25f)
+        {
+            posicao.y = alturaGlobal;
         }
 
         GameObject novoPredio = Instantiate(prefab, posicao, rotacao);
@@ -2070,12 +2084,14 @@ public class Construtor : MonoBehaviour
         }
 
         bool ehNaval = objeto.GetComponentInChildren<Estaleiro>(true) != null
-            || objeto.GetComponentInChildren<PierMarinha>(true) != null;
-        if (ehNaval && alturaTerreno <= NavalPlacementResolver.ResolveSeaLevel() + 0.35f)
+            || objeto.GetComponentInChildren<PierMarinha>(true) != null
+            || objeto.GetComponentInChildren<PlataformaOffshore>(true) != null;
+        if (ehNaval)
         {
             return false;
         }
 
+        bool ehAeroporto = objeto.GetComponentInChildren<GerenciadorAeroporto>(true) != null;
         Renderer[] renderers = objeto.GetComponentsInChildren<Renderer>(true);
         bool encontrouMalhaVisivel = false;
         float menorY = float.PositiveInfinity;
@@ -2083,7 +2099,7 @@ public class Construtor : MonoBehaviour
         for (int i = 0; i < renderers.Length; i++)
         {
             Renderer renderer = renderers[i];
-            if (renderer == null || !renderer.enabled
+            if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy
                 || (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)))
             {
                 continue;
@@ -2105,29 +2121,80 @@ public class Construtor : MonoBehaviour
         if (!encontrouMalhaVisivel || float.IsInfinity(menorY)) return false;
 
         float alturaAlvo = alturaTerreno;
-        Terrain terreno = Terrain.activeTerrain;
-        if (terreno != null)
+        Terrain terrenoAtivo = Terrain.activeTerrain;
+        if (TrySampleGroundHeightForPlacement(boundsTotais.center, terrenoAtivo, out float hCentro))
         {
-            float baseY = terreno.transform.position.y;
-            float hCentro = terreno.SampleHeight(boundsTotais.center) + baseY;
             float minCanto = hCentro;
             Vector3 minB = boundsTotais.min;
             Vector3 maxB = boundsTotais.max;
-            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(minB.x, 0f, minB.z)) + baseY);
-            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(maxB.x, 0f, minB.z)) + baseY);
-            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(minB.x, 0f, maxB.z)) + baseY);
-            minCanto = Mathf.Min(minCanto, terreno.SampleHeight(new Vector3(maxB.x, 0f, maxB.z)) + baseY);
-            alturaAlvo = Mathf.Max(hCentro - 1.5f, Mathf.Min(alturaTerreno, minCanto));
+            if (TrySampleGroundHeightForPlacement(new Vector3(minB.x, 0f, minB.z), terrenoAtivo, out float h00))
+                minCanto = Mathf.Min(minCanto, h00);
+            if (TrySampleGroundHeightForPlacement(new Vector3(maxB.x, 0f, minB.z), terrenoAtivo, out float h10))
+                minCanto = Mathf.Min(minCanto, h10);
+            if (TrySampleGroundHeightForPlacement(new Vector3(minB.x, 0f, maxB.z), terrenoAtivo, out float h01))
+                minCanto = Mathf.Min(minCanto, h01);
+            if (TrySampleGroundHeightForPlacement(new Vector3(maxB.x, 0f, maxB.z), terrenoAtivo, out float h11))
+                minCanto = Mathf.Min(minCanto, h11);
+
+            float alturaReferencia = GlobalTerrainStreamer.Instance != null && GlobalTerrainStreamer.Instance.isActiveAndEnabled
+                ? hCentro
+                : alturaTerreno;
+            alturaAlvo = Mathf.Max(hCentro - 1.5f, Mathf.Min(alturaReferencia, minCanto));
         }
 
         float deslocamentoVertical = alturaAlvo - menorY;
         // Corrige pivôs deslocados sem deixar uma ficha mal configurada
         // teleportar a estrutura para outra região do mapa.
+        if (ehAeroporto && Mathf.Abs(deslocamentoVertical) > 15f)
+        {
+            Vector3 posAeroporto = objeto.transform.position;
+            posAeroporto.y = alturaAlvo;
+            objeto.transform.position = posAeroporto;
+            return true;
+        }
         if (Mathf.Abs(deslocamentoVertical) > 250f) return false;
         Vector3 posicao = objeto.transform.position;
         posicao.y += deslocamentoVertical;
         objeto.transform.position = posicao;
         return true;
+    }
+
+    private static bool TrySampleGroundHeightForPlacement(Vector3 ponto, Terrain fallbackTerrain, out float altura)
+    {
+        if (RegistroSuperficieMapa.TryGetAltura(ponto, TipoSuperficieMapa.Chao, out altura))
+        {
+            return true;
+        }
+
+        Terrain[] terrenos = Terrain.activeTerrains;
+        for (int i = 0; i < terrenos.Length; i++)
+        {
+            Terrain t = terrenos[i];
+            if (t == null || t.terrainData == null || !t.enabled)
+                continue;
+
+            Vector3 min = t.transform.position;
+            Vector3 tamanho = Vector3.Scale(t.terrainData.size, t.transform.lossyScale);
+            if (ponto.x >= min.x && ponto.x <= min.x + tamanho.x
+                && ponto.z >= min.z && ponto.z <= min.z + tamanho.z)
+            {
+                altura = t.SampleHeight(ponto) + min.y;
+                return true;
+            }
+        }
+
+        if (fallbackTerrain != null && fallbackTerrain.terrainData != null)
+        {
+            GlobalTerrainStreamer streamer = GlobalTerrainStreamer.Instance;
+            if (streamer == null || !streamer.isActiveAndEnabled)
+            {
+                altura = fallbackTerrain.SampleHeight(ponto) + fallbackTerrain.transform.position.y;
+                return true;
+            }
+        }
+
+        altura = ponto.y;
+        return false;
     }
 
     private Vector3 PosicaoRaizComInicioRua(GameObject objetoRua, Vector3 inicioDesejado)

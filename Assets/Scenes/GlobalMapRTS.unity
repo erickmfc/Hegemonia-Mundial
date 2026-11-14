@@ -5031,7 +5031,7 @@ Transform:
   m_GameObject: {fileID: 877622653}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -906.4, y: 0, z: 3276.31}
+  m_LocalPosition: {x: -882, y: 0, z: 3276.31}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5049,6 +5049,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  PrefabConstrucao: {fileID: 7311975716072282350, guid: 9c6e2660f55c9064fa5dc391e918ab84, type: 3}
   ItemFilters: 
   ManualRole: 11
   AllowInactiveObject: 0
@@ -5507,6 +5508,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  PrefabConstrucao: {fileID: 0}
   ItemFilters: 
   ManualRole: 10
   AllowInactiveObject: 0
@@ -6261,6 +6263,9 @@ MonoBehaviour:
   MaxCommandsPerFrame: 4
   UseScriptedBootstrap: 1
   BootstrapMobilizationSeconds: 60
+  limiteMaximoUnidades: 5
+  percentualMaximoTanques: 0.45
+  cooldownCompraMilitarSegundos: 5
   EnableVerboseLogs: 0
   EnableBootstrapConsoleTrace: 0
   UseManualBuildPoints: 1
@@ -7516,7 +7521,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: b3faa5cae794f224f81ea88eb0e3d89e, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: b3faa5cae794f224f81ea88eb0e3d89e, type: 3}
       propertyPath: m_LocalScale.x
@@ -9362,7 +9367,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: b1970cf2d0ea9ec4182565b9fa4f9a90, type: 3}
       propertyPath: m_LocalScale.x
@@ -9516,6 +9521,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  PrefabConstrucao: {fileID: 3091952298521144747, guid: 4da7c696355760b4b8075b1b183b561c, type: 3}
   ItemFilters: 
   ManualRole: 12
   AllowInactiveObject: 0
@@ -9573,7 +9579,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: bd2d4e8bf5a1aa349a92751682996374, type: 3}
       propertyPath: m_LocalScale.x
@@ -10139,6 +10145,9 @@ MonoBehaviour:
   MaxCommandsPerFrame: 4
   UseScriptedBootstrap: 0
   BootstrapMobilizationSeconds: 60
+  limiteMaximoUnidades: 5
+  percentualMaximoTanques: 0.45
+  cooldownCompraMilitarSegundos: 5
   EnableVerboseLogs: 0
   EnableBootstrapConsoleTrace: 0
   UseManualBuildPoints: 1
@@ -11707,7 +11716,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -6689036041284674117, guid: 24d3ffdfbd9ad794396fcaf086144eef, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2774220344278030320, guid: 24d3ffdfbd9ad794396fcaf086144eef, type: 3}
       propertyPath: m_LocalScale.x
@@ -12011,7 +12020,7 @@ Transform:
   m_GameObject: {fileID: 1938864001}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1600, y: 0, z: 5624}
+  m_LocalPosition: {x: -1593, y: 0, z: 5624}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -12029,6 +12038,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  PrefabConstrucao: {fileID: 4835940525621673593, guid: ee38923a50e7e974384461c2819599d8, type: 3}
   ItemFilters: 
   ManualRole: 13
   AllowInactiveObject: 0
@@ -13037,6 +13047,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  PrefabConstrucao: {fileID: 0}
   ItemFilters: 
   ManualRole: 9
   AllowInactiveObject: 0
@@ -16081,7 +16092,7 @@ Transform:
   m_GameObject: {fileID: 3100000600}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1199, y: 0, z: 538}
+  m_LocalPosition: {x: -849.91, y: 0, z: 538}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -16128,6 +16139,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53cd57e844db0994d83efe47e3fc52df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.BrainMaster.IA_ManualBuildPoint
+  PrefabConstrucao: {fileID: 1032297418132470704, guid: c987dafc0e3d54944ba1bfb1ada158a3, type: 3}
   ItemFilters: aeroporto militar, aeroporto comercial
   ManualRole: 14
   AllowInactiveObject: 0

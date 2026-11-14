@@ -428,6 +428,28 @@ public static class RegistroSuperficieMapa
     {
         height = position.y;
 
+        if (TryClassifyGlobalMap(position, 1.5f, out ClassificacaoSuperficieMapa globalClass, out float globalHeight, out float globalSeaLevel))
+        {
+            if (tipo == TipoSuperficieMapa.Agua)
+            {
+                if (globalClass == ClassificacaoSuperficieMapa.Agua || globalClass == ClassificacaoSuperficieMapa.Costa)
+                {
+                    height = globalSeaLevel;
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (globalClass != ClassificacaoSuperficieMapa.Agua)
+            {
+                height = globalHeight;
+                return true;
+            }
+
+            return false;
+        }
+
         List<MarcadorSuperficieMapa> lista = tipo == TipoSuperficieMapa.Agua ? _agua : _chao;
         LimparLista(lista);
 
@@ -524,22 +546,51 @@ public static class RegistroSuperficieMapa
         out ClassificacaoSuperficieMapa classificacao,
         out float height)
     {
+        return TryClassifyGlobalMap(position, coastTolerance, out classificacao, out height, out _);
+    }
+
+    private static bool TryClassifyGlobalMap(
+        Vector3 position,
+        float coastTolerance,
+        out ClassificacaoSuperficieMapa classificacao,
+        out float height,
+        out float seaLevel)
+    {
         classificacao = ClassificacaoSuperficieMapa.Desconhecida;
         height = position.y;
+        seaLevel = 0f;
 
-        if (_globalMapStreamerCache == null && Time.unscaledTime >= _proximaBuscaGlobalMapStreamer)
+        GlobalTerrainStreamer streamer = GlobalTerrainStreamer.Instance;
+        if (streamer == null)
         {
-            _globalMapStreamerCache = Object.FindFirstObjectByType<GlobalTerrainStreamer>();
-            _proximaBuscaGlobalMapStreamer = Time.unscaledTime + 1f;
+            if (_globalMapStreamerCache == null && Time.unscaledTime >= _proximaBuscaGlobalMapStreamer)
+            {
+                _globalMapStreamerCache = Object.FindFirstObjectByType<GlobalTerrainStreamer>();
+                _proximaBuscaGlobalMapStreamer = Time.unscaledTime + 1f;
+            }
+
+            streamer = _globalMapStreamerCache;
+        }
+        else
+        {
+            _globalMapStreamerCache = streamer;
         }
 
-        return _globalMapStreamerCache != null
-            && _globalMapStreamerCache.isActiveAndEnabled
-            && _globalMapStreamerCache.TryClassifyWorldSurface(
-                position,
-                out classificacao,
-                out height,
-                coastTolerance);
+        if (streamer == null || !streamer.isActiveAndEnabled)
+        {
+            return false;
+        }
+
+        if (streamer.world != null)
+        {
+            seaLevel = streamer.world.seaLevel;
+        }
+
+        return streamer.TryClassifyWorldSurface(
+            position,
+            out classificacao,
+            out height,
+            coastTolerance);
     }
 
     public static bool TryGetBounds(TipoSuperficieMapa tipo, out Bounds bounds)

@@ -614,8 +614,44 @@ public class DesenharLinhasOrdem : MonoBehaviour
         MostrarMarcadorPatrulha(pontoPatrulha, new Color(1f, 0.85f, 0f, 0.95f), 11f, 3f);
     }
 
+    private bool SelecaoIncluiAeronaveParaMarcador()
+    {
+        for (int i = 0; i < _alvosModo.Count; i++)
+        {
+            GameObject alvo = _alvosModo[i];
+            if (alvo == null)
+            {
+                continue;
+            }
+
+            ControleUnidade controle = alvo.GetComponent<ControleUnidade>()
+                ?? alvo.GetComponentInParent<ControleUnidade>()
+                ?? alvo.GetComponentInChildren<ControleUnidade>(true);
+            if (controle != null && controle.EhUnidadeAerea())
+            {
+                return true;
+            }
+
+            if (alvo.GetComponent<ControleAviao>() != null
+                || alvo.GetComponent<ControleAviaoCaca>() != null
+                || alvo.GetComponent<Helicoptero>() != null
+                || alvo.GetComponent<AviaoBombardeiro>() != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void MostrarMarcadorPatrulha(Vector3 pontoPatrulha, Color cor, float escala, float tempoVida)
     {
+        if (SelecaoIncluiAeronaveParaMarcador()
+            && PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pontoPatrulha, Mathf.Max(12f, escala), tempoVida) != null)
+        {
+            return;
+        }
+
         // Prioridade 1: prefab dedicado neste componente
         if (prefabMarcadorPatrulha != null)
         {
@@ -636,7 +672,13 @@ public class DesenharLinhasOrdem : MonoBehaviour
             return;
         }
 
-        // Prioridade 3: fallback geométrico (aqui sim pintamos de amarelo via script)
+        // Prioridade 3: patrulha aérea compartilhada (Marker 5 Circle Loop) antes do fallback geométrico
+        if (PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pontoPatrulha, Mathf.Max(12f, escala), tempoVida) != null)
+        {
+            return;
+        }
+
+        // Prioridade 4: fallback geométrico (aqui sim pintamos de amarelo via script)
         CriarMarcadorFallback(pontoPatrulha, cor, escala, tempoVida);
     }
 

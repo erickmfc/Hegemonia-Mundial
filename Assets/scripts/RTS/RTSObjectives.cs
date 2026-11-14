@@ -273,12 +273,10 @@ namespace Hegemonia.RTS
             if (!enemyCapital)
             {
                 SetProgress("destroy-enemy-capital", 1f, true, false, "Capital inimiga neutralizada.");
-                SistemaFimDeJogo.RegistrarResultado(TipoObjetivoFinal.Prefeitura, false, "Nacao inimiga", "Capital inimiga");
             }
             else if (!playerCapital)
             {
                 SetProgress("protect-own-capital", 0f, false, true, "Sua capital foi destruida.");
-                SistemaFimDeJogo.RegistrarResultado(TipoObjetivoFinal.Prefeitura, true, "Sua nacao", "Capital propria");
             }
         }
 

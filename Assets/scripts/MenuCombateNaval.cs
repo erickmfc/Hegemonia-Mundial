@@ -553,7 +553,11 @@ public sealed class MenuCombateNaval : MonoBehaviour
         RaycastHit hit = hits[0];
         IdentidadeUnidade idAlvo = hit.transform.GetComponentInParent<IdentidadeUnidade>();
         Transform alvo = idAlvo != null ? idAlvo.transform : null;
-        if (alvo != null && alvos.Contains(alvo)) EngajarAlvo(unidade, alvo);
+        if (alvo != null && alvos.Contains(alvo))
+        {
+            PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(alvo.position, 14f, 4f);
+            EngajarAlvo(unidade, alvo);
+        }
         else if (idAlvo == null) DispararEmPonto(hit.point);
         else SetFeedback("Alvo inválido, aliado ou fora do alcance.");
         aguardandoPonto = false;
@@ -566,6 +570,10 @@ public sealed class MenuCombateNaval : MonoBehaviour
         if (lancador != null) disparou |= lancador.TentarLancarCoordenado(ponto, null, false, out string _);
         ControleSubmarino sub = Obter<ControleSubmarino>(unidade);
         if (sub != null) disparou |= sub.TentarLancarCoordenado(ponto, null, false, out string _);
+        if (disparou)
+        {
+            PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(ponto, 14f, 4f);
+        }
         SetFeedback(disparou ? "Disparo manual enviado para o ponto marcado." : "Nenhum lançador manual aceitou o ponto.");
         aguardandoPonto = false;
     }

@@ -14,7 +14,7 @@ namespace Hegemonia.Performance
     {
         [Header("Configuração de Culling")]
         [Tooltip("Distância da câmera a partir da qual os renderers detalhados são ocultados.")]
-        [SerializeField] private float distanciaCulling = 650f;
+        [SerializeField] private float distanciaCulling = 1000f;
 
         [Tooltip("Intervalo entre checagens de visibilidade.")]
         [SerializeField] private float intervaloChecagem = 0.4f;

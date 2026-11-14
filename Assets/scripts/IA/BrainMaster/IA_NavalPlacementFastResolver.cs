@@ -68,7 +68,7 @@ namespace Hegemonia.AI.BrainMaster
                 minRadius,
                 maxRadius,
                 kind,
-                point => CheapFilter(context, itemKey, kind, point),
+                point => CheapFilter(context, itemKey, kind, anchor, maxRadius, point),
                 out candidate);
 
             if (!found)
@@ -95,6 +95,8 @@ namespace Hegemonia.AI.BrainMaster
             IA_Context context,
             string itemKey,
             IA_NavalPlacementField.NavalPlacementKind kind,
+            Vector3 anchor,
+            float maxRadius,
             Vector3 point)
         {
             if (context == null)
@@ -105,7 +107,9 @@ namespace Hegemonia.AI.BrainMaster
             if (context.Brain != null)
             {
                 Vector3 brain = context.Brain.transform.position;
-                float maxTeamDistance = kind == IA_NavalPlacementField.NavalPlacementKind.Platform ? 2200f : 1400f;
+                float baseMaxDistance = kind == IA_NavalPlacementField.NavalPlacementKind.Platform ? 2200f : 1400f;
+                float anchorReach = Vector3.Distance(Flatten(brain), Flatten(anchor)) + Mathf.Max(0f, maxRadius) + 250f;
+                float maxTeamDistance = Mathf.Max(baseMaxDistance, anchorReach);
                 if (Vector3.Distance(Flatten(brain), Flatten(point)) > maxTeamDistance)
                 {
                     return false;

@@ -17,12 +17,12 @@ MonoBehaviour:
   icone: {fileID: 21300000, guid: 95928cab599781844ae1bfe14d3d42ae, type: 3}
   itemId: naval.pier
   aliases: pier, pier marinha, doca naval, naval pier
-  capacidades: 0
+  capacidades: 16393
   prefabDaUnidade: {fileID: 7311975716072282350, guid: 9c6e2660f55c9064fa5dc391e918ab84, type: 3}
   preco: 2000
   precoDefinitivo: 0
   categoria: 1
   escalaPoder: 0
-  strategicRole: 0
+  strategicRole: 17
   balanceamento: {fileID: 0}
   scriptsDeComando: []

@@ -651,22 +651,47 @@ public class GerenteSelecao : MonoBehaviour
     void MostrarMarcadorDestino(Vector3 pos)
     {
         bool temBombardeiro = false;
-        foreach(var u in unidadesSelecionadas) 
+        bool temAereo = false;
+        foreach (var u in unidadesSelecionadas)
         {
-            if (u != null && u.GetComponent<AviaoBombardeiro>() != null) 
-            { 
-                temBombardeiro = true; 
-                break; 
+            if (u == null) continue;
+            if (u.GetComponent<AviaoBombardeiro>() != null)
+            {
+                temBombardeiro = true;
+                temAereo = true;
+                break;
+            }
+
+            if (u.EhUnidadeAerea())
+            {
+                temAereo = true;
             }
         }
 
-        if (temBombardeiro && prefabMarcadorBombardeiro != null)
+        if (temBombardeiro)
         {
-            GameObject marcador = Instantiate(prefabMarcadorBombardeiro, pos + Vector3.up * 0.1f, Quaternion.identity);
-            marcador.transform.localScale = new Vector3(40f, 40f, 40f);
-            Destroy(marcador, 4f);
+            if (PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pos, 20f, 4f) != null)
+            {
+                return;
+            }
+
+            if (prefabMarcadorBombardeiro != null)
+            {
+                GameObject marcador = Instantiate(prefabMarcadorBombardeiro, pos + Vector3.up * 0.1f, Quaternion.identity);
+                marcador.transform.localScale = new Vector3(40f, 40f, 40f);
+                Destroy(marcador, 4f);
+                return;
+            }
         }
-        else if (prefabMarcadorDestino != null)
+        else if (temAereo)
+        {
+            if (PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pos, 12f, 4f) != null)
+            {
+                return;
+            }
+        }
+
+        if (prefabMarcadorDestino != null)
         {
             // Instancia o novo efeito de partícula (Marker 1 arrows Loop)
             GameObject marcador = Instantiate(prefabMarcadorDestino, pos + Vector3.up * 0.1f, Quaternion.identity);
@@ -676,6 +701,10 @@ public class GerenteSelecao : MonoBehaviour
             
             // Como é um loop, vamos destruí-lo após 2 segundos para não ficar no mapa para sempre
             Destroy(marcador, 2f); 
+        }
+        else if (PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pos, 12f, 3f) != null)
+        {
+            return;
         }
         else
         {

@@ -1488,10 +1488,9 @@ namespace Hegemonia.AI.IA01
                 case IA01IntentType.BuildCommercialAirport:
                     return HasOwnedStructureMatching(IA01StrategicRole.Airfield, "comercial", "commercial", "aeroporto_comercial");
                 case IA01IntentType.BuildShipyard:
-                    return HasOwnedStructure(IA01StrategicRole.NavalBase)
-                        || HasOwnedStructure(IA01StrategicRole.Shipyard)
+                    return HasOwnedStructure(IA01StrategicRole.Shipyard)
                         || HasOwnedStructure(IA01StrategicRole.Port)
-                        || HasOwnedStructure(IA01StrategicRole.Pier);
+                        || HasOwnedStructureMatching(IA01StrategicRole.NavalBase, "estaleiro", "shipyard");
                 case IA01IntentType.BuildPier:
                     return HasOwnedStructure(IA01StrategicRole.Pier);
                 case IA01IntentType.BuildOffshorePlatform:

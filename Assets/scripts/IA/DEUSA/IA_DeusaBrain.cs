@@ -228,7 +228,9 @@ namespace Hegemonia.AI.DEUSA
             if (_performance.DeveRodarConstrucao(now))
             {
                 _construcao.Atualizar(snapshot, _mapa, _comida, _habitacao, _economia, _politica);
-                if (!modoObservador)
+                bool delegarConstrucaoAoBrainMaster = _brain != null
+                    && (_brain.HasExecutionAuthority || _brain.UsaCronogramaIA03 || _brain.UseManualBuildPoints);
+                if (!modoObservador && !delegarConstrucaoAoBrainMaster)
                 {
                     ExecutarConstrucoes(now, snapshot);
                     ExecutarProducao(now, snapshot);
@@ -549,17 +551,24 @@ namespace Hegemonia.AI.DEUSA
                 return;
             }
 
-            if (_construcao.PrecisaCasas && TentarEnfileirarConstrucao("deusa_expansao_urbana", 96, 10f, IA_ZoneType.Core, "urbana.cidade moderna", "cidade nova aurora"))
+            if (_construcao.PrecisaFazenda
+                && !(_brain != null && (_brain.UsaCronogramaIA03 || _brain.UseManualBuildPoints))
+                && TentarEnfileirarConstrucao("deusa_alimentos", 97, 12f, IA_ZoneType.Economy, "economia.food_industry_nivel_1", "food industry - nivel 1", "food industry", "industria de alimentos"))
             {
                 return;
             }
 
-            if (_construcao.PrecisaQuartel && TentarEnfileirarConstrucao("deusa_quartel", 95, 14f, IA_ZoneType.Military, "quartel", "tenda militar", "barracks"))
+            if (_construcao.PrecisaCasas && TentarEnfileirarConstrucao("deusa_expansao_urbana", 96, 10f, IA_ZoneType.Core, "urbana.cidade_moderna", "cidade moderna", "cidade nova aurora", "casa", "imovel", "vilage medio", "village"))
             {
                 return;
             }
 
-            if (_construcao.PrecisaIndustria && TentarEnfileirarConstrucao("deusa_fabrica", 94, 15f, IA_ZoneType.Military, "fabrica", "construtor de veiculos", "factory"))
+            if (_construcao.PrecisaQuartel && TentarEnfileirarConstrucao("deusa_quartel", 95, 14f, IA_ZoneType.Military, "tenda militar", "barracks", "tenda", "quartel"))
+            {
+                return;
+            }
+
+            if (_construcao.PrecisaIndustria && TentarEnfileirarConstrucao("deusa_fabrica", 94, 15f, IA_ZoneType.Military, "construtor de veiculos", "fabrica de veiculos", "militar.fabrica_veiculos", "vehicle factory"))
             {
                 return;
             }
@@ -628,6 +637,49 @@ namespace Hegemonia.AI.DEUSA
             }
         }
 
+        private DadosConstrucao ResolverItemConstruivelDeusa(params string[] keys)
+        {
+            if (_context == null || _context.Backend == null || keys == null)
+            {
+                return null;
+            }
+
+            int teamId = _context.Brain != null ? _context.Brain.TeamId : _context.Backend.TeamId;
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = governo != null ? governo.ObterPais(teamId) : null;
+            DadosEconomiaPais economia = SistemaEconomiaImoveis.Instancia != null
+                ? SistemaEconomiaImoveis.Instancia.ObterEconomia(teamId)
+                : null;
+
+            for (int i = 0; i < keys.Length; i++)
+            {
+                DadosConstrucao candidate;
+                if (!_context.Backend.TryResolveItem(keys[i], out candidate) || candidate == null)
+                {
+                    continue;
+                }
+
+                if (IA_CityExpansionPolicy.IsCityConstruction(candidate))
+                {
+                    IA_CityExpansionPolicy.Assessment assessment;
+                    if (!IA_CityExpansionPolicy.TryPrepareForCity(
+                        teamId,
+                        pais,
+                        economia,
+                        candidate.PrefabDaUnidade,
+                        false,
+                        out assessment))
+                    {
+                        continue;
+                    }
+                }
+
+                return candidate;
+            }
+
+            return null;
+        }
+
         private bool TentarEnfileirarConstrucao(string dedup, int priority, float cooldown, IA_ZoneType zone, params string[] keys)
         {
             if (_context == null || _context.Backend == null || _context.CommandQueue == null)
@@ -635,24 +687,63 @@ namespace Hegemonia.AI.DEUSA
                 return false;
             }
 
-            DadosConstrucao data = _context.Backend.FindFirstAvailable(keys);
+            DadosConstrucao data = ResolverItemConstruivelDeusa(keys);
             if (data == null)
             {
                 return false;
             }
 
+            string itemKey = !string.IsNullOrWhiteSpace(data.NomeItem) ? data.NomeItem : data.GetStableId();
             Vector3 position = Vector3.zero;
             Quaternion rotation = Quaternion.identity;
+            bool forceManualPlacement = false;
+            string manualPointLabel = string.Empty;
+            bool blockedByManualArea = false;
             IA_LotCandidate lot;
             string reason;
-            if (_context.ConstructionPlanner != null && _context.ConstructionPlanner.TryPlanBuild(data.NomeItem, zone, out lot, out reason) && lot != null)
+            Vector3 anchor = ResolveFallbackBuildPoint(zone);
+            IA_TerrainType desiredTerrain = zone == IA_ZoneType.Naval ? IA_TerrainType.Water : IA_TerrainType.Land;
+
+            if (_context.BuildDirector != null
+                && _context.BuildDirector.TryResolveBuildOrderPlacementForExternalModule(
+                    itemKey,
+                    zone,
+                    anchor,
+                    desiredTerrain,
+                    out position,
+                    out rotation,
+                    out forceManualPlacement,
+                    out manualPointLabel,
+                    out blockedByManualArea,
+                    out reason))
+            {
+                // Posicao resolvida via IA_ManualBuildPoint ou buscador validado do IA_BuildDirector.
+            }
+            else if (blockedByManualArea)
+            {
+                return false;
+            }
+            else if (_context.ConstructionPlanner != null && _context.ConstructionPlanner.TryPlanBuild(itemKey, zone, out lot, out reason) && lot != null)
             {
                 position = lot.Position;
                 rotation = lot.Rotation;
             }
+            else if (_context.BuildDirector != null)
+            {
+                // Se o BuildDirector falhou em validar uma posicao (e o ConstructionPlanner nao
+                // aprovou um lote), enfileirar o ancora bruto apenas gera rejeicao repetida na fila.
+                return false;
+            }
             else
             {
-                position = ResolveFallbackBuildPoint(zone);
+                if (zone == IA_ZoneType.Naval)
+                {
+                    // Estruturas navais exigem validacao costeira/offshore completa via IA_BuildDirector
+                    // (NavalPlacementResolver). Enfileirar AncoraNaval sem rotacao gera falhas em cascata na fila.
+                    return false;
+                }
+
+                position = anchor;
             }
 
             if (position == Vector3.zero)
@@ -662,10 +753,12 @@ namespace Hegemonia.AI.DEUSA
 
             IA_BuildOrderData payload = new IA_BuildOrderData
             {
-                ItemKey = data.NomeItem,
+                ItemKey = itemKey,
                 Position = position,
                 Rotation = rotation,
-                Zone = zone
+                Zone = zone,
+                ForceManualPlacement = forceManualPlacement,
+                ManualPointLabel = manualPointLabel
             };
 
             IA_CommandRequest request = IA_CommandFactory.Create(
@@ -873,7 +966,7 @@ namespace Hegemonia.AI.DEUSA
 
             if (_construcao.PrecisaFazenda)
             {
-                return "Agricultura Nacional";
+                return "Food Industry (Agricultura)";
             }
 
             if (_construcao.PrecisaCasas)

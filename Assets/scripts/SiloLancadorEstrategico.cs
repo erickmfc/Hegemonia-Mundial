@@ -109,6 +109,7 @@ public class SiloLancadorEstrategico : MonoBehaviour
         }
 
         CancelarMarcacaoAlvo();
+        PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pontoAlvo, 18f, 4f);
         StartCoroutine(SequenciaDeLancamento(pontoAlvo));
         return true;
     }

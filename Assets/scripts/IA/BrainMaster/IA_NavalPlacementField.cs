@@ -438,6 +438,13 @@ namespace Hegemonia.AI.BrainMaster
 
         private static bool IsWater(Vector3 point)
         {
+            ClassificacaoSuperficieMapa classificacao;
+            float altura;
+            if (RegistroSuperficieMapa.TryClassify(point, out classificacao, out altura))
+            {
+                return classificacao == ClassificacaoSuperficieMapa.Agua;
+            }
+
             if (WaterLayerMask.value == 0)
             {
                 return false;

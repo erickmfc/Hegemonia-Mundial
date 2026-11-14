@@ -1851,6 +1851,11 @@ public class NavioTransporteTropas : MonoBehaviour
         if (GestorMenusExclusivos.CliqueBloqueadoPelaUI()) return;
         if (!TryResolverPontoMapaNavio(out Vector3 pontoAlvo)) return;
 
+        if (_modoOrdemHelicoptero != ModoOrdemHelicopteroNavio.Nenhum)
+        {
+            PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pontoAlvo, 12f, 4f);
+        }
+
         if (_modoOrdemHelicoptero == ModoOrdemHelicopteroNavio.Patrulha)
         {
             _rotaPatrulhaHelicoptero.Add(pontoAlvo);

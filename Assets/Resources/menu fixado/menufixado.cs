@@ -1190,6 +1190,31 @@ public class MenuFixadoController : MonoBehaviour
         if (lbl != null) lbl.text = text;
     }
 
+    public static float ObterMargemSuperiorHudNaTela(float fallback = 82f)
+    {
+        if (_instance == null) return Mathf.Clamp(fallback, 0f, Screen.height * 0.25f);
+        if (!_instance._activeInScene) return 0f;
+        if (!_instance.uiPronta || _instance.root == null) return Mathf.Clamp(fallback, 0f, Screen.height * 0.25f);
+
+        VisualElement barra = _instance.root.Q<VisualElement>("status-bar-panel") ?? _instance.statusContainer;
+        if (barra == null || barra.resolvedStyle.display == DisplayStyle.None)
+        {
+            return 0f;
+        }
+
+        if (barra.panel != null && barra.panel.visualTree != null)
+        {
+            float alturaPainel = barra.panel.visualTree.worldBound.height;
+            Rect limite = barra.worldBound;
+            if (alturaPainel > 1f && limite.height > 1f && !float.IsNaN(limite.yMax))
+            {
+                return Mathf.Clamp((limite.yMax / alturaPainel) * Screen.height, 0f, Screen.height * 0.25f);
+            }
+        }
+
+        return Mathf.Clamp(fallback, 0f, Screen.height * 0.25f);
+    }
+
     private void SetColor(Label lbl, Color color)
     {
         if (lbl != null) lbl.style.color = color;

@@ -126,19 +126,10 @@ public class SistemaFimDeJogo : MonoBehaviour
 
     public static void RegistrarResultado(TipoObjetivoFinal tipoObjetivo, bool alvoPertenceAoJogador, string nomeDaNacao, string nomeObjetivo)
     {
-        // Perder a prefeitura propria encerra o objetivo de protecao, mas nao
-        // encerra a partida. A eliminacao das capitais inimigas continua sendo
-        // avaliada pelo RTSObjectiveService.
-        if (tipoObjetivo == TipoObjetivoFinal.Prefeitura && alvoPertenceAoJogador)
+        // A destruicao de capitais/prefeituras (proprias ou inimigas) nao encerra
+        // a partida nem exibe a tela de fim de jogo.
+        if (tipoObjetivo == TipoObjetivoFinal.Prefeitura)
         {
-            return;
-        }
-
-        if (tipoObjetivo == TipoObjetivoFinal.Prefeitura
-            && RTSObjectiveService.Instancia != null
-            && RTSObjectiveService.Instancia.DeveAdiarResultadoDePrefeitura())
-        {
-            Debug.Log($"[SistemaFimDeJogo] Prefeitura destruida; partida continua porque ha outras nacoes ativas: {nomeDaNacao}.");
             return;
         }
 

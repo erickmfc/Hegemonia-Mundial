@@ -103,7 +103,9 @@ public class GerenciadorAeroporto : MonoBehaviour
     public GameObject menuAeroportoUI;
     
     private bool menuAtivo = false;
-    private int abaAtual = 0; 
+#pragma warning disable 0414
+    private int abaAtual = 0;
+#pragma warning restore 0414
     private Vector2 scrollPosFrota;
     private Vector2 scrollPosHangar;
     private Vector2 scrollPosC700;
@@ -156,6 +158,42 @@ public class GerenciadorAeroporto : MonoBehaviour
     [SerializeField] private bool exibirTooltipStatus = false;
     private bool mouseHover = false;
     private Texture2D _texturaTooltip;
+
+    // Estilos e texturas em cache do Menu Tático Z (privados para manter compatibilidade com subclasses)
+    private Vector2 scrollPosOrdensUI;
+    private GUISkin _uiAeroportoSkinCache;
+    private bool _uiAeroportoEstilosProntos;
+    private Texture2D _texAeroPainelFundo;
+    private Texture2D _texAeroBorda;
+    private Texture2D _texAeroCabecalho;
+    private Texture2D _texAeroDestaqueCiano;
+    private Texture2D _texAeroCardFundo;
+    private Texture2D _texAeroBotaoNormal;
+    private Texture2D _texAeroBotaoHover;
+    private Texture2D _texAeroBotaoAtivo;
+    private Texture2D _texAeroBotaoSelecionado;
+    private Texture2D _texAeroBotaoPrimario;
+    private Texture2D _texAeroBotaoPrimarioHover;
+    private Texture2D _texAeroBotaoPerigo;
+    private Texture2D _texAeroBotaoPerigoHover;
+    private Texture2D _texAeroBotaoAlerta;
+    private Texture2D _texAeroAlertaFundo;
+    private GUIStyle _stAeroCard;
+    private GUIStyle _stAeroAlertaCard;
+    private GUIStyle _stAeroTituloHeader;
+    private GUIStyle _stAeroSubtituloHeader;
+    private GUIStyle _stAeroBadge;
+    private GUIStyle _stAeroSecaoTitulo;
+    private GUIStyle _stAeroLabel;
+    private GUIStyle _stAeroLabelWrap;
+    private GUIStyle _stAeroLabelMuted;
+    private GUIStyle _stAeroBotao;
+    private GUIStyle _stAeroBotaoLista;
+    private GUIStyle _stAeroBotaoListaSelecionado;
+    private GUIStyle _stAeroBotaoPrimario;
+    private GUIStyle _stAeroBotaoPerigo;
+    private GUIStyle _stAeroBotaoAlerta;
+    private GUIStyle _stAeroBotaoFechar;
 
     public void SetarSemEnergia(bool status)
     {
@@ -246,6 +284,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         return removidos;
     }
 
+    public GameObject ObterPrefabMarcadorPatrulhaAviao()
+    {
+        return prefabMarcadorPatrulhaAviao;
+    }
+
     protected virtual void Awake()
     {
 #if UNITY_EDITOR
@@ -254,6 +297,7 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (prefabMarcadorPatrulhaAviao != null)
         {
+            PoolDeObjetosCombate.RegistrarMarcadorPatrulhaAerea(prefabMarcadorPatrulhaAviao);
             PoolDeObjetosCombate.Prewarm(prefabMarcadorPatrulhaAviao, 2);
         }
 
@@ -383,7 +427,25 @@ public class GerenciadorAeroporto : MonoBehaviour
             InteractionModeService.Release(this, ObterDonoInteracaoManual());
             _interacaoManualSolicitada = false;
         }
+        LiberarRecursosUIAeroporto();
         RegistroEntidadesJogo.Unregister(this);
+    }
+
+    private static void DestruirTexturaSeguro(ref Texture2D textura)
+    {
+        if (textura != null)
+        {
+            Destroy(textura);
+            textura = null;
+        }
+    }
+
+    private void LiberarRecursosUIAeroporto()
+    {
+        DestruirTexturaSeguro(ref _texturaTooltip);
+        DestruirTexturasTemaAeroporto();
+        _uiAeroportoEstilosProntos = false;
+        _uiAeroportoSkinCache = null;
     }
 
     protected virtual void Start()
@@ -1277,9 +1339,15 @@ public class GerenciadorAeroporto : MonoBehaviour
     protected void CriarSinalizador(Vector3 pos, Component aviao)
     {
         bool ehBombardeiroOuKamikaze = false;
-        if (aviao != null) 
+        if (aviao != null)
         {
             ehBombardeiroOuKamikaze = (aviao.GetComponent<AviaoBombardeiro>() != null || aviao.GetComponent<KamikazeDrone>() != null);
+        }
+
+        float escala = ehBombardeiroOuKamikaze ? 20f : 12f;
+        if (PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pos, escala, 4f, prefabMarcadorPatrulhaAviao) != null)
+        {
+            return;
         }
 
         if (ehBombardeiroOuKamikaze && prefabMarcadorBombardeiro != null)
@@ -1288,45 +1356,8 @@ public class GerenciadorAeroporto : MonoBehaviour
             if (marcadorBombardeiro != null)
             {
                 marcadorBombardeiro.transform.localScale = new Vector3(40f, 40f, 40f);
-                return;
             }
         }
-
-        // Cria um feixe/pilar de cristal alto indicando o ponto ordenado
-        GameObject sinal = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Destroy(sinal.GetComponent<Collider>()); // Remover colisão para não ferrar física
-        sinal.transform.position = pos + new Vector3(0, 50f, 0); 
-        sinal.transform.localScale = new Vector3(7f, 100f, 7f); // Pilar grande, visível de longe
-        
-        // Pinta da cor do esquadrão ou de Turquesa 
-        Color c = new Color(0, 1, 1, 0.4f);
-        if (aviao != null)
-        {
-            ControleAviaoCaca cc = aviao.GetComponent<ControleAviaoCaca>();
-            if (cc != null) c = new Color(cc.corIdentificacao.r, cc.corIdentificacao.g, cc.corIdentificacao.b, 0.4f);
-        }
-        
-        Renderer rend = sinal.GetComponent<Renderer>();
-        if (rend != null)
-        {
-            Shader shader = Shader.Find("Unlit/Color");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader != null) rend.material = new Material(shader);
-            c.a = 1f;
-            rend.material.color = c;
-            // Marcador de ordem não é uma fonte de luz. Em build, a emissão
-            // somada ao Bloom podia virar um clarão verde/ciano no horizonte.
-            // Mantemos a cor do marcador, mas removemos qualquer emissão do
-            // material criado em runtime.
-            if (rend.material.HasProperty("_EmissionColor"))
-            {
-                rend.material.DisableKeyword("_EMISSION");
-                rend.material.SetColor("_EmissionColor", Color.black);
-            }
-        }
-
-        // Animação e Fade suave
-        StartCoroutine(AnimarSinalizador(sinal, c));
     }
 
     private void CriarSinalizadorAereoNoAlvo(Vector3 pos, Component aviao, bool forcarMarcadorPatrulha = false)
@@ -1334,13 +1365,14 @@ public class GerenciadorAeroporto : MonoBehaviour
         bool usarMarcadorPatrulha = forcarMarcadorPatrulha || _usarMarcadorPatrulhaAviaoNoProximoClique;
         _usarMarcadorPatrulhaAviaoNoProximoClique = false;
 
-        if (usarMarcadorPatrulha && prefabMarcadorPatrulhaAviao != null)
+        bool ehBombardeiroOuKamikaze = aviao != null
+            && (aviao.GetComponent<AviaoBombardeiro>() != null || aviao.GetComponent<KamikazeDrone>() != null);
+        float escala = ehBombardeiroOuKamikaze ? 20f : 12f;
+
+        if (usarMarcadorPatrulha
+            && PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(pos, escala, 4f, prefabMarcadorPatrulhaAviao) != null)
         {
-            GameObject marcadorPatrulha = InstanciarMarcadorSeguro(prefabMarcadorPatrulhaAviao, pos + Vector3.up * 0.1f, Quaternion.identity);
-            if (marcadorPatrulha != null)
-            {
-                return;
-            }
+            return;
         }
 
         CriarSinalizador(pos, aviao);
@@ -1371,28 +1403,6 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         Debug.LogWarning($"[Aeroporto] Marcador instanciado com tipo inesperado: {instancia.GetType().Name}");
         return null;
-    }
-
-    private IEnumerator AnimarSinalizador(GameObject sinal, Color baseColor)
-    {
-        Renderer rend = sinal.GetComponent<Renderer>();
-        float t = 0;
-        const float duracao = 8f;
-        while (t < duracao)
-        {
-            if (sinal == null) break;
-            t += Time.deltaTime;
-            sinal.transform.Rotate(0, 180f * Time.deltaTime, 0); // Gira o pilar loucamente
-            
-            // Pisca e apaga usando Fade no shader default alpha
-            if (rend != null && rend.material != null)
-            {
-                baseColor.a = Mathf.Lerp(1f, 0.15f, t / duracao);
-                rend.material.color = baseColor;
-            }
-            yield return null;
-        }
-        if (sinal != null) Destroy(sinal);
     }
 
     public bool ComprarAviao(GameObject prefabDeAeronave)
@@ -1752,6 +1762,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (c700 != null)
         {
             c700.DefinirAeroportoOrigem(this);
+            ControleAviao controleC700 = aeronaveNascente.GetComponentInChildren<ControleAviao>(true);
+            if (controleC700 != null)
+            {
+                controleC700.aeroportoOrigem = this;
+            }
             StartCoroutine(RotinaRecebimentoC700(c700));
             RegistrarTempoDiagnostico("prefab_init_ms", initStart);
             RegistrarTempoDiagnostico("spawn_air_ms", spawnStart);
@@ -3035,59 +3050,359 @@ public class GerenciadorAeroporto : MonoBehaviour
         RemoveNulls(transportesC700NoPatio);
         RemoveNulls(helicopterosDoAeroporto);
 
-        float widthMenu = abaAtual == 0 ? Mathf.Max(800f, Screen.width * 0.52f) : Mathf.Max(800f, Screen.width * 0.42f);
-        float xMenu = 30f;
-        float yMenu = 65f;
-        float heightMenu = Screen.height - 85f;
-        
-        Rect telaDeMenu = new Rect(xMenu, yMenu, widthMenu, heightMenu);
+        GarantirEstilosMenuTatico();
+
+        bool guiHabilitadoOriginal = GUI.enabled;
+        Rect telaDeMenu = CalcularRetanguloMenuSeguro();
         GestorMenusExclusivos.RegistrarAreaBloqueio(this, telaDeMenu);
 
-        Color oldColor = GUI.backgroundColor;
-        if (abaAtual == 0) GUI.backgroundColor = new Color(0.1f, 0.35f, 0.7f, 1f);
-        GUI.Box(telaDeMenu, "CENTRO DE CONTROLE TÁTICO & AEROPORTO");
-        GUI.backgroundColor = oldColor;
+        DesenharMolduraMenuAeroporto(telaDeMenu);
 
         // --- BOTÃO DE FECHAR (X) ---
-        if (GUI.Button(new Rect(telaDeMenu.xMax - 35, telaDeMenu.y + 5, 30, 25), "<b>X</b>"))
+        if (GUI.Button(new Rect(telaDeMenu.xMax - 40f, telaDeMenu.y + 10f, 30f, 26f), "✕", _stAeroBotaoFechar))
         {
-            menuAtivo = false;
-            GestorMenusExclusivos.Fechar(this);
-            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+            FecharPainelAeroporto();
+            GUI.enabled = guiHabilitadoOriginal;
+            return;
         }
 
-        GUILayout.BeginArea(new Rect(telaDeMenu.x + 15, telaDeMenu.y + 35, telaDeMenu.width - 30, telaDeMenu.height - 45));
-        
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("🎖️ Frota Militar", GUILayout.Height(35))) { abaAtual = 1; aviaoSelecionadoParaMissao = null; c700SelecionadoParaMissao = null; helicopteroSelecionadoParaMissao = null; }
-        GUILayout.EndHorizontal();
+        Rect areaConteudo = new Rect(
+            telaDeMenu.x + 12f,
+            telaDeMenu.y + 54f,
+            telaDeMenu.width - 24f,
+            Mathf.Max(140f, telaDeMenu.height - 64f));
 
-        GUILayout.Space(25);
-
-        scrollPosAbaMilitar = GUILayout.BeginScrollView(scrollPosAbaMilitar);
-        DesenharAbaMilitar();
-        GUILayout.EndScrollView();
-        
+        GUILayout.BeginArea(areaConteudo);
+        DesenharAbaMilitar(areaConteudo.width, areaConteudo.height);
         GUILayout.EndArea();
+
+        GUI.enabled = guiHabilitadoOriginal;
+    }
+
+    private Rect CalcularRetanguloMenuSeguro()
+    {
+        float topoHud = MenuFixadoController.ObterMargemSuperiorHudNaTela(82f);
+        float baseHud = MenuComandoController.ObterMargemInferiorHudGlobalNaTela(180f);
+
+        float topSafe = Mathf.Max(8f, topoHud + 10f);
+        float bottomSafe = Mathf.Max(12f, baseHud + 14f);
+        float alturaDisponivel = Screen.height - topSafe - bottomSafe;
+
+        if (alturaDisponivel < 260f)
+        {
+            topSafe = Mathf.Min(topSafe, Mathf.Max(6f, topoHud + 4f));
+            bottomSafe = Mathf.Min(bottomSafe, Mathf.Max(10f, baseHud + 8f));
+            alturaDisponivel = Mathf.Max(210f, Screen.height - topSafe - bottomSafe);
+        }
+
+        float margemLateral = Screen.width < 1000f ? 12f : 22f;
+        float larguraMaxima = Mathf.Max(340f, Screen.width - margemLateral * 2f);
+        float larguraIdeal = Screen.width >= 1200f
+            ? Mathf.Clamp(Screen.width * 0.62f, 840f, 1020f)
+            : Mathf.Clamp(Screen.width * 0.80f, 640f, 900f);
+        float widthMenu = Mathf.Min(larguraIdeal, larguraMaxima);
+        float heightMenu = Mathf.Min(alturaDisponivel, Mathf.Max(460f, Screen.height * 0.72f));
+
+        return new Rect(margemLateral, topSafe, widthMenu, heightMenu);
+    }
+
+    private void FecharPainelAeroporto()
+    {
+        menuAtivo = false;
+        GestorMenusExclusivos.Fechar(this);
+        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+    }
+
+    private static Texture2D CriarTexturaUiAeroporto(Color cor)
+    {
+        Texture2D tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        tex.hideFlags = HideFlags.HideAndDontSave;
+        tex.SetPixel(0, 0, cor);
+        tex.Apply();
+        return tex;
+    }
+
+    private void GarantirEstilosMenuTatico()
+    {
+        if (_uiAeroportoEstilosProntos && _uiAeroportoSkinCache == GUI.skin && _texAeroPainelFundo != null)
+        {
+            return;
+        }
+
+        DestruirTexturasTemaAeroporto();
+        _uiAeroportoSkinCache = GUI.skin;
+
+        _texAeroPainelFundo = CriarTexturaUiAeroporto(new Color(0.027f, 0.066f, 0.105f, 0.96f));
+        _texAeroBorda = CriarTexturaUiAeroporto(new Color(0.243f, 0.486f, 0.596f, 0.92f));
+        _texAeroCabecalho = CriarTexturaUiAeroporto(new Color(0.043f, 0.105f, 0.165f, 0.98f));
+        _texAeroDestaqueCiano = CriarTexturaUiAeroporto(new Color(0.0f, 0.898f, 1.0f, 0.95f));
+        _texAeroCardFundo = CriarTexturaUiAeroporto(new Color(0.043f, 0.098f, 0.145f, 0.95f));
+        _texAeroBotaoNormal = CriarTexturaUiAeroporto(new Color(0.055f, 0.145f, 0.200f, 0.98f));
+        _texAeroBotaoHover = CriarTexturaUiAeroporto(new Color(0.086f, 0.259f, 0.349f, 0.98f));
+        _texAeroBotaoAtivo = CriarTexturaUiAeroporto(new Color(0.039f, 0.114f, 0.161f, 0.98f));
+        _texAeroBotaoSelecionado = CriarTexturaUiAeroporto(new Color(0.082f, 0.278f, 0.388f, 0.99f));
+        _texAeroBotaoPrimario = CriarTexturaUiAeroporto(new Color(0.055f, 0.302f, 0.392f, 0.98f));
+        _texAeroBotaoPrimarioHover = CriarTexturaUiAeroporto(new Color(0.078f, 0.427f, 0.553f, 0.99f));
+        _texAeroBotaoPerigo = CriarTexturaUiAeroporto(new Color(0.329f, 0.102f, 0.125f, 0.98f));
+        _texAeroBotaoPerigoHover = CriarTexturaUiAeroporto(new Color(0.455f, 0.141f, 0.173f, 0.99f));
+        _texAeroBotaoAlerta = CriarTexturaUiAeroporto(new Color(0.361f, 0.227f, 0.071f, 0.98f));
+        _texAeroAlertaFundo = CriarTexturaUiAeroporto(new Color(0.240f, 0.145f, 0.045f, 0.92f));
+
+        Color textoPrincipal = new Color(0.89f, 0.95f, 0.98f, 1f);
+        Color textoSecundario = new Color(0.56f, 0.71f, 0.79f, 1f);
+
+        _stAeroCard = new GUIStyle(GUI.skin.box);
+        _stAeroCard.normal.background = _texAeroCardFundo;
+        _stAeroCard.normal.textColor = textoPrincipal;
+        _stAeroCard.richText = true;
+        _stAeroCard.padding = new RectOffset(10, 10, 8, 8);
+        _stAeroCard.margin = new RectOffset(0, 0, 2, 4);
+
+        _stAeroAlertaCard = new GUIStyle(_stAeroCard);
+        _stAeroAlertaCard.normal.background = _texAeroAlertaFundo;
+        _stAeroAlertaCard.padding = new RectOffset(10, 10, 6, 6);
+
+        _stAeroTituloHeader = new GUIStyle(GUI.skin.label);
+        _stAeroTituloHeader.richText = true;
+        _stAeroTituloHeader.fontSize = 15;
+        _stAeroTituloHeader.fontStyle = FontStyle.Bold;
+        _stAeroTituloHeader.alignment = TextAnchor.MiddleLeft;
+        _stAeroTituloHeader.normal.textColor = Color.white;
+
+        _stAeroSubtituloHeader = new GUIStyle(GUI.skin.label);
+        _stAeroSubtituloHeader.richText = true;
+        _stAeroSubtituloHeader.fontSize = 11;
+        _stAeroSubtituloHeader.alignment = TextAnchor.MiddleLeft;
+        _stAeroSubtituloHeader.normal.textColor = textoSecundario;
+
+        _stAeroBadge = new GUIStyle(GUI.skin.label);
+        _stAeroBadge.richText = true;
+        _stAeroBadge.fontSize = 11;
+        _stAeroBadge.alignment = TextAnchor.MiddleRight;
+        _stAeroBadge.normal.textColor = textoPrincipal;
+
+        _stAeroSecaoTitulo = new GUIStyle(GUI.skin.label);
+        _stAeroSecaoTitulo.richText = true;
+        _stAeroSecaoTitulo.fontSize = 12;
+        _stAeroSecaoTitulo.fontStyle = FontStyle.Bold;
+        _stAeroSecaoTitulo.normal.textColor = new Color(0.45f, 0.89f, 1.0f, 1f);
+        _stAeroSecaoTitulo.margin = new RectOffset(0, 0, 0, 4);
+
+        _stAeroLabel = new GUIStyle(GUI.skin.label);
+        _stAeroLabel.richText = true;
+        _stAeroLabel.fontSize = 12;
+        _stAeroLabel.alignment = TextAnchor.MiddleLeft;
+        _stAeroLabel.normal.textColor = textoPrincipal;
+
+        _stAeroLabelWrap = new GUIStyle(GUI.skin.label);
+        _stAeroLabelWrap.richText = true;
+        _stAeroLabelWrap.wordWrap = true;
+        _stAeroLabelWrap.fontSize = 12;
+        _stAeroLabelWrap.normal.textColor = textoPrincipal;
+
+        _stAeroLabelMuted = new GUIStyle(GUI.skin.label);
+        _stAeroLabelMuted.richText = true;
+        _stAeroLabelMuted.wordWrap = true;
+        _stAeroLabelMuted.fontSize = 12;
+        _stAeroLabelMuted.normal.textColor = textoSecundario;
+
+        _stAeroBotao = CriarEstiloBotaoTatico(
+            _texAeroBotaoNormal, _texAeroBotaoHover, _texAeroBotaoAtivo, textoPrincipal, TextAnchor.MiddleCenter, 12, new RectOffset(8, 8, 5, 5));
+
+        _stAeroBotaoLista = CriarEstiloBotaoTatico(
+            _texAeroBotaoNormal, _texAeroBotaoHover, _texAeroBotaoAtivo, textoPrincipal, TextAnchor.MiddleLeft, 12, new RectOffset(10, 10, 4, 4));
+        _stAeroBotaoLista.clipping = TextClipping.Clip;
+
+        _stAeroBotaoListaSelecionado = CriarEstiloBotaoTatico(
+            _texAeroBotaoSelecionado, _texAeroBotaoPrimarioHover, _texAeroBotaoSelecionado, Color.white, TextAnchor.MiddleLeft, 12, new RectOffset(10, 10, 4, 4));
+        _stAeroBotaoListaSelecionado.clipping = TextClipping.Clip;
+        _stAeroBotaoListaSelecionado.fontStyle = FontStyle.Bold;
+
+        _stAeroBotaoPrimario = CriarEstiloBotaoTatico(
+            _texAeroBotaoPrimario, _texAeroBotaoPrimarioHover, _texAeroBotaoAtivo, Color.white, TextAnchor.MiddleCenter, 12, new RectOffset(8, 8, 5, 5));
+        _stAeroBotaoPrimario.fontStyle = FontStyle.Bold;
+
+        _stAeroBotaoPerigo = CriarEstiloBotaoTatico(
+            _texAeroBotaoPerigo, _texAeroBotaoPerigoHover, _texAeroBotaoAtivo, Color.white, TextAnchor.MiddleCenter, 12, new RectOffset(8, 8, 5, 5));
+        _stAeroBotaoPerigo.fontStyle = FontStyle.Bold;
+
+        _stAeroBotaoAlerta = CriarEstiloBotaoTatico(
+            _texAeroBotaoAlerta, _texAeroBotaoHover, _texAeroBotaoAtivo, new Color(1f, 0.90f, 0.65f, 1f), TextAnchor.MiddleCenter, 12, new RectOffset(8, 8, 5, 5));
+        _stAeroBotaoAlerta.fontStyle = FontStyle.Bold;
+
+        _stAeroBotaoFechar = CriarEstiloBotaoTatico(
+            _texAeroBotaoPerigo, _texAeroBotaoPerigoHover, _texAeroBotaoAtivo, Color.white, TextAnchor.MiddleCenter, 13, new RectOffset(0, 0, 0, 0));
+        _stAeroBotaoFechar.fontStyle = FontStyle.Bold;
+
+        _uiAeroportoEstilosProntos = true;
+    }
+
+    private void DestruirTexturasTemaAeroporto()
+    {
+        DestruirTexturaSeguro(ref _texAeroPainelFundo);
+        DestruirTexturaSeguro(ref _texAeroBorda);
+        DestruirTexturaSeguro(ref _texAeroCabecalho);
+        DestruirTexturaSeguro(ref _texAeroDestaqueCiano);
+        DestruirTexturaSeguro(ref _texAeroCardFundo);
+        DestruirTexturaSeguro(ref _texAeroBotaoNormal);
+        DestruirTexturaSeguro(ref _texAeroBotaoHover);
+        DestruirTexturaSeguro(ref _texAeroBotaoAtivo);
+        DestruirTexturaSeguro(ref _texAeroBotaoSelecionado);
+        DestruirTexturaSeguro(ref _texAeroBotaoPrimario);
+        DestruirTexturaSeguro(ref _texAeroBotaoPrimarioHover);
+        DestruirTexturaSeguro(ref _texAeroBotaoPerigo);
+        DestruirTexturaSeguro(ref _texAeroBotaoPerigoHover);
+        DestruirTexturaSeguro(ref _texAeroBotaoAlerta);
+        DestruirTexturaSeguro(ref _texAeroAlertaFundo);
+    }
+
+    private GUIStyle CriarEstiloBotaoTatico(
+        Texture2D normalTex,
+        Texture2D hoverTex,
+        Texture2D activeTex,
+        Color textColor,
+        TextAnchor alignment,
+        int fontSize,
+        RectOffset padding)
+    {
+        GUIStyle style = new GUIStyle(GUI.skin.button);
+        style.richText = true;
+        style.alignment = alignment;
+        style.fontSize = fontSize;
+        style.padding = padding;
+        style.wordWrap = false;
+        style.normal.background = normalTex;
+        style.hover.background = hoverTex;
+        style.active.background = activeTex;
+        style.focused.background = hoverTex;
+        style.onNormal.background = hoverTex;
+        style.normal.textColor = textColor;
+        style.hover.textColor = Color.white;
+        style.active.textColor = Color.white;
+        style.focused.textColor = Color.white;
+        return style;
+    }
+
+    private void DesenharMolduraMenuAeroporto(Rect r)
+    {
+        // Fundo principal
+        GUI.DrawTexture(r, _texAeroPainelFundo);
+
+        // Cabeçalho
+        Rect header = new Rect(r.x, r.y, r.width, 46f);
+        GUI.DrawTexture(header, _texAeroCabecalho);
+
+        // Borda externa 1px + filete ciano superior
+        GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2f), _texAeroDestaqueCiano);
+        GUI.DrawTexture(new Rect(r.x, r.yMax - 1f, r.width, 1f), _texAeroBorda);
+        GUI.DrawTexture(new Rect(r.x, r.y, 1f, r.height), _texAeroBorda);
+        GUI.DrawTexture(new Rect(r.xMax - 1f, r.y, 1f, r.height), _texAeroBorda);
+        GUI.DrawTexture(new Rect(r.x, header.yMax, r.width, 1f), _texAeroBorda);
+
+        string nomeBase = string.IsNullOrEmpty(name) ? "BASE AÉREA MILITAR" : name.Replace("(Clone)", "").Trim().ToUpperInvariant();
+        GUI.Label(new Rect(r.x + 14f, r.y + 5f, Mathf.Max(220f, r.width * 0.48f), 22f),
+            "✈  CENTRO DE CONTROLE TÁTICO & AEROPORTO", _stAeroTituloHeader);
+        GUI.Label(new Rect(r.x + 14f, r.y + 24f, Mathf.Max(220f, r.width * 0.48f), 18f),
+            $"<color=#8FB5C9>{nomeBase}</color>  •  Frota Militar", _stAeroSubtituloHeader);
+
+        string resumoFrota = $"Pátio <b>{avioesNoPatio.Count + transportesC700NoPatio.Count}</b>  •  Hangar <b>{avioesNoHangar.Count}</b>  •  Heli <b>{helicopterosDoAeroporto.Count}</b>";
+        string statusEnergia = semEnergia
+            ? "<color=#FFB347>⚡ SEM ENERGIA</color>"
+            : "<color=#3FE49B>⚡ OPERACIONAL</color>";
+
+        float larguraChips = Mathf.Max(180f, r.width * 0.44f);
+        GUI.Label(new Rect(r.xMax - larguraChips - 48f, r.y + 12f, larguraChips, 22f),
+            $"{resumoFrota}   |   {statusEnergia}", _stAeroBadge);
+    }
+
+    private static (string texto, string corHex) FormatarEstadoAviao(ControleAviao.EstadoAviao estado)
+    {
+        switch (estado)
+        {
+            case ControleAviao.EstadoAviao.ProntoNoPatio: return ("Pronto no Pátio", "#3FE49B");
+            case ControleAviao.EstadoAviao.Decolando: return ("Decolando", "#FFC247");
+            case ControleAviao.EstadoAviao.EmMissao: return ("Em Missão", "#33E1FF");
+            case ControleAviao.EstadoAviao.Pousando: return ("Pousando", "#FFC247");
+            case ControleAviao.EstadoAviao.RetornandoPraVaga: return ("Retornando", "#FFA94D");
+            case ControleAviao.EstadoAviao.Taxiando: return ("Taxiando", "#FFD166");
+            case ControleAviao.EstadoAviao.ReservaHangar: return ("No Hangar", "#9BB0BC");
+            default: return (estado.ToString(), "#E2F1F8");
+        }
+    }
+
+    private static (string texto, string corHex) FormatarEstadoC700(C700TransporteAereo.EstadoC700 estado)
+    {
+        switch (estado)
+        {
+            case C700TransporteAereo.EstadoC700.Solo: return ("No Solo", "#3FE49B");
+            case C700TransporteAereo.EstadoC700.Estacionado: return ("Estacionado", "#3FE49B");
+            case C700TransporteAereo.EstadoC700.Carregando: return ("Carregando", "#FFD166");
+            case C700TransporteAereo.EstadoC700.Taxiando: return ("Taxiando", "#FFD166");
+            case C700TransporteAereo.EstadoC700.Decolando: return ("Decolando", "#FFC247");
+            case C700TransporteAereo.EstadoC700.EmVoo: return ("Em Voo", "#33E1FF");
+            case C700TransporteAereo.EstadoC700.Aproximando: return ("Aproximando", "#FFA94D");
+            case C700TransporteAereo.EstadoC700.Alinhando: return ("Alinhando", "#FFA94D");
+            case C700TransporteAereo.EstadoC700.Pousando: return ("Pousando", "#FFC247");
+            case C700TransporteAereo.EstadoC700.FalhaMissao: return ("Falha na Missão", "#FF6B6B");
+            default: return (estado.ToString(), "#E2F1F8");
+        }
+    }
+
+    private static string FormatarEstadoC17(Hegemonia.Aeronaves.C17.EstadoAviaoTransporte estado)
+    {
+        switch (estado)
+        {
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Estacionado: return "Estacionado";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Pousado: return "Pousado";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.AguardandoDestino: return "Aguardando Destino";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.TaxiandoParaDecolagem: return "Taxiando p/ Decolagem";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.TaxiandoParaPista: return "Taxiando p/ Pista";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.AlinhandoNaPista: return "Alinhando na Pista";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Decolando: return "Decolando";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.CorridaDecolagem: return "Corrida de Decolagem";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.RotacaoDecolagem: return "Rotação de Decolagem";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Subindo: return "Subindo";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Navegando: return "Navegando";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.OrbitandoDestino: return "Orbitando Destino";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.PreparandoAproximacao: return "Preparando Aproximação";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.AlinhandoPouso: return "Alinhando Pouso";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Descendo: return "Descendo";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Pousando: return "Pousando";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.TocandoPista: return "Tocando a Pista";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Freando: return "Freando";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.TaxiandoParaVaga: return "Taxiando p/ Vaga";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Embarcando: return "Embarcando";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Desembarcando: return "Desembarcando";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.RetornandoBase: return "Retornando à Base";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Arremetendo: return "Arremetendo";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.SemCombustivel: return "Sem Combustível";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.SemRota: return "Sem Rota";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Emergencia: return "Emergência";
+            case Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Destruido: return "Destruído";
+            default: return estado.ToString();
+        }
     }
 
     // Aba Comercial removida
 
-    private void DesenharAbaMilitar()
+    private void DesenharAbaMilitar(float larguraDisponivel, float alturaDisponivel)
     {
-        GUILayout.Label("<size=18><b>FROTA AÉREA E TÁTICA</b></size>");
-
         if (semEnergia)
         {
+            GUILayout.BeginHorizontal(_stAeroAlertaCard);
             GUILayout.Label(
-                "<color=#ffb347>⚡ " + LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativá-lo.") + "</color>");
+                "<color=#FFD082>⚡ " + LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA — Construa uma usina para reativá-lo.").Replace("\n", " — ") + "</color>",
+                _stAeroLabelWrap);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4f);
         }
-        
-        // Botão de compra para o Drone Kamikaze
+
+        // Barra compacta de aquisições em linha (economiza altura vertical e mantém leitura direta)
+        GUILayout.BeginHorizontal();
         if (prefabDroneKamikaze != null)
         {
-            if (semEnergia) GUI.enabled = false;
-            if (GUILayout.Button($"🧨 COMPRAR DRONE KAMIKAZE (${precoDroneKamikaze})", GUILayout.Height(40)))
+            GUI.enabled = !semEnergia;
+            if (GUILayout.Button($"🧨 <b>COMPRAR DRONE KAMIKAZE</b>  <color=#8BE9FD>(${precoDroneKamikaze})</color>", _stAeroBotaoPrimario, GUILayout.Height(34f), GUILayout.ExpandWidth(true)))
             {
                 if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoDroneKamikaze)
                 {
@@ -3099,20 +3414,21 @@ public class GerenciadorAeroporto : MonoBehaviour
                     HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("economy.no_money_action", "SEM DINHEIRO\nRecursos insuficientes para esta ação."), 3.2f);
                 }
             }
-            if (semEnergia) GUI.enabled = true;
+            GUI.enabled = true;
         }
         else
         {
             GUI.enabled = false;
-            GUILayout.Button("🧨 DRONE KAMIKAZE (Prefab não vinculado)", GUILayout.Height(40));
+            GUILayout.Button("🧨 DRONE KAMIKAZE (Prefab não vinculado)", _stAeroBotao, GUILayout.Height(34f), GUILayout.ExpandWidth(true));
             GUI.enabled = true;
         }
 
-        // Botão de compra para o Su-11
+        GUILayout.Space(8f);
+
         if (prefabSu11 != null)
         {
-            if (semEnergia) GUI.enabled = false;
-            if (GUILayout.Button($"✈️ COMPRAR SU-11 (${precoSu11})", GUILayout.Height(40)))
+            GUI.enabled = !semEnergia;
+            if (GUILayout.Button($"✈️ <b>COMPRAR SU-11</b>  <color=#8BE9FD>(${precoSu11})</color>", _stAeroBotaoPrimario, GUILayout.Height(34f), GUILayout.ExpandWidth(true)))
             {
                 if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoSu11)
                 {
@@ -3124,31 +3440,83 @@ public class GerenciadorAeroporto : MonoBehaviour
                     HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("economy.no_money_action", "SEM DINHEIRO\nRecursos insuficientes para esta ação."), 3.2f);
                 }
             }
-            if (semEnergia) GUI.enabled = true;
+            GUI.enabled = true;
         }
         else
         {
             GUI.enabled = false;
-            GUILayout.Button("✈️ SU-11 (Prefab não vinculado)", GUILayout.Height(40));
+            GUILayout.Button("✈️ SU-11 (Prefab não vinculado)", _stAeroBotao, GUILayout.Height(34f), GUILayout.ExpandWidth(true));
             GUI.enabled = true;
         }
+        GUILayout.EndHorizontal();
 
+        GUILayout.Space(8f);
+
+        bool layoutDuasColunas = larguraDisponivel >= 720f && alturaDisponivel >= 250f;
+        if (layoutDuasColunas)
+        {
+            float larguraEsquerda = Mathf.Clamp(larguraDisponivel * 0.45f, 320f, 445f);
+            GUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
+
+            GUILayout.BeginVertical(GUILayout.Width(larguraEsquerda), GUILayout.ExpandHeight(true));
+            DesenharCardFrotaAtiva(true);
+            GUILayout.Space(8f);
+            DesenharCardHangar(true);
+            GUILayout.EndVertical();
+
+            GUILayout.Space(10f);
+
+            GUILayout.BeginVertical(_stAeroCard, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            DesenharColunaOrdens(true);
+            GUILayout.EndVertical();
+
+            GUILayout.EndHorizontal();
+        }
+        else
+        {
+            scrollPosAbaMilitar = GUILayout.BeginScrollView(scrollPosAbaMilitar, GUILayout.ExpandHeight(true));
+            DesenharCardFrotaAtiva(false);
+            GUILayout.Space(8f);
+            DesenharCardHangar(false);
+            GUILayout.Space(8f);
+            GUILayout.BeginVertical(_stAeroCard);
+            DesenharColunaOrdens(false);
+            GUILayout.EndVertical();
+            GUILayout.EndScrollView();
+        }
+    }
+
+    private void DesenharCardFrotaAtiva(bool expandirAltura)
+    {
+        int totalFrotaAtiva = avioesNoPatio.Count + transportesC700NoPatio.Count + helicopterosDoAeroporto.Count;
+        GUILayout.BeginVertical(_stAeroCard, expandirAltura ? GUILayout.ExpandHeight(true) : GUILayout.Height(185f));
         GUILayout.BeginHorizontal();
+        GUILayout.Label($"<b>FROTA ATIVA</b>  <color=#8FB5C9>({totalFrotaAtiva})</color>", _stAeroSecaoTitulo);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label("<color=#7D98A6>Clique para comandar</color>", _stAeroSubtituloHeader);
+        GUILayout.EndHorizontal();
 
-        // === COLUNA ESQUERDA: FROTA ATIVA ===
-        GUILayout.BeginVertical("box", GUILayout.ExpandWidth(true));
-        GUILayout.Label($"<b>FROTA ATIVA ({avioesNoPatio.Count + transportesC700NoPatio.Count + helicopterosDoAeroporto.Count})</b>");
-        
-        scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(280));
+        scrollPosFrota = expandirAltura
+            ? GUILayout.BeginScrollView(scrollPosFrota, GUILayout.MinHeight(120f), GUILayout.ExpandHeight(true))
+            : GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(145f));
+
+        if (totalFrotaAtiva == 0)
+        {
+            GUILayout.Label("Nenhuma aeronave pronta ou em voo vinculada a esta base.", _stAeroLabelMuted);
+        }
+
         for (int i = 0, count = avioesNoPatio.Count; i < count; i++)
         {
             ControleAviao a = avioesNoPatio[i];
             if (a == null) continue;
-            
-            string nomeLimpo = ObterInfoAviao(a, out string corCristal, out string vidaStr);
-            string corEst = (a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio) ? "green" : "red";
 
-            if (GUILayout.Button($"<color={corCristal}>■</color> ✈️ {nomeLimpo}{vidaStr} [<color={corEst}>{a.estadoAtual}</color>]", GUILayout.Height(30)))
+            string nomeLimpo = ObterInfoAviao(a, out string corCristal, out string vidaStr);
+            (string estadoRotulo, string corEst) = FormatarEstadoAviao(a.estadoAtual);
+            bool selecionado = aviaoSelecionadoParaMissao == a;
+            GUIStyle estiloLinha = selecionado ? _stAeroBotaoListaSelecionado : _stAeroBotaoLista;
+            string prefixoSel = selecionado ? "<color=#00E5FF>▸ </color>" : "";
+
+            if (GUILayout.Button($"{prefixoSel}<color={corCristal}>■</color> ✈️ <b>{nomeLimpo}</b>{vidaStr}  <color={corEst}>[{estadoRotulo}]</color>", estiloLinha, GUILayout.Height(30f)))
             {
                 aviaoSelecionadoParaMissao = a;
                 c700SelecionadoParaMissao = null;
@@ -3164,365 +3532,513 @@ public class GerenciadorAeroporto : MonoBehaviour
 
             string nomeHeli = heli.ObterRotuloExibicao();
             string estadoHeli = heli.ObterEstadoOperacionalAeroporto();
-            string corEstadoHeli = heli.EstaEstacionadoNoAeroporto() ? "green" : "orange";
+            string corEstadoHeli = heli.EstaEstacionadoNoAeroporto() ? "#3FE49B" : "#FFC247";
             string combustivelHeli = CombustivelUnidade.TextoCurto(heli);
             if (!string.IsNullOrEmpty(combustivelHeli))
             {
-                combustivelHeli = $" <color=cyan>{combustivelHeli}</color>";
+                combustivelHeli = $" <color=#33E1FF>{combustivelHeli}</color>";
             }
 
-            if (GUILayout.Button($"🚁 {nomeHeli}{combustivelHeli} [<color={corEstadoHeli}>{estadoHeli}</color>]", GUILayout.Height(30)))
+            bool selecionado = helicopteroSelecionadoParaMissao == heli;
+            GUIStyle estiloLinha = selecionado ? _stAeroBotaoListaSelecionado : _stAeroBotaoLista;
+            string prefixoSel = selecionado ? "<color=#00E5FF>▸ </color>" : "";
+
+            if (GUILayout.Button($"{prefixoSel}🚁 <b>{nomeHeli}</b>{combustivelHeli}  <color={corEstadoHeli}>[{estadoHeli}]</color>", estiloLinha, GUILayout.Height(30f)))
             {
                 helicopteroSelecionadoParaMissao = heli;
                 aviaoSelecionadoParaMissao = null;
                 c700SelecionadoParaMissao = null;
             }
         }
+
+        for (int i = 0; i < transportesC700NoPatio.Count; i++)
+        {
+            C700TransporteAereo transporte = transportesC700NoPatio[i];
+            if (transporte == null) continue;
+
+            string nomeLimpo = ObterInfoAviao(transporte, out string corCristal, out string vidaStr);
+            (string estadoC700, string corEstado) = FormatarEstadoC700(transporte.estadoAtual);
+            bool selecionado = c700SelecionadoParaMissao == transporte;
+            GUIStyle estiloLinha = selecionado ? _stAeroBotaoListaSelecionado : _stAeroBotaoLista;
+            string prefixoSel = selecionado ? "<color=#00E5FF>▸ </color>" : "";
+
+            if (GUILayout.Button($"{prefixoSel}<color={corCristal}>■</color> 🛫 <b>{nomeLimpo}</b>{vidaStr}  <color={corEstado}>[{estadoC700}]</color>", estiloLinha, GUILayout.Height(30f)))
+            {
+                c700SelecionadoParaMissao = transporte;
+                aviaoSelecionadoParaMissao = null;
+                helicopteroSelecionadoParaMissao = null;
+            }
+        }
+
         GUILayout.EndScrollView();
         GUILayout.EndVertical();
+    }
 
-        // === COLUNA DIREITA: HANGAR ===
-        GUILayout.BeginVertical("box", GUILayout.ExpandWidth(true));
+    private void DesenharCardHangar(bool expandirAltura)
+    {
+        GUILayout.BeginVertical(_stAeroCard, expandirAltura ? GUILayout.MinHeight(110f) : GUILayout.Height(130f), GUILayout.ExpandHeight(expandirAltura));
         GUILayout.BeginHorizontal();
-        GUILayout.Label($"<b>HANGAR ({avioesNoHangar.Count})</b>");
-        if (GUILayout.Button("Lib. Todos", GUILayout.Width(75), GUILayout.Height(20)))
+        GUILayout.Label($"<b>🔒 HANGAR</b>  <color=#8FB5C9>({avioesNoHangar.Count})</color>", _stAeroSecaoTitulo);
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button("Liberar Todos", _stAeroBotao, GUILayout.Width(106f), GUILayout.Height(22f)))
         {
             LiberarTodosDoHangar();
         }
         GUILayout.EndHorizontal();
 
-        scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(280));
+        scrollPosHangar = expandirAltura
+            ? GUILayout.BeginScrollView(scrollPosHangar, GUILayout.MinHeight(68f), GUILayout.MaxHeight(190f), GUILayout.ExpandHeight(true))
+            : GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(90f));
+
+        if (avioesNoHangar.Count == 0)
+        {
+            GUILayout.Label("Hangar vazio — nenhuma aeronave na reserva.", _stAeroLabelMuted);
+        }
+
         for (int i = avioesNoHangar.Count - 1; i >= 0; i--)
         {
             ControleAviao h = avioesNoHangar[i];
             if (h == null) continue;
-            
+
             string nomeLimpo = ObterInfoAviao(h, out string corCristal, out string vidaStr);
+            bool interromperLista = false;
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"<color={corCristal}>■</color> 🔒 {nomeLimpo}{vidaStr}", GUILayout.Width(170));
-            
+            GUILayout.Label($"<color={corCristal}>■</color> 🔒 {nomeLimpo}{vidaStr}", _stAeroLabel, GUILayout.ExpandWidth(true), GUILayout.Height(26f));
+
             if (aviaoSelecionadoParaMissao != null && avioesNoPatio.Contains(aviaoSelecionadoParaMissao))
             {
-                if (GUILayout.Button("⮂ TROCAR", GUILayout.Height(25)))
+                if (GUILayout.Button("⮂ TROCAR", _stAeroBotao, GUILayout.Width(96f), GUILayout.Height(26f)))
                 {
                     TrocarAvioesLogicaGeral(h, aviaoSelecionadoParaMissao);
-                    aviaoSelecionadoParaMissao = null; 
-                    GUILayout.EndHorizontal();
-                    break; 
+                    aviaoSelecionadoParaMissao = null;
+                    interromperLista = true;
+                }
+            }
+            else if (ObterPrimeiraVagaLivre() != null)
+            {
+                if (GUILayout.Button("▶ LIBERAR", _stAeroBotaoPrimario, GUILayout.Width(96f), GUILayout.Height(26f)))
+                {
+                    LiberarAviaoParaPatio(h);
+                    interromperLista = true;
                 }
             }
             else
             {
-                if (ObterPrimeiraVagaLivre() != null)
-                {
-                    if (GUILayout.Button("▶ LIBERAR", GUILayout.Height(25)))
-                    {
-                        LiberarAviaoParaPatio(h);
-                        GUILayout.EndHorizontal();
-                        break;
-                    }
-                }
-                else 
-                {
-                    GUI.enabled = false;
-                    GUILayout.Button("Pátio L.(X)", GUILayout.Height(25));
-                    GUI.enabled = true;
-                }
+                GUI.enabled = false;
+                GUILayout.Button("Pátio Lotado", _stAeroBotao, GUILayout.Width(96f), GUILayout.Height(26f));
+                GUI.enabled = true;
             }
             GUILayout.EndHorizontal();
+
+            if (interromperLista) break;
         }
+
         GUILayout.EndScrollView();
         GUILayout.EndVertical();
+    }
+
+    private void DesenharColunaOrdens(bool usarScrollInterno)
+    {
+        if (aviaoSelecionadoParaMissao == null && helicopteroSelecionadoParaMissao == null
+            && c700SelecionadoParaMissao == null && transportesC700NoPatio.Count == 1)
+        {
+            c700SelecionadoParaMissao = transportesC700NoPatio[0];
+        }
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("<b>PAINEL DE ORDENS & TELEMETRIA</b>", _stAeroSecaoTitulo);
+        GUILayout.FlexibleSpace();
+        if (aviaoSelecionadoParaMissao != null || helicopteroSelecionadoParaMissao != null || c700SelecionadoParaMissao != null)
+        {
+            if (GUILayout.Button("Limpar Seleção", _stAeroBotao, GUILayout.Width(108f), GUILayout.Height(22f)))
+            {
+                aviaoSelecionadoParaMissao = null;
+                helicopteroSelecionadoParaMissao = null;
+                c700SelecionadoParaMissao = null;
+                _modoPousoC17Pendente = false;
+            }
+        }
         GUILayout.EndHorizontal();
-        GUILayout.Space(20);
-        
-        // === PAINEL DE ORDENS DO AVIÃO SELECIONADO ===
+
+        if (usarScrollInterno)
+        {
+            scrollPosOrdensUI = GUILayout.BeginScrollView(scrollPosOrdensUI, GUILayout.ExpandHeight(true));
+        }
+
+        bool desenhouAviao = false;
         if (aviaoSelecionadoParaMissao != null && (avioesNoPatio.Contains(aviaoSelecionadoParaMissao) || aviaoSelecionadoParaMissao.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null))
         {
+            desenhouAviao = true;
             var c17Script = aviaoSelecionadoParaMissao.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
             if (c17Script != null)
             {
-                string nomeLimpoC17 = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristalC17, out string vidaStrC17);
-                GUILayout.Label($"<b>PAINEL DE ORDENS (C10/C17): <color={corCristalC17}>■</color> {nomeLimpoC17}{vidaStrC17}</b>");
-                GUILayout.Label($"<b>ESTADO OPERACIONAL:</b> <color=cyan>{c17Script.EstadoAtual}</color>");
+                DesenharOrdensC17(c17Script);
+            }
+            else
+            {
+                DesenharOrdensAviaoMilitar();
+            }
+        }
 
-                var transportSys = c17Script.GetComponent<Hegemonia.Aeronaves.C17.C17TransportSystem>();
-                if (transportSys != null)
+        bool desenhouHeli = helicopteroSelecionadoParaMissao != null && helicopterosDoAeroporto.Contains(helicopteroSelecionadoParaMissao);
+        if (desenhouHeli)
+        {
+            DesenharPainelHelicoptero();
+        }
+
+        bool desenhouC700 = transportesC700NoPatio.Count > 0 && c700SelecionadoParaMissao != null && transportesC700NoPatio.Contains(c700SelecionadoParaMissao);
+        if (desenhouC700 || (!desenhouAviao && !desenhouHeli && transportesC700NoPatio.Count > 0))
+        {
+            DesenharPainelC700();
+        }
+
+        if (!desenhouAviao && !desenhouHeli && !desenhouC700 && transportesC700NoPatio.Count == 0)
+        {
+            GUILayout.Space(12f);
+            GUILayout.Label("<b>Nenhuma aeronave selecionada</b>", _stAeroLabel);
+            GUILayout.Space(4f);
+            GUILayout.Label(
+                "Selecione uma aeronave na coluna <b>FROTA ATIVA</b> à esquerda para configurar a base de pouso, definir patrulha, reconhecimento, ataque ou retorno.",
+                _stAeroLabelMuted);
+            GUILayout.Space(10f);
+            GUILayout.Label("<color=#7D98A6>Atalhos:  <b>[Z]</b> Abre/Fecha este painel   •   <b>Botão Direito</b> no mapa confirma o alvo selecionado.</color>", _stAeroLabelMuted);
+        }
+
+        if (usarScrollInterno)
+        {
+            GUILayout.EndScrollView();
+        }
+    }
+
+    private void DesenharOrdensC17(Hegemonia.Aeronaves.C17.C17TransporteController c17Script)
+    {
+        string nomeLimpoC17 = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristalC17, out string vidaStrC17);
+        GUILayout.Label($"<size=14><b><color={corCristalC17}>■</color> {nomeLimpoC17}{vidaStrC17}</b></size>  <color=#8FB5C9>(C10/C17)</color>", _stAeroLabel);
+        GUILayout.Label($"<b>Estado Operacional:</b> <color=#33E1FF>{FormatarEstadoC17(c17Script.EstadoAtual)}</color>", _stAeroLabel);
+
+        var transportSys = c17Script.GetComponent<Hegemonia.Aeronaves.C17.C17TransportSystem>();
+        if (transportSys != null)
+        {
+            GUILayout.Label(
+                $"<b>Carga Militar C17:</b> Soldados <color=#33E1FF>{transportSys.TropasEmbarcadasCount}/{transportSys.CapacidadeSoldados}</color>  •  Veículos <color=#33E1FF>{transportSys.VeiculosEmbarcadosCount}/{transportSys.CapacidadeVeiculos}</color>",
+                _stAeroLabel);
+        }
+
+        GUILayout.Space(6f);
+
+        if (aviaoSelecionadoParaMissao.aguardandoCliqueRadar)
+        {
+            GUILayout.Label("<color=#FFD166>⚠️ MODO ALVO ATIVO! Feche o menu e clique no mapa com o Botão Direito.</color>", _stAeroLabelWrap);
+            if (GUILayout.Button("❌ Cancelar Ordem", _stAeroBotaoPerigo, GUILayout.Height(30f)))
+            {
+                aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
+                _modoPousoC17Pendente = false;
+                LimparModoMassaAereo();
+                AtualizarModoInteracaoManualAeroporto();
+            }
+            GUILayout.Space(4f);
+        }
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("🚀 Decolar & Direcionar", _stAeroBotaoPrimario, GUILayout.Height(34f)))
+        {
+            _modoPousoC17Pendente = false;
+            ExecutarModoRadar(false);
+        }
+        GUILayout.Space(6f);
+        if (GUILayout.Button("🛬 Marcar Pouso", _stAeroBotao, GUILayout.Height(34f)))
+        {
+            _modoPousoC17Pendente = true;
+            ExecutarModoRadar(false);
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6f);
+
+        bool noSolo = c17Script.EstadoAtual == Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Pousado
+                   || c17Script.EstadoAtual == Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Estacionado;
+
+        GUILayout.BeginHorizontal();
+        GUI.enabled = noSolo;
+        if (GUILayout.Button("📥 Embarcar Tropas", _stAeroBotao, GUILayout.Height(32f)))
+        {
+            c17Script.Comando_EmbarcarTropas();
+        }
+        GUILayout.Space(6f);
+
+        bool temCarga = transportSys != null && (transportSys.TropasEmbarcadasCount > 0 || transportSys.VeiculosEmbarcadosCount > 0);
+        GUI.enabled = temCarga;
+        if (GUILayout.Button("📤 Desembarcar", _stAeroBotao, GUILayout.Height(32f)))
+        {
+            c17Script.Comando_Desembarcar();
+        }
+        GUILayout.Space(6f);
+
+        GUI.enabled = true;
+        if (GUILayout.Button("🔙 Retornar à Base", _stAeroBotaoAlerta, GUILayout.Height(32f)))
+        {
+            c17Script.ComandoZ_VoltarAeroporto();
+        }
+        GUILayout.EndHorizontal();
+
+        GUI.enabled = true;
+    }
+
+    private void DesenharOrdensAviaoMilitar()
+    {
+        string nomeLimpo = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristal, out string vidaStr);
+        (string estadoStr, string corEstado) = FormatarEstadoAviao(aviaoSelecionadoParaMissao.estadoAtual);
+
+        GUILayout.Label($"<size=14><b><color={corCristal}>■</color> {nomeLimpo}</b></size>{vidaStr}  <color={corEstado}>[{estadoStr}]</color>", _stAeroLabel);
+        GUILayout.Label($"📍 {aviaoSelecionadoParaMissao.ObterResumoLocalizacao()}", _stAeroLabelWrap);
+
+        GerenciadorAeroporto destinoAtualAereo = aviaoSelecionadoParaMissao.DestinoPousoEscolhido;
+        if (destinoAtualAereo != null && !ControleAviao.PodeReceberPouso(destinoAtualAereo))
+        {
+            GUILayout.Label("<color=#FFA94D>Destino mantido; base indisponível ou sem vaga. Escolha outra base manualmente se desejar.</color>", _stAeroLabelWrap);
+        }
+
+        ControleAviao.ListarDestinosPouso(aviaoSelecionadoParaMissao, _basesDestinoAereoUI);
+        if (_basesDestinoAereoUI.Count > 0)
+        {
+            GUILayout.Space(6f);
+            GUILayout.Label("<b>BASE DE POUSO</b>", _stAeroSecaoTitulo);
+            int desenhadas = 0;
+            for (int i = 0; i < _basesDestinoAereoUI.Count; i++)
+            {
+                GerenciadorAeroporto baseDestinoUI = _basesDestinoAereoUI[i];
+                if (baseDestinoUI == null) continue;
+
+                if (desenhadas % 2 == 0) GUILayout.BeginHorizontal();
+
+                bool destinoAtual = baseDestinoUI == destinoAtualAereo;
+                GUIStyle estiloBase = destinoAtual ? _stAeroBotaoPrimario : _stAeroBotao;
+                if (GUILayout.Button((destinoAtual ? "✓ " : "✈ ") + ControleAviao.RotuloBase(baseDestinoUI), estiloBase, GUILayout.Height(26f), GUILayout.ExpandWidth(true)))
                 {
-                    GUILayout.Label($"<b>CARGA MILITAR C17:</b> Soldados: <color=cyan>{transportSys.TropasEmbarcadasCount}/{transportSys.CapacidadeSoldados}</color> | Veículos: <color=cyan>{transportSys.VeiculosEmbarcadosCount}/{transportSys.CapacidadeVeiculos}</color>");
+                    bool emVoo = aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                        || aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.Decolando;
+                    if (!aviaoSelecionadoParaMissao.SelecionarDestinoPouso(baseDestinoUI, emVoo))
+                        HUDAjudaRTS.MostrarMensagemTemporaria("A base não pode receber esta aeronave agora.", 3f);
                 }
 
-                if (aviaoSelecionadoParaMissao.aguardandoCliqueRadar)
+                desenhadas++;
+                if (desenhadas % 2 == 1)
                 {
-                    GUILayout.Label("<color=yellow>⚠️ MODO ALVO ATIVO! Feche o Menu e Clique no mapa com o Botão Direito.</color>");
-                    if (GUILayout.Button("❌ Cancelar Ordem", GUILayout.Height(30)))
-                    {
-                        aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
-                        _modoPousoC17Pendente = false;
-                        LimparModoMassaAereo();
-                        AtualizarModoInteracaoManualAeroporto();
-                    }
+                    GUILayout.Space(6f);
                 }
+                else
+                {
+                    GUILayout.EndHorizontal();
+                }
+            }
+            if (desenhadas % 2 == 1)
+            {
+                GUILayout.Label(GUIContent.none, GUILayout.ExpandWidth(true));
+                GUILayout.EndHorizontal();
+            }
+        }
+
+        GUI.enabled = true;
+        GUILayout.Space(8f);
+        GUILayout.Label("<b>ORDENS DE MISSÃO</b>", _stAeroSecaoTitulo);
+
+        if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+        {
+            if (aviaoSelecionadoParaMissao.aeroportoOrigem != this && aviaoSelecionadoParaMissao.aeroportoOrigem != null)
+            {
+                GUILayout.Label($"<color=#FFA94D>✈️ Estacionado em outra base/navio: {aviaoSelecionadoParaMissao.aeroportoOrigem.name.Replace("(Clone)", "")}</color>", _stAeroLabelWrap);
+                GUILayout.Space(4f);
+                if (GUILayout.Button("🔙 REQUISITAR RETORNO IMEDIATO", _stAeroBotaoPrimario, GUILayout.Height(36f)))
+                {
+                    // Transferência entre bases precisa marcar o voo como retorno.
+                    // Enviar somente a posição do aeroporto fazia o avião orbitar sem pousar.
+                    aviaoSelecionadoParaMissao.DefinirBaseAlternativaEIniciarRetorno(this);
+                    aviaoSelecionadoParaMissao = null;
+                    FecharPainelAeroporto();
+                    return;
+                }
+            }
+            else if (aviaoSelecionadoParaMissao.aguardandoCliqueRadar)
+            {
+                GUILayout.Label("<color=#FFD166>⚠️ MODO ALVO ATIVO! Feche o menu e clique no mapa com o Botão Direito.</color>", _stAeroLabelWrap);
+                if (GUILayout.Button("❌ Cancelar Ordem", _stAeroBotaoPerigo, GUILayout.Height(30f)))
+                {
+                    aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
+                    _modoPousoC17Pendente = false;
+                    LimparModoMassaAereo();
+                    AtualizarModoInteracaoManualAeroporto();
+                }
+                GUILayout.Space(4f);
+            }
+
+            bool isKamikaze = aviaoSelecionadoParaMissao.GetComponent<KamikazeDrone>() != null;
+            bool isBombardeiro = aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>() != null;
+            int totalMesmoModelo = 0;
+
+            if (!isKamikaze)
+            {
+                string modeloPainel = ObterChaveModeloAviao(aviaoSelecionadoParaMissao);
+                if (_ultimoModeloPainelPatrulha != modeloPainel)
+                {
+                    _ultimoModeloPainelPatrulha = modeloPainel;
+                    qtdPatrulhaGrupo = 1;
+                }
+
+                totalMesmoModelo = ContarAvioesDisponiveisMesmoModelo(aviaoSelecionadoParaMissao);
+                if (totalMesmoModelo < 3)
+                {
+                    qtdPatrulhaGrupo = 1;
+                }
+                else
+                {
+                    qtdPatrulhaGrupo = Mathf.Clamp(qtdPatrulhaGrupo, 1, totalMesmoModelo);
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label($"<b>Qtd. P/ Patrulha:</b> <color=#8BE9FD>{qtdPatrulhaGrupo}/{totalMesmoModelo}</color>", _stAeroLabel);
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("−", _stAeroBotao, GUILayout.Width(32f), GUILayout.Height(26f))) qtdPatrulhaGrupo = Mathf.Max(1, qtdPatrulhaGrupo - 1);
+                    if (GUILayout.Button("+", _stAeroBotao, GUILayout.Width(32f), GUILayout.Height(26f))) qtdPatrulhaGrupo = Mathf.Min(totalMesmoModelo, qtdPatrulhaGrupo + 1);
+                    if (GUILayout.Button("Todos", _stAeroBotao, GUILayout.Width(64f), GUILayout.Height(26f))) qtdPatrulhaGrupo = totalMesmoModelo;
+                    GUILayout.EndHorizontal();
+                    GUILayout.Space(4f);
+                }
+            }
+
+            if (isKamikaze)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"<b>Qtd. P/ Ataque:</b> <color=#8BE9FD>{qtdMassaDrone}</color>", _stAeroLabel);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("−", _stAeroBotao, GUILayout.Width(32f), GUILayout.Height(26f))) qtdMassaDrone = Mathf.Max(1, qtdMassaDrone - 1);
+                if (GUILayout.Button("+", _stAeroBotao, GUILayout.Width(32f), GUILayout.Height(26f))) qtdMassaDrone++;
+                if (GUILayout.Button("Todos", _stAeroBotao, GUILayout.Width(64f), GUILayout.Height(26f)))
+                {
+                    int totais = 0;
+                    foreach (var a in avioesNoPatio) if (a != null && a.GetComponent<KamikazeDrone>() != null) totais++;
+                    foreach (var a in avioesNoHangar) if (a != null && a.GetComponent<KamikazeDrone>() != null) totais++;
+                    qtdMassaDrone = totais;
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.Space(6f);
 
                 GUILayout.BeginHorizontal();
-
-                // Decolar & Direcionar (Navegar)
-                if (GUILayout.Button("🚀 Decolar & Direcionar", GUILayout.Height(40)))
+                if (GUILayout.Button("🚀 ATAQUE EM MASSA", _stAeroBotaoPerigo, GUILayout.Height(36f)))
                 {
-                    _modoPousoC17Pendente = false;
+                    LimparModoMassaAereo();
+                    aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
+                    esperandoCliqueMassa = true;
+                }
+                GUILayout.Space(6f);
+                if (GUILayout.Button("💣 Ataque Solo", _stAeroBotaoPrimario, GUILayout.Height(36f)))
+                {
+                    ExecutarModoRadar(false);
+                    esperandoCliqueMassa = false;
+                }
+                GUILayout.EndHorizontal();
+            }
+            else if (isBombardeiro)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("💣 Ataque Área (Tapete)", _stAeroBotaoPerigo, GUILayout.Height(36f)))
+                {
+                    aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
                     ExecutarModoRadar(false);
                 }
+                GUILayout.Space(6f);
+                string textoPatrulhaBombardeiro = (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                    ? $"🛡️ Radar (Móvel) x{qtdPatrulhaGrupo}"
+                    : "🛡️ Radar (Móvel)";
+                if (GUILayout.Button(textoPatrulhaBombardeiro, _stAeroBotaoPrimario, GUILayout.Height(36f)))
+                {
+                    aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.Patrulha;
+                    if (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                    {
+                        PrepararPatrulhaEmGrupo();
+                    }
+                    else
+                    {
+                        ExecutarModoRadar(false, true);
+                    }
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.Space(6f);
+                if (GUILayout.Button("🚀 Ataque em Massa", _stAeroBotaoAlerta, GUILayout.Height(34f)))
+                {
+                    aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueEmMassa;
+                    ExecutarModoRadar(false);
+                }
+            }
+            else
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("👁️ Reconhecimento", _stAeroBotao, GUILayout.Height(36f))) ExecutarModoRadar(true);
+                GUILayout.Space(6f);
+                string textoPatrulhaGrupo = (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                    ? $"🛡️ Patrulha Aérea x{qtdPatrulhaGrupo}"
+                    : "🛡️ Patrulha Aérea";
+                if (GUILayout.Button(textoPatrulhaGrupo, _stAeroBotaoPrimario, GUILayout.Height(36f)))
+                {
+                    if (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
+                    {
+                        PrepararPatrulhaEmGrupo();
+                    }
+                    else
+                    {
+                        ExecutarModoRadar(false, true);
+                    }
+                }
+                GUILayout.Space(6f);
+                if (GUILayout.Button("💣 Ataque Solo", _stAeroBotaoPerigo, GUILayout.Height(36f))) ExecutarModoRadar(false);
+                GUILayout.EndHorizontal();
+            }
+        }
+        else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+        {
+            var c17EmVoo = aviaoSelecionadoParaMissao.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
+            GUILayout.Label("<color=#33E1FF>Aeronave civil/militar operando no espaço aéreo.</color>", _stAeroLabelWrap);
+            GUILayout.Space(6f);
 
-                // Marcar Área de Pouso
-                if (GUILayout.Button("🛬 Marcar Pouso", GUILayout.Height(40)))
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("🎯 ALTERAR ALVO/DESTINO", _stAeroBotaoPrimario, GUILayout.Height(38f)))
+            {
+                _modoPousoC17Pendente = false;
+                ExecutarModoRadar(false);
+            }
+            GUILayout.Space(6f);
+
+            if (c17EmVoo != null)
+            {
+                if (GUILayout.Button("🛬 MARCAR ÁREA DE POUSO", _stAeroBotao, GUILayout.Height(38f)))
                 {
                     _modoPousoC17Pendente = true;
                     ExecutarModoRadar(false);
                 }
+                GUILayout.Space(6f);
 
-                bool noSolo = c17Script.EstadoAtual == Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Pousado
-                           || c17Script.EstadoAtual == Hegemonia.Aeronaves.C17.EstadoAviaoTransporte.Estacionado;
-
-                GUI.enabled = noSolo;
-                if (GUILayout.Button("📥 Embarcar Tropas", GUILayout.Height(40)))
+                if (GUILayout.Button("🔙 RETORNAR AO AEROPORTO", _stAeroBotaoAlerta, GUILayout.Height(38f)))
                 {
-                    c17Script.Comando_EmbarcarTropas();
-                }
-
-                bool temCarga = transportSys != null && (transportSys.TropasEmbarcadasCount > 0 || transportSys.VeiculosEmbarcadosCount > 0);
-                GUI.enabled = temCarga;
-                if (GUILayout.Button("📤 Desembarcar", GUILayout.Height(40)))
-                {
-                    c17Script.Comando_Desembarcar();
-                }
-
-                GUI.enabled = true;
-                if (GUILayout.Button("🔙 Retornar à Base", GUILayout.Height(40)))
-                {
-                    c17Script.ComandoZ_VoltarAeroporto();
-                }
-
-                GUI.enabled = true;
-                GUILayout.EndHorizontal();
-            }
-            else
-            {
-                string nomeLimpo = ObterInfoAviao(aviaoSelecionadoParaMissao, out string corCristal, out string vidaStr);
-                GUILayout.Label($"<b>PAINEL DE ORDENS: <color={corCristal}>■</color> {nomeLimpo}{vidaStr}</b>");
-                GUILayout.Label($"📍 {aviaoSelecionadoParaMissao.ObterResumoLocalizacao()}");
-                GerenciadorAeroporto destinoAtualAereo = aviaoSelecionadoParaMissao.DestinoPousoEscolhido;
-                if (destinoAtualAereo != null && !ControleAviao.PodeReceberPouso(destinoAtualAereo))
-                    GUILayout.Label("<color=orange>Destino mantido; base indisponível ou sem vaga. Escolha outra base manualmente se desejar.</color>");
-                ControleAviao.ListarDestinosPouso(aviaoSelecionadoParaMissao, _basesDestinoAereoUI);
-                if (_basesDestinoAereoUI.Count > 0)
-                {
-                    GUILayout.Label("<b>DEFINIR BASE DE POUSO</b>");
-                    for (int i = 0; i < _basesDestinoAereoUI.Count; i++)
-                    {
-                        GerenciadorAeroporto baseDestinoUI = _basesDestinoAereoUI[i];
-                        if (baseDestinoUI == null) continue;
-                        bool destinoAtual = baseDestinoUI == destinoAtualAereo;
-                        if (GUILayout.Button((destinoAtual ? "✓ " : "✈ ") + ControleAviao.RotuloBase(baseDestinoUI), GUILayout.Height(24)))
-                        {
-                            bool emVoo = aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
-                                || aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.Decolando;
-                            if (!aviaoSelecionadoParaMissao.SelecionarDestinoPouso(baseDestinoUI, emVoo))
-                                HUDAjudaRTS.MostrarMensagemTemporaria("A base não pode receber esta aeronave agora.", 3f);
-                        }
-                    }
-                }
-                GUI.enabled = true;
-
-                if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
-                {
-                    if (aviaoSelecionadoParaMissao.aeroportoOrigem != this && aviaoSelecionadoParaMissao.aeroportoOrigem != null)
-                    {
-                        GUILayout.Label($"<color=orange>✈️ Estacionado em outra base/navio: {aviaoSelecionadoParaMissao.aeroportoOrigem.name.Replace("(Clone)","")}</color>");
-                        if (GUILayout.Button("🔙 REQUISITAR RETORNO IMEDIATO", GUILayout.Height(50)))
-                        {
-                            // Transferência entre bases precisa marcar o voo
-                            // como retorno. Enviar somente a posição do
-                            // aeroporto fazia o avião chegar ao centro e
-                            // continuar orbitando sem pousar.
-                            aviaoSelecionadoParaMissao.DefinirBaseAlternativaEIniciarRetorno(this);
-                            aviaoSelecionadoParaMissao = null;
-                            menuAtivo = false;
-                            if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
-                        }
-                    }
-                    else if (aviaoSelecionadoParaMissao.aguardandoCliqueRadar)
-                    {
-                        GUILayout.Label("<color=yellow>⚠️ MODO ALVO ATIVO! Feche o Menu e Clique no mapa com o Botão Direito.</color>");
-                        if (GUILayout.Button("❌ Cancelar Ordem", GUILayout.Height(30)))
-                        {
-                            aviaoSelecionadoParaMissao.aguardandoCliqueRadar = false;
-                            _modoPousoC17Pendente = false;
-                            LimparModoMassaAereo();
-                            AtualizarModoInteracaoManualAeroporto();
-                        }
-                    }
-                    bool isKamikaze = aviaoSelecionadoParaMissao.GetComponent<KamikazeDrone>() != null;
-                    bool isBombardeiro = aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>() != null;
-                    int totalMesmoModelo = 0;
-
-                    if (!isKamikaze)
-                    {
-                        string modeloPainel = ObterChaveModeloAviao(aviaoSelecionadoParaMissao);
-                        if (_ultimoModeloPainelPatrulha != modeloPainel)
-                        {
-                            _ultimoModeloPainelPatrulha = modeloPainel;
-                            qtdPatrulhaGrupo = 1;
-                        }
-
-                        totalMesmoModelo = ContarAvioesDisponiveisMesmoModelo(aviaoSelecionadoParaMissao);
-                        if (totalMesmoModelo < 3)
-                        {
-                            qtdPatrulhaGrupo = 1;
-                        }
-                        else
-                        {
-                            qtdPatrulhaGrupo = Mathf.Clamp(qtdPatrulhaGrupo, 1, totalMesmoModelo);
-                            GUILayout.BeginHorizontal();
-                            GUILayout.Label($"<b>Qtd. P/ Patrulha:</b> {qtdPatrulhaGrupo}/{totalMesmoModelo}");
-                            if (GUILayout.Button("-", GUILayout.Width(35), GUILayout.Height(30))) qtdPatrulhaGrupo = Mathf.Max(1, qtdPatrulhaGrupo - 1);
-                            if (GUILayout.Button("+", GUILayout.Width(35), GUILayout.Height(30))) qtdPatrulhaGrupo = Mathf.Min(totalMesmoModelo, qtdPatrulhaGrupo + 1);
-                            if (GUILayout.Button("Todos", GUILayout.Width(60), GUILayout.Height(30))) qtdPatrulhaGrupo = totalMesmoModelo;
-                            GUILayout.EndHorizontal();
-                        }
-                    }
-
-                        if (isKamikaze)
-                    {
-                        GUILayout.BeginHorizontal();
-                        GUILayout.Label($"<b>Qtd. P/ Ataque:</b> {qtdMassaDrone}");
-                        if (GUILayout.Button("-", GUILayout.Width(35), GUILayout.Height(30))) qtdMassaDrone = Mathf.Max(1, qtdMassaDrone - 1);
-                        if (GUILayout.Button("+", GUILayout.Width(35), GUILayout.Height(30))) qtdMassaDrone++;
-                        if (GUILayout.Button("Todos", GUILayout.Width(60), GUILayout.Height(30))) 
-                        {
-                            int totais = 0;
-                            foreach(var a in avioesNoPatio) if (a != null && a.GetComponent<KamikazeDrone>() != null) totais++;
-                            foreach(var a in avioesNoHangar) if (a != null && a.GetComponent<KamikazeDrone>() != null) totais++;
-                            qtdMassaDrone = totais;
-                        }
-                        GUILayout.EndHorizontal();
-
-                        GUILayout.BeginHorizontal();
-                        if (GUILayout.Button("🚀 ATAQUE EM MASSA", GUILayout.Height(40))) 
-                        {
-                            LimparModoMassaAereo();
-                            aviaoSelecionadoParaMissao.aguardandoCliqueRadar = true;
-                            esperandoCliqueMassa = true;
-                        }
-                        if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) 
-                        {
-                            ExecutarModoRadar(false);
-                            esperandoCliqueMassa = false;
-                        }
-                        GUILayout.EndHorizontal();
-                    }
-                    else if (isBombardeiro)
-                    {
-                        GUILayout.BeginHorizontal();
-                        if (GUILayout.Button("💣 Ataque Área (Tapete)", GUILayout.Height(40))) 
-                        {
-                            aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
-                            ExecutarModoRadar(false);
-                        }
-                        string textoPatrulhaBombardeiro = (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
-                            ? $"🛡️ Radar (Móvel) x{qtdPatrulhaGrupo}"
-                            : "🛡️ Radar (Móvel)";
-                        if (GUILayout.Button(textoPatrulhaBombardeiro, GUILayout.Height(40))) 
-                        {
-                            aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.Patrulha;
-                            if (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
-                            {
-                                PrepararPatrulhaEmGrupo();
-                            }
-                            else
-                            {
-                                ExecutarModoRadar(false, true);
-                            }
-                        }
-                        if (GUILayout.Button("🚀 Ataque em Massa", GUILayout.Height(40))) 
-                        {
-                            aviaoSelecionadoParaMissao.GetComponent<AviaoBombardeiro>().modoDeAtaque = AviaoBombardeiro.ModoAtaque.AtaqueEmMassa;
-                            ExecutarModoRadar(false);
-                        }
-                        GUILayout.EndHorizontal();
-                    }
-                    else
-                    {
-                        GUILayout.BeginHorizontal();
-                        if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(40))) ExecutarModoRadar(true);
-                        string textoPatrulhaGrupo = (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
-                            ? $"🛡️ Patrulha Aérea x{qtdPatrulhaGrupo}"
-                            : "🛡️ Patrulha Aérea";
-                        if (GUILayout.Button(textoPatrulhaGrupo, GUILayout.Height(40)))
-                        {
-                            if (totalMesmoModelo >= 3 && qtdPatrulhaGrupo > 1)
-                            {
-                                PrepararPatrulhaEmGrupo();
-                            }
-                            else
-                            {
-                                ExecutarModoRadar(false, true);
-                            }
-                        }
-                        if (GUILayout.Button("💣 Ataque Solo", GUILayout.Height(40))) ExecutarModoRadar(false);
-                        GUILayout.EndHorizontal();
-                    }
-            }
-            else if (aviaoSelecionadoParaMissao.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
-            {
-                var c17EmVoo = aviaoSelecionadoParaMissao.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>();
-                GUILayout.Label("<color=cyan>Aeronave civil/militar operando no espaço aéreo.</color>");
-
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("🎯 ALTERAR ALVO/DESTINO", GUILayout.Height(50)))
-                {
-                    _modoPousoC17Pendente = false;
-                    ExecutarModoRadar(false);
-                }
-
-                if (c17EmVoo != null)
-                {
-                    if (GUILayout.Button("🛬 MARCAR ÁREA DE POUSO", GUILayout.Height(50)))
-                    {
-                        _modoPousoC17Pendente = true;
-                        ExecutarModoRadar(false);
-                    }
-
-                    if (GUILayout.Button("🔙 RETORNAR AO AEROPORTO", GUILayout.Height(50)))
-                    {
-                        c17EmVoo.ComandoZ_VoltarAeroporto();
-                        aviaoSelecionadoParaMissao = null;
-                        menuAtivo = false;
-                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
-                    }
-                }
-                else if (GUILayout.Button("🔙 ABORTAR E RETORNAR À BASE", GUILayout.Height(50)))
-                {
-                    aviaoSelecionadoParaMissao.ComandoRetornarBase();
+                    c17EmVoo.ComandoZ_VoltarAeroporto();
                     aviaoSelecionadoParaMissao = null;
-                    menuAtivo = false;
-                    if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                    FecharPainelAeroporto();
                 }
-                GUILayout.EndHorizontal();
             }
-            else
+            else if (GUILayout.Button("🔙 ABORTAR E RETORNAR À BASE", _stAeroBotaoPerigo, GUILayout.Height(38f)))
             {
-                 GUILayout.Label($"<color=orange>Aeronave em trânsito: {aviaoSelecionadoParaMissao.estadoAtual}...</color>");
-                 GUI.enabled = false;
-                 GUILayout.Button("Aguarde a manobra de pista...", GUILayout.Height(40));
-                 GUI.enabled = true;
+                aviaoSelecionadoParaMissao.ComandoRetornarBase();
+                aviaoSelecionadoParaMissao = null;
+                FecharPainelAeroporto();
             }
-            if (semEnergia) GUI.enabled = true;
+            GUILayout.EndHorizontal();
+        }
+        else
+        {
+            GUILayout.Label($"<color=#FFA94D>Aeronave em trânsito: {estadoStr}...</color>", _stAeroLabel);
+            GUI.enabled = false;
+            GUILayout.Button("Aguarde a manobra de pista...", _stAeroBotao, GUILayout.Height(34f));
+            GUI.enabled = true;
         }
 
-        }
-        DesenharPainelHelicoptero();
-        DesenharPainelC700();
+        if (semEnergia) GUI.enabled = true;
     }
 
     private void DesenharPainelHelicoptero()
@@ -3532,33 +4048,36 @@ public class GerenciadorAeroporto : MonoBehaviour
             return;
         }
 
-        GUILayout.Space(12);
-        GUILayout.BeginVertical("box");
+        GUILayout.Space(6f);
+        GUILayout.BeginVertical();
         if (semEnergia) GUI.enabled = false;
+
         string nomeHeliSelecionado = helicopteroSelecionadoParaMissao.ObterRotuloExibicao();
-        GUILayout.Label($"<b>PAINEL DE ORDENS: 🚁 {nomeHeliSelecionado}</b>");
-        GUILayout.Label($"<color=cyan>{helicopteroSelecionadoParaMissao.ObterEstadoOperacionalAeroporto()}</color>");
+        GUILayout.Label($"<size=14><b>🚁 {nomeHeliSelecionado}</b></size>", _stAeroLabel);
+        GUILayout.Label($"<color=#33E1FF>{helicopteroSelecionadoParaMissao.ObterEstadoOperacionalAeroporto()}</color>", _stAeroLabel);
         string combustivelHeliSelecionado = CombustivelUnidade.TextoCurto(helicopteroSelecionadoParaMissao);
         if (!string.IsNullOrEmpty(combustivelHeliSelecionado))
         {
-            GUILayout.Label($"<color=cyan>{combustivelHeliSelecionado}</color>");
+            GUILayout.Label($"<color=#33E1FF>{combustivelHeliSelecionado}</color>", _stAeroLabel);
         }
+
+        GUILayout.Space(6f);
 
         if (_modoOrdemHelicoptero != ModoOrdemHelicoptero.Nenhum)
         {
             if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Patrulha)
             {
-                GUILayout.Label($"<color=yellow>PATRULHA ATIVA: clique direito adiciona e já aplica ponto ({_rotaPatrulhaHelicoptero.Count}). ENTER encerra edição, BACKSPACE desfaz, ESC cancela.</color>");
+                GUILayout.Label($"<color=#FFD166>PATRULHA ATIVA: clique direito adiciona e já aplica ponto ({_rotaPatrulhaHelicoptero.Count}). ENTER encerra edição, BACKSPACE desfaz, ESC cancela.</color>", _stAeroLabelWrap);
             }
             else
             {
                 string modoTexto = "ATAQUE LOCAL";
                 if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Reconhecimento) modoTexto = "RECONHECIMENTO";
                 else if (_modoOrdemHelicoptero == ModoOrdemHelicoptero.Transporte) modoTexto = "TRANSPORTE";
-                GUILayout.Label($"<color=yellow>{modoTexto} ATIVO: clique com botão direito no mapa. ESC cancela.</color>");
+                GUILayout.Label($"<color=#FFD166>{modoTexto} ATIVO: clique com botão direito no mapa. ESC cancela.</color>", _stAeroLabelWrap);
             }
 
-            if (GUILayout.Button("❌ Cancelar Ordem Helicóptero", GUILayout.Height(30)))
+            if (GUILayout.Button("❌ Cancelar Ordem Helicóptero", _stAeroBotaoPerigo, GUILayout.Height(32f)))
             {
                 CancelarModoHelicoptero();
             }
@@ -3566,56 +4085,65 @@ public class GerenciadorAeroporto : MonoBehaviour
         else
         {
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("👁️ Reconhecimento", GUILayout.Height(38)))
+            if (GUILayout.Button("👁️ Reconhecimento", _stAeroBotao, GUILayout.Height(34f)))
             {
                 IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Reconhecimento);
             }
-            if (GUILayout.Button("🛡️ Patrulha", GUILayout.Height(38)))
+            GUILayout.Space(6f);
+            if (GUILayout.Button("🛡️ Patrulha", _stAeroBotaoPrimario, GUILayout.Height(34f)))
             {
                 IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Patrulha);
             }
-            if (helicopteroSelecionadoParaMissao.podeAtacar && GUILayout.Button("💥 Ataque local", GUILayout.Height(38)))
+            if (helicopteroSelecionadoParaMissao.podeAtacar)
             {
-                IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.AtaqueLocal);
+                GUILayout.Space(6f);
+                if (GUILayout.Button("💥 Ataque local", _stAeroBotaoPerigo, GUILayout.Height(34f)))
+                {
+                    IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.AtaqueLocal);
+                }
             }
             GUILayout.EndHorizontal();
 
             if (helicopteroSelecionadoParaMissao.EhHelicopteroTransporte())
             {
-                GUILayout.Space(4);
+                GUILayout.Space(6f);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("🛬 Transporte", GUILayout.Height(34)))
+                if (GUILayout.Button("🛬 Transporte", _stAeroBotaoPrimario, GUILayout.Height(32f)))
                 {
                     IniciarModoHelicoptero(helicopteroSelecionadoParaMissao, ModoOrdemHelicoptero.Transporte);
                 }
-                GUILayout.Label($"Tropas: {helicopteroSelecionadoParaMissao.soldadosEmbarcados.Count}/{helicopteroSelecionadoParaMissao.capacidadeMaxima}", GUILayout.Width(150));
+                GUILayout.Space(8f);
+                GUILayout.Label($"Tropas: <b>{helicopteroSelecionadoParaMissao.soldadosEmbarcados.Count}/{helicopteroSelecionadoParaMissao.capacidadeMaxima}</b>", _stAeroLabel, GUILayout.Width(130f), GUILayout.Height(32f));
                 GUILayout.EndHorizontal();
 
                 bool podeOperarTropas = helicopteroSelecionadoParaMissao.PodeOperarTropasNoMenu();
                 bool pousadoForaDaBase = podeOperarTropas && !helicopteroSelecionadoParaMissao.EstaEstacionadoNoAeroporto();
                 if (podeOperarTropas && (pousadoForaDaBase || helicopteroSelecionadoParaMissao.TemSoldados()))
                 {
+                    GUILayout.Space(4f);
                     GUILayout.BeginHorizontal();
                     GUI.enabled = pousadoForaDaBase && helicopteroSelecionadoParaMissao.TemEspaco() > 0;
-                    if (GUILayout.Button("📥 Recolher tropas", GUILayout.Height(32)))
+                    if (GUILayout.Button("📥 Recolher tropas", _stAeroBotao, GUILayout.Height(30f)))
                     {
                         int recolhidos = helicopteroSelecionadoParaMissao.RecolherTropasPeloMenu();
                         Debug.Log($"[Aeroporto] Helicóptero recolheu {recolhidos} tropa(s).");
                     }
+                    GUILayout.Space(6f);
                     GUI.enabled = podeOperarTropas && helicopteroSelecionadoParaMissao.TemSoldados();
-                    if (GUILayout.Button("📤 Desembarcar", GUILayout.Height(32)))
+                    if (GUILayout.Button("📤 Desembarcar", _stAeroBotao, GUILayout.Height(30f)))
                     {
                         int desembarcados = helicopteroSelecionadoParaMissao.DesembarcarTropasNoLocalAtual();
                         Debug.Log($"[Aeroporto] Helicóptero desembarcou {desembarcados} tropa(s).");
                     }
-                    GUI.enabled = true;
+                    GUI.enabled = !semEnergia;
                     GUILayout.EndHorizontal();
                 }
             }
 
             if (!helicopteroSelecionadoParaMissao.EstaEstacionadoNoAeroporto())
             {
-                if (GUILayout.Button("🔙 Retornar para vaga H", GUILayout.Height(32)))
+                GUILayout.Space(6f);
+                if (GUILayout.Button("🔙 Retornar para vaga H", _stAeroBotaoAlerta, GUILayout.Height(32f)))
                 {
                     helicopteroSelecionadoParaMissao.RetornarParaVagaAeroporto();
                 }
@@ -3638,107 +4166,111 @@ public class GerenciadorAeroporto : MonoBehaviour
             c700SelecionadoParaMissao = transportesC700NoPatio[0];
         }
 
-        GUILayout.Space(12);
-        GUILayout.BeginVertical("box");
-        GUILayout.Label("<b>TRANSPORTE C700</b>");
-        scrollPosC700 = GUILayout.BeginScrollView(scrollPosC700, GUILayout.Height(380));
+        GUILayout.Space(6f);
+        GUILayout.Label("<b>TRANSPORTE C700</b>", _stAeroSecaoTitulo);
 
-        for (int i = 0; i < transportesC700NoPatio.Count; i++)
+        if (transportesC700NoPatio.Count > 1)
         {
-            C700TransporteAereo transporte = transportesC700NoPatio[i];
-            if (transporte == null) continue;
-
-            string nomeLimpo = ObterInfoAviao(transporte, out string corCristal, out string vidaStr);
-            string corEstado = transporte.EstaNoSolo ? "green" : "orange";
-            if (GUILayout.Button($"<color={corCristal}>■</color> {nomeLimpo}{vidaStr} [<color={corEstado}>{transporte.estadoAtual}</color>]", GUILayout.Height(28)))
+            scrollPosC700 = GUILayout.BeginScrollView(scrollPosC700, GUILayout.Height(84f));
+            for (int i = 0; i < transportesC700NoPatio.Count; i++)
             {
-                c700SelecionadoParaMissao = transporte;
-                aviaoSelecionadoParaMissao = null;
-                helicopteroSelecionadoParaMissao = null;
+                C700TransporteAereo transporte = transportesC700NoPatio[i];
+                if (transporte == null) continue;
+
+                string nomeLimpo = ObterInfoAviao(transporte, out string corCristal, out string vidaStr);
+                (string estadoC700, string corEstado) = FormatarEstadoC700(transporte.estadoAtual);
+                GUIStyle estiloC700 = c700SelecionadoParaMissao == transporte ? _stAeroBotaoListaSelecionado : _stAeroBotaoLista;
+                if (GUILayout.Button($"<color={corCristal}>■</color> {nomeLimpo}{vidaStr} <color={corEstado}>[{estadoC700}]</color>", estiloC700, GUILayout.Height(26f)))
+                {
+                    c700SelecionadoParaMissao = transporte;
+                    aviaoSelecionadoParaMissao = null;
+                    helicopteroSelecionadoParaMissao = null;
+                }
             }
+            GUILayout.EndScrollView();
         }
 
         if (c700SelecionadoParaMissao != null && transportesC700NoPatio.Contains(c700SelecionadoParaMissao))
         {
-            GUILayout.Space(8);
+            GUILayout.Space(4f);
             string nomeSelecionado = ObterInfoAviao(c700SelecionadoParaMissao, out string corCristalSelecionado, out string vidaSelecionada);
-            GUILayout.Label($"<b>SELECIONADO:</b> <color={corCristalSelecionado}>■</color> {nomeSelecionado}{vidaSelecionada}");
+            (string estadoC700Sel, string corC700Sel) = FormatarEstadoC700(c700SelecionadoParaMissao.estadoAtual);
+            GUILayout.Label($"<size=14><b><color={corCristalSelecionado}>■</color> {nomeSelecionado}{vidaSelecionada}</b></size>  <color={corC700Sel}>[{estadoC700Sel}]</color>", _stAeroLabel);
+
             if (semEnergia) GUI.enabled = false;
 
-            GUILayout.Label($"Estado: {c700SelecionadoParaMissao.estadoAtual}");
-            GUILayout.Label($"Carga real: {c700SelecionadoParaMissao.QuantidadeCargaAtual}/{c700SelecionadoParaMissao.CapacidadeCargaAtual} | Manifesto: {c700SelecionadoParaMissao.QuantidadeManifestoTotal}");
+            GUILayout.Label($"Carga real: <color=#33E1FF>{c700SelecionadoParaMissao.QuantidadeCargaAtual}/{c700SelecionadoParaMissao.CapacidadeCargaAtual}</color>  •  Manifesto: <color=#33E1FF>{c700SelecionadoParaMissao.QuantidadeManifestoTotal}</color>", _stAeroLabel);
 
             if (c700SelecionadoParaMissao.TemDestinoVisual)
             {
                 Vector3 destinoAtual = c700SelecionadoParaMissao.DestinoVisualAtual;
-                GUILayout.Label($"Destino: X {destinoAtual.x:0} / Z {destinoAtual.z:0}");
+                GUILayout.Label($"Destino: <color=#8BE9FD>X {destinoAtual.x:0} / Z {destinoAtual.z:0}</color>", _stAeroLabel);
             }
 
+            GUILayout.Space(6f);
+
             GUI.enabled = c700SelecionadoParaMissao.EstaNoSolo;
-            if (GUILayout.Button("Puxar tropas", GUILayout.Height(30)))
+            if (GUILayout.Button("📥 Puxar tropas", _stAeroBotao, GUILayout.Height(30f)))
             {
                 c700SelecionadoParaMissao.PuxarUnidadesProximas();
             }
             GUI.enabled = true;
+            GUILayout.Space(4f);
 
             if (c700SelecionadoParaMissao.EstaNoSolo)
             {
                 if (c700SelecionadoParaMissao.AguardandoDestinoAereo)
                 {
-                    GUILayout.Label("<color=yellow>MODO AEREO ATIVO. FECHE O MENU E CLIQUE COM O BOTAO DIREITO NO MAPA.</color>");
+                    GUILayout.Label("<color=#FFD166>MODO AÉREO ATIVO. Feche o menu e clique com o botão direito no mapa.</color>", _stAeroLabelWrap);
                     GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Cancelar ordem", GUILayout.Height(34)))
+                    if (GUILayout.Button("Cancelar ordem", _stAeroBotaoPerigo, GUILayout.Height(32f)))
                     {
                         c700SelecionadoParaMissao.CancelarModoAereo();
                         c700SelecionadoParaMissao = null;
                     }
-                    if (GUILayout.Button("Fechar menu", GUILayout.Height(34)))
+                    GUILayout.Space(6f);
+                    if (GUILayout.Button("Fechar menu", _stAeroBotao, GUILayout.Height(32f)))
                     {
-                        menuAtivo = false;
-                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                        FecharPainelAeroporto();
                     }
                     GUILayout.EndHorizontal();
                 }
                 else
                 {
                     GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Preparar decolagem / destino", GUILayout.Height(40)))
+                    if (GUILayout.Button("Preparar decolagem / destino", _stAeroBotaoPrimario, GUILayout.Height(36f)))
                     {
                         c700SelecionadoParaMissao.PrepararMissaoAerea();
-                        menuAtivo = false;
-                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                        FecharPainelAeroporto();
                     }
-                    if (GUILayout.Button("Voltar para aeroporto", GUILayout.Height(40)))
+                    GUILayout.Space(6f);
+                    if (GUILayout.Button("Voltar para aeroporto", _stAeroBotaoAlerta, GUILayout.Height(36f)))
                     {
                         c700SelecionadoParaMissao.OrdenarRetornoAoAeroporto();
                         c700SelecionadoParaMissao = null;
-                        menuAtivo = false;
-                        if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                        FecharPainelAeroporto();
                     }
                     GUILayout.EndHorizontal();
                 }
 
-                if (GUILayout.Button("Desembarcar carga", GUILayout.Height(34)))
+                GUILayout.Space(4f);
+                if (GUILayout.Button("Desembarcar carga", _stAeroBotao, GUILayout.Height(32f)))
                 {
                     c700SelecionadoParaMissao.DesembarcarTudo();
                 }
             }
             else
             {
-                if (GUILayout.Button("Retornar a base", GUILayout.Height(40)))
+                if (GUILayout.Button("Retornar a base", _stAeroBotaoAlerta, GUILayout.Height(36f)))
                 {
                     c700SelecionadoParaMissao.OrdenarRetornoAoAeroporto();
                     c700SelecionadoParaMissao = null;
-                    menuAtivo = false;
-                    if (menuAeroportoUI != null) menuAeroportoUI.SetActive(false);
+                    FecharPainelAeroporto();
                 }
             }
 
-        if (semEnergia) GUI.enabled = true;
+            if (semEnergia) GUI.enabled = true;
         }
-
-        GUILayout.EndScrollView();
-        GUILayout.EndVertical();
     }
 
     private void ExecutarModoRadar(bool deveSerPassivo, bool usarMarcadorPatrulhaAviao = false)

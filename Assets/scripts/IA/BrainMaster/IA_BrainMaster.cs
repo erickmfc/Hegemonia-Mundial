@@ -82,13 +82,21 @@ namespace Hegemonia.AI.BrainMaster
         [Tooltip("Tempo minimo em segundos que a IA usa para estruturar base e produzir tropas sem atacar.")]
         public float BootstrapMobilizationSeconds = 60f;
 
+        private const int MaximoTanquesAbsolutoPorNacao = 5;
+        private const int CapacidadeMinimaUnidadesComTetoTanques = 32;
+
         [Header("Controle Rigido de Producao Militar")]
-        [SerializeField] private int limiteMaximoUnidades = 5;
+        [SerializeField] private int limiteMaximoUnidades = 32;
         [SerializeField, Range(0.1f, 0.5f)] private float percentualMaximoTanques = 0.45f;
         [SerializeField] private float cooldownCompraMilitarSegundos = 5f;
 
-        public int LimiteMaximoUnidades => Mathf.Max(1, limiteMaximoUnidades);
-        public int LimiteMaximoTanques => Mathf.Max(1, Mathf.FloorToInt(LimiteMaximoUnidades * Mathf.Clamp(percentualMaximoTanques, 0.1f, 0.5f)));
+        public int LimiteMaximoUnidades => limiteMaximoUnidades <= MaximoTanquesAbsolutoPorNacao
+            ? CapacidadeMinimaUnidadesComTetoTanques
+            : Mathf.Max(1, limiteMaximoUnidades);
+        public int LimiteMaximoTanques => Mathf.Clamp(
+            Mathf.FloorToInt(LimiteMaximoUnidades * Mathf.Clamp(percentualMaximoTanques, 0.1f, 0.5f)),
+            1,
+            MaximoTanquesAbsolutoPorNacao);
         public float CooldownCompraMilitarSegundos => Mathf.Max(0f, cooldownCompraMilitarSegundos);
 
         private float _proximaCompraMilitarPermitida;
@@ -194,7 +202,20 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             string n = IA_Text.Normalize(normalizedText);
-            if (n.Contains("petroleiro") || n.Contains("petrolifero") || n.Contains("tanker"))
+            if (n.Contains("petroleiro")
+                || n.Contains("petrolifero")
+                || n.Contains("tanker")
+                || n.Contains("estaleiro")
+                || n.Contains("pier")
+                || n.Contains("plataforma")
+                || n.Contains("navio")
+                || n.Contains("fragata")
+                || n.Contains("corveta")
+                || n.Contains("submarino")
+                || n.Contains("destroier")
+                || n.Contains("destroyer")
+                || n.Contains("construtor de veiculo")
+                || n.Contains("fabrica"))
             {
                 return false;
             }
@@ -206,6 +227,17 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("bradley")
                    || n.Contains("abrams")
                    || n.Contains("leopard")
+                   || n.Contains("lopard")
+                   || n.Contains("leonc")
+                   || n.Contains("leon c1")
+                   || n.Contains("tank_king")
+                   || n.Contains("codex")
+                   || n.Contains("tank_ubu")
+                   || n.Contains("ubu")
+                   || n.Contains("antigravity")
+                   || n.Contains("tank arthur")
+                   || n.Contains("tank south")
+                   || n.Contains("tank c1")
                    || n.Contains("t90")
                    || n.Contains("t-90")
                    || n.Contains("ifv")
@@ -423,12 +455,12 @@ namespace Hegemonia.AI.BrainMaster
 
         public int DiaAtualJogo => GerenciadorTempo.Instancia != null ? Mathf.Max(1, GerenciadorTempo.Instancia.totalDias) : 1;
         public bool UsaCronogramaIA03 => TeamId == 2;
-        public bool IA03Despertou => !UsaCronogramaIA03 || DiaAtualJogo > 2;
-        public bool IA03AereoLiberado => !UsaCronogramaIA03 || DiaAtualJogo > 4;
+        public bool IA03Despertou => true;
+        public bool IA03AereoLiberado => true;
         public bool IA03PatrulhaTerrestreAtiva => !UsaCronogramaIA03 || (DiaAtualJogo >= 5 && DiaAtualJogo < 10);
-        public bool IA03EstaleiroEPetroleiroLiberado => !UsaCronogramaIA03 || DiaAtualJogo >= 7;
-        public bool IA03PatrulhaAereaLiberada => !UsaCronogramaIA03 || DiaAtualJogo >= 7;
-        public bool IA03NavioMilitarLiberado => !UsaCronogramaIA03 || DiaAtualJogo >= 10;
+        public bool IA03EstaleiroEPetroleiroLiberado => true;
+        public bool IA03PatrulhaAereaLiberada => true;
+        public bool IA03NavioMilitarLiberado => true;
         public int IA03LimitePetroleiros => DiaAtualJogo > 20 ? 4 : 2;
 
         public bool IA03AlertaAmeacaAtivo
@@ -983,6 +1015,9 @@ namespace Hegemonia.AI.BrainMaster
                 }
                 else
                 {
+                    TargetShipyards = Mathf.Max(1, TargetShipyards);
+                    TargetPiers = Mathf.Max(1, TargetPiers);
+                    TargetPlatforms = Mathf.Max(1, TargetPlatforms);
                     TargetOilTankers = IA03LimitePetroleiros;
                 }
 
@@ -994,6 +1029,7 @@ namespace Hegemonia.AI.BrainMaster
                 else
                 {
                     TargetFleet = Mathf.Max(2, TargetFleet);
+                    TargetCoastalDefenseShips = Mathf.Max(1, TargetCoastalDefenseShips);
                 }
 
                 // Monitora perda ou dano em plataformas de petroleo proprias
@@ -2980,9 +3016,16 @@ namespace Hegemonia.AI.BrainMaster
                 case IA_CommandType.Build:
                 case IA_CommandType.Produce:
                     return true;
+                case IA_CommandType.Patrol:
+                    if (BootstrapStage == IA_BootstrapStage.HoldShipLaunch
+                        && string.Equals(request.Domain, "naval", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+
+                    return UsaCronogramaIA03 || (int)BootstrapStage >= (int)IA_BootstrapStage.ProduceAircraft;
                 case IA_CommandType.Move:
                 case IA_CommandType.Attack:
-                case IA_CommandType.Patrol:
                 case IA_CommandType.Ability:
                     return false;
                 default:

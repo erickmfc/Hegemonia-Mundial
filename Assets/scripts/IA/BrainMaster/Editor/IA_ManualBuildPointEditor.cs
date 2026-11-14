@@ -8,6 +8,7 @@ namespace Hegemonia.AI.BrainMaster
     [CustomEditor(typeof(IA_ManualBuildPoint))]
     public sealed class IA_ManualBuildPointEditor : Editor
     {
+        private SerializedProperty _prefabConstrucao;
         private SerializedProperty _itemFilters;
         private SerializedProperty _manualRole;
         private SerializedProperty _allowInactiveObject;
@@ -23,6 +24,7 @@ namespace Hegemonia.AI.BrainMaster
 
         private void OnEnable()
         {
+            _prefabConstrucao = serializedObject.FindProperty("PrefabConstrucao");
             _itemFilters = serializedObject.FindProperty("ItemFilters");
             _manualRole = serializedObject.FindProperty("ManualRole");
             _allowInactiveObject = serializedObject.FindProperty("AllowInactiveObject");
@@ -43,6 +45,10 @@ namespace Hegemonia.AI.BrainMaster
 
             EditorGUILayout.LabelField("Manual Build", EditorStyles.boldLabel);
             DrawRolePopup();
+            if (_prefabConstrucao != null)
+            {
+                EditorGUILayout.PropertyField(_prefabConstrucao, new GUIContent("Prefab da Construção"));
+            }
             EditorGUILayout.PropertyField(_itemFilters);
             EditorGUILayout.PropertyField(_allowInactiveObject);
             EditorGUILayout.PropertyField(_forceExactPlacement);

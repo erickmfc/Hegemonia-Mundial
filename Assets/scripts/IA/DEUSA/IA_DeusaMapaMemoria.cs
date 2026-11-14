@@ -45,8 +45,17 @@ namespace Hegemonia.AI.DEUSA
 
             AncoraTerraSegura = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 40f, 220f, 18);
             AncoraCosta = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Coast, 100f, 420f, 24);
+            if (AncoraCosta == Vector3.zero)
+            {
+                AncoraCosta = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Coast, 420f, 1400f, 32);
+            }
+
             AncoraAerea = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Open, 90f, 260f, 22);
             AncoraNaval = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Water, 120f, 440f, 24);
+            if (AncoraNaval == Vector3.zero)
+            {
+                AncoraNaval = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Water, 440f, 1400f, 32);
+            }
             AncoraExpansao = context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.City, 180f, 520f, 26);
 
             TemTerraSegura = AncoraTerraSegura != Vector3.zero;
