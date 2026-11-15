@@ -809,7 +809,7 @@ public class MiniMapa : MonoBehaviour
             for (int i = 0; i < _registeredUnits.Count && _markers.Count < MaxVisibleMarkers; i++)
             {
                 IdentidadeUnidade identity = _registeredUnits[i];
-                if (identity == null || !identity.isActiveAndEnabled || identity.teamID != _playerTeamId)
+                if (identity == null || !identity.isActiveAndEnabled || identity.teamID != _playerTeamId || MarcadorTerritorio.EhSlotDeCidadeNaoConstruido(identity))
                     continue;
 
                 _markers.Add(new MarkerData

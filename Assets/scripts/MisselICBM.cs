@@ -30,8 +30,21 @@ public class MisselICBM : MonoBehaviour
     private bool iniciouDescida;
     private Vector3 pontoDePartida;
     private float alturaDoApex;
+    private GameObject origemAgressor;
     private readonly Collider[] bufferExplosao = new Collider[160];
     private static readonly HashSet<int> alvosProcessados = new HashSet<int>();
+
+    public void DefinirOrigem(GameObject origem)
+    {
+        origemAgressor = origem;
+    }
+
+    private void OnDisable()
+    {
+        CancelInvoke(nameof(ReativarColisao));
+        origemAgressor = null;
+        lancado = false;
+    }
 
     public void IniciarLancamento(Vector3 pontoAlvo)
     {
@@ -229,6 +242,7 @@ public class MisselICBM : MonoBehaviour
         }
         
         // 3. Aplica Dano e Física (O Melhor dos Dois Mundos)
+        GameObject agressorImpacto = origemAgressor != null ? origemAgressor : gameObject;
         alvosProcessados.Clear();
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDano, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
@@ -246,7 +260,7 @@ public class MisselICBM : MonoBehaviour
                 int idVida = vida.GetInstanceID();
                 if (alvosProcessados.Add(idVida))
                 {
-                    vida.ReceberDano(Mathf.RoundToInt(Mathf.Max(300f, raioDeDano * 50f)));
+                    vida.ReceberDano(Mathf.RoundToInt(Mathf.Max(300f, raioDeDano * 50f)), agressorImpacto);
                 }
             }
 

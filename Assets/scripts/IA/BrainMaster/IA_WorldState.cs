@@ -530,63 +530,83 @@ namespace Hegemonia.AI.BrainMaster
             float bestScore = float.MinValue;
             Vector3 flatFrom = Flatten(fromPosition);
 
-            for (int i = 0; i < _registrySnapshot.Count; i++)
+            for (int pass = 0; pass < 2; pass++)
             {
-                RegistrySnapshotEntry snap = _registrySnapshot[i];
-                if (snap.Identity == null || snap.GameObject == null || !snap.GameObject.activeInHierarchy)
+                for (int i = 0; i < _registrySnapshot.Count; i++)
                 {
-                    continue;
+                    RegistrySnapshotEntry snap = _registrySnapshot[i];
+                    if (snap.Identity == null || snap.GameObject == null || snap.Transform == null || !snap.GameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    Vector3 candidatePos;
+                    if (pass == 0)
+                    {
+                        if (!IsHostileVisible(snap.Identity))
+                        {
+                            continue;
+                        }
+                        candidatePos = snap.Transform.position;
+                    }
+                    else
+                    {
+                        if (!TryGetFallbackStrategicPosition(snap, out candidatePos))
+                        {
+                            continue;
+                        }
+                    }
+
+                    string name = snap.Cache.NormalizedName;
+                    float distance = Vector3.Distance(flatFrom, Flatten(candidatePos));
+
+                    float score = snap.Cache.IsStructure ? 120f : 35f;
+                    if (snap.Cache.Domain == IA_Domain.Land)
+                    {
+                        score += 10f;
+                    }
+
+                    if (name.Contains("plataforma") || name.Contains("petroleiro") || name.Contains("petrolifero") || name.Contains("tanker"))
+                    {
+                        score += 170f;
+                    }
+                    else if (name.Contains("pier") || name.Contains("estaleiro"))
+                    {
+                        score += 150f;
+                    }
+                    else if (name.Contains("aeroporto") || name.Contains("airport"))
+                    {
+                        score += 135f;
+                    }
+                    else if (name.Contains("fabrica") || name.Contains("construtor"))
+                    {
+                        score += 110f;
+                    }
+                    else if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
+                    {
+                        score += 95f;
+                    }
+                    else if (name.Contains("quartel general") || name.Contains("quartel_general") || name.Contains("hq"))
+                    {
+                        score += 120f;
+                    }
+
+                    score -= distance * 0.015f;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        position = candidatePos;
+                        targetTeamId = snap.Identity.teamID;
+                    }
                 }
 
-                if (!IsHostileVisible(snap.Identity))
+                if (bestScore > float.MinValue)
                 {
-                    continue;
-                }
-
-                string name = snap.Cache.NormalizedName;
-                float distance = Vector3.Distance(flatFrom, Flatten(snap.Transform.position));
-
-                float score = snap.Cache.IsStructure ? 120f : 35f;
-                if (snap.Cache.Domain == IA_Domain.Land)
-                {
-                    score += 10f;
-                }
-
-                if (name.Contains("plataforma") || name.Contains("petroleiro") || name.Contains("petrolifero") || name.Contains("tanker"))
-                {
-                    score += 170f;
-                }
-                else if (name.Contains("pier") || name.Contains("estaleiro"))
-                {
-                    score += 150f;
-                }
-                else if (name.Contains("aeroporto") || name.Contains("airport"))
-                {
-                    score += 135f;
-                }
-                else if (name.Contains("fabrica") || name.Contains("construtor"))
-                {
-                    score += 110f;
-                }
-                else if (name.Contains("prefeitura") || name.Contains("capital") || name.Contains("governo"))
-                {
-                    score += 95f;
-                }
-                else if (name.Contains("quartel general") || name.Contains("quartel_general") || name.Contains("hq"))
-                {
-                    score += 120f;
-                }
-
-                score -= distance * 0.015f;
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    position = snap.Transform.position;
-                    targetTeamId = snap.Identity.teamID;
+                    return true;
                 }
             }
 
-            return bestScore > float.MinValue;
+            return false;
         }
 
         public int FillEnemyStrategicTargets(List<IA_StrategicTargetData> output, Vector3 fromPosition, int maxTargets)
@@ -604,38 +624,130 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             Vector3 flatFrom = Flatten(fromPosition);
-            for (int i = 0; i < _registrySnapshot.Count; i++)
+            for (int pass = 0; pass < 2; pass++)
             {
-                RegistrySnapshotEntry snap = _registrySnapshot[i];
-                if (snap.Identity == null || snap.GameObject == null || snap.Transform == null || !snap.GameObject.activeInHierarchy)
+                for (int i = 0; i < _registrySnapshot.Count; i++)
                 {
-                    continue;
+                    RegistrySnapshotEntry snap = _registrySnapshot[i];
+                    if (snap.Identity == null || snap.GameObject == null || snap.Transform == null || !snap.GameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    Vector3 candidatePos;
+                    if (pass == 0)
+                    {
+                        if (!IsHostileVisible(snap.Identity))
+                        {
+                            continue;
+                        }
+                        candidatePos = snap.Transform.position;
+                    }
+                    else
+                    {
+                        if (!TryGetFallbackStrategicPosition(snap, out candidatePos))
+                        {
+                            continue;
+                        }
+                    }
+
+                    IA_StrategicTargetKind kind = ResolveStrategicTargetKind(snap.Cache, snap.GameObject);
+                    if (kind == IA_StrategicTargetKind.None)
+                    {
+                        continue;
+                    }
+
+                    float distance = Vector3.Distance(flatFrom, Flatten(candidatePos));
+                    float score = ScoreStrategicTarget(_teamId, kind, snap.Cache, distance);
+                    IA_StrategicTargetData target = GetReusableStrategicTarget();
+                    target.Kind = kind;
+                    target.Transform = snap.Transform;
+                    target.Position = candidatePos;
+                    target.Score = score;
+                    target.Label = snap.Cache.NormalizedName;
+
+                    InsertStrategicTarget(output, target, maxTargets);
                 }
 
-                if (!IsHostileVisible(snap.Identity))
+                if (output.Count > 0)
                 {
-                    continue;
+                    break;
                 }
-
-                IA_StrategicTargetKind kind = ResolveStrategicTargetKind(snap.Cache, snap.GameObject);
-                if (kind == IA_StrategicTargetKind.None)
-                {
-                    continue;
-                }
-
-                float distance = Vector3.Distance(flatFrom, Flatten(snap.Transform.position));
-                float score = ScoreStrategicTarget(_teamId, kind, snap.Cache, distance);
-                IA_StrategicTargetData target = GetReusableStrategicTarget();
-                target.Kind = kind;
-                target.Transform = snap.Transform;
-                target.Position = snap.Transform.position;
-                target.Score = score;
-                target.Label = snap.Cache.NormalizedName;
-
-                InsertStrategicTarget(output, target, maxTargets);
             }
 
             return output.Count;
+        }
+
+        public bool TryGetCounterattackTarget(Vector3 fromPosition, out Transform targetTransform, out Vector3 targetPosition, out int targetTeamId)
+        {
+            targetTransform = null;
+            targetPosition = Vector3.zero;
+            targetTeamId = 0;
+
+            float bestDistanceSqr = float.MaxValue;
+            Vector3 flatFrom = Flatten(fromPosition);
+            float now = Time.unscaledTime;
+
+            foreach (var pair in _enemyMemoryById)
+            {
+                IA_EnemyObservation obs = pair.Value;
+                if (obs == null || obs.TeamId <= 0 || obs.TeamId == _teamId || obs.ForgetAt < now)
+                {
+                    continue;
+                }
+
+                if (!ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, obs.TeamId))
+                {
+                    continue;
+                }
+
+                Vector3 pos = obs.Transform != null ? obs.Transform.position : obs.Position;
+                float distSqr = (flatFrom - Flatten(pos)).sqrMagnitude;
+                if (distSqr < bestDistanceSqr)
+                {
+                    bestDistanceSqr = distSqr;
+                    targetTransform = obs.Transform;
+                    targetPosition = pos;
+                    targetTeamId = obs.TeamId;
+                }
+            }
+
+            if (targetPosition != Vector3.zero)
+            {
+                return true;
+            }
+
+            return TryGetEnemyStrategicAnchor(fromPosition, out targetPosition, out targetTeamId);
+        }
+
+        private bool TryGetFallbackStrategicPosition(RegistrySnapshotEntry snap, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (snap.Identity == null || snap.Identity.teamID <= 0 || snap.Identity.teamID == _teamId)
+            {
+                return false;
+            }
+
+            if (!ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(_teamId, snap.Identity.teamID))
+            {
+                return false;
+            }
+
+            RTSVisibilityService visibility = RTSVisibilityService.Instancia;
+            if (visibility != null && visibility.TryGetLastKnownPosition(_teamId, snap.Identity, out position))
+            {
+                return SistemaGovernoMundial.Instancia == null
+                    || !SistemaGovernoMundial.Instancia.EstaPosicaoDesmilitarizada(snap.Identity.teamID, position);
+            }
+
+            if (snap.Cache.IsStructure && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(_teamId, snap.Identity.teamID))
+            {
+                position = snap.Transform.position;
+                return SistemaGovernoMundial.Instancia == null
+                    || !SistemaGovernoMundial.Instancia.EstaPosicaoDesmilitarizada(snap.Identity.teamID, position);
+            }
+
+            return false;
         }
 
         private static IA_StrategicTargetKind ResolveStrategicTargetKind(EntityRuntimeCacheEntry cache, GameObject obj)

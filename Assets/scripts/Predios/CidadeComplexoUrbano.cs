@@ -130,29 +130,41 @@ public class CidadeComplexoUrbano : MonoBehaviour
         Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(gameObject);
     }
 
-    private void AlinharBaseAoTerrenoDoMapaGlobal()
+    internal void AlinharBaseAoTerrenoDoMapaGlobal()
     {
         if (!Application.isPlaying || !gameObject.scene.name.Equals("GlobalMapRTS", StringComparison.OrdinalIgnoreCase))
             return;
 
+        float terrainY;
         GlobalTerrainStreamer streamer = FindFirstObjectByType<GlobalTerrainStreamer>();
         GlobalWorldDefinition world = streamer != null ? streamer.world : null;
-        if (world == null)
+        if (world != null)
+        {
+            terrainY = Mathf.Max(world.seaLevel, world.HeightAtWorld(transform.position.x, transform.position.z));
+        }
+        else if (!RegistroSuperficieMapa.TryGetAltura(transform.position, TipoSuperficieMapa.Chao, out terrainY))
+        {
             return;
+        }
 
+        Physics.SyncTransforms();
         Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
         float baseY = float.PositiveInfinity;
         for (int i = 0; i < renderers.Length; i++)
         {
-            if (renderers[i] != null)
-                baseY = Mathf.Min(baseY, renderers[i].bounds.min.y);
+            Renderer rend = renderers[i];
+            if (rend == null || !rend.enabled || !rend.gameObject.activeInHierarchy) continue;
+            if (!(rend is MeshRenderer) && !(rend is SkinnedMeshRenderer)) continue;
+            if (rend.bounds.size.sqrMagnitude <= 0.0001f) continue;
+            baseY = Mathf.Min(baseY, rend.bounds.min.y);
         }
 
         if (float.IsInfinity(baseY))
             return;
 
-        float terrainY = world.HeightAtWorld(transform.position.x, transform.position.z);
-        transform.position += Vector3.up * (terrainY - baseY);
+        float deltaY = terrainY - baseY;
+        if (Mathf.Abs(deltaY) > 0.01f && Mathf.Abs(deltaY) < 2000f)
+            transform.position += Vector3.up * deltaY;
     }
 
     private void OnEnable()

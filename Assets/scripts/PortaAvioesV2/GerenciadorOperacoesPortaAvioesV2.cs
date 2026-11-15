@@ -117,6 +117,15 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         // resposta em porta-aviões parcialmente configurados.
         if (!usarSistemaOperacoesV2 || layout == null || !PrepararPontosPousoV2()) return false;
         var a = Registrar(controle); if (a == null || operacoes.ContainsKey(a.Registro.id)) return false;
+        if (controle != null
+            && (controle.estaEmModoVooFisico || controle.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+            && a.Registro.estado != EstadoOperacaoPortaAvioesV2.CircuitoDeEspera
+            && a.Registro.estado != EstadoOperacaoPortaAvioesV2.EmVoo
+            && a.Registro.estado != EstadoOperacaoPortaAvioesV2.EmMissao
+            && a.Registro.estado != EstadoOperacaoPortaAvioesV2.SubidaInicial)
+        {
+            a.ForcarEstadoSeguro(EstadoOperacaoPortaAvioesV2.EmVoo, "aeronave em voo buscando pouso no porta-aviões");
+        }
         if (a.Registro.estado != EstadoOperacaoPortaAvioesV2.EmVoo
             && a.Registro.estado != EstadoOperacaoPortaAvioesV2.EmMissao
             && a.Registro.estado != EstadoOperacaoPortaAvioesV2.CircuitoDeEspera
@@ -292,8 +301,15 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
         float maxima = controle != null ? controle.velocidadeMaximaVoo : velocidadeAproximacao;
         return Mathf.Max(.01f, maxima * Mathf.Clamp01(percentual));
     }
-    private VagaPortaAvioesV2 ObterVagaLivre(List<VagaPortaAvioesV2> vagas, AeronaveEmbarcadaV2 aeronave) { if (vagas == null || aeronave == null) return null; PrepararClassificacao(aeronave); foreach (var v in vagas) if (v != null && VagaAceitaAeronave(v, aeronave) && v.Reservar(aeronave.Registro.id)) return v; return null; }
-    private bool VagaAceitaAeronave(VagaPortaAvioesV2 vaga, AeronaveEmbarcadaV2 aeronave) { TipoAeronavePortaAvioesV2 tipo = aeronave.Registro.tipo; bool tipoAceito = vaga.tipoPermitido == TipoAeronavePortaAvioesV2.Qualquer || tipo == vaga.tipoPermitido; return tipoAceito && vaga.tamanhoMaximo + .01f >= TamanhoAeronave(aeronave); }
+    private bool VagaOcupadaPorHelicoptero(VagaPortaAvioesV2 vaga)
+    {
+        if (vaga == null) return false;
+        GerenciadorPortaAvioes carrier = legadoSuspenso != null ? legadoSuspenso : GetComponentInParent<GerenciadorPortaAvioes>();
+        return carrier != null && carrier.TemHelicopteroNaVaga(vaga.transform);
+    }
+
+    private VagaPortaAvioesV2 ObterVagaLivre(List<VagaPortaAvioesV2> vagas, AeronaveEmbarcadaV2 aeronave) { if (vagas == null || aeronave == null) return null; PrepararClassificacao(aeronave); foreach (var v in vagas) if (v != null && VagaAceitaAeronave(v, aeronave) && !VagaOcupadaPorHelicoptero(v) && v.Reservar(aeronave.Registro.id)) return v; return null; }
+    private bool VagaAceitaAeronave(VagaPortaAvioesV2 vaga, AeronaveEmbarcadaV2 aeronave) { ControleAviao av = aeronave != null ? aeronave.GetComponent<ControleAviao>() : null; if (av != null && !av.PodeOperarNoPortaAvioes()) return false; TipoAeronavePortaAvioesV2 tipo = aeronave.Registro.tipo; bool tipoAceito = vaga.tipoPermitido == TipoAeronavePortaAvioesV2.Qualquer || tipo == vaga.tipoPermitido; return tipoAceito && vaga.tamanhoMaximo + .01f >= TamanhoAeronave(aeronave); }
     private void PrepararClassificacao(AeronaveEmbarcadaV2 aeronave) { if (aeronave != null && aeronave.Registro.tipo == TipoAeronavePortaAvioesV2.Qualquer) aeronave.Registro.tipo = InferirTipo(aeronave); }
     private TipoAeronavePortaAvioesV2 InferirTipo(AeronaveEmbarcadaV2 aeronave) { if (aeronave.GetComponent<ControleAviaoCaca>() != null) return TipoAeronavePortaAvioesV2.Caca; if (aeronave.GetComponent<C700TransporteAereo>() != null || aeronave.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null || aeronave.GetComponent<AviaoBombardeiro>() != null) return TipoAeronavePortaAvioesV2.Transporte; return TipoAeronavePortaAvioesV2.Caca; }
     private float TamanhoAeronave(AeronaveEmbarcadaV2 aeronave) { return aeronave == null || aeronave.Registro.tipo == TipoAeronavePortaAvioesV2.Caca ? 8f : 18f; }
@@ -800,6 +816,14 @@ public sealed class GerenciadorOperacoesPortaAvioesV2 : MonoBehaviour
             yield return Pausa(Mathf.Max(0f, inicioTaxiamento - Time.time));
         else
             yield return AguardarAeronaveAnterior(a.Registro.id, 1);
+        if (a == null) yield break;
+
+        if (c != null)
+        {
+            yield return StartCoroutine(c.ExecutarIgnicaoPartidaAntesDeLocomover());
+            if (a == null) yield break;
+        }
+
         a.TentarTransicionar(EstadoOperacaoPortaAvioesV2.TaxiandoParaCatapulta, Time.time);
         Transform cat = catapulta;
         if (cat == null)

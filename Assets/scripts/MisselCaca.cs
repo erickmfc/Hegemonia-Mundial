@@ -37,6 +37,8 @@ public class MisselCaca : MonoBehaviour
     private bool possuiUltimaPosicaoGuiagem;
     private MisselClasseSVFX efeitosClasseS;
 
+    public bool EstaEmVooAtivo => lancado && !jaExplodiu && gameObject.activeInHierarchy;
+
     // --- CACHE: Buffer reutilizável para OverlapSphere (reduz GC) ---
     private static readonly Collider[] _explosaoBuffer = new Collider[32];
     private static readonly HashSet<int> _alvosJaProcessados = new HashSet<int>();
@@ -91,7 +93,11 @@ public class MisselCaca : MonoBehaviour
         lancado = true;
         jaExplodiu = false;
         motorLigado = false;
-        _tempoExpirar = Time.time + tempoMaximoVida;
+        float distanciaInicial = Vector3.Distance(transform.position, alvo);
+        float velocidadeCruzeiro = Mathf.Max(100f, velocidadeMaxima);
+        float vidaNecessaria = tempoQuedaLivre + (distanciaInicial / velocidadeCruzeiro) * 1.45f + 4f;
+        float vidaEfetiva = Mathf.Clamp(Mathf.Max(tempoMaximoVida, vidaNecessaria), tempoMaximoVida, 45f);
+        _tempoExpirar = Time.time + vidaEfetiva;
         ultimaPosicaoGuiagem = transform.position;
         possuiUltimaPosicaoGuiagem = true;
         

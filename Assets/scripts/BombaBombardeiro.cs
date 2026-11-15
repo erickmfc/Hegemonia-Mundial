@@ -289,7 +289,7 @@ public class BombaBombardeiro : MonoBehaviour
 
     // ─── EXPLOSÃO ────────────────────────────────────────────
 
-    private void Explodir()
+    public void Explodir()
     {
         if (explodiu) return;
         explodiu = true;

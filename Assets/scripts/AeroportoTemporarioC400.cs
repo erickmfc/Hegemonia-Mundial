@@ -85,6 +85,7 @@ public sealed class AeroportoTemporarioC400 : MonoBehaviour
     {
         ControleUnidade controle = GetComponent<ControleUnidade>();
         if (controle == null || !controle.selecionado || !enabled) return;
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
 
         Rect area = new Rect(24f, Screen.height - 238f, 310f, 208f);
         GUILayout.BeginArea(area, "AEROPORTO TEMPORARIO", GUI.skin.window);

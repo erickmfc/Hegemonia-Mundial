@@ -186,6 +186,13 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
+            if (unit.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null
+                || normalizedName.Contains("c17")
+                || normalizedName.Contains("c-17"))
+            {
+                return false;
+            }
+
             return unit.GetComponent<ControleAviao>() != null
                    || unit.GetComponent<ControleAviaoCaca>() != null
                    || normalizedName.Contains("b260")

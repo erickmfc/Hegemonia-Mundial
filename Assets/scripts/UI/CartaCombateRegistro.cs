@@ -29,6 +29,7 @@ public static class CartaCombateRegistro
         public bool alvoEhEstrutura;
         public bool custoReposicaoConhecido;
         public long custoReposicaoEstimado;
+        public int tripulacaoAbatida;
         public Vector3 posicao;
         public float momento;
     }
@@ -103,21 +104,47 @@ public static class CartaCombateRegistro
             : tracker != null ? tracker.NomeOrigem : "DESCONHECIDO";
         string arma = tracker != null ? ResolverNomeMissil(tracker) : "ATAQUE NÃO INFORMADO";
         string alvo = alvoId != null ? alvoId.name : vitima.name;
+        int equipeAtacante = atacanteId != null ? atacanteId.teamID : tracker != null ? tracker.TeamOrigem : -1;
+        int equipeAlvo = alvoId != null ? alvoId.teamID : -1;
+        bool morteLogistica = agressor == null && !string.IsNullOrWhiteSpace(vitima.causaMorteLogistica);
+        if (morteLogistica)
+        {
+            atacante = vitima.causaMorteLogistica;
+            equipeAtacante = -1;
+            arma = "DESABASTECIMENTO";
+        }
+
+        int tripulacaoAbatida = morteLogistica
+            ? 0
+            : TripulacaoUnidade.ResolverTripulacaoParaAbate(vitima.gameObject);
+        if (!morteLogistica && tripulacaoAbatida > 0 && equipeAtacante > 0 && equipeAtacante != equipeAlvo)
+        {
+            SistemaGovernoMundial.Instancia?.RegistrarAbateTripulacao(equipeAtacante, equipeAlvo, tripulacaoAbatida);
+        }
+
+        string sufixoTripulacao = tripulacaoAbatida > 0
+            ? " | " + tripulacaoAbatida.ToString("N0") + " trip."
+            : string.Empty;
+        string descricao = morteLogistica
+            ? alvo + " perdido por " + atacante
+            : alvo + " destruído; atacante: " + atacante + sufixoTripulacao;
+
         Adicionar(new EventoCombate
         {
-            tipo = "UNIDADE DESTRUÍDA",
-            descricao = alvo + " destruído; atacante: " + atacante,
+            tipo = morteLogistica ? "BAIXA LOGÍSTICA" : "UNIDADE DESTRUÍDA",
+            descricao = descricao,
             atacante = atacante,
             alvo = alvo,
             arma = arma,
-            resultado = "DESTRUÍDA",
+            resultado = morteLogistica ? "FOME / SEM RAÇÃO" : "DESTRUÍDA",
             idAlvo = alvoId != null ? ObterIdPersistente(alvoId.gameObject) : string.Empty,
-            equipeAtacante = atacanteId != null ? atacanteId.teamID : tracker != null ? tracker.TeamOrigem : -1,
-            equipeAlvo = alvoId != null ? alvoId.teamID : -1,
+            equipeAtacante = equipeAtacante,
+            equipeAlvo = equipeAlvo,
             tipoUnidadeAlvo = alvoId != null ? alvoId.tipoUnidade : TipoUnidade.Estrutura,
             alvoEhEstrutura = vitima.ehEstrutura,
             custoReposicaoConhecido = custoReposicaoConhecido,
             custoReposicaoEstimado = custoReposicaoEstimado,
+            tripulacaoAbatida = tripulacaoAbatida,
             posicao = vitima.transform.position
         });
     }

@@ -192,6 +192,8 @@ public class DadosPaisGoverno
     public int reservistas = 0;
     public int alistaveis = 0;
     public int mortosAcumulados = 0;
+    public int pensionistasMilitares = 0;
+    public long gastosIndenizacoesMilitares = 0L;
     [Min(1)] public int metaEfetivoMilitar = SistemaMilitar.MetaEfetivoPadrao;
     [Min(1)] public int recrutamentoMilitarPorDia = SistemaMilitar.RecrutamentoMilitarPadraoPorDia;
     [Min(0)] public int ultimoDiaRecrutamentoMilitar;
@@ -361,6 +363,8 @@ public class DadosPaisGoverno
     public float ligaTitanio               = 0f;
     public float componentesEletronicos    = 0f;
     public float uranioEnriquecido         = 0f;
+    public int pessoasInimigasAbatidas     = 0;
+    public float acumuladorComidaLogistica = 0f;
     // ─────────────────────────────────────────────────────────────────────
 
     public float PoderDeCompra
@@ -463,6 +467,7 @@ public class RelacaoPaisGoverno
     public bool passagemAereaPermitida;
     public bool passagemNavalPermitida;
     public long passagemTemporariaAteUtcTicks;
+    public long reabastecimentoAereoAliadoAteUtcTicks;
     public List<RecursoMercado> embargos = new List<RecursoMercado>();
     public PosturaRelacaoPais posturaAParaB = PosturaRelacaoPais.Neutro;
     public PosturaRelacaoPais posturaBParaA = PosturaRelacaoPais.Neutro;

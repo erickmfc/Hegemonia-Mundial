@@ -87,6 +87,56 @@ public static class ContextoTerritorialDiplomatico
         return true;
     }
 
+    public static bool DefinirAutorizacaoReabastecimentoAliado(int teamOrigem, int teamDestino, TimeSpan duracao)
+    {
+        if (teamOrigem <= 0 || teamDestino <= 0 || teamOrigem == teamDestino) return false;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null) return false;
+        RelacaoPaisGoverno relacao = governo.ObterRelacao(teamOrigem, teamDestino);
+        if (relacao == null) return false;
+
+        if (duracao <= TimeSpan.Zero)
+        {
+            relacao.reabastecimentoAereoAliadoAteUtcTicks = 0L;
+        }
+        else
+        {
+            long expiracao = DateTime.UtcNow.Add(duracao).Ticks;
+            if (expiracao > relacao.reabastecimentoAereoAliadoAteUtcTicks)
+            {
+                relacao.reabastecimentoAereoAliadoAteUtcTicks = expiracao;
+            }
+        }
+
+        governo.NotificarGovernoAtualizado();
+        return true;
+    }
+
+    public static bool SaoAliadosParaApoioAereo(int teamOrigem, int teamDestino)
+    {
+        if (teamOrigem <= 0 || teamDestino <= 0 || teamOrigem == teamDestino) return false;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        RelacaoPaisGoverno relacao = governo != null ? governo.ObterRelacao(teamOrigem, teamDestino) : null;
+        if (relacao == null || relacao.guerraDeclarada || relacao.sancaoAtiva) return false;
+        if (relacao.PosturaDe(teamDestino) == PosturaRelacaoPais.Inimigo)
+        {
+            return false;
+        }
+
+        return relacao.pactoMilitar
+            || relacao.PosturaDe(teamDestino) == PosturaRelacaoPais.Amigo
+            || (relacao.PosturaDe(teamOrigem) == PosturaRelacaoPais.Amigo && relacao.valor >= 25);
+    }
+
+    public static bool ReabastecimentoAliadoAutorizado(int teamOrigem, int teamDestino)
+    {
+        if (teamOrigem <= 0 || teamDestino <= 0 || teamOrigem == teamDestino) return teamOrigem == teamDestino;
+        if (!SaoAliadosParaApoioAereo(teamOrigem, teamDestino)) return false;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        RelacaoPaisGoverno relacao = governo != null ? governo.ObterRelacao(teamOrigem, teamDestino) : null;
+        return relacao != null && relacao.reabastecimentoAereoAliadoAteUtcTicks > DateTime.UtcNow.Ticks;
+    }
+
     public static bool PassagemPermitida(int teamOrigem, int teamDestino, MeioPassagemTerritorial meio)
     {
         if (teamOrigem <= 0 || teamDestino <= 0 || teamOrigem == teamDestino) return teamOrigem == teamDestino;

@@ -33,7 +33,7 @@ namespace Hegemonia.AI.IA02
 
         public static bool IsAllowed(DadosConstrucao item, IReadOnlyList<DadosConstrucao> configured)
         {
-            if (item == null || item.PrefabDaUnidade == null)
+            if (item == null || item.PrefabDaUnidade == null || DadosConstrucao.EhUnidadeDesativadaDoJogo(item))
             {
                 return false;
             }

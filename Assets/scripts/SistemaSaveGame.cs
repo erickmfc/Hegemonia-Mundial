@@ -284,6 +284,13 @@ public class SaveEntityData
     public float capacidadeCombustivel;
     public bool capacidadeCombustivelAtualizada;
     public bool capacidadeNavalAtualizada;
+    public bool possuiRacao;
+    public float racaoAtual;
+    public float capacidadeRacao;
+    public float tempoSemRacao;
+    public bool possuiTripulacao;
+    public int tripulacaoMaxima;
+    public int tripulacaoAtual;
     public OrdemControleUnidade ordemAtual;
     public string ordemMovimentoOwner = string.Empty;
     public string ordemMovimentoId = string.Empty;
@@ -2221,6 +2228,8 @@ public class SistemaSaveGame : MonoBehaviour
         IdentidadeUnidade identidade = obj.GetComponent<IdentidadeUnidade>();
         SistemaDeDanos danos = obj.GetComponent<SistemaDeDanos>();
         CombustivelUnidade combustivel = obj.GetComponent<CombustivelUnidade>();
+        RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(obj);
+        TripulacaoUnidade tripulacao = TripulacaoUnidade.ObterParaObjeto(obj);
         ControleUnidade controle = obj.GetComponent<ControleUnidade>();
         ComportamentoPatrulhaUniversal patrulha = obj.GetComponent<ComportamentoPatrulhaUniversal>();
         ComportamentoSeguirUniversal seguir = obj.GetComponent<ComportamentoSeguirUniversal>();
@@ -2275,6 +2284,13 @@ public class SistemaSaveGame : MonoBehaviour
             capacidadeCombustivel = combustivel != null ? combustivel.capacidade : 0f,
             capacidadeCombustivelAtualizada = true,
             capacidadeNavalAtualizada = true,
+            possuiRacao = racao != null && racao.UsaRacao,
+            racaoAtual = racao != null ? racao.RacaoAtual : 0f,
+            capacidadeRacao = racao != null ? racao.Capacidade : 0f,
+            tempoSemRacao = racao != null ? racao.tempoSemRacao : 0f,
+            possuiTripulacao = tripulacao != null && tripulacao.UsaTripulacao,
+            tripulacaoMaxima = tripulacao != null ? tripulacao.TripulacaoMaxima : 0,
+            tripulacaoAtual = tripulacao != null ? tripulacao.TripulacaoAtual : 0,
             ordemAtual = controle != null ? controle.OrdemAtual : OrdemControleUnidade.Ociosa,
             modoCombateAtivo = true,
             estaDesligado = (controle != null && controle.EstaDesligado)
@@ -2552,6 +2568,22 @@ public class SistemaSaveGame : MonoBehaviour
             data.capacidadeNavalAtualizada = true;
         }
 
+        if (data.possuiTripulacao && data.tripulacaoMaxima > 0)
+        {
+            TripulacaoUnidade tripulacao = TripulacaoUnidade.Garantir(obj);
+            tripulacao?.RestaurarEstadoPersistido(data.tripulacaoMaxima, data.tripulacaoAtual);
+        }
+        else
+        {
+            TripulacaoUnidade.Garantir(obj);
+        }
+
+        if (data.possuiRacao)
+        {
+            RacaoUnidade racao = RacaoUnidade.Garantir(obj, false);
+            racao?.RestaurarEstadoPersistido(data.capacidadeRacao, data.racaoAtual, data.tempoSemRacao);
+        }
+
         AplicarDadosCidade(obj, data);
 
         NavMeshAgent agente = obj.GetComponent<NavMeshAgent>();
@@ -2764,6 +2796,22 @@ public class SistemaSaveGame : MonoBehaviour
             }
             data.capacidadeCombustivelAtualizada = true;
             data.capacidadeNavalAtualizada = true;
+        }
+
+        if (data.possuiTripulacao && data.tripulacaoMaxima > 0)
+        {
+            TripulacaoUnidade tripulacao = TripulacaoUnidade.Garantir(obj);
+            tripulacao?.RestaurarEstadoPersistido(data.tripulacaoMaxima, data.tripulacaoAtual);
+        }
+        else
+        {
+            TripulacaoUnidade.Garantir(obj);
+        }
+
+        if (data.possuiRacao)
+        {
+            RacaoUnidade racao = RacaoUnidade.Garantir(obj, false);
+            racao?.RestaurarEstadoPersistido(data.capacidadeRacao, data.racaoAtual, data.tempoSemRacao);
         }
 
         ControleUnidade controle = obj.GetComponent<ControleUnidade>();

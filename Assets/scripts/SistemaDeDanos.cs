@@ -46,6 +46,7 @@ public class SistemaDeDanos : MonoBehaviour
     
     // Estados
     private bool morreu = false;
+    public bool Morreu => morreu;
     private int ultimoAgressorTeamId = -1;
     private GameObject ultimoAgressor;
 
@@ -94,6 +95,26 @@ public class SistemaDeDanos : MonoBehaviour
         vidaAtual += bonus; 
     }
 
+    private bool ignorarInferenciaAgressorProximo;
+    [System.NonSerialized] public string causaMorteLogistica = string.Empty;
+
+    public void ReceberDanoSemAgressor(float dano, string causaMorte = "FOME (SEM RAÇÃO)")
+    {
+        if (morreu) return;
+
+        causaMorteLogistica = causaMorte ?? string.Empty;
+        ignorarInferenciaAgressorProximo = true;
+        ultimoAgressor = null;
+        try
+        {
+            ReceberDano(dano, null);
+        }
+        finally
+        {
+            ignorarInferenciaAgressorProximo = false;
+        }
+    }
+
     public void ReceberDano(float dano, UnityEngine.GameObject agressor = null)
     {
         if (morreu) return;
@@ -101,31 +122,53 @@ public class SistemaDeDanos : MonoBehaviour
         // Alguns mísseis antigos não carregam o dono no impacto. Quando isso
         // acontece, tenta identificar uma unidade hostil que esteja próxima do
         // alvo para não perder a autoria do ataque.
-        if (agressor == null)
+        if (agressor == null && !ignorarInferenciaAgressorProximo)
         {
             agressor = InferirAgressorProximo();
         }
-        ultimoAgressor = agressor;
+        if (!ignorarInferenciaAgressorProximo)
+        {
+            causaMorteLogistica = string.Empty;
+        }
+        ultimoAgressor = ignorarInferenciaAgressorProximo ? null : agressor;
 
         vidaAtual -= dano;
         float porcentagem = vidaAtual / vidaMaxima;
         
+        IdentidadeUnidade vitimaID = ResolverIdentidade(this);
         if (agressor != null)
         {
-            IdentidadeUnidade vitimaID = ResolverIdentidade(this);
             IdentidadeUnidade agressorID = ResolverIdentidade(agressor.transform);
+            MissileThreatTracker tracker = agressorID == null
+                ? (agressor.GetComponent<MissileThreatTracker>() ?? agressor.GetComponentInParent<MissileThreatTracker>())
+                : null;
 
-            if (vitimaID != null && agressorID != null && vitimaID.teamID != agressorID.teamID)
+            if (agressorID == null && tracker != null && tracker.OrigemObjeto != null)
+            {
+                agressorID = ResolverIdentidade(tracker.OrigemObjeto.transform);
+                if (agressorID != null)
+                {
+                    agressor = tracker.OrigemObjeto;
+                    ultimoAgressor = agressor;
+                }
+            }
+
+            int agressorTeamId = agressorID != null
+                ? agressorID.teamID
+                : (tracker != null ? tracker.TeamOrigem : 0);
+
+            if (vitimaID != null && agressorTeamId > 0 && vitimaID.teamID != agressorTeamId)
             {
                 // O cartel e uma faccao criminosa, nao um pais. Ataques contra
                 // ele (ou dele) nao podem abrir uma guerra diplomatica.
-                bool envolveCartel = vitimaID.teamID == 9 || agressorID.teamID == 9;
-                ultimoAgressorTeamId = agressorID.teamID;
+                bool envolveCartel = vitimaID.teamID == 9 || agressorTeamId == 9;
+                ultimoAgressorTeamId = agressorTeamId;
                 if (!envolveCartel && SistemaGovernoMundial.Instancia != null)
                 {
 #if UNITY_EDITOR
                     if (Projetil.IdProbeProjectileNoDano > 0
                         && Application.isPlaying
+                        && agressorID != null
                         && string.Equals(
                             UnityEngine.SceneManagement.SceneManager.GetActiveScene().path,
                             "Assets/Tests/PlayMode/IA03_WarValidation.unity",
@@ -144,7 +187,29 @@ public class SistemaDeDanos : MonoBehaviour
                     }
 #endif
                     // O governo registra cada impacto e decide quando a crise passa a guerra.
-                    SistemaGovernoMundial.Instancia.RegistrarAgressao(vitimaID.teamID, agressorID.teamID);
+                    SistemaGovernoMundial.Instancia.RegistrarAgressao(vitimaID.teamID, agressorTeamId);
+                }
+
+                if (!envolveCartel && vitimaID.teamID > 1 && Hegemonia.RTS.RTSVisibilityService.Instancia != null)
+                {
+                    Vector3 pontoContraAtaque = agressorID != null
+                        ? agressorID.transform.position
+                        : (tracker != null ? tracker.PontoLancamento : transform.position);
+                    Hegemonia.RTS.RTSVisibilityService.Instancia.NotificarAgressaoParaContraAtaque(
+                        vitimaID.teamID,
+                        agressorTeamId,
+                        agressorID,
+                        pontoContraAtaque);
+                }
+
+                if (!envolveCartel)
+                {
+                    NotificarDefesaLocalContraAtaque(
+                        vitimaID,
+                        agressor,
+                        agressorID,
+                        agressorTeamId,
+                        tracker);
                 }
             }
         }
@@ -178,6 +243,100 @@ public class SistemaDeDanos : MonoBehaviour
         else
         {
              // Opcional: Debug.Log($"Vida restante do {gameObject.name}: {vidaAtual}");
+        }
+    }
+
+    private static readonly List<ControleTorreta> _torretasDefesaBuffer = new List<ControleTorreta>(16);
+    private static readonly List<LancadorNaval> _lancadoresDefesaBuffer = new List<LancadorNaval>(8);
+
+    private void NotificarDefesaLocalContraAtaque(
+        IdentidadeUnidade vitimaID,
+        GameObject agressor,
+        IdentidadeUnidade agressorID,
+        int agressorTeamId,
+        MissileThreatTracker tracker)
+    {
+        if (vitimaID == null || vitimaID.teamID <= 0) return;
+        if (agressorTeamId <= 0 || agressorTeamId == vitimaID.teamID) return;
+
+        if (SistemaGovernoMundial.Instancia != null)
+        {
+            RelacaoPaisGoverno relacao = SistemaGovernoMundial.Instancia.ObterRelacao(vitimaID.teamID, agressorTeamId);
+            if (relacao != null && relacao.cessarFogoAtivo)
+            {
+                return;
+            }
+        }
+
+        Transform raizVitima = vitimaID.transform;
+        ControleUnidade controleVitima = raizVitima.GetComponent<ControleUnidade>()
+            ?? raizVitima.GetComponentInParent<ControleUnidade>()
+            ?? GetComponent<ControleUnidade>();
+        if (controleVitima != null && !controleVitima.ModoCombateAtivo)
+        {
+            return;
+        }
+
+        Transform alvoAgressor = null;
+        if (agressorID != null && agressorID.gameObject.activeInHierarchy)
+        {
+            alvoAgressor = agressorID.transform;
+        }
+        else if (agressor != null
+                 && agressor.activeInHierarchy
+                 && agressor.GetComponentInParent<MissileThreatTracker>() == null
+                 && agressor.GetComponentInParent<MisselBombardeiro>() == null
+                 && agressor.GetComponentInParent<BombaBombardeiro>() == null
+                 && agressor.GetComponentInParent<BombaAerea>() == null)
+        {
+            alvoAgressor = agressor.transform;
+        }
+        else if (tracker != null && tracker.OrigemObjeto != null && tracker.OrigemObjeto.activeInHierarchy)
+        {
+            IdentidadeUnidade idOrigemTracker = tracker.OrigemObjeto.GetComponentInParent<IdentidadeUnidade>();
+            alvoAgressor = idOrigemTracker != null ? idOrigemTracker.transform : tracker.OrigemObjeto.transform;
+        }
+
+        Vector3 pontoAgressor = alvoAgressor != null
+            ? alvoAgressor.position
+            : (tracker != null ? tracker.PontoLancamento : transform.position);
+
+        if (alvoAgressor != null)
+        {
+            _torretasDefesaBuffer.Clear();
+            raizVitima.GetComponentsInChildren(true, _torretasDefesaBuffer);
+            for (int i = 0; i < _torretasDefesaBuffer.Count; i++)
+            {
+                ControleTorreta torreta = _torretasDefesaBuffer[i];
+                if (torreta != null && torreta.isActiveAndEnabled)
+                {
+                    torreta.NotificarAtaqueRecebido(alvoAgressor, agressorTeamId);
+                }
+            }
+            _torretasDefesaBuffer.Clear();
+
+            _lancadoresDefesaBuffer.Clear();
+            raizVitima.GetComponentsInChildren(true, _lancadoresDefesaBuffer);
+            for (int i = 0; i < _lancadoresDefesaBuffer.Count; i++)
+            {
+                LancadorNaval lancador = _lancadoresDefesaBuffer[i];
+                if (lancador != null && lancador.isActiveAndEnabled)
+                {
+                    lancador.NotificarAtaqueRecebido(alvoAgressor, pontoAgressor, agressorTeamId);
+                }
+            }
+            _lancadoresDefesaBuffer.Clear();
+        }
+
+        ControleAviao aviaoVitima = raizVitima.GetComponent<ControleAviao>()
+            ?? raizVitima.GetComponentInParent<ControleAviao>();
+        if (aviaoVitima != null && aviaoVitima.estadoAtual == ControleAviao.EstadoAviao.EmMissao)
+        {
+            LancadorMisselCaca armamentoCaca = raizVitima.GetComponentInChildren<LancadorMisselCaca>(true);
+            if (armamentoCaca != null && armamentoCaca.isActiveAndEnabled && (alvoAgressor != null || tracker != null))
+            {
+                armamentoCaca.DefinirAlvoIA(alvoAgressor, pontoAgressor, 6f);
+            }
         }
     }
 

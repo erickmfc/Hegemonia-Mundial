@@ -307,11 +307,51 @@ public static class SistemaPopulacao
         CidadeComplexoUrbano.SincronizarPopulacaoNacional(pais.teamId, pais.populacaoCivil);
     }
 
+    private static readonly System.Collections.Generic.List<IdentidadeUnidade> bufferEntidadesComida =
+        new System.Collections.Generic.List<IdentidadeUnidade>(128);
+
     private static float CalcularNecessidadeComida(DadosPaisGoverno pais)
     {
         if (pais == null) return 0f;
-        return (UnityEngine.Mathf.Max(0, pais.populacaoCivil) / (float)CivisAtendidosPorUnidadeComidaDiaria)
+        float necessidadePopulacional = (UnityEngine.Mathf.Max(0, pais.populacaoCivil) / (float)CivisAtendidosPorUnidadeComidaDiaria)
             + (UnityEngine.Mathf.Max(0, pais.populacaoMilitarAtiva) / (float)CivisAtendidosPorUnidadeComidaDiaria * 2f);
+
+        // Estruturas (trabalhadores/guarnição) e cidades ativas descontam comida diretamente na folha do governo,
+        // dispensando barras de ração locais ou perda física da estrutura.
+        float necessidadeEstruturasECidades = 0f;
+        if (pais.teamId > 0)
+        {
+            bufferEntidadesComida.Clear();
+            RegistroEntidadesJogo.FillUnidades(bufferEntidadesComida);
+            for (int i = 0; i < bufferEntidadesComida.Count; i++)
+            {
+                IdentidadeUnidade entidade = bufferEntidadesComida[i];
+                if (entidade == null || entidade.teamID != pais.teamId) continue;
+
+                CidadeComplexoUrbano cidade = entidade.GetComponent<CidadeComplexoUrbano>();
+                if (cidade != null)
+                {
+                    if (cidade.gameObject.activeInHierarchy)
+                    {
+                        necessidadeEstruturasECidades += 0.5f;
+                    }
+                    continue;
+                }
+
+                if (entidade.tipoUnidade == TipoUnidade.Estrutura
+                    || TripulacaoUnidade.EhEstruturaImovel(entidade.gameObject))
+                {
+                    MarcadorTerritorio marcador = entidade.GetComponent<MarcadorTerritorio>();
+                    if (marcador != null && marcador.construirCidadeAoIniciar)
+                    {
+                        continue;
+                    }
+                    necessidadeEstruturasECidades += 0.25f;
+                }
+            }
+        }
+
+        return necessidadePopulacional + necessidadeEstruturasECidades;
     }
 
     public static int CalcularCivisAtendidosPorComida(float comidaDiaria)
@@ -343,7 +383,7 @@ public static class SistemaPopulacao
         return 0;
     }
 
-    private static int ConsumirComidaDoEstoque(DadosPaisGoverno pais, int quantidadeSolicitada)
+    internal static int ConsumirComidaDoEstoque(DadosPaisGoverno pais, int quantidadeSolicitada)
     {
         if (pais == null || quantidadeSolicitada <= 0) return 0;
 

@@ -116,6 +116,38 @@ public class DadosConstrucao : ScriptableObject
         }
     }
 
+    public static bool EhUnidadeDesativadaDoJogo(DadosConstrucao item, GameObject prefab = null)
+    {
+        if (item != null && (EhNomeUnidadeDesativada(item.NomeItem) || EhNomeUnidadeDesativada(item.ItemId)))
+        {
+            return true;
+        }
+
+        GameObject alvoPrefab = prefab != null ? prefab : (item != null ? item.PrefabDaUnidade : null);
+        return alvoPrefab != null && EhNomeUnidadeDesativada(alvoPrefab.name);
+    }
+
+    public static bool EhNomeUnidadeDesativada(string nome)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            return false;
+        }
+
+        string n = nome.Trim().ToLowerInvariant().Replace('-', '_').Replace(' ', '_');
+        return n.Contains("uss_sovereign")
+            || n == "sovereign"
+            || n.Contains("corveta_sam")
+            || n.Contains("corveta_san")
+            || n.Contains("coverta_san")
+            || n.Contains("nav_think")
+            || n.Contains("nav_vigia")
+            || n.Contains("navio_vigia")
+            || n.Contains("navio_de_vigia")
+            || n.Contains("nav_tropa")
+            || n.Contains("nav_tropas");
+    }
+
     public bool TryValidarReceitaProducao(out string motivo)
     {
         return ReceitaProducao.TryValidar(out motivo);

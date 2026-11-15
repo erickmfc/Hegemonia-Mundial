@@ -83,9 +83,11 @@ namespace Hegemonia.AI.BrainMaster
             long targetingStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Vector3 strategicObjective = ResolveStrategicObjective(baseCenter, priorityEnemy, now);
             RegistrarTempoTargeting(targetingStart);
+            IA_BrainMaster brain = _context.Brain;
+            bool alertaAtivoGlobal = brain != null && brain.IA03AlertaAmeacaAtivo;
             Vector3 hiddenEnemyAnchor;
             if (priorityEnemy == null
-                && now >= ForcedAssaultStartSeconds
+                && (now >= ForcedAssaultStartSeconds || alertaAtivoGlobal)
                 && _context.WorldState.TryGetEnemyStrategicAnchor(baseCenter, out hiddenEnemyAnchor))
             {
                 strategicObjective = hiddenEnemyAnchor;
@@ -93,7 +95,6 @@ namespace Hegemonia.AI.BrainMaster
             }
             Vector3 threatSector = _context.ThreatAnalyzer.GetHighestThreatSectorCenter();
 
-            IA_BrainMaster brain = _context.Brain;
             bool ia03Cronograma = brain != null && brain.UsaCronogramaIA03;
             bool ia03PatrulhaPermitida = true;
             if (ia03Cronograma)
@@ -319,12 +320,26 @@ namespace Hegemonia.AI.BrainMaster
                 QueueAttack("armored", _activeGroundUnitsBuffer, visibleEnemy, openApproach, 89, 3.2f);
                 _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
             }
+            else if (_context.Brain != null
+                && _context.Brain.IA03AlertaAmeacaAtivo
+                && _context.WorldState.TryGetCounterattackTarget(baseCenter, out Transform counterTarget, out Vector3 counterPos, out _))
+            {
+                if (counterTarget != null)
+                {
+                    QueueAttack("armored", _activeGroundUnitsBuffer, counterTarget, counterPos, 89, 3.2f);
+                }
+                else
+                {
+                    QueueMove("armored", _activeGroundUnitsBuffer, counterPos, 86, 3.4f);
+                }
+                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
+            }
             else
             {
                 Vector3 pressurePoint = CanProjectGroundOffense()
                     ? BlendObjective(baseCenter, strategicObjective, 0.78f, 210f, 520f)
                     : _context.MapAnalyzer.FindPointInTerrain(baseCenter, IA_TerrainType.Land, 40f, 140f, 18);
-                QueueMove("armored", squad.Units, pressurePoint, 84, 3.6f);
+                QueueMove("armored", _activeGroundUnitsBuffer, pressurePoint, 84, 3.6f);
             }
         }
 
@@ -489,7 +504,8 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            bool forcedAssault = now >= ForcedAssaultStartSeconds;
+            bool alertaAtivo = _context != null && _context.Brain != null && _context.Brain.IA03AlertaAmeacaAtivo;
+            bool forcedAssault = now >= ForcedAssaultStartSeconds || alertaAtivo;
             bool pressureAssault = _context != null
                                   && _context.Brain != null
                                   && _context.Brain.WarPosture == IA_WarPosture.BalancedAggression
@@ -512,6 +528,18 @@ namespace Hegemonia.AI.BrainMaster
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("assault_wave_size", assaultUnits.Count);
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_land", assaultUnits.Count);
                 _nextAssaultWaveTime = now + (pressureAssault ? 3.2f : 4.5f);
+                _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
+                return;
+            }
+
+            if (alertaAtivo
+                && _context.WorldState.TryGetCounterattackTarget(baseCenter, out Transform counterTarget, out Vector3 counterPos, out _)
+                && counterTarget != null)
+            {
+                QueueAttack("assault_wave", assaultUnits, counterTarget, counterPos, 96, 3.2f);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("assault_wave_size", assaultUnits.Count);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_land", assaultUnits.Count);
+                _nextAssaultWaveTime = now + 3.2f;
                 _activeLandFrontsThisTick = Mathf.Max(_activeLandFrontsThisTick, 1);
                 return;
             }

@@ -55,6 +55,27 @@ namespace Hegemonia.AI.BrainMaster
             return false;
         }
 
+        public void FillPendingProduceOrders(List<IA_ProduceOrderData> destination)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                IA_NationalIntent intent = _pending[i];
+                if (intent != null
+                    && intent.Kind == IA_IntentKind.Produce
+                    && intent.Command != null
+                    && intent.Command.Payload is IA_ProduceOrderData order)
+                {
+                    destination.Add(order);
+                }
+            }
+        }
+
         public bool Publish(IA_NationalIntent intent, float now, out string reason)
         {
             reason = string.Empty;

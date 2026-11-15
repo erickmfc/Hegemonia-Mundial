@@ -1113,6 +1113,89 @@ public class SistemaGovernoMundial : MonoBehaviour
         return criada;
     }
 
+    /// <summary>
+    /// Solicita autorização temporária de pouso, reabastecimento e rearmamento
+    /// nos aeroportos de uma nação aliada sem transferir a propriedade das aeronaves.
+    /// </summary>
+    public bool SolicitarApoioReabastecimentoAliadoJogador(int alvoTeamId, out string mensagem, int duracaoMinutos = 15)
+    {
+        mensagem = string.Empty;
+        if (!ValidarAlvoDiplomatico(alvoTeamId, out mensagem))
+        {
+            bool eliminada = IdentidadeIA.TodasIdentidades != null
+                && IdentidadeIA.TodasIdentidades.Any(id => id != null && id.teamID == alvoTeamId && id.eliminado);
+            bool existeAeroportoAtivo = false;
+            if (!eliminada && alvoTeamId > 0 && alvoTeamId != teamJogador && ObterPais(alvoTeamId) != null)
+            {
+                List<GerenciadorAeroporto> aeroportos = new List<GerenciadorAeroporto>();
+                RegistroEntidadesJogo.FillAeroportos(aeroportos);
+                for (int i = 0; i < aeroportos.Count; i++)
+                {
+                    GerenciadorAeroporto aero = aeroportos[i];
+                    if (aero != null
+                        && aero.gameObject.activeInHierarchy
+                        && ControleAviao.ObterTeamIdBase(aero) == alvoTeamId)
+                    {
+                        existeAeroportoAtivo = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!existeAeroportoAtivo)
+            {
+                return false;
+            }
+            mensagem = string.Empty;
+        }
+
+        RelacaoPaisGoverno relacao = ObterRelacao(teamJogador, alvoTeamId);
+        if (relacao == null || !ContextoTerritorialDiplomatico.SaoAliadosParaApoioAereo(teamJogador, alvoTeamId))
+        {
+            mensagem = NomePais(alvoTeamId) + " nao possui alianca ou postura amigavel para apoio aereo.";
+            return false;
+        }
+
+        if (ContextoTerritorialDiplomatico.ReabastecimentoAliadoAutorizado(teamJogador, alvoTeamId))
+        {
+            mensagem = "Apoio aereo com " + NomePais(alvoTeamId) + " ja esta autorizado.";
+            return true;
+        }
+
+        const long TaxaLogisticaAliada = 500;
+        bool isentoPorPacto = relacao.pactoMilitar;
+        bool taxaCobrada = false;
+        if (!isentoPorPacto && ObterSaldoDisponivelParaOperacao(teamJogador) >= TaxaLogisticaAliada)
+        {
+            taxaCobrada = TentarPagar(teamJogador, TaxaLogisticaAliada);
+            if (taxaCobrada)
+            {
+                DadosPaisGoverno paisAliado = ObterPais(alvoTeamId);
+                if (paisAliado != null)
+                {
+                    paisAliado.saldo += TaxaLogisticaAliada;
+                }
+            }
+        }
+
+        int minutos = Mathf.Clamp(duracaoMinutos, 3, 60);
+        if (!ContextoTerritorialDiplomatico.DefinirAutorizacaoReabastecimentoAliado(
+            teamJogador,
+            alvoTeamId,
+            TimeSpan.FromMinutes(minutos)))
+        {
+            mensagem = "Nao foi possivel registrar a autorizacao de apoio aereo com " + NomePais(alvoTeamId) + ".";
+            return false;
+        }
+
+        RegistrarNoticia(NomePais(alvoTeamId) + " autorizou pouso temporario de reabastecimento e rearmamento para a sua forca aerea (" + minutos + " min).");
+        NotificarGovernoAtualizadoSeguro();
+        mensagem = taxaCobrada
+            ? NomePais(alvoTeamId) + " autorizou reabastecimento e rearmamento nos aeroportos aliados ($" + TaxaLogisticaAliada + ")."
+            : NomePais(alvoTeamId) + " autorizou apoio aereo gratuito pelo acordo aliado.";
+        return true;
+    }
+
     private bool ValidarAlvoDiplomatico(int alvoTeamId, out string mensagem)
     {
         mensagem = string.Empty;
@@ -1175,6 +1258,11 @@ public class SistemaGovernoMundial : MonoBehaviour
         long disponivel = ObterManpowerDisponivelParaMobilizacao(teamId);
         long reserva = Math.Max(0L, ObterReservaManpowerEstrategica(teamId));
         return Math.Max(0L, disponivel - Math.Min(disponivel, reserva));
+    }
+
+    public int ObterEfetivoDisponivel(int teamId)
+    {
+        return (int)Math.Min(int.MaxValue, ObterManpowerDisponivelAlemDaReserva(teamId));
     }
 
     public bool TentarMobilizarEfetivo(int teamId, int quantidade)
@@ -4237,6 +4325,67 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             if (pais != null)
                 SistemaIndustrialNacional.Instancia.GarantirPerfil(pais.teamId);
+        }
+    }
+
+    public float ConsumirComidaLogisticaFracionada(int teamId, float quantidadeComida)
+    {
+        if (teamId <= 0 || quantidadeComida <= 0f)
+        {
+            return 0f;
+        }
+
+        DadosPaisGoverno pais = ObterPais(teamId);
+        if (pais == null)
+        {
+            return 0f;
+        }
+
+        ReconciliarEstoqueComidaCulturas(teamId);
+        if (pais.comida <= 0)
+        {
+            pais.acumuladorComidaLogistica = 0f;
+            return 0f;
+        }
+
+        float antesAcumulado = Mathf.Max(0f, pais.acumuladorComidaLogistica);
+        float totalPendente = antesAcumulado + quantidadeComida;
+        int unidadesInteiras = Mathf.FloorToInt(totalPendente);
+        if (unidadesInteiras <= 0)
+        {
+            pais.acumuladorComidaLogistica = totalPendente;
+            return 1f;
+        }
+
+        int consumido = SistemaPopulacao.ConsumirComidaDoEstoque(pais, unidadesInteiras);
+        if (consumido <= 0)
+        {
+            pais.acumuladorComidaLogistica = 0f;
+            return 0f;
+        }
+
+        if (consumido >= unidadesInteiras)
+        {
+            pais.acumuladorComidaLogistica = Mathf.Max(0f, totalPendente - unidadesInteiras);
+            return 1f;
+        }
+
+        // Estoque zerou no meio do pedido: credita proporcionalmente ao que realmente saiu.
+        pais.acumuladorComidaLogistica = 0f;
+        return Mathf.Clamp01(consumido / Mathf.Max(0.0001f, quantidadeComida));
+    }
+
+    public void RegistrarAbateTripulacao(int equipeAtacante, int equipeAlvo, int quantidadePessoas)
+    {
+        if (quantidadePessoas <= 0 || equipeAtacante <= 0 || equipeAtacante == equipeAlvo)
+        {
+            return;
+        }
+
+        DadosPaisGoverno pais = ObterPais(equipeAtacante);
+        if (pais != null)
+        {
+            pais.pessoasInimigasAbatidas += quantidadePessoas;
         }
     }
 }

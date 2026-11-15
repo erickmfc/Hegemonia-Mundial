@@ -5,8 +5,8 @@ using UnityEngine;
 [InitializeOnLoad]
 internal static class InstalarEquipeConvesEnterprise
 {
-    private const string PrefabEnterprise = "Assets/Prefabs/Navios_Guerra/Porta avioes/Uss Enterprise.prefab";
-    private const string PrefabTrabalhador = "Assets/Prefabs/Navios_Guerra/Porta avioes/Trabalhador_Conves 1.prefab";
+    private const string PrefabEnterprise = "Assets/Library/Prefabs/Navios_Guerra/Porta avioes/Uss Enterprise.prefab";
+    private const string PrefabTrabalhador = "Assets/Library/Prefabs/Navios_Guerra/Porta avioes/Trabalhador_Conves 1.prefab";
     private const string AnimacaoSinal = "Assets/Animations/TrabalhadorConves/Wave_Clear.anim";
     private static bool instalando;
 

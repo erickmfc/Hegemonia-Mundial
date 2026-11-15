@@ -70,7 +70,8 @@ public class CacaVooRealista : MonoBehaviour
         somMotorJato.spatialBlend = 1f;
         somMotorJato.rolloffMode = AudioRolloffMode.Linear;
         somMotorJato.minDistance = 9f;
-        somMotorJato.maxDistance = 150f;
+        somMotorJato.maxDistance = 1000f;
+        AudioRuntime.ConfigurarFonteGenerica(somMotorJato);
     }
 
     void Update()

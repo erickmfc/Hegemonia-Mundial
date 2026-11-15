@@ -5196,7 +5196,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-N2-1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 6
   nivelDeConflito: 2
   dominio: 0
@@ -8557,7 +8557,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaNaval-1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 1
   nivelDeConflito: 4
   dominio: 1
@@ -12770,7 +12770,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-N1-1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 7
   nivelDeConflito: 1
   dominio: 0
@@ -12988,7 +12988,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-N3-1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 5
   nivelDeConflito: 3
   dominio: 0
@@ -14037,7 +14037,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaTerrestre_N4
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 0
   nivelDeConflito: 4
   dominio: 0
@@ -14098,7 +14098,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaSubmarino_N4
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 3
   nivelDeConflito: 4
   dominio: 1
@@ -14159,7 +14159,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaSubmarino_N3
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 3
   nivelDeConflito: 3
   dominio: 1
@@ -14220,7 +14220,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaSubmarino_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 3
   nivelDeConflito: 2
   dominio: 1
@@ -14281,7 +14281,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaSubmarino_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 3
   nivelDeConflito: 1
   dominio: 1
@@ -14342,7 +14342,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-ZonaPortaAvioes_N3
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 8
   nivelDeConflito: 3
   dominio: 3
@@ -14403,7 +14403,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-ZonaPortaAvioes_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 8
   nivelDeConflito: 2
   dominio: 3
@@ -14464,7 +14464,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-ZonaPortaAvioes_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 8
   nivelDeConflito: 1
   dominio: 3
@@ -14525,7 +14525,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-EmbarqueTransporte_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 9
   nivelDeConflito: 2
   dominio: 3
@@ -14586,7 +14586,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-DesembarqueAnfibio_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 10
   nivelDeConflito: 2
   dominio: 3
@@ -14647,7 +14647,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-EmbarqueTransporte_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 9
   nivelDeConflito: 1
   dominio: 3
@@ -14708,7 +14708,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-DesembarqueAnfibio_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 10
   nivelDeConflito: 1
   dominio: 3
@@ -14769,7 +14769,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-HelipontoDiplomatico_N4
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 11
   nivelDeConflito: 4
   dominio: 4
@@ -14830,7 +14830,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-RecepcaoPresidencial_N4
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 12
   nivelDeConflito: 4
   dominio: 4
@@ -14952,7 +14952,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PontoGenerico-Paz
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 13
   nivelDeConflito: 0
   dominio: 3
@@ -15562,7 +15562,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaTerrestre_N3
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 0
   nivelDeConflito: 3
   dominio: 0
@@ -15623,7 +15623,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaTerrestre_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 0
   nivelDeConflito: 2
   dominio: 0
@@ -15684,7 +15684,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaTerrestre_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 0
   nivelDeConflito: 1
   dominio: 0
@@ -15745,7 +15745,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaNaval_N3
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 1
   nivelDeConflito: 3
   dominio: 1
@@ -15806,7 +15806,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaNaval_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 1
   nivelDeConflito: 2
   dominio: 1
@@ -15867,7 +15867,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaNaval_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 1
   nivelDeConflito: 1
   dominio: 1
@@ -15928,7 +15928,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaAerea_N3
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 2
   nivelDeConflito: 3
   dominio: 2
@@ -15989,7 +15989,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaAerea_N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 2
   nivelDeConflito: 2
   dominio: 2
@@ -16050,7 +16050,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-PatrulhaAerea_N1
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 2
   nivelDeConflito: 1
   dominio: 2
@@ -16112,7 +16112,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.AI.IA03.CreatyEstrategico
   id: IA03-VALDORIA-ATAQUE-AEROPORTO-N2
   paisProprietarioTeamId: 2
-  paisAlvoTeamId: 3
+  paisAlvoTeamId: 0
   tipo: 6
   nivelDeConflito: 2
   dominio: 2

@@ -127,7 +127,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
 
         bool possuiAtividadeOrcamentaria = (eco != null && eco.estruturasContadas > 0)
             || infantarias > 0 || veiculos > 0 || navais > 0 || aereos > 0 || estruturas > 0
-            || p.populacaoMilitarAtiva > 0 || p.reservistas > 0
+            || p.populacaoMilitarAtiva > 0 || p.reservistas > 0 || p.pensionistasMilitares > 0
             || relatorio.dividaTotal > 0f || pesquisasAtivas > 0 || labsAtivos > 0 || sateliteAtivo;
         if (!possuiAtividadeOrcamentaria)
         {
@@ -262,6 +262,21 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             status = "PAGO",
             detalhamento = $"População civil amparada: {p.populacaoCivil} | Baixas de guerra acumuladas: {p.mortosAcumulados} | Pressão habitacional: {p.pressaoHabitacional * 100f:0}%"
         });
+
+        if (p.pensionistasMilitares > 0 || p.gastosIndenizacoesMilitares > 0L)
+        {
+            float valorPensaoMil = p.pensionistasMilitares * 120f;
+            relatorio.despesas.Add(new LinhaOrcamento
+            {
+                nome = "Pensões e Indenizações Militares",
+                baseCalculo = $"{p.pensionistasMilitares} família(s)",
+                valorDiario = (decimal)valorPensaoMil,
+                valorMensal = (decimal)(valorPensaoMil * 30f),
+                tendencia = "- ENCARGO",
+                status = "PAGO",
+                detalhamento = $"Famílias amparadas por baixas militares/desabastecimento: {p.pensionistasMilitares} | Indenizações pagas: $ {p.gastosIndenizacoesMilitares:N0}"
+            });
+        }
 
         // 2. Saúde
         float valorSaude = Mathf.Max(2f, p.populacaoCivil * 0.005f + (p.qualidadeVida < 50f ? 6f : 2f));

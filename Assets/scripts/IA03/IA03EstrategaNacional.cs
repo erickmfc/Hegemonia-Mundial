@@ -63,6 +63,8 @@ namespace Hegemonia.AI.IA03
         private readonly List<GameObject> unidadesCandidatas = new List<GameObject>(48);
         private readonly List<GameObject> unidadesAtivasNaMissao = new List<GameObject>(32);
         private readonly List<IA_EnemyObservation> observacoesInimigasParaRelatorio = new List<IA_EnemyObservation>(128);
+        private readonly List<IA_EnemyObservation> memoriaInimigosBuffer = new List<IA_EnemyObservation>(64);
+        private readonly List<IA_StrategicTargetData> alvosEstrategicosBuffer = new List<IA_StrategicTargetData>(8);
         private readonly List<CandidatoGrupo> candidatosGrupo = new List<CandidatoGrupo>(128);
         private readonly List<MissaoEstrategicaSO> filaMissoes = new List<MissaoEstrategicaSO>(32);
         private readonly HashSet<MissaoEstrategicaSO> missoesConcluidasNaCrise = new HashSet<MissaoEstrategicaSO>();
@@ -976,9 +978,65 @@ namespace Hegemonia.AI.IA03
                 Mathf.Max(1, perfilPais.MinimoNaviosEscolta));
         }
 
+        private static int EncontrarEquipeEmGuerraAtiva(SistemaGovernoMundial governo, int meuTeamId)
+        {
+            if (governo == null || meuTeamId <= 0 || governo.Relacoes == null)
+            {
+                return 0;
+            }
+
+            IReadOnlyList<RelacaoPaisGoverno> relacoes = governo.Relacoes;
+            for (int i = 0; i < relacoes.Count; i++)
+            {
+                RelacaoPaisGoverno rel = relacoes[i];
+                if (rel == null || !rel.guerraDeclarada || rel.cessarFogoAtivo)
+                {
+                    continue;
+                }
+
+                if (rel.teamA == meuTeamId && rel.teamB > 0)
+                {
+                    return rel.teamB;
+                }
+
+                if (rel.teamB == meuTeamId && rel.teamA > 0)
+                {
+                    return rel.teamA;
+                }
+            }
+
+            return 0;
+        }
+
+        private static bool EstaEmGuerraFormalCom(SistemaGovernoMundial governo, int meuTeamId, int outroTeamId)
+        {
+            if (governo == null || meuTeamId <= 0 || outroTeamId <= 0 || meuTeamId == outroTeamId)
+            {
+                return false;
+            }
+
+            RelacaoPaisGoverno rel = governo.ObterRelacao(meuTeamId, outroTeamId);
+            return rel != null && rel.guerraDeclarada && !rel.cessarFogoAtivo;
+        }
+
         private void AtualizarConflito(SistemaGovernoMundial governo, DadosPaisGoverno pais, float now)
         {
-            if (governo == null || paisAlvoTeamId <= 0)
+            if (governo == null)
+            {
+                return;
+            }
+
+            if (brain != null && (paisAlvoTeamId <= 0 || !EstaEmGuerraFormalCom(governo, brain.TeamId, paisAlvoTeamId)))
+            {
+                int equipeEmGuerraAtiva = EncontrarEquipeEmGuerraAtiva(governo, brain.TeamId);
+                if (equipeEmGuerraAtiva > 0 && equipeEmGuerraAtiva != paisAlvoTeamId)
+                {
+                    paisAlvoTeamId = equipeEmGuerraAtiva;
+                    guerraObservada = false;
+                }
+            }
+
+            if (paisAlvoTeamId <= 0)
             {
                 return;
             }
@@ -1538,7 +1596,16 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
-            if (MissaoExigeAutorizacaoDeGuerraFormal(selecionada)
+            bool missaoDefesaEmGuerra = selecionada != null
+                && selecionada.TipoMissao == IA03TipoMissao.DefesaDeObjetivo
+                && (guerraObservada
+                    || EstaEmGuerraFormalCom(
+                        SistemaGovernoMundial.Instancia,
+                        brain != null ? brain.TeamId : 0,
+                        paisAlvoTeamId));
+
+            if (!missaoDefesaEmGuerra
+                && MissaoExigeAutorizacaoDeGuerraFormal(selecionada)
                 && nivelDeConflito == IA03NivelConflito.ConflitoLimitado
                 && !economiaAtual.PodeEscalarParaN2)
             {
@@ -1549,7 +1616,8 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
-            if (MissaoExigeAutorizacaoDeGuerraFormal(selecionada)
+            if (!missaoDefesaEmGuerra
+                && MissaoExigeAutorizacaoDeGuerraFormal(selecionada)
                 && nivelDeConflito == IA03NivelConflito.GuerraTotal
                 && !PodeEscalarParaGuerraTotal(SistemaGovernoMundial.Instancia, out string motivoN1))
             {
@@ -1615,8 +1683,9 @@ namespace Hegemonia.AI.IA03
                 return false;
             }
 
-            if (nivelDeConflito == IA03NivelConflito.ConflitoLimitado
-                || nivelDeConflito == IA03NivelConflito.GuerraTotal)
+            if (!missaoDefesaEmGuerra
+                && (nivelDeConflito == IA03NivelConflito.ConflitoLimitado
+                    || nivelDeConflito == IA03NivelConflito.GuerraTotal))
             {
                 string motivoReposicao;
                 SistemaGovernoMundial governoReposicao = SistemaGovernoMundial.Instancia;
@@ -3402,12 +3471,94 @@ namespace Hegemonia.AI.IA03
                 return null;
             }
 
+            IA_EnemyObservation melhor = SelecionarMelhorObservacao(mundo.VisibleEnemies, preferencia, ponto, false);
+            if (melhor != null)
+            {
+                return melhor;
+            }
+
+            if (nivelDeConflito != IA03NivelConflito.ConflitoLimitado && nivelDeConflito != IA03NivelConflito.GuerraTotal)
+            {
+                return null;
+            }
+
+            mundo.FillEnemyMemory(memoriaInimigosBuffer, 120f);
+            melhor = SelecionarMelhorObservacao(memoriaInimigosBuffer, preferencia, ponto, true);
+            if (melhor != null)
+            {
+                return melhor;
+            }
+
+            IA_EnemyObservation fallbackEstrategico = null;
+            if (brain != null && paisAlvoTeamId > 0 && ContextoTerritorialDiplomatico.PodeDispararEmGuerra(brain.TeamId, paisAlvoTeamId))
+            {
+                int qtd = mundo.FillEnemyStrategicTargets(alvosEstrategicosBuffer, ponto, 6);
+                for (int i = 0; i < qtd; i++)
+                {
+                    IA_StrategicTargetData alvoEstrategico = alvosEstrategicosBuffer[i];
+                    if (alvoEstrategico == null || alvoEstrategico.Transform == null || !alvoEstrategico.Transform.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    IdentidadeUnidade idAlvo = alvoEstrategico.Transform.GetComponentInParent<IdentidadeUnidade>();
+                    if (idAlvo == null || idAlvo.teamID != paisAlvoTeamId)
+                    {
+                        continue;
+                    }
+
+                    IA_EnemyObservation sintetica = new IA_EnemyObservation
+                    {
+                        Transform = alvoEstrategico.Transform,
+                        Position = alvoEstrategico.Position,
+                        TeamId = idAlvo.teamID,
+                        UnitName = idAlvo.name,
+                        Domain = alvoEstrategico.Kind == IA_StrategicTargetKind.NavalPatrol
+                                 || alvoEstrategico.Kind == IA_StrategicTargetKind.OilTanker
+                                 || alvoEstrategico.Kind == IA_StrategicTargetKind.OilPlatform
+                            ? IA_Domain.Naval
+                            : IA_Domain.Land,
+                        IsStructure = idAlvo.tipoUnidade == TipoUnidade.Estrutura,
+                        ThreatScore = alvoEstrategico.Score
+                    };
+
+                    if (preferencia == IA03AlvoPreferencial.Nenhum || CorrespondeAlvoPreferencial(sintetica, preferencia))
+                    {
+                        return sintetica;
+                    }
+
+                    if (fallbackEstrategico == null)
+                    {
+                        fallbackEstrategico = sintetica;
+                    }
+                }
+            }
+
+            return fallbackEstrategico;
+        }
+
+        private IA_EnemyObservation SelecionarMelhorObservacao(
+            List<IA_EnemyObservation> origem,
+            IA03AlvoPreferencial preferencia,
+            Vector3 ponto,
+            bool exigirTransformAtivo)
+        {
+            if (origem == null || origem.Count == 0)
+            {
+                return null;
+            }
+
             IA_EnemyObservation melhor = null;
             float melhorPontuacao = float.NegativeInfinity;
-            for (int i = 0; i < mundo.VisibleEnemies.Count; i++)
+            for (int i = 0; i < origem.Count; i++)
             {
-                IA_EnemyObservation observacao = mundo.VisibleEnemies[i];
+                IA_EnemyObservation observacao = origem[i];
                 if (observacao == null)
+                {
+                    continue;
+                }
+
+                if (exigirTransformAtivo && (observacao.Transform == null || !observacao.Transform.gameObject.activeInHierarchy))
                 {
                     continue;
                 }
@@ -3554,13 +3705,20 @@ namespace Hegemonia.AI.IA03
             IdentidadeUnidade identidadeAgressor = agressor != null
                 ? agressor.GetComponentInParent<IdentidadeUnidade>()
                 : null;
-            if (identidadeAlvo == null || identidadeAgressor == null
-                || identidadeAgressor.teamID <= 0 || identidadeAgressor.teamID == identidadeAlvo.teamID)
+            MissileThreatTracker trackerAgressor = identidadeAgressor == null && agressor != null
+                ? agressor.GetComponentInParent<MissileThreatTracker>()
+                : null;
+            int teamAgressor = identidadeAgressor != null
+                ? identidadeAgressor.teamID
+                : (trackerAgressor != null ? trackerAgressor.TeamOrigem : 0);
+
+            if (identidadeAlvo == null
+                || teamAgressor <= 0 || teamAgressor == identidadeAlvo.teamID)
             {
                 return;
             }
 
-            if (identidadeAgressor.teamID == brain.TeamId && identidadeAlvo.teamID > 0)
+            if (teamAgressor == brain.TeamId && identidadeAlvo.teamID > 0)
             {
                 if (paisAlvoTeamId <= 0)
                 {
@@ -3577,17 +3735,19 @@ namespace Hegemonia.AI.IA03
             {
                 if (paisAlvoTeamId <= 0)
                 {
-                    paisAlvoTeamId = identidadeAgressor.teamID;
+                    paisAlvoTeamId = teamAgressor;
                 }
 
-                if (identidadeAgressor.teamID != paisAlvoTeamId)
+                if (teamAgressor != paisAlvoTeamId)
                 {
                     // O alvo estratégico pré-configurado não é necessariamente
-                    // quem iniciou hostilidades nesta partida. Em paz, o primeiro
-                    // dano confirmado define o agressor real para a resposta da IA03.
-                    if (nivelDeConflito == IA03NivelConflito.Paz)
+                    // quem iniciou hostilidades nesta partida; se não há guerra formal
+                    // com o alvo antigo, passa a responder ao agressor real.
+                    bool alvoAtualEmGuerra = EstaEmGuerraFormalCom(SistemaGovernoMundial.Instancia, brain.TeamId, paisAlvoTeamId);
+                    bool agressorEmGuerra = EstaEmGuerraFormalCom(SistemaGovernoMundial.Instancia, brain.TeamId, teamAgressor);
+                    if (nivelDeConflito == IA03NivelConflito.Paz || !alvoAtualEmGuerra || agressorEmGuerra)
                     {
-                        paisAlvoTeamId = identidadeAgressor.teamID;
+                        paisAlvoTeamId = teamAgressor;
                     }
                 }
 
@@ -3599,13 +3759,13 @@ namespace Hegemonia.AI.IA03
                         danoEstrutural ? "estrutura nacional sob ataque" : "unidade nacional sob ataque");
                 }
 
-                if (danoEstrutural)
+                MissaoEstrategicaSO defesa = SelecionarMissaoDeDefesa(alvo.name, !danoEstrutural);
+                if (defesa != null)
                 {
-                    MissaoEstrategicaSO defesa = SelecionarMissaoDeDefesa(alvo.name);
-                    if (defesa != null)
-                    {
-                        SolicitarMissaoEstrategica(defesa, "ataque a " + alvo.name, true);
-                    }
+                    SolicitarMissaoEstrategica(
+                        defesa,
+                        (danoEstrutural ? "ataque a " : "ataque a unidade ") + alvo.name,
+                        true);
                 }
             }
 
@@ -3732,9 +3892,10 @@ namespace Hegemonia.AI.IA03
                 : "runtime-" + objeto.GetInstanceID();
         }
 
-        private MissaoEstrategicaSO SelecionarMissaoDeDefesa(string nomeEstrutura)
+        private MissaoEstrategicaSO SelecionarMissaoDeDefesa(string nomeEstrutura, bool permitirFallbackGeral = false)
         {
             MissaoEstrategicaSO melhor = null;
+            MissaoEstrategicaSO fallback = null;
             if (missoesEstrategicas == null)
             {
                 return null;
@@ -3744,8 +3905,17 @@ namespace Hegemonia.AI.IA03
             {
                 MissaoEstrategicaSO missao = missoesEstrategicas[i];
                 if (missao == null || missao.TipoMissao != IA03TipoMissao.DefesaDeObjetivo
-                    || !missao.Aceita(nivelDeConflito, MissaoDefaultCreaty(missao))
-                    || !NomeCompativelComAlvo(nomeEstrutura, missao.Alvo))
+                    || !missao.Aceita(nivelDeConflito, MissaoDefaultCreaty(missao)))
+                {
+                    continue;
+                }
+
+                if (fallback == null || missao.Prioridade > fallback.Prioridade)
+                {
+                    fallback = missao;
+                }
+
+                if (!NomeCompativelComAlvo(nomeEstrutura, missao.Alvo))
                 {
                     continue;
                 }
@@ -3756,7 +3926,7 @@ namespace Hegemonia.AI.IA03
                 }
             }
 
-            return melhor;
+            return melhor != null ? melhor : (permitirFallbackGeral ? fallback : null);
         }
 
         private static bool NomeCompativelComAlvo(string nome, IA03AlvoPreferencial preferencia)

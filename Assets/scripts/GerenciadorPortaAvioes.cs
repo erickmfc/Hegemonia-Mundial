@@ -83,6 +83,8 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     // nenhuma disponível é que são direcionadas para as vagas internas (hangar).
     private readonly List<Transform> _vagasExternas = new List<Transform>();
     private readonly List<PontoPousoHelicopteroNaval> _pontosPousoHelicopterosCreaty = new List<PontoPousoHelicopteroNaval>();
+    private readonly List<Transform> _vagasHelicopteroCarrierBuffer = new List<Transform>(24);
+    private readonly List<Transform> _waypointsPatioBackup = new List<Transform>(64);
 
     [Header("=== RADAR DE CONTROLE AÉREO ===")]
     public float raioRadarResgate = 1500f; // Aumentei um pouco o alcance para facilitar
@@ -882,6 +884,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         foreach (var av in _bufferScanAvioes)
         {
             if (av == null) continue;
+            if (!av.PodeOperarNoPortaAvioes()) continue;
             bool jaEstaNoPortaAvioes = av.transform == transform || av.transform.IsChildOf(transform);
             if (jaEstaNoPortaAvioes) continue;
             
@@ -918,9 +921,6 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         RegistroEntidadesJogo.FillHelicopteros(_bufferScanHelicopteros);
         _helicopterosVistosScan.Clear();
 
-        if (_idCarrier == null) _idCarrier = GetComponent<IdentidadeUnidade>();
-        int meuTime = (_idCarrier != null) ? _idCarrier.teamID : 1;
-
         foreach (var heli in _bufferScanHelicopteros)
         {
             if (heli == null) continue;
@@ -928,19 +928,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             if (!_helicopterosVistosScan.Add(heliId)) continue;
             if (HelicopteroPertenceAEstaBase(heli)) continue;
             if (!heli.estaVoando && !heli.EstaEmPreparacaoDecolagem()) continue;
-
-            int heliTime = -1;
-            IdentidadeUnidade idU = heli.GetComponent<IdentidadeUnidade>();
-            if (idU == null) idU = heli.GetComponentInParent<IdentidadeUnidade>();
-            if (idU != null) heliTime = idU.teamID;
-            else
-            {
-                var idIA = heli.GetComponent<IdentidadeIA>();
-                if (idIA == null) idIA = heli.GetComponentInParent<IdentidadeIA>();
-                if (idIA != null) heliTime = idIA.teamID;
-            }
-
-            if (heliTime > 0 && heliTime != meuTime) continue;
+            if (!HelicopteroPertenceAoTimeDoCarrier(heli)) continue;
 
             float distSqr = (heli.transform.position - transform.position).sqrMagnitude;
             if (distSqr < raioRadarResgate * raioRadarResgate)
@@ -1234,7 +1222,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
 
                 if (!podeChamar)
                 {
-                    GUILayout.Label("Sem vaga de convés conectada ao Creaty", _uiLabelCompacta);
+                    GUILayout.Label(ObterMotivoBloqueioHelicoptero(false), _uiLabelCompacta);
                 }
 
                 GUILayout.EndHorizontal();
@@ -1340,7 +1328,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                             break;
                         }
                         GUI.enabled = true;
-                        if (!podeChamar) GUILayout.Label("Sem vaga Creaty", _uiLabelCompacta);
+                        if (!podeChamar) GUILayout.Label(ObterMotivoBloqueioHelicoptero(true), _uiLabelCompacta);
                     }
                     else
                     {
@@ -1796,7 +1784,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 GUI.enabled = true;
                 if (!podeChamar)
                 {
-                    GUILayout.Label("Sem vaga Creaty", _uiLabelCompacta);
+                    GUILayout.Label(ObterMotivoBloqueioHelicoptero(true), _uiLabelCompacta);
                 }
                 GUILayout.EndHorizontal();
             }
@@ -1843,7 +1831,7 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                         break;
                     }
                     GUI.enabled = true;
-                    if (!podeChamar) GUILayout.Label("Sem vaga Creaty", _uiLabelCompacta);
+                    if (!podeChamar) GUILayout.Label(ObterMotivoBloqueioHelicoptero(true), _uiLabelCompacta);
                 }
                 GUILayout.EndHorizontal();
             }
@@ -1917,6 +1905,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
             reservaCombustivelHelicopteros = Mathf.Max(0f, reservaCombustivelHelicopteros - aplicado);
         }
 
+        RacaoUnidade racaoHeli = RacaoUnidade.ObterParaObjeto(helicoptero.gameObject);
+        if (racaoHeli != null && racaoHeli.UsaRacao && racaoHeli.RacaoAtual < racaoHeli.Capacidade)
+        {
+            racaoHeli.AbastecerUsandoEstoqueNacional(racaoHeli.Capacidade * 0.5f);
+        }
+
         // If ship reserve cannot cover the helicopter tank, let national stock complete it.
         return falta > 0f && transferencia >= falta;
     }
@@ -1931,7 +1925,9 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     // chegando ao mapa enquanto a rota e definida.
     private void DesenharIndicadorOrdemAviaoCarrier()
     {
-        if (_selecionadoCarrier == null || !_selecionadoCarrier.aguardandoCliqueRadar)
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto
+            || _selecionadoCarrier == null
+            || !_selecionadoCarrier.aguardandoCliqueRadar)
         {
             return;
         }
@@ -2011,6 +2007,12 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
                 combustivel,
                 combustivel.Capacidade - combustivel.CombustivelAtual,
                 out _);
+        }
+
+        RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(aviao.gameObject);
+        if (racao != null && racao.UsaRacao && (forcarCompleto || racao.Percentual < 0.99f))
+        {
+            racao.AbastecerUsandoEstoqueNacional(racao.Capacidade - racao.RacaoAtual);
         }
 
         LancadorMisselCaca misseis = aviao.GetComponent<LancadorMisselCaca>();
@@ -2584,6 +2586,23 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         return SolicitarPatrulhaOperacionalV2(aviao, rota);
     }
 
+    public bool SolicitarMissaoRetomadaV2(ControleAviao aviao, Vector3 destino)
+    {
+        if (!operacoesV2AssumiuControle || aviao == null)
+        {
+            return false;
+        }
+
+        GerenciadorOperacoesPortaAvioesV2 v2 = ObterOperacoesV2();
+        if (v2 == null)
+        {
+            return false;
+        }
+
+        v2.PrepararAeronaveParaMenu(aviao, false);
+        return v2.TrySolicitarDecolagem(aviao, destino, false);
+    }
+
     public bool SolicitarPatrulhaOperacionalV2(ControleAviao aviao, IList<Vector3> rota)
     {
         if (!operacoesV2AssumiuControle || aviao == null || rota == null || rota.Count == 0)
@@ -2852,42 +2871,213 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         SolicitarDecolagemV2(_selecionadoCarrier, pontoAlvo, false);
     }
 
-    private Transform ObterVagaHelicopteroCarrier(Helicoptero heli = null)
+    private int ObterTimeCarrier()
     {
-        if (_pontosPousoHelicopterosCreaty.Count == 0)
+        if (_idCarrier == null) _idCarrier = GetComponent<IdentidadeUnidade>();
+        return _idCarrier != null ? _idCarrier.teamID : 1;
+    }
+
+    private bool HelicopteroPertenceAoTimeDoCarrier(Helicoptero heli)
+    {
+        if (heli == null) return false;
+        int meuTime = ObterTimeCarrier();
+        int heliTime = -1;
+        IdentidadeUnidade idU = heli.GetComponent<IdentidadeUnidade>();
+        if (idU == null) idU = heli.GetComponentInParent<IdentidadeUnidade>();
+        if (idU != null)
         {
-            return null;
+            heliTime = idU.teamID;
+        }
+        else
+        {
+            IdentidadeIA idIA = heli.GetComponent<IdentidadeIA>();
+            if (idIA == null) idIA = heli.GetComponentInParent<IdentidadeIA>();
+            if (idIA != null) heliTime = idIA.teamID;
         }
 
+        return heliTime <= 0 || meuTime <= 0 || heliTime == meuTime;
+    }
+
+    private string ObterMotivoBloqueioHelicoptero(bool compacto)
+    {
+        if (_pontosPousoHelicopterosCreaty.Count > 0)
+        {
+            return compacto ? "Sem vaga Creaty" : "Sem vaga de convés conectada ao Creaty";
+        }
+
+        return compacto ? "Convés lotado" : "Sem vaga de convés disponível no momento";
+    }
+
+    public bool TemHelicopteroNaVaga(Transform vaga, Helicoptero ignorarHeli = null)
+    {
+        if (vaga == null) return false;
+        const float raioOcupacaoSqr = 16f;
+        for (int i = helicopterosDoAeroporto.Count - 1; i >= 0; i--)
+        {
+            Helicoptero h = helicopterosDoAeroporto[i];
+            if (h == null || h == ignorarHeli || HelicopteroEstaNoHangarInterno(h)) continue;
+            bool ativoNoConves = h.EstaEstacionadoNoAeroporto() || HelicopteroEstaEmRecebimentoCarrier(h);
+            if (!ativoNoConves) continue;
+
+            Transform vagaHeli = h.ObterVagaAeroporto();
+            if (vagaHeli == vaga) return true;
+            if (vagaHeli != null && (vagaHeli.position - vaga.position).sqrMagnitude <= raioOcupacaoSqr) return true;
+            if (!h.estaVoando && (h.transform.position - vaga.position).sqrMagnitude <= raioOcupacaoSqr) return true;
+        }
+
+        return false;
+    }
+
+    private static bool EhVagaPreferencialHelicoptero(Transform vaga)
+    {
+        if (vaga == null) return false;
+        VagaPortaAvioesV2 vagaV2 = vaga.GetComponent<VagaPortaAvioesV2>();
+        return vagaV2 == null
+            || vagaV2.tipoPermitido == TipoAeronavePortaAvioesV2.Helicoptero
+            || vagaV2.tipoPermitido == TipoAeronavePortaAvioesV2.Qualquer;
+    }
+
+    private bool VagaExisteEmOperacoesV2Conves(Transform vaga)
+    {
+        if (vaga == null) return false;
+        GerenciadorOperacoesPortaAvioesV2 operacoesV2 = ObterOperacoesV2();
+        if (operacoesV2 == null || operacoesV2.layout == null || operacoesV2.layout.vagasConves == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < operacoesV2.layout.vagasConves.Count; i++)
+        {
+            VagaPortaAvioesV2 vagaV2 = operacoesV2.layout.vagasConves[i];
+            if (vagaV2 != null && vagaV2.transform == vaga) return true;
+        }
+
+        return false;
+    }
+
+    private bool EhVagaExternaConvesCarrier(Transform vaga)
+    {
+        if (vaga == null) return false;
+        if (vaga != transform && !vaga.IsChildOf(transform)) return false;
+        if (hangarAviao != null && vaga.IsChildOf(hangarAviao)) return false;
+
+        if (_vagasExternas.Contains(vaga)) return true;
+        if (patio != null && vaga.IsChildOf(patio) && vaga != patio) return true;
+        if (_vagasExternas.Count == 0 && waypointsPatio.Contains(vaga)) return true;
+        return VagaExisteEmOperacoesV2Conves(vaga);
+    }
+
+    private void AdicionarCandidatoVagaConves(Transform vaga, List<Transform> destino, Helicoptero heliIgnorado, bool apenasPreferenciais)
+    {
+        if (vaga == null || destino.Contains(vaga)) return;
+        if (vaga != transform && !vaga.IsChildOf(transform)) return;
+        if (hangarAviao != null && vaga.IsChildOf(hangarAviao)) return;
+        if (apenasPreferenciais && !EhVagaPreferencialHelicoptero(vaga)) return;
+        if (TemHelicopteroNaVaga(vaga, heliIgnorado)) return;
+        destino.Add(vaga);
+    }
+
+    private void ColetarVagasExternasConvesHelicoptero(List<Transform> destino, Helicoptero heliIgnorado)
+    {
+        for (int passo = 0; passo < 2; passo++)
+        {
+            bool apenasPreferenciais = passo == 0;
+            if (_vagasExternas.Count > 0)
+            {
+                for (int i = 0; i < _vagasExternas.Count; i++)
+                {
+                    AdicionarCandidatoVagaConves(_vagasExternas[i], destino, heliIgnorado, apenasPreferenciais);
+                }
+            }
+            else
+            {
+                if (patio != null)
+                {
+                    foreach (Transform t in patio)
+                    {
+                        AdicionarCandidatoVagaConves(t, destino, heliIgnorado, apenasPreferenciais);
+                    }
+                }
+
+                for (int i = 0; i < waypointsPatio.Count; i++)
+                {
+                    AdicionarCandidatoVagaConves(waypointsPatio[i], destino, heliIgnorado, apenasPreferenciais);
+                }
+
+                GerenciadorOperacoesPortaAvioesV2 operacoesV2 = ObterOperacoesV2();
+                if (operacoesV2 != null && operacoesV2.layout != null && operacoesV2.layout.vagasConves != null)
+                {
+                    for (int i = 0; i < operacoesV2.layout.vagasConves.Count; i++)
+                    {
+                        VagaPortaAvioesV2 vagaV2 = operacoesV2.layout.vagasConves[i];
+                        if (vagaV2 != null)
+                        {
+                            AdicionarCandidatoVagaConves(vagaV2.transform, destino, heliIgnorado, apenasPreferenciais);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private Transform ObterVagaHelicopteroCarrier(Helicoptero heli = null)
+    {
         if (heli != null)
         {
             Transform vagaAtual = heli.ObterVagaAeroporto();
             if (heli.EstaEstacionadoNoAeroporto() && PodeServirHelicoptero(heli, vagaAtual)) return vagaAtual;
         }
 
-        var vagasAnteriores = new List<Transform>(waypointsPatio);
-        waypointsPatio.Clear();
-        for (int i = 0; i < _pontosPousoHelicopterosCreaty.Count; i++)
+        _vagasHelicopteroCarrierBuffer.Clear();
+        if (_pontosPousoHelicopterosCreaty.Count > 0)
         {
-            PontoPousoHelicopteroNaval ponto = _pontosPousoHelicopterosCreaty[i];
-            if (ponto != null && ponto.EstaConectadoAoNavio(this)) waypointsPatio.Add(ponto.transform);
+            for (int i = 0; i < _pontosPousoHelicopterosCreaty.Count; i++)
+            {
+                PontoPousoHelicopteroNaval ponto = _pontosPousoHelicopterosCreaty[i];
+                if (ponto != null && ponto.EstaConectadoAoNavio(this) && !TemHelicopteroNaVaga(ponto.transform, heli))
+                {
+                    _vagasHelicopteroCarrierBuffer.Add(ponto.transform);
+                }
+            }
         }
+        else
+        {
+            ColetarVagasExternasConvesHelicoptero(_vagasHelicopteroCarrierBuffer, heli);
+        }
+
+        if (_vagasHelicopteroCarrierBuffer.Count == 0)
+        {
+            return null;
+        }
+
+        _waypointsPatioBackup.Clear();
+        _waypointsPatioBackup.AddRange(waypointsPatio);
+        waypointsPatio.Clear();
+        waypointsPatio.AddRange(_vagasHelicopteroCarrierBuffer);
 
         Transform vaga = base.ObterPrimeiraVagaLivre();
         waypointsPatio.Clear();
-        waypointsPatio.AddRange(vagasAnteriores);
+        waypointsPatio.AddRange(_waypointsPatioBackup);
+        _waypointsPatioBackup.Clear();
+        _vagasHelicopteroCarrierBuffer.Clear();
         return vaga;
     }
 
     public bool PodeReceberHelicoptero(Helicoptero heli)
     {
-        if (heli == null) return false;
-        for (int i = 0; i < _pontosPousoHelicopterosCreaty.Count; i++)
+        if (heli == null || !HelicopteroPertenceAoTimeDoCarrier(heli)) return false;
+
+        if (_pontosPousoHelicopterosCreaty.Count > 0)
         {
-            PontoPousoHelicopteroNaval ponto = _pontosPousoHelicopterosCreaty[i];
-            if (ponto != null && ponto.EstaConectadoAoNavio(this)) return true;
+            for (int i = 0; i < _pontosPousoHelicopterosCreaty.Count; i++)
+            {
+                PontoPousoHelicopteroNaval ponto = _pontosPousoHelicopterosCreaty[i];
+                if (ponto != null && ponto.EstaConectadoAoNavio(this)) return true;
+            }
+            return false;
         }
-        return false;
+
+        return ObterVagaHelicopteroCarrier(heli) != null;
     }
 
     public bool PodeServirHelicoptero(Helicoptero heli, Transform vaga)
@@ -2899,18 +3089,23 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
     public bool PodeReservarVagaCreaty(Transform vaga)
     {
         if (vaga == null) return false;
-        for (int i = 0; i < _pontosPousoHelicopterosCreaty.Count; i++)
+        if (_pontosPousoHelicopterosCreaty.Count > 0)
         {
-            PontoPousoHelicopteroNaval ponto = _pontosPousoHelicopterosCreaty[i];
-            if (ponto != null && ponto.transform == vaga && ponto.EstaConectadoAoNavio(this)) return true;
+            for (int i = 0; i < _pontosPousoHelicopterosCreaty.Count; i++)
+            {
+                PontoPousoHelicopteroNaval ponto = _pontosPousoHelicopterosCreaty[i];
+                if (ponto != null && ponto.transform == vaga && ponto.EstaConectadoAoNavio(this)) return true;
+            }
+            return false;
         }
-        return false;
+
+        return EhVagaExternaConvesCarrier(vaga);
     }
 
     private void InicializarPontosPousoHelicopterosCreaty()
     {
-        // Vagas de helicóptero são opt-in: só entram no fluxo de pouso quando
-        // o ponto do convés está explicitamente ligado a um Creaty do mesmo navio.
+        // Quando pontos Creaty explícitos estão presentes, respeita apenas os conectados
+        // ao mesmo navio e time; navios sem PontoPousoHelicopteroNaval utilizam vagas externas.
         _pontosPousoHelicopterosCreaty.Clear();
         PontoPousoHelicopteroNaval[] pontosPouso = GetComponentsInChildren<PontoPousoHelicopteroNaval>(true);
         for (int i = 0; i < pontosPouso.Length; i++)
@@ -3005,13 +3200,13 @@ public class GerenciadorPortaAvioes : GerenciadorAeroporto
         if (heli != null)
         {
             Transform vagaAnterior = heli.ObterVagaAeroporto();
-            if (vagaAnterior != null && (vagaAnterior == transform || vagaAnterior.IsChildOf(transform)))
+            if (vagaAnterior != null && PodeReservarVagaCreaty(vagaAnterior) && !TemHelicopteroNaVaga(vagaAnterior, heli))
             {
                 return vagaAnterior;
             }
         }
 
-        return ObterPrimeiraVagaLivre();
+        return ObterVagaHelicopteroCarrier(heli);
     }
 
     private IEnumerator RotinaReceberHelicopteroNoCarrier(Helicoptero heli, Transform vaga, int heliId)

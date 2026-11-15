@@ -3,16 +3,17 @@ using System.Linq;
 
 public static class ConfiguracaoCenasJogo
 {
-    // As cenas editaveis do jogo ficam centralizadas em Assets/_Recovery.
-    // Estes nomes/caminhos sao a fonte oficial usada pelo menu e pelos testes.
-    public const string CenaMenuPrincipalCanonica = "Cena menu P";
+    // A cena canônica do menu inicial é Menu cena; Cena menu P é mantida apenas como alias legado.
+    public const string CenaMenuPrincipalCanonica = "Menu cena";
+    public const string CenaMenuLegada = "Cena menu P";
     public const string CenaMenuFallback = "MenuPrincipal";
     // Mantido como alias legado: saves e ferramentas da campanha recuperada ainda
     // precisam resolver para a cena original, sem confundir o destino de novas partidas.
     public const string CenaCampanhaLegada = "cena19)";
     public const string CaminhoCenaCampanhaLegada = "Assets/_Recovery/cena19).unity";
     public const string CenaCampanhaCanonica = CenaCampanhaLegada;
-    public const string CaminhoCenaMenuPrincipalCanonica = "Assets/_Recovery/Cena menu P.unity";
+    public const string CaminhoCenaMenuPrincipalCanonica = "Assets/Scenes/Menu cena.unity";
+    public const string CaminhoCenaMenuLegada = "Assets/_Recovery/Cena menu P.unity";
     public const string CaminhoCenaCampanhaCanonica = CaminhoCenaCampanhaLegada;
     public const string CenaMapaGlobal = "GlobalMapRTS";
     public const string CaminhoCenaMapaGlobal = "Assets/Scenes/GlobalMapRTS.unity";
@@ -31,7 +32,9 @@ public static class ConfiguracaoCenasJogo
     private static readonly string[] aliasesMenuPrincipal =
     {
         CenaMenuPrincipalCanonica,
-        CaminhoCenaMenuPrincipalCanonica
+        CaminhoCenaMenuPrincipalCanonica,
+        CenaMenuLegada,
+        CaminhoCenaMenuLegada
     };
 
     private static readonly string[] aliasesCampanhaLegada =
@@ -68,7 +71,16 @@ public static class ConfiguracaoCenasJogo
 
     public static bool EhCenaDeMenu(string nomeCena)
     {
-        return nomeCena == CenaMenuPrincipalCanonica;
+        if (string.IsNullOrWhiteSpace(nomeCena))
+        {
+            return false;
+        }
+
+        string valor = nomeCena.Trim().Replace('\\', '/');
+        return string.Equals(valor, CenaMenuPrincipalCanonica, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(valor, CaminhoCenaMenuPrincipalCanonica, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(valor, CenaMenuLegada, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(valor, CaminhoCenaMenuLegada, System.StringComparison.OrdinalIgnoreCase);
     }
 
     public static string ResolverCenaMenuPrincipal()

@@ -44,9 +44,56 @@ public class MarcadorTerritorio : MonoBehaviour
         ProgressaoGlobalPreposicionadaInicializada = false;
     }
 
+    public static bool EhSlotDeCidadeNaoConstruido(Component componente)
+    {
+        if (componente == null) return false;
+        MarcadorTerritorio marcador = componente as MarcadorTerritorio;
+        if (marcador == null) marcador = componente.GetComponent<MarcadorTerritorio>();
+        if (marcador == null) marcador = componente.GetComponentInParent<MarcadorTerritorio>();
+        return marcador != null && marcador.construirCidadeAoIniciar;
+    }
+
+    private void OcultarVisualSlotNaoConstruido()
+    {
+        mostrarBordasNoJogo = false;
+
+        IdentidadeUnidade identidade = GetComponent<IdentidadeUnidade>();
+        if (identidade != null)
+        {
+            teamID = Mathf.Max(0, identidade.teamID);
+            if (identidade.enabled)
+                identidade.enabled = false;
+        }
+
+        SistemaDeDanos danos = GetComponent<SistemaDeDanos>();
+        if (danos != null && danos.enabled)
+            danos.enabled = false;
+
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null && renderers[i].enabled)
+                renderers[i].enabled = false;
+        }
+
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i] != null && colliders[i].enabled)
+                colliders[i].enabled = false;
+        }
+    }
+
+    void Awake()
+    {
+        if (construirCidadeAoIniciar)
+            OcultarVisualSlotNaoConstruido();
+    }
+
     void OnEnable()
     {
-        RegistroEntidadesJogo.Register(this);
+        if (!construirCidadeAoIniciar)
+            RegistroEntidadesJogo.Register(this);
     }
 
     void OnDisable()
@@ -62,7 +109,7 @@ public class MarcadorTerritorio : MonoBehaviour
         if (construirCidadeAoIniciar)
         {
             ConfigureOwnership(id != null ? id.teamID : teamID, false, 0f);
-            mostrarBordasNoJogo = false;
+            OcultarVisualSlotNaoConstruido();
             StartCoroutine(PrepararConstrucaoCidadeInicial());
             return;
         }
@@ -356,22 +403,27 @@ public class MarcadorTerritorio : MonoBehaviour
                     marcadorCidade.ConfigureOwnership(teamID, false, 0f);
                 }
 
+                Physics.SyncTransforms();
                 Renderer[] renderizadores = cidadeObjeto.GetComponentsInChildren<Renderer>(true);
                 float menorY = float.PositiveInfinity;
                 for (int i = 0; i < renderizadores.Length; i++)
                 {
-                    if (renderizadores[i] != null)
-                        menorY = Mathf.Min(menorY, renderizadores[i].bounds.min.y);
+                    Renderer rend = renderizadores[i];
+                    if (rend == null || !rend.enabled || !rend.gameObject.activeInHierarchy) continue;
+                    if (!(rend is MeshRenderer) && !(rend is SkinnedMeshRenderer)) continue;
+                    if (rend.bounds.size.sqrMagnitude <= 0.0001f) continue;
+                    menorY = Mathf.Min(menorY, rend.bounds.min.y);
                 }
                 if (!float.IsInfinity(menorY))
                     cidadeObjeto.transform.position += Vector3.up * (posicao.y - menorY);
 
+                cidade.AlinharBaseAoTerrenoDoMapaGlobal();
                 cidade.SincronizarEstruturaEconomica();
                 SaveableEntity.Garantir(cidadeObjeto, prefabCidadeInicial.name);
                 RegistrarCidadeGuiaExpansao(teamID, cidade);
                 FinalizarTentativaConstrucaoCidade();
 
-                // Otimização de malhas e colisores na cidade recém-construída
+                // Otimização de malhas e colisores na cidade recém-construída (após alinhamento final ao terreno)
                 Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(cidadeObjeto);
 
                 Destroy(gameObject);
@@ -446,7 +498,37 @@ public class MarcadorTerritorio : MonoBehaviour
 
     private bool TryObterPosicaoNoTerreno(out Vector3 posicao, out bool pontoNaAgua)
     {
-        posicao = transform.position;
+        if (TryClassificarPontoTerreno(transform.position, out posicao, out pontoNaAgua))
+            return true;
+
+        if (!pontoNaAgua)
+            return false;
+
+        // Se o centro do marco tocou a água/costa, procura terra firme dentro do raio local.
+        float limiteBusca = Mathf.Clamp(Mathf.Max(raioDeDominio, 120f), 90f, 180f);
+        float[] raios = { 25f, 55f, 90f, limiteBusca };
+        for (int r = 0; r < raios.Length; r++)
+        {
+            float distancia = raios[r];
+            for (int a = 0; a < 12; a++)
+            {
+                float rad = (a / 12f) * Mathf.PI * 2f;
+                Vector3 candidato = transform.position + new Vector3(Mathf.Cos(rad) * distancia, 0f, Mathf.Sin(rad) * distancia);
+                if (TryClassificarPontoTerreno(candidato, out Vector3 posicaoTerra, out bool candidatoNaAgua) && !candidatoNaAgua)
+                {
+                    posicao = posicaoTerra;
+                    pontoNaAgua = false;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryClassificarPontoTerreno(Vector3 candidato, out Vector3 posicao, out bool pontoNaAgua)
+    {
+        posicao = candidato;
         pontoNaAgua = false;
 
         if (RegistroSuperficieMapa.TryClassify(posicao, out ClassificacaoSuperficieMapa superficie, out float altura))

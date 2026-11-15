@@ -1584,6 +1584,7 @@ public class MenuGoverno : MonoBehaviour
                 + "\nEnergia disponivel: " + FormatNumber(p.energia)
                 + "\nComida em estoque: " + FormatNumber(p.comida)
                 + "\nMortos acumulados: " + FormatNumber(p.mortosAcumulados)
+                + "\nPessoal inimigo abatido: " + FormatNumber(p.pessoasInimigasAbatidas)
                 + "\nPrioridade sugerida: " + sugestao;
 
             if (tab == 0)
@@ -3874,6 +3875,7 @@ public class MenuGoverno : MonoBehaviour
         box.text = "Tesouro cientifico: $" + FormatNumber(pais.saldo)
             + "\nLinhas industriais: " + ObterResumoLinhasIndustriais(pais.teamId)
             + "\nMortos acumulados: " + FormatNumber(pais.mortosAcumulados)
+            + "\nPessoal inimigo abatido: " + FormatNumber(pais.pessoasInimigasAbatidas)
             + "\nFoco atual: " + pais.planoEstrategico
             + "\nPrograma orbital: " + (pais.sateliteDefesa != null && pais.sateliteDefesa.desbloqueado ? "ativo" : "bloqueado");
     }

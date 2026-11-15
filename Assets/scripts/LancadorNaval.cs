@@ -67,6 +67,7 @@ public class LancadorNaval : MonoBehaviour
     private AudioSource audioSource;
     private Transform alvoAtual;
     private Transform alvoPrioritarioIA;
+    private bool alvoPrioritarioEhDefensivo;
 
     // --- Identidade Própria ---
     private IdentidadeUnidade minhaIdentidade;
@@ -449,6 +450,7 @@ public class LancadorNaval : MonoBehaviour
             if (novoModo == ModoOperacao.Passivo)
             {
                 alvoPrioritarioIA = null;
+                alvoPrioritarioEhDefensivo = false;
             }
         }
 
@@ -478,6 +480,7 @@ public class LancadorNaval : MonoBehaviour
             DefinirModoIA(ModoOperacao.Passivo, false);
             alvoAtual = null;
             alvoPrioritarioIA = null;
+            alvoPrioritarioEhDefensivo = false;
             return;
         }
 
@@ -501,6 +504,7 @@ public class LancadorNaval : MonoBehaviour
     public void DefinirAlvoPrioritario(Transform alvo)
     {
         alvoPrioritarioIA = alvo;
+        alvoPrioritarioEhDefensivo = false;
         if (alvo == null)
         {
             alvoAtual = null;
@@ -510,6 +514,55 @@ public class LancadorNaval : MonoBehaviour
     public Transform ObterAlvoPrioritario()
     {
         return alvoPrioritarioIA;
+    }
+
+    public bool NotificarAtaqueRecebido(Transform agressor, Vector3 pontoAgressor, int agressorTeamId)
+    {
+        if (modoAtual != ModoOperacao.Automatico
+            || (meuControle != null && !meuControle.ModoCombateAtivo)
+            || limitarAutomaticoAAlvosAutorizados)
+        {
+            return false;
+        }
+
+        int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 1;
+        if (agressorTeamId <= 0 || meuTime <= 0 || agressorTeamId == meuTime)
+        {
+            return false;
+        }
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null)
+        {
+            RelacaoPaisGoverno relacao = governo.ObterRelacao(meuTime, agressorTeamId);
+            if (relacao != null && relacao.cessarFogoAtivo)
+            {
+                return false;
+            }
+        }
+
+        Transform alvoResolvido = ResolverTransformAlvo(agressor);
+        if (!AlvoPrioritarioValido(alvoResolvido))
+        {
+            return false;
+        }
+
+        IdentidadeUnidade idAgressor = alvoResolvido.GetComponentInParent<IdentidadeUnidade>();
+        if (EhAlvoAereo(alvoResolvido, idAgressor) && MunicaoMissilSelecionadoAtual <= 0)
+        {
+            return false;
+        }
+
+        if (alvoPrioritarioIA != null && AlvoPrioritarioValido(ResolverTransformAlvo(alvoPrioritarioIA)))
+        {
+            return false;
+        }
+
+        alvoPrioritarioIA = alvoResolvido;
+        alvoPrioritarioEhDefensivo = true;
+        proximaVarreduraAutomatica = Time.time;
+        ComportamentoAutomatico();
+        return true;
     }
 
     /// <summary>
@@ -666,6 +719,94 @@ public class LancadorNaval : MonoBehaviour
         return true;
     }
 
+    public bool TentarLancarContraAtaqueIA(Vector3 destino, Transform alvo, float alcanceMaximoContraAtaque, out string motivo)
+    {
+        motivo = string.Empty;
+
+        if (meuControle != null && !meuControle.ModoCombateAtivo)
+        {
+            motivo = "unidade fora do modo combate";
+            return false;
+        }
+
+        if (modoAtual != ModoOperacao.Automatico)
+        {
+            motivo = "lancador naval fora do modo automatico";
+            return false;
+        }
+
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo)
+        {
+            motivo = "armamento travado em torpedos";
+            return false;
+        }
+
+        if (tempoUltimoDisparoConfirmado >= 0f && TempoRecargaRestante > 0f)
+        {
+            motivo = "lancador em recarga";
+            return false;
+        }
+
+        if (alcanceMaximoContraAtaque > 0f)
+        {
+            Vector3 delta = destino - transform.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > alcanceMaximoContraAtaque * alcanceMaximoContraAtaque)
+            {
+                motivo = "alvo fora do alcance de contra-ataque";
+                return false;
+            }
+        }
+
+        if (alvo != null)
+        {
+            if (alvo == transform || alvo.IsChildOf(transform))
+            {
+                motivo = "alvo invalido";
+                return false;
+            }
+
+            IdentidadeUnidade idAlvo = alvo.GetComponentInParent<IdentidadeUnidade>();
+            int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 0;
+            if (idAlvo != null && !ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, idAlvo))
+            {
+                motivo = "alvo sem hostilidade ou guerra declarada";
+                return false;
+            }
+        }
+
+        if (PrefabMissilSelecionado == null || MunicaoMissilSelecionadoAtual <= 0)
+        {
+            if (prefabMissel != null && municaoTotal > 0)
+            {
+                tipoMissilNaval = TipoMissilNaval.Tridente;
+            }
+            else if (prefabMisselCruzeiro != null && MunicaoCruzeiroAtual > 0)
+            {
+                tipoMissilNaval = TipoMissilNaval.Kh23Cruzeiro;
+            }
+            else
+            {
+                motivo = "sem missil naval ou municao disponivel";
+                return false;
+            }
+        }
+
+        int municaoAntes = MunicaoTridenteAtual + MunicaoCruzeiroAtual;
+        tempoUltimoDisparo = Time.time;
+        alvoAtual = alvo;
+        DispararUnico(destino, alvo, false);
+
+        if (municaoAntes == (MunicaoTridenteAtual + MunicaoCruzeiroAtual))
+        {
+            motivo = "o lancador nao conseguiu criar o projetil";
+            return false;
+        }
+
+        motivo = string.Empty;
+        return true;
+    }
+
     void Update()
     {
         if (cameraPrincipal == null && Time.unscaledTime >= proximaBuscaCamera)
@@ -674,6 +815,13 @@ public class LancadorNaval : MonoBehaviour
             proximaBuscaCamera = Time.unscaledTime + 0.5f;
         }
         AtualizarVisualizadorAlcance();
+
+        if (!TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
+        {
+            alvoAtual = null;
+            alvoPrioritarioIA = null;
+            return;
+        }
 
         // O modo é alterado pelo painel naval ou pelo atalho I na raiz da unidade.
         // Comportamento baseado no modo:
@@ -761,13 +909,24 @@ public class LancadorNaval : MonoBehaviour
         List<Transform> alvosValidos;
         if (alvoPrioritarioIA != null)
         {
-            bufferAlvosValidos.Clear();
             Transform alvoExplicito = ResolverTransformAlvo(alvoPrioritarioIA);
             if (AlvoPrioritarioValido(alvoExplicito))
             {
+                bufferAlvosValidos.Clear();
                 bufferAlvosValidos.Add(alvoExplicito);
+                alvosValidos = bufferAlvosValidos;
             }
-            alvosValidos = bufferAlvosValidos;
+            else if (alvoPrioritarioEhDefensivo)
+            {
+                alvoPrioritarioIA = null;
+                alvoPrioritarioEhDefensivo = false;
+                alvosValidos = BuscarTodosInimigos();
+            }
+            else
+            {
+                bufferAlvosValidos.Clear();
+                alvosValidos = bufferAlvosValidos;
+            }
         }
         else
         {

@@ -596,6 +596,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         DesenharLinhaInformacaoDesigner(new Rect(0f, y, area.width, 32f), "ESTADO DO EFETIVO", (pais?.populacaoMilitarAtiva ?? 0) > 0 ? "OPERACIONAL" : "SEM EFETIVO", (pais?.populacaoMilitarAtiva ?? 0) == 0); y += 38f;
         DesenharLinhaInformacaoDesigner(new Rect(0f, y, area.width, 32f), "PESSOAL ALOCADO", (snapshot?.pessoalAlocado ?? 0).ToString("N0")); y += 38f;
         DesenharLinhaInformacaoDesigner(new Rect(0f, y, area.width, 32f), "BAIXAS NACIONAIS", (pais?.mortosAcumulados ?? 0).ToString("N0")); y += 38f;
+        DesenharLinhaInformacaoDesigner(new Rect(0f, y, area.width, 32f), "PESSOAL INIMIGO ABATIDO", (pais?.pessoasInimigasAbatidas ?? 0).ToString("N0")); y += 38f;
         DesenharLinhaInformacaoDesigner(new Rect(0f, y, area.width, 32f), "ULTIMO EVENTO", ultimo); y += 50f;
         GUI.Label(new Rect(0f, y, area.width, 24f), "INTEGRIDADE DO REGISTRO", designerSecao);
         GUI.Label(new Rect(0f, y + 30f, area.width, 24f), "O quadro usa o governo nacional e nao duplica a contabilidade existente.", designerPequeno);
@@ -1097,11 +1098,16 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
         int abatesAliados = 0;
         int perdasAliadas = 0;
+        int pessoalInimigoAbatido = 0;
         for (int i = 0; i < eventosCombateCarta.Count; i++)
         {
             CartaCombateRegistro.EventoCombate evento = eventosCombateCarta[i];
             if (evento == null || evento.tipo != "UNIDADE DESTRUÍDA") continue;
-            if (evento.equipeAtacante == quartel.teamID && evento.equipeAlvo != quartel.teamID) abatesAliados++;
+            if (evento.equipeAtacante == quartel.teamID && evento.equipeAlvo != quartel.teamID)
+            {
+                abatesAliados++;
+                pessoalInimigoAbatido += Mathf.Max(0, evento.tripulacaoAbatida);
+            }
             else if (evento.equipeAlvo == quartel.teamID && evento.equipeAtacante != quartel.teamID) perdasAliadas++;
         }
 
@@ -1110,7 +1116,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         float topo = area.yMax - 146f;
         GUI.Label(new Rect(area.x + 12f, topo, area.width - 24f, alturaCabecalho), "LOG DE COMBATE", designerSecao);
         GUI.Label(new Rect(area.x + 12f, topo + alturaCabecalho, area.width - 24f, 18f),
-            "ABATES ALIADOS: " + abatesAliados + "  |  PERDAS ALIADAS: " + perdasAliadas, designerPequeno);
+            "ABATES: " + abatesAliados + " (" + pessoalInimigoAbatido.ToString("N0") + " trip.)  |  PERDAS: " + perdasAliadas, designerPequeno);
 
         int total = Mathf.Min(8, eventosCombateCarta.Count);
         float viewportAltura = Mathf.Min(98f, Mathf.Max(42f, area.height - 248f));
@@ -2276,6 +2282,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         quadro.Add(LinhaInformacao("Integracao com Censo Imperial", CensoImperial.Instancia != null ? "CONECTADA" : "AGUARDANDO CENSO"));
         quadro.Add(LinhaInformacao("Pessoal alocado neste Quartel", snapshot != null ? snapshot.pessoalAlocado.ToString("N0") : "n/d"));
         quadro.Add(LinhaInformacao("Baixas nacionais registradas", pais != null ? pais.mortosAcumulados.ToString("N0") : "n/d"));
+        quadro.Add(LinhaInformacao("Pessoal inimigo abatido em combate", pais != null ? pais.pessoasInimigasAbatidas.ToString("N0") : "n/d"));
         quadro.Add(LinhaInformacao("Feridos / temporarios / desaparecidos", "N/R — nao existe registro nacional dessas categorias"));
         quadro.Add(LinhaInformacao("Ultimo evento", snapshot != null ? snapshot.ultimoEvento : "n/d"));
         conteudo.Add(quadro);
@@ -3755,6 +3762,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
 
         int abatesAliados = 0;
         int perdasAliadas = 0;
+        int pessoalInimigoAbatido = 0;
         int exibidos = 0;
         HashSet<string> presentes = new HashSet<string>(StringComparer.Ordinal);
         for (int i = 0; i < eventosCombateCarta.Count; i++)
@@ -3765,7 +3773,10 @@ public sealed class QuartelMenuUIController : MonoBehaviour
             if (evento.tipo == "UNIDADE DESTRUÍDA")
             {
                 if (evento.equipeAtacante == quartel.teamID && evento.equipeAlvo != quartel.teamID)
+                {
                     abatesAliados++;
+                    pessoalInimigoAbatido += Mathf.Max(0, evento.tripulacaoAbatida);
+                }
                 else if (evento.equipeAlvo == quartel.teamID && evento.equipeAtacante != quartel.teamID)
                     perdasAliadas++;
             }
@@ -3798,7 +3809,7 @@ public sealed class QuartelMenuUIController : MonoBehaviour
         }
 
         if (resumoDestruicoesCarta != null)
-            resumoDestruicoesCarta.text = "ABATES ALIADOS: " + abatesAliados + "  |  PERDAS ALIADAS: " + perdasAliadas;
+            resumoDestruicoesCarta.text = "ABATES ALIADOS: " + abatesAliados + " (" + pessoalInimigoAbatido.ToString("N0") + " trip./pessoal)  |  PERDAS ALIADAS: " + perdasAliadas;
     }
 
     private static string MontarTooltipEventoCombate(CartaCombateRegistro.EventoCombate evento)

@@ -318,7 +318,7 @@ public class Imovel : MonoBehaviour
 
     void OnGUI()
     {
-        if (!mouseHover) return;
+        if (!mouseHover || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
 
         GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
         boxStyle.normal.background = ObterTexturaTooltip();

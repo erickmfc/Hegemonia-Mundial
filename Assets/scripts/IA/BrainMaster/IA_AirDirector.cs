@@ -252,12 +252,13 @@ namespace Hegemonia.AI.BrainMaster
 
             bool includeBombers = false; // Bombardeiros são gerenciados separadamente em DispatchStrategicBombers
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
-            if (brain != null && brain.UsaCronogramaIA03 && !brain.IA03PatrulhaAereaLiberada && airEnemy == null && fallbackEnemy == null)
+            bool alertaIA03 = brain != null && brain.UsaCronogramaIA03 && brain.IA03AlertaAmeacaAtivo;
+            if (brain != null && brain.UsaCronogramaIA03 && !brain.IA03PatrulhaAereaLiberada && !alertaIA03 && airEnemy == null && fallbackEnemy == null)
             {
                 return;
             }
 
-            if (brain != null && brain.UsaCronogramaIA03 && airEnemy == null && fallbackEnemy == null)
+            if (brain != null && brain.UsaCronogramaIA03 && !alertaIA03 && airEnemy == null && fallbackEnemy == null)
             {
                 DispatchIA03SingleAirPatrol(squad.Units, baseCenter, pressureTarget);
                 return;
@@ -299,6 +300,17 @@ namespace Hegemonia.AI.BrainMaster
                     87,
                     12f);
             }
+            else if (alertaIA03 && pressureTarget != Vector3.zero && pressureTargetTeamId > 0)
+            {
+                QueueAttack(
+                    "air_counter_pressure_" + pressureTargetTeamId,
+                    _activeAirUnitsBuffer,
+                    null,
+                    pressureTarget + Vector3.up * 20f,
+                    86,
+                    12f,
+                    pressureTargetTeamId);
+            }
             else
             {
                 if (TrySelectUnitsForRoutineAirPatrol(_activeAirUnitsBuffer))
@@ -324,7 +336,10 @@ namespace Hegemonia.AI.BrainMaster
         private bool TryDispatchEconomicAirRaids(Vector3 baseCenter, List<GameObject> source)
         {
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
-            if (brain == null || brain.StrategicPhase < IA_StrategicPhase.Expansao || source == null || source.Count == 0)
+            if (brain == null
+                || (!brain.IA03AlertaAmeacaAtivo && brain.StrategicPhase < IA_StrategicPhase.Expansao)
+                || source == null
+                || source.Count == 0)
             {
                 return false;
             }
@@ -403,7 +418,8 @@ namespace Hegemonia.AI.BrainMaster
         {
             targetTeamId = 0;
             Vector3 hiddenEnemyAnchor;
-            if (now >= ForcedAirStrikeStartSeconds
+            bool alertaAtivo = _context != null && _context.Brain != null && _context.Brain.IA03AlertaAmeacaAtivo;
+            if ((now >= ForcedAirStrikeStartSeconds || alertaAtivo)
                 && _context.WorldState.TryGetEnemyStrategicAnchor(baseCenter, out hiddenEnemyAnchor, out targetTeamId))
             {
                 return hiddenEnemyAnchor;
@@ -640,6 +656,12 @@ namespace Hegemonia.AI.BrainMaster
             return units.Count > 0;
         }
 
+        private static bool IsC17TransportUnit(GameObject unit)
+        {
+            return unit != null
+                && unit.GetComponentInChildren<Hegemonia.Aeronaves.C17.C17TransporteController>(true) != null;
+        }
+
         private static bool CanAircraftAcceptRoutinePatrol(GameObject unit)
         {
             if (unit == null)
@@ -647,7 +669,7 @@ namespace Hegemonia.AI.BrainMaster
                 return false;
             }
 
-            if (unit.GetComponentInChildren<C700TransporteAereo>(true) != null)
+            if (unit.GetComponentInChildren<C700TransporteAereo>(true) != null || IsC17TransportUnit(unit))
             {
                 return false;
             }
@@ -967,7 +989,7 @@ namespace Hegemonia.AI.BrainMaster
             for (int i = 0; i < source.Count && destination.Count < limit; i++)
             {
                 GameObject unit = source[i];
-                if (unit == null)
+                if (unit == null || IsC17TransportUnit(unit))
                 {
                     continue;
                 }

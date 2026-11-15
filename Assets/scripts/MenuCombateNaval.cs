@@ -166,6 +166,7 @@ public sealed class MenuCombateNaval : MonoBehaviour
     private void OnGUI()
     {
         if (host != this || unidade == null) return;
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
         DesenharControles(unidade, true);
     }
 

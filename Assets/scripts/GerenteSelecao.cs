@@ -415,6 +415,12 @@ public class GerenteSelecao : MonoBehaviour
                 continue;
             }
 
+            if (GlobalTerrainStreamer.Instance != null
+                && GlobalTerrainStreamer.Instance.ShouldSkipGlobalTerrainRaycastHit(hit.collider, hit.point))
+            {
+                continue;
+            }
+
             string nomeCollider = hit.collider.name.ToLowerInvariant();
             if (nomeCollider.Contains("bip001") || nomeCollider.Contains("bone") || nomeCollider.Contains("finger") || nomeCollider.Contains("cube"))
             {
@@ -1062,7 +1068,9 @@ public class GerenteSelecao : MonoBehaviour
             cursorZ += profundidadeLinha[l] + gapZ;
         }
 
-        float raioAmostraNavMesh = ehGrupoNaval ? 20f : (temVeiculo ? 8f : 4f);
+        float raioAmostraNavMesh = ehGrupoNaval
+            ? 20f
+            : (GlobalTerrainStreamer.Instance != null ? 16f : (temVeiculo ? 8f : 4f));
         bool usarAmostragemLeve = !ehGrupoNaval && total >= LimiteGrupoGrandeParaAmostragemLeve;
 
         for (int i = 0; i < bufferSlotsFormacao.Count; i++)

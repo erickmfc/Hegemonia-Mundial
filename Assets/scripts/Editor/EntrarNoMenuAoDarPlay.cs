@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -9,7 +10,7 @@ using UnityEngine.SceneManagement;
 internal static class EntrarNoMenuAoDarPlay
 {
     // Mantem o fluxo oficial pelo menu sem interromper e reiniciar o Play Mode.
-    private const string CaminhoMenuPrincipal = "Assets/_Recovery/Cena menu P.unity";
+    private const string CaminhoMenuPrincipal = ConfiguracaoCenasJogo.CaminhoCenaMenuPrincipalCanonica;
     private const string CaminhoMapaGlobalRTS = "Assets/Scenes/GlobalMapRTS.unity";
     private const string CaminhoPreviewEnterprise = "Assets/Scenes/EnterpriseFlightDeckPreview.unity";
 
@@ -18,6 +19,60 @@ internal static class EntrarNoMenuAoDarPlay
         EditorSceneManager.activeSceneChangedInEditMode -= AtualizarCenaInicialDoPlay;
         EditorSceneManager.activeSceneChangedInEditMode += AtualizarCenaInicialDoPlay;
         AtualizarCenaInicialDoPlay(default(Scene), SceneManager.GetActiveScene());
+        EditorApplication.delayCall -= GarantirCenaMenuInicialNoBuild;
+        EditorApplication.delayCall += GarantirCenaMenuInicialNoBuild;
+    }
+
+    private static void GarantirCenaMenuInicialNoBuild()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            return;
+        }
+
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(CaminhoMenuPrincipal) == null)
+        {
+            return;
+        }
+
+        List<EditorBuildSettingsScene> cenas = new List<EditorBuildSettingsScene>(
+            EditorBuildSettings.scenes ?? Array.Empty<EditorBuildSettingsScene>());
+
+        bool primeiraJaCanonica = cenas.Count > 0
+            && cenas[0] != null
+            && cenas[0].enabled
+            && string.Equals(cenas[0].path, CaminhoMenuPrincipal, StringComparison.OrdinalIgnoreCase);
+
+        bool possuiLegadaNoBuild = false;
+        bool possuiDuplicataCanonica = false;
+        for (int i = 0; i < cenas.Count; i++)
+        {
+            EditorBuildSettingsScene cena = cenas[i];
+            if (cena == null || string.IsNullOrWhiteSpace(cena.path))
+            {
+                continue;
+            }
+
+            if (string.Equals(cena.path, ConfiguracaoCenasJogo.CaminhoCenaMenuLegada, StringComparison.OrdinalIgnoreCase))
+            {
+                possuiLegadaNoBuild = true;
+            }
+            else if (i > 0 && string.Equals(cena.path, CaminhoMenuPrincipal, StringComparison.OrdinalIgnoreCase))
+            {
+                possuiDuplicataCanonica = true;
+            }
+        }
+
+        if (primeiraJaCanonica && !possuiLegadaNoBuild && !possuiDuplicataCanonica)
+        {
+            return;
+        }
+
+        cenas.RemoveAll(cena => cena != null && (
+            string.Equals(cena.path, CaminhoMenuPrincipal, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(cena.path, ConfiguracaoCenasJogo.CaminhoCenaMenuLegada, StringComparison.OrdinalIgnoreCase)));
+        cenas.Insert(0, new EditorBuildSettingsScene(CaminhoMenuPrincipal, true));
+        EditorBuildSettings.scenes = cenas.ToArray();
     }
 
     private static void AtualizarCenaInicialDoPlay(Scene cenaAnterior, Scene cenaAtual)

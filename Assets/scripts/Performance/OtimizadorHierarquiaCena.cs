@@ -113,19 +113,27 @@ namespace Hegemonia.Performance
 
             if (obj is Component comp)
             {
-                if (comp != null && comp.transform != null)
+                try
                 {
-                    protegidos.Add(comp.transform);
+                    if (comp != null && comp.transform != null)
+                    {
+                        protegidos.Add(comp.transform);
+                    }
                 }
+                catch { }
                 return;
             }
 
             if (obj is GameObject go)
             {
-                if (go != null && go.transform != null)
+                try
                 {
-                    protegidos.Add(go.transform);
+                    if (go != null && go.transform != null)
+                    {
+                        protegidos.Add(go.transform);
+                    }
                 }
+                catch { }
                 return;
             }
 
@@ -285,9 +293,9 @@ namespace Hegemonia.Performance
                 culling.RegistrarRenderersExtras(renderersNaoLegiveis);
             }
 
-            // Para grupos estáticos (como cidades ou prédios fixos), aplica StaticBatchingUtility na raiz
-            // para consolidar draw calls da GPU sem depender de isReadable na CPU.
-            if (raiz.isStatic || raiz.name.StartsWith("City", StringComparison.OrdinalIgnoreCase) || raiz.name.StartsWith("Cidade", StringComparison.OrdinalIgnoreCase))
+            // Para grupos verdadeiramente estáticos (exceto cidades dinâmicas alinhadas ao terreno),
+            // aplica StaticBatchingUtility para consolidar draw calls sem travar transform em runtime.
+            if (raiz.isStatic && raiz.GetComponent<CidadeComplexoUrbano>() == null)
             {
                 try
                 {
@@ -474,13 +482,25 @@ namespace Hegemonia.Performance
         public static bool OtimizarAlvo(GameObject alvo)
         {
             if (alvo == null) return false;
-            OtimizadorHierarquiaCena otim = alvo.GetComponent<OtimizadorHierarquiaCena>();
-            if (otim == null)
+            try
             {
-                otim = alvo.AddComponent<OtimizadorHierarquiaCena>();
+                OtimizadorHierarquiaCena otim = alvo.GetComponent<OtimizadorHierarquiaCena>();
+                if (otim == null)
+                {
+                    otim = alvo.AddComponent<OtimizadorHierarquiaCena>();
+                }
+                if (alvo.GetComponent<GerenciadorPortaAvioes>() != null)
+                {
+                    otim.podarColisoresSecundarios = false;
+                }
+                otim.ExecutarOtimizacao();
+                return true;
             }
-            otim.ExecutarOtimizacao();
-            return true;
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[OtimizadorHierarquiaCena] Falha não-fatal ao otimizar '{alvo.name}': {ex.Message}");
+                return false;
+            }
         }
     }
 }

@@ -67,6 +67,7 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     [SerializeField] private bool simplificarAgua = true;
     [SerializeField] private bool desligarMedidoresFpsLegados = false;
     [SerializeField] private bool silenciarDiagnosticos = false;
+    [SerializeField] private bool registrarTelemetriaDetalhadaCena = false;
     [SerializeField] private float shadowDistanceGameplay = 32f;
     [SerializeField] private int shadowCascadesGameplay = 2;
     [SerializeField] private float lodBiasGameplay = 1.35f;
@@ -153,39 +154,43 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
         int cidadesOtimizadas = 0;
         int naviosOtimizados = 0;
 
-        int totalAtivosAntes = FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
-        int totalMemoriaAntes = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
+        int totalAtivosAntes = 0;
+        int totalMemoriaAntes = 0;
+        System.Text.StringBuilder sbTop8 = null;
 
-        GameObject[] todosObjetosAntes = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-
-        // Diagnóstico dos Top 8 GameObjects de topo (root ou grandes grupos) com maior quantidade de filhos
-        List<GameObject> raizesOuGrandesGrupos = new List<GameObject>();
-        for (int i = 0; i < todosObjetosAntes.Length; i++)
+        if (registrarTelemetriaDetalhadaCena)
         {
-            GameObject g = todosObjetosAntes[i];
-            if (g != null && (g.transform.parent == null || g.transform.childCount >= 10))
+            totalAtivosAntes = FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
+            totalMemoriaAntes = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
+
+            GameObject[] todosObjetosAntes = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+            // Diagnóstico dos Top 8 GameObjects de topo (root ou grandes grupos) com maior quantidade de filhos.
+            // Contagens cacheadas antes de ordenar para evitar múltiplas travessias dentro do comparador.
+            var raizesOuGrandesGrupos = new List<KeyValuePair<GameObject, int>>(64);
+            for (int i = 0; i < todosObjetosAntes.Length; i++)
             {
-                raizesOuGrandesGrupos.Add(g);
+                GameObject g = todosObjetosAntes[i];
+                if (g != null && (g.transform.parent == null || g.transform.childCount >= 10))
+                {
+                    int filhos = g.GetComponentsInChildren<Transform>(true).Length;
+                    raizesOuGrandesGrupos.Add(new KeyValuePair<GameObject, int>(g, filhos));
+                }
             }
-        }
 
-        raizesOuGrandesGrupos.Sort((a, b) =>
-        {
-            int cB = b != null ? b.GetComponentsInChildren<Transform>(true).Length : 0;
-            int cA = a != null ? a.GetComponentsInChildren<Transform>(true).Length : 0;
-            return cB.CompareTo(cA);
-        });
+            raizesOuGrandesGrupos.Sort((a, b) => b.Value.CompareTo(a.Value));
 
-        System.Text.StringBuilder sbTop8 = new System.Text.StringBuilder();
-        int limiteTop = Mathf.Min(8, raizesOuGrandesGrupos.Count);
-        for (int i = 0; i < limiteTop; i++)
-        {
-            GameObject g = raizesOuGrandesGrupos[i];
-            if (g == null) continue;
-            int filhos = g.GetComponentsInChildren<Transform>(true).Length;
-            int renderers = g.GetComponentsInChildren<Renderer>(true).Length;
-            int colliders = g.GetComponentsInChildren<Collider>(true).Length;
-            sbTop8.Append($"\n  #{i + 1} {g.name}(filhos={filhos}, renderers={renderers}, colliders={colliders})");
+            sbTop8 = new System.Text.StringBuilder();
+            int limiteTop = Mathf.Min(8, raizesOuGrandesGrupos.Count);
+            for (int i = 0; i < limiteTop; i++)
+            {
+                GameObject g = raizesOuGrandesGrupos[i].Key;
+                if (g == null) continue;
+                int filhos = raizesOuGrandesGrupos[i].Value;
+                int renderers = g.GetComponentsInChildren<Renderer>(true).Length;
+                int colliders = g.GetComponentsInChildren<Collider>(true).Length;
+                sbTop8.Append($"\n  #{i + 1} {g.name}(filhos={filhos}, renderers={renderers}, colliders={colliders})");
+            }
         }
 
         CidadeComplexoUrbano[] cidades = FindObjectsByType<CidadeComplexoUrbano>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -247,17 +252,28 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             }
         }
 
-        int totalAtivosDepois = FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
-        int totalMemoriaDepois = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
+        if (registrarTelemetriaDetalhadaCena)
+        {
+            int totalAtivosDepois = FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
+            int totalMemoriaDepois = Resources.FindObjectsOfTypeAll<UnityEngine.Object>().Length;
 
-        Debug.Log($"[Telemetria Performance] Otimização estrutural concluída na cena: " +
-                  $"Transforms ativos={totalAtivosDepois} (antes={totalAtivosAntes}, reducao={totalAtivosAntes - totalAtivosDepois}) | Memória total={totalMemoriaDepois} (antes={totalMemoriaAntes}), " +
-                  $"cidades={cidadesOtimizadas}, navios={naviosOtimizados}, " +
-                  $"malhasConsolidadas={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasConsolidadas}, " +
-                  $"objetosVisuaisDesativados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalObjetosDesativados}, " +
-                  $"colisoresPodados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalColisoresPodados}, " +
-                  $"malhasNaoLegiveisPreservadasNoCulling={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasNaoLegiveis}.\n" +
-                  $"Top 8 Grupos da Cena com Maior Quantidade de Filhos:{sbTop8}");
+            Debug.Log($"[Telemetria Performance] Otimização estrutural concluída na cena: " +
+                      $"Transforms ativos={totalAtivosDepois} (antes={totalAtivosAntes}, reducao={totalAtivosAntes - totalAtivosDepois}) | Memória total={totalMemoriaDepois} (antes={totalMemoriaAntes}), " +
+                      $"cidades={cidadesOtimizadas}, navios={naviosOtimizados}, " +
+                      $"malhasConsolidadas={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasConsolidadas}, " +
+                      $"objetosVisuaisDesativados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalObjetosDesativados}, " +
+                      $"colisoresPodados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalColisoresPodados}, " +
+                      $"malhasNaoLegiveisPreservadasNoCulling={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasNaoLegiveis}.\n" +
+                      $"Top 8 Grupos da Cena com Maior Quantidade de Filhos:{sbTop8}");
+        }
+        else if (!silenciarDiagnosticos && (cidadesOtimizadas > 0 || naviosOtimizados > 0))
+        {
+            Debug.Log($"[Telemetria Performance] Otimização estrutural concluída: cidades={cidadesOtimizadas}, navios={naviosOtimizados}, " +
+                      $"malhasConsolidadas={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasConsolidadas}, " +
+                      $"objetosVisuaisDesativados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalObjetosDesativados}, " +
+                      $"colisoresPodados={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalColisoresPodados}, " +
+                      $"malhasNaoLegiveisPreservadasNoCulling={Hegemonia.Performance.OtimizadorHierarquiaCena.TotalGlobalMalhasNaoLegiveis}.");
+        }
     }
 
     private void AplicarPerfil(PerfilQualidade perfil)

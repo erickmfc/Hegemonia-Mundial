@@ -3,7 +3,15 @@ using UnityEngine;
 
 public class MissileThreatTracker : MonoBehaviour
 {
+    public enum PlataformaLancamentoMissil
+    {
+        Desconhecida = 0,
+        Navio = 1,
+        Aviao = 2
+    }
+
     private static readonly List<MissileThreatTracker> ameacasAtivas = new List<MissileThreatTracker>(64);
+    private static readonly Dictionary<int, int> contadorAlternanciaPorOrigem = new Dictionary<int, int>(64);
     private static int proximoId = 1;
 
     [SerializeField] private int missilId = -1;
@@ -13,6 +21,8 @@ public class MissileThreatTracker : MonoBehaviour
     [SerializeField] private Vector3 ultimoAlvoConhecido;
     [SerializeField] private float tempoDeVidaInicial = 10f;
     [SerializeField] private bool destruirMissilAoExpirar = true;
+    [SerializeField] private PlataformaLancamentoMissil plataformaOrigem = PlataformaLancamentoMissil.Desconhecida;
+    [SerializeField] private int varianteCor = 0;
 
     private Vector3 pontoLancamento;
     private float momentoLancamento;
@@ -23,11 +33,15 @@ public class MissileThreatTracker : MonoBehaviour
     private Transform alvoTransform;
     private Transform raizMissil;
     private Rigidbody rb;
+    private GameObject origemObjeto;
     private bool registrado = false;
 
     public int TeamOrigem => teamOrigem;
     public bool Interceptor => interceptor;
+    public PlataformaLancamentoMissil PlataformaOrigem => plataformaOrigem;
+    public int VarianteCor => varianteCor;
     public Transform RaizMissil => raizMissil != null ? raizMissil : (transform.root != null ? transform.root : transform);
+    public GameObject OrigemObjeto => origemObjeto;
     public int MissileId => missilId;
     public Vector3 PontoLancamento => pontoLancamento;
     public Vector3 PontoAlvoConhecido => ObterAlvoAtual();
@@ -35,7 +49,14 @@ public class MissileThreatTracker : MonoBehaviour
     public string NomeOrigem => nomeOrigem;
     public string AlvoNome => alvoNome;
     public int AlvoTeam => alvoTeam;
+    public Transform AlvoTransform => alvoTransform;
     public bool PossuiAlvoDinamico => alvoTransform != null;
+
+    public bool EstaAmeacandoPonto(Vector3 centroDefesa, float raioDefesa, float janelaAntecipacaoSegundos)
+    {
+        if (raioDefesa <= 0f) return false;
+        return PodeEntrarNaArea(centroDefesa, raioDefesa, Mathf.Max(0.25f, janelaAntecipacaoSegundos));
+    }
 
     public static bool TryObterAtivo(int id, out MissileThreatTracker resultado)
     {
@@ -111,6 +132,15 @@ public class MissileThreatTracker : MonoBehaviour
         MisselSubmarino misselSubmarino = missil.GetComponent<MisselSubmarino>();
         if (misselSubmarino != null) return Mathf.Max(misselSubmarino.velocidadeMaxima, misselSubmarino.velocidadeTurbo);
 
+        MisselBombardeiro misselBombardeiro = missil.GetComponent<MisselBombardeiro>();
+        if (misselBombardeiro != null) return Mathf.Max(misselBombardeiro.velocidadeInicial, misselBombardeiro.velocidadeMaxima);
+
+        BombaBombardeiro bombaBombardeiro = missil.GetComponent<BombaBombardeiro>();
+        if (bombaBombardeiro != null) return Mathf.Max(bombaBombardeiro.velocidadeHorizontalInicial, bombaBombardeiro.velocidadeTerminalQueda);
+
+        BombaAerea bombaAerea = missil.GetComponent<BombaAerea>();
+        if (bombaAerea != null) return 90f;
+
         MisselLeopardAutomatico misselLeopard = missil.GetComponent<MisselLeopardAutomatico>();
         if (misselLeopard != null) return Mathf.Max(misselLeopard.velocidadeMaxima, misselLeopard.velocidadeTurbo);
 
@@ -164,21 +194,85 @@ public class MissileThreatTracker : MonoBehaviour
         return melhorAlvo;
     }
 
+    /// <summary>
+    /// Verifica sem alocação se há algum míssil hostil travado nesta unidade
+    /// ou cuja trajetória prevista cruze sua área imediata de voo.
+    /// </summary>
+    public static bool ExisteMissilAmeacandoUnidade(
+        Transform alvoUnidade,
+        int teamDefesa,
+        float raioProximidade = 280f,
+        float janelaAntecipacaoSegundos = 5.5f)
+    {
+        if (alvoUnidade == null || ameacasAtivas.Count == 0)
+        {
+            return false;
+        }
+
+        Transform raizUnidade = alvoUnidade.root != null ? alvoUnidade.root : alvoUnidade;
+        GameObject alvoGo = alvoUnidade.gameObject;
+        GameObject raizUnidadeGo = raizUnidade != null ? raizUnidade.gameObject : alvoGo;
+        Vector3 posicaoUnidade = alvoUnidade.position;
+
+        for (int i = ameacasAtivas.Count - 1; i >= 0; i--)
+        {
+            MissileThreatTracker tracker = ameacasAtivas[i];
+            if (tracker == null)
+            {
+                ameacasAtivas.RemoveAt(i);
+                continue;
+            }
+
+            Transform raizMissilAtivo = tracker.RaizMissil;
+            if (raizMissilAtivo == null || !raizMissilAtivo.gameObject.activeInHierarchy)
+            {
+                ameacasAtivas.RemoveAt(i);
+                continue;
+            }
+
+            if (tracker.interceptor) continue;
+            if (tracker.origemObjeto == alvoGo || tracker.origemObjeto == raizUnidadeGo) continue;
+            if (tracker.teamOrigem != -1 && teamDefesa != -1 && tracker.teamOrigem == teamDefesa) continue;
+
+            Transform alvoRastreado = tracker.alvoTransform;
+            if (alvoRastreado != null
+                && (alvoRastreado == alvoUnidade
+                    || alvoRastreado == raizUnidade
+                    || (raizUnidade != null && alvoRastreado.IsChildOf(raizUnidade))))
+            {
+                return true;
+            }
+
+            if (raioProximidade > 0f
+                && tracker.PodeEntrarNaArea(posicaoUnidade, raioProximidade, Mathf.Max(0.5f, janelaAntecipacaoSegundos)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     void OnDisable()
     {
         CancelInvoke(nameof(ExpirarMissil));
         RemoverRegistro();
+        origemObjeto = null;
+        teamOrigem = -1;
+        plataformaOrigem = PlataformaLancamentoMissil.Desconhecida;
+        varianteCor = 0;
     }
 
     void OnDestroy()
     {
         CancelInvoke(nameof(ExpirarMissil));
         RemoverRegistro();
+        origemObjeto = null;
     }
 
     void Configurar(Component origem, Vector3 alvo, Transform alvoDinamico, float velocidade, bool ehInterceptador)
     {
-        if (missilId < 0) missilId = proximoId++;
+        if (!registrado || missilId < 0) missilId = proximoId++;
 
         raizMissil = transform.root != null ? transform.root : transform;
         rb = raizMissil.GetComponent<Rigidbody>();
@@ -192,6 +286,12 @@ public class MissileThreatTracker : MonoBehaviour
         interceptor = ehInterceptador;
         velocidadeEstimada = Mathf.Max(velocidade, EstimarVelocidade(raizMissil.gameObject), 1f);
         teamOrigem = ResolverTeam(origem, raizMissil);
+        origemObjeto = ResolverOrigemObjeto(origem);
+        plataformaOrigem = ResolverPlataformaOrigem(origem, origemObjeto, raizMissil != null ? raizMissil.gameObject : gameObject);
+        if (!registrado)
+        {
+            varianteCor = ObterProximaVarianteCor(origemObjeto, plataformaOrigem, teamOrigem);
+        }
         float tempoVidaRastreamento = ResolverTempoVidaRastreamento(
             raizMissil != null ? raizMissil.gameObject : gameObject,
             tempoDeVidaInicial,
@@ -331,6 +431,13 @@ public class MissileThreatTracker : MonoBehaviour
             return Mathf.Max(0.5f, misselBombardeiro.tempoDeVida + 0.5f);
         }
 
+        BombaBombardeiro bombaBombardeiro = missil.GetComponent<BombaBombardeiro>();
+        if (bombaBombardeiro != null)
+        {
+            destruirAoExpirar = false;
+            return Mathf.Max(0.5f, bombaBombardeiro.tempoDeVida + 0.5f);
+        }
+
         MissilTeleguiado missilTeleguiado = missil.GetComponent<MissilTeleguiado>();
         if (missilTeleguiado != null)
         {
@@ -393,6 +500,84 @@ public class MissileThreatTracker : MonoBehaviour
         }
 
         return identidade != null ? identidade.teamID : -1;
+    }
+
+    static GameObject ResolverOrigemObjeto(Component origem)
+    {
+        if (origem == null) return null;
+
+        IdentidadeUnidade identidade = origem.GetComponent<IdentidadeUnidade>()
+            ?? origem.GetComponentInParent<IdentidadeUnidade>()
+            ?? origem.GetComponentInChildren<IdentidadeUnidade>(true);
+        return identidade != null ? identidade.gameObject : origem.gameObject;
+    }
+
+    static PlataformaLancamentoMissil ResolverPlataformaOrigem(Component origem, GameObject origemObj, GameObject missilObj)
+    {
+        if (origem != null)
+        {
+            if (origem is LancadorMisselCaca || origem is AviaoBombardeiro || origem is ControleAviao || origem is ControleAviaoCaca || origem is ControleDroneHasaf)
+                return PlataformaLancamentoMissil.Aviao;
+            if (origem is LancadorNaval || origem is ControleNavioRealista || origem is ControleSubmarino)
+                return PlataformaLancamentoMissil.Navio;
+        }
+
+        if (origemObj != null)
+        {
+            if (origemObj.GetComponent<LancadorMisselCaca>() != null
+                || origemObj.GetComponent<ControleAviao>() != null
+                || origemObj.GetComponent<ControleAviaoCaca>() != null
+                || origemObj.GetComponent<AviaoBombardeiro>() != null
+                || origemObj.GetComponent<ControleDroneHasaf>() != null)
+            {
+                return PlataformaLancamentoMissil.Aviao;
+            }
+
+            if (origemObj.GetComponent<LancadorNaval>() != null
+                || origemObj.GetComponent<ControleNavioRealista>() != null
+                || origemObj.GetComponent<ControleSubmarino>() != null)
+            {
+                return PlataformaLancamentoMissil.Navio;
+            }
+        }
+
+        if (missilObj != null)
+        {
+            if (missilObj.GetComponent<MisselCaca>() != null
+                || missilObj.GetComponent<MisselBombardeiro>() != null
+                || missilObj.GetComponent<BombaBombardeiro>() != null
+                || missilObj.GetComponent<BombaAerea>() != null)
+            {
+                return PlataformaLancamentoMissil.Aviao;
+            }
+
+            if (missilObj.GetComponent<MisselNaval>() != null
+                || missilObj.GetComponent<MisselSubmarino>() != null
+                || missilObj.GetComponent<Torpedo>() != null)
+            {
+                return PlataformaLancamentoMissil.Navio;
+            }
+        }
+
+        return PlataformaLancamentoMissil.Desconhecida;
+    }
+
+    static int ObterProximaVarianteCor(GameObject origemObj, PlataformaLancamentoMissil plataforma, int team)
+    {
+        int chave = origemObj != null
+            ? origemObj.GetInstanceID()
+            : unchecked(((int)plataforma * 397) ^ team);
+
+        if (contadorAlternanciaPorOrigem.Count > 512)
+        {
+            contadorAlternanciaPorOrigem.Clear();
+        }
+
+        int atual;
+        contadorAlternanciaPorOrigem.TryGetValue(chave, out atual);
+        int variante = atual & 1;
+        contadorAlternanciaPorOrigem[chave] = atual + 1;
+        return variante;
     }
 
     static float DistanciaSqrPontoSegmento(Vector3 ponto, Vector3 inicio, Vector3 fim)

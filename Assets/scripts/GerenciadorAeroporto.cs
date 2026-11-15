@@ -726,6 +726,12 @@ public class GerenciadorAeroporto : MonoBehaviour
             ServicoAbastecimento.TentarAbastecer(combustivel, 45f * Mathf.Max(0.1f, deltaServico), out _);
         }
 
+        RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(aeronave.gameObject);
+        if (racao != null && racao.UsaRacao && racao.RacaoAtual < racao.Capacidade)
+        {
+            racao.AbastecerUsandoEstoqueNacional(90f * Mathf.Max(0.1f, deltaServico));
+        }
+
         // O serviço periódico só é chamado para aeronaves já estacionadas no
         // pátio/hangar. Rearma aqui também para que uma aeronave que ficou em
         // reserva não dependa de pousar novamente para recuperar munição.
@@ -1405,22 +1411,52 @@ public class GerenciadorAeroporto : MonoBehaviour
         return null;
     }
 
+    public string UltimoMotivoFalhaAeronave { get; private set; } = string.Empty;
+
     public bool ComprarAviao(GameObject prefabDeAeronave)
     {
+        return ComprarAviao(prefabDeAeronave, out _);
+    }
+
+    public bool ComprarAviao(GameObject prefabDeAeronave, out string motivoFalha)
+    {
+        motivoFalha = string.Empty;
+        UltimoMotivoFalhaAeronave = string.Empty;
+
         if (prefabDeAeronave == null)
         {
+            motivoFalha = "Prefab da aeronave inválido.";
+            UltimoMotivoFalhaAeronave = motivoFalha;
             return false;
         }
 
         if (semEnergia)
         {
+            motivoFalha = $"Aeroporto '{name.Replace("(Clone)", string.Empty).Trim()}' está sem energia.";
+            UltimoMotivoFalhaAeronave = motivoFalha;
             Debug.LogWarning($"[Aeroporto] {name} está sem energia. Compra de aeronaves bloqueada.");
             return false;
         }
 
         if (!PodeProduzirAeronave(prefabDeAeronave))
         {
+            int necessario = SistemaGovernoMundial.ObterEfetivoNecessario(prefabDeAeronave, TipoUnidade.Aereo);
+            IdentidadeUnidade idBase = GetComponent<IdentidadeUnidade>();
+            int teamId = idBase != null ? idBase.teamID : 1;
+            int disponivel = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.ObterEfetivoDisponivel(teamId)
+                : 0;
+            motivoFalha = $"Efetivo militar insuficiente: precisa {necessario:N0}, disponível {disponivel:N0}.";
+            UltimoMotivoFalhaAeronave = motivoFalha;
             Debug.LogWarning($"[Aeroporto] Produção de {prefabDeAeronave.name} aguardando efetivo disponível.");
+            return false;
+        }
+
+        if (prefabDeAeronave.GetComponentInChildren<C700TransporteAereo>(true) != null
+            && ObterParadaRecebimentoTransporteAereo() == null)
+        {
+            motivoFalha = "Este aeroporto não possui pátio configurado para aeronaves C-700.";
+            UltimoMotivoFalhaAeronave = motivoFalha;
             return false;
         }
 
@@ -1451,7 +1487,13 @@ public class GerenciadorAeroporto : MonoBehaviour
             return true;
         }
 
-        return ComprarAviaoImediato(prefabDeAeronave);
+        bool entregue = ComprarAviaoImediato(prefabDeAeronave);
+        if (!entregue && string.IsNullOrEmpty(motivoFalha))
+        {
+            motivoFalha = "Não foi possível acomodar a aeronave no aeroporto selecionado (verifique espaço no pátio/pista).";
+            UltimoMotivoFalhaAeronave = motivoFalha;
+        }
+        return entregue;
     }
 
     private bool PodeProduzirAeronave(GameObject prefab)
@@ -2169,17 +2211,22 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         int lancados = 0;
         quantidade = Mathf.Max(1, quantidade);
+        List<ControleAviao> ignorados = null;
 
         while (lancados < quantidade)
         {
             ControleAviao proximo = avioesNoPatio.Find(a =>
                 a != null &&
                 a.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio &&
-                EhMesmoModelo(a, modelo));
+                EhMesmoModelo(a, modelo) &&
+                (ignorados == null || !ignorados.Contains(a)));
 
             if (proximo == null)
             {
-                proximo = avioesNoHangar.Find(a => a != null && EhMesmoModelo(a, modelo));
+                proximo = avioesNoHangar.Find(a =>
+                    a != null &&
+                    EhMesmoModelo(a, modelo) &&
+                    (ignorados == null || !ignorados.Contains(a)));
                 if (proximo != null)
                 {
                     PrepararAviaoReservaParaLancamento(proximo);
@@ -2192,12 +2239,15 @@ public class GerenciadorAeroporto : MonoBehaviour
                 yield break;
             }
 
+            ReabastecerAeronave(proximo, 10f);
             ConfigurarAviaoParaPatrulhaEmGrupo(proximo);
             ControleUnidade controle = proximo.GetComponent<ControleUnidade>();
             if (controle == null || !controle.EmitirOrdemPatrulha(new List<Vector3> { alvo }))
             {
                 Debug.LogWarning($"[Patrulha Grupo] A aeronave {proximo.name} recusou a rota.");
-                yield break;
+                if (ignorados == null) ignorados = new List<ControleAviao>(4);
+                ignorados.Add(proximo);
+                continue;
             }
             lancados++;
 
@@ -2898,6 +2948,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         aviao.ordemParaRetorno = false;
         aviao.estaEmModoVooFisico = false;
         aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+        aviao.AplicarEstadoSistemasAeronave(false, false);
         aviao.transform.SetParent(transform, true);
         if (vagaReservada != null && !avioesNoPatio.Contains(aviao))
         {
@@ -3397,77 +3448,29 @@ public class GerenciadorAeroporto : MonoBehaviour
             GUILayout.Space(4f);
         }
 
-        // Barra compacta de aquisições em linha (economiza altura vertical e mantém leitura direta)
-        GUILayout.BeginHorizontal();
-        if (prefabDroneKamikaze != null)
-        {
-            GUI.enabled = !semEnergia;
-            if (GUILayout.Button($"🧨 <b>COMPRAR DRONE KAMIKAZE</b>  <color=#8BE9FD>(${precoDroneKamikaze})</color>", _stAeroBotaoPrimario, GUILayout.Height(34f), GUILayout.ExpandWidth(true)))
-            {
-                if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoDroneKamikaze)
-                {
-                    TentarComprarAviaoComPagamento(prefabDroneKamikaze, precoDroneKamikaze);
-                }
-                else
-                {
-                    Debug.LogWarning("[Aeroporto] Dinheiro insuficiente para Drone Kamikaze!");
-                    HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("economy.no_money_action", "SEM DINHEIRO\nRecursos insuficientes para esta ação."), 3.2f);
-                }
-            }
-            GUI.enabled = true;
-        }
-        else
-        {
-            GUI.enabled = false;
-            GUILayout.Button("🧨 DRONE KAMIKAZE (Prefab não vinculado)", _stAeroBotao, GUILayout.Height(34f), GUILayout.ExpandWidth(true));
-            GUI.enabled = true;
-        }
-
-        GUILayout.Space(8f);
-
-        if (prefabSu11 != null)
-        {
-            GUI.enabled = !semEnergia;
-            if (GUILayout.Button($"✈️ <b>COMPRAR SU-11</b>  <color=#8BE9FD>(${precoSu11})</color>", _stAeroBotaoPrimario, GUILayout.Height(34f), GUILayout.ExpandWidth(true)))
-            {
-                if (GerenciadorRecursos.Instancia != null && GerenciadorRecursos.Instancia.dinheiro >= precoSu11)
-                {
-                    TentarComprarAviaoComPagamento(prefabSu11, precoSu11);
-                }
-                else
-                {
-                    Debug.LogWarning("[Aeroporto] Dinheiro insuficiente para Su-11!");
-                    HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("economy.no_money_action", "SEM DINHEIRO\nRecursos insuficientes para esta ação."), 3.2f);
-                }
-            }
-            GUI.enabled = true;
-        }
-        else
-        {
-            GUI.enabled = false;
-            GUILayout.Button("✈️ SU-11 (Prefab não vinculado)", _stAeroBotao, GUILayout.Height(34f), GUILayout.ExpandWidth(true));
-            GUI.enabled = true;
-        }
-        GUILayout.EndHorizontal();
-
-        GUILayout.Space(8f);
+        float alturaBannerSemEnergia = semEnergia ? 54f : 0f;
+        float alturaUtilColunas = Mathf.Max(220f, alturaDisponivel - alturaBannerSemEnergia - 6f);
 
         bool layoutDuasColunas = larguraDisponivel >= 720f && alturaDisponivel >= 250f;
         if (layoutDuasColunas)
         {
             float larguraEsquerda = Mathf.Clamp(larguraDisponivel * 0.45f, 320f, 445f);
-            GUILayout.BeginHorizontal(GUILayout.ExpandHeight(true));
+            float alturaCardHangar = Mathf.Clamp(alturaUtilColunas * 0.25f, 122f, 150f);
+            float alturaCardOrdens = Mathf.Max(220f, alturaUtilColunas - 6f);
+            float alturaCardFrota = Mathf.Max(160f, alturaUtilColunas - alturaCardHangar - 20f);
 
-            GUILayout.BeginVertical(GUILayout.Width(larguraEsquerda), GUILayout.ExpandHeight(true));
-            DesenharCardFrotaAtiva(true);
+            GUILayout.BeginHorizontal(GUILayout.Height(alturaUtilColunas), GUILayout.ExpandHeight(true));
+
+            GUILayout.BeginVertical(GUILayout.Width(larguraEsquerda), GUILayout.Height(alturaUtilColunas));
+            DesenharCardFrotaAtiva(true, alturaCardFrota);
             GUILayout.Space(8f);
-            DesenharCardHangar(true);
+            DesenharCardHangar(true, alturaCardHangar);
             GUILayout.EndVertical();
 
             GUILayout.Space(10f);
 
-            GUILayout.BeginVertical(_stAeroCard, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
-            DesenharColunaOrdens(true);
+            GUILayout.BeginVertical(_stAeroCard, GUILayout.ExpandWidth(true), GUILayout.Height(alturaCardOrdens));
+            DesenharColunaOrdens(true, alturaCardOrdens);
             GUILayout.EndVertical();
 
             GUILayout.EndHorizontal();
@@ -3486,19 +3489,21 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
     }
 
-    private void DesenharCardFrotaAtiva(bool expandirAltura)
+    private void DesenharCardFrotaAtiva(bool expandirAltura, float alturaCard = 0f)
     {
         int totalFrotaAtiva = avioesNoPatio.Count + transportesC700NoPatio.Count + helicopterosDoAeroporto.Count;
-        GUILayout.BeginVertical(_stAeroCard, expandirAltura ? GUILayout.ExpandHeight(true) : GUILayout.Height(185f));
+        float alturaFinalCard = expandirAltura && alturaCard > 0f ? alturaCard : 260f;
+        GUILayout.BeginVertical(_stAeroCard, GUILayout.Height(alturaFinalCard));
         GUILayout.BeginHorizontal();
         GUILayout.Label($"<b>FROTA ATIVA</b>  <color=#8FB5C9>({totalFrotaAtiva})</color>", _stAeroSecaoTitulo);
         GUILayout.FlexibleSpace();
         GUILayout.Label("<color=#7D98A6>Clique para comandar</color>", _stAeroSubtituloHeader);
         GUILayout.EndHorizontal();
 
-        scrollPosFrota = expandirAltura
-            ? GUILayout.BeginScrollView(scrollPosFrota, GUILayout.MinHeight(120f), GUILayout.ExpandHeight(true))
-            : GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(145f));
+        float alturaListaFrota = expandirAltura && alturaCard > 0f
+            ? Mathf.Max(110f, alturaFinalCard - 48f)
+            : 220f;
+        scrollPosFrota = GUILayout.BeginScrollView(scrollPosFrota, GUILayout.Height(alturaListaFrota), GUILayout.ExpandHeight(expandirAltura));
 
         if (totalFrotaAtiva == 0)
         {
@@ -3574,9 +3579,12 @@ public class GerenciadorAeroporto : MonoBehaviour
         GUILayout.EndVertical();
     }
 
-    private void DesenharCardHangar(bool expandirAltura)
+    private void DesenharCardHangar(bool expandirAltura, float alturaCard = 0f)
     {
-        GUILayout.BeginVertical(_stAeroCard, expandirAltura ? GUILayout.MinHeight(110f) : GUILayout.Height(130f), GUILayout.ExpandHeight(expandirAltura));
+        float alturaFinalCard = expandirAltura
+            ? (alturaCard > 0f ? alturaCard : 145f)
+            : 130f;
+        GUILayout.BeginVertical(_stAeroCard, GUILayout.Height(alturaFinalCard));
         GUILayout.BeginHorizontal();
         GUILayout.Label($"<b>🔒 HANGAR</b>  <color=#8FB5C9>({avioesNoHangar.Count})</color>", _stAeroSecaoTitulo);
         GUILayout.FlexibleSpace();
@@ -3586,9 +3594,10 @@ public class GerenciadorAeroporto : MonoBehaviour
         }
         GUILayout.EndHorizontal();
 
-        scrollPosHangar = expandirAltura
-            ? GUILayout.BeginScrollView(scrollPosHangar, GUILayout.MinHeight(68f), GUILayout.MaxHeight(190f), GUILayout.ExpandHeight(true))
-            : GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(90f));
+        float alturaListaHangar = expandirAltura
+            ? Mathf.Max(68f, alturaFinalCard - 48f)
+            : 90f;
+        scrollPosHangar = GUILayout.BeginScrollView(scrollPosHangar, GUILayout.Height(alturaListaHangar), GUILayout.ExpandHeight(expandirAltura));
 
         if (avioesNoHangar.Count == 0)
         {
@@ -3638,7 +3647,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         GUILayout.EndVertical();
     }
 
-    private void DesenharColunaOrdens(bool usarScrollInterno)
+    private void DesenharColunaOrdens(bool usarScrollInterno, float alturaCard = 0f)
     {
         if (aviaoSelecionadoParaMissao == null && helicopteroSelecionadoParaMissao == null
             && c700SelecionadoParaMissao == null && transportesC700NoPatio.Count == 1)
@@ -3663,7 +3672,9 @@ public class GerenciadorAeroporto : MonoBehaviour
 
         if (usarScrollInterno)
         {
-            scrollPosOrdensUI = GUILayout.BeginScrollView(scrollPosOrdensUI, GUILayout.ExpandHeight(true));
+            scrollPosOrdensUI = alturaCard > 0f
+                ? GUILayout.BeginScrollView(scrollPosOrdensUI, GUILayout.Height(Mathf.Max(150f, alturaCard - 48f)), GUILayout.ExpandHeight(true))
+                : GUILayout.BeginScrollView(scrollPosOrdensUI, GUILayout.ExpandHeight(true));
         }
 
         bool desenhouAviao = false;
@@ -4361,6 +4372,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         aviao.ordemParaRetorno = false;
         aviao.estaEmModoVooFisico = false;
         aviao.estadoAtual = ControleAviao.EstadoAviao.ReservaHangar;
+        aviao.AplicarEstadoSistemasAeronave(false, false);
         aviao.vagaRetorno = null;
         aviao.transform.SetParent(transform, true);
 
@@ -4399,6 +4411,7 @@ public class GerenciadorAeroporto : MonoBehaviour
         aviao.ordemParaRetorno = false;
         aviao.estaEmModoVooFisico = false;
         aviao.estadoAtual = ControleAviao.EstadoAviao.ProntoNoPatio;
+        aviao.AplicarEstadoSistemasAeronave(false, false);
 
         if (!avioesNoPatio.Contains(aviao)) avioesNoPatio.Add(aviao);
         // Se a aeronave havia voltado para abastecer e precisou aguardar no
@@ -4430,7 +4443,9 @@ public class GerenciadorAeroporto : MonoBehaviour
         for (int i = 0; i < avioesNoPatio.Count; i++)
         {
             ControleAviao aviao = avioesNoPatio[i];
-            if (aviao != null && aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio)
+            if (aviao != null
+                && aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
+                && ControleAviao.BasesDaMesmaEquipe(aviao, this))
             {
                 destino.Add(aviao);
             }

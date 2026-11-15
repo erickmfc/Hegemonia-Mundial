@@ -84,7 +84,7 @@ namespace Hegemonia.AI.BrainMaster
             long targetingStart = InfraPerformanceGameplay.MarcarInicioMedicao();
             Vector3 pressureTarget = ResolvePressureTarget(baseCenter, now);
             IA_BrainMaster brain = _context != null ? _context.Brain : null;
-            bool navalOffensivePhase = brain != null && brain.StrategicPhase >= IA_StrategicPhase.Expansao;
+            bool navalOffensivePhase = brain != null && (brain.StrategicPhase >= IA_StrategicPhase.Expansao || brain.IA03AlertaAmeacaAtivo);
             int strategicTargetCount = navalOffensivePhase
                 ? _context.WorldState.FillEnemyStrategicTargets(_strategicTargetsBuffer, baseCenter, 4)
                 : 0;
@@ -138,24 +138,82 @@ namespace Hegemonia.AI.BrainMaster
             IA_SquadData heavy = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
             IA_SquadData submarine = _context.SquadDirector.GetSquad(IA_SquadRole.Submarine);
 
+            Transform counterTarget = null;
+            Vector3 counterPos = Vector3.zero;
+            int counterTeam = 0;
+            bool alertaGlobal = brain != null && brain.IA03AlertaAmeacaAtivo;
+            bool hasCounterTarget = alertaGlobal
+                && _context != null
+                && _context.WorldState != null
+                && _context.WorldState.TryGetCounterattackTarget(
+                    baseCenter,
+                    out counterTarget,
+                    out counterPos,
+                    out counterTeam);
+
+            if (hasCounterTarget && counterPos != Vector3.zero)
+            {
+                if (strategicTargetCount == 0)
+                {
+                    heavyPressureTarget = counterPos;
+                    escortPressureTarget = counterPos;
+                    subPressureTarget = counterPos;
+                    pressureTarget = counterPos;
+                }
+                else
+                {
+                    if (heavyPressureTarget == Vector3.zero) heavyPressureTarget = counterPos;
+                    if (escortPressureTarget == Vector3.zero) escortPressureTarget = counterPos;
+                    if (subPressureTarget == Vector3.zero) subPressureTarget = counterPos;
+                    if (pressureTarget == Vector3.zero) pressureTarget = counterPos;
+                }
+            }
+
+            bool allowCoordinateStrike = alertaGlobal
+                && (counterTarget != null
+                    || (counterPos != Vector3.zero && counterTeam > 0)
+                    || heavyPressureTarget != Vector3.zero);
+
             if (brain != null && brain.UsaCronogramaIA03)
             {
-                if (!brain.IA03NavioMilitarLiberado && navalTarget == null)
+                bool alertaAtivo = brain.IA03AlertaAmeacaAtivo;
+                if (!brain.IA03NavioMilitarLiberado && !alertaAtivo && navalTarget == null && counterTarget == null)
                 {
                     return;
                 }
 
-                DispatchIA03NavalSchedule(escort, heavy, navalTarget, baseCenter, now);
-                DispatchSubmarine(subTarget, subPressureTarget, subStage, !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter));
+                Transform combatTarget = navalTarget != null
+                    ? navalTarget
+                    : (heavyTarget != null
+                        ? heavyTarget
+                        : (escortTarget != null ? escortTarget : counterTarget));
+                Vector3 offensivePoint = hasCounterTarget && counterPos != Vector3.zero
+                    ? counterPos
+                    : (heavyPressureTarget != Vector3.zero ? heavyPressureTarget : pressureTarget);
+                DispatchIA03NavalSchedule(escort, heavy, combatTarget, offensivePoint, baseCenter, now, alertaAtivo, counterTeam);
+                Transform effectiveSubTarget = subTarget != null ? subTarget : counterTarget;
+                Vector3 effectiveSubPressure = hasCounterTarget && counterPos != Vector3.zero ? counterPos : subPressureTarget;
+                DispatchSubmarine(
+                    effectiveSubTarget,
+                    effectiveSubPressure,
+                    subStage,
+                    !alertaAtivo && !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter, allowCoordinateStrike),
+                    alertaAtivo ? counterTeam : 0);
                 InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Naval, tickStart);
                 return;
             }
 
-            bool holdFormation = !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter);
+            bool holdFormation = !alertaGlobal
+                && !ShouldLaunchNavalStrike(heavyTarget, escort, heavy, submarine, assemblyCenter, allowCoordinateStrike);
 
-            DispatchEscort(escortTarget, escortPressureTarget, escortStage, holdFormation, baseCenter, now);
-            DispatchHeavy(heavyTarget, heavyPressureTarget, heavyStage, holdFormation);
-            DispatchSubmarine(subTarget, subPressureTarget, subStage, holdFormation);
+            Transform effectiveEscortTarget = escortTarget != null ? escortTarget : (alertaGlobal ? counterTarget : null);
+            Transform effectiveHeavyTarget = heavyTarget != null ? heavyTarget : (alertaGlobal ? counterTarget : null);
+            Transform effectiveGeneralSubTarget = subTarget != null ? subTarget : (alertaGlobal ? counterTarget : null);
+            int defensiveCounterTeam = alertaGlobal ? counterTeam : 0;
+
+            DispatchEscort(effectiveEscortTarget, escortPressureTarget, escortStage, holdFormation, baseCenter, now, defensiveCounterTeam);
+            DispatchHeavy(effectiveHeavyTarget, heavyPressureTarget, heavyStage, holdFormation, defensiveCounterTeam);
+            DispatchSubmarine(effectiveGeneralSubTarget, subPressureTarget, subStage, holdFormation, defensiveCounterTeam);
             int activeTaskforces = 0;
             if (_coastalGuardBuffer.Count > 0) activeTaskforces++;
             if (_escortActiveBuffer.Count > 0) activeTaskforces++;
@@ -200,7 +258,7 @@ namespace Hegemonia.AI.BrainMaster
             }
         }
 
-        private void DispatchEscort(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation, Vector3 baseCenter, float now)
+        private void DispatchEscort(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation, Vector3 baseCenter, float now, int counterTeamId = 0)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalEscort);
             if (!HasUnits(squad))
@@ -225,18 +283,23 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (holdFormation || target == null)
-            {
-                QueueMove("naval_escort_stage", _escortActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 78, 3.2f);
-            }
-            else
+            if (target != null && !holdFormation)
             {
                 Vector3 coastPatrol = ResolveAttackPoint(stagePoint, target.position, -260f, 420f);
                 QueueAttack("naval_escort", _escortActiveBuffer, target, coastPatrol, 80, 4.2f);
             }
+            else if (!holdFormation && counterTeamId > 0 && pressureTarget != Vector3.zero)
+            {
+                Vector3 counterPoint = ResolveAttackPoint(stagePoint, pressureTarget, -260f, 420f);
+                QueueAttack("naval_escort_counter", _escortActiveBuffer, null, counterPoint != Vector3.zero ? counterPoint : stagePoint, 82, 4.8f, counterTeamId);
+            }
+            else
+            {
+                QueueMove("naval_escort_stage", _escortActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 78, 3.2f);
+            }
         }
 
-        private void DispatchHeavy(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
+        private void DispatchHeavy(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation, int counterTeamId = 0)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.NavalHeavy);
             if (!HasUnits(squad))
@@ -249,19 +312,25 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (holdFormation || target == null)
-            {
-                QueueMove("naval_heavy_stage", _heavyActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 84, 3.4f);
-            }
-            else
+            if (target != null && !holdFormation)
             {
                 Vector3 attackAxis = ResolveAttackPoint(stagePoint, target.position, 0f, 520f);
                 QueueAttack("naval_heavy", _heavyActiveBuffer, target, attackAxis, 88, 3.8f);
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_naval", _heavyActiveBuffer.Count);
             }
+            else if (!holdFormation && counterTeamId > 0 && pressureTarget != Vector3.zero)
+            {
+                Vector3 counterAxis = ResolveAttackPoint(stagePoint, pressureTarget, 0f, 520f);
+                QueueAttack("naval_heavy_counter", _heavyActiveBuffer, null, counterAxis != Vector3.zero ? counterAxis : stagePoint, 88, 4.5f, counterTeamId);
+                DiagnosticoDesempenhoJogo.DefinirContadorMetrica("units_committed_naval", _heavyActiveBuffer.Count);
+            }
+            else
+            {
+                QueueMove("naval_heavy_stage", _heavyActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 84, 3.4f);
+            }
         }
 
-        private void DispatchSubmarine(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation)
+        private void DispatchSubmarine(Transform target, Vector3 pressureTarget, Vector3 stagePoint, bool holdFormation, int counterTeamId = 0)
         {
             IA_SquadData squad = _context.SquadDirector.GetSquad(IA_SquadRole.Submarine);
             if (!HasUnits(squad))
@@ -274,14 +343,19 @@ namespace Hegemonia.AI.BrainMaster
                 return;
             }
 
-            if (holdFormation || target == null)
-            {
-                QueueMove("submarine_stage", _subActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 83, 4.0f);
-            }
-            else
+            if (target != null && !holdFormation)
             {
                 Vector3 flankWater = ResolveAttackPoint(stagePoint, target.position, 360f, 620f);
                 QueueAttack("submarine", _subActiveBuffer, target, flankWater, 90, 5.2f);
+            }
+            else if (!holdFormation && counterTeamId > 0 && pressureTarget != Vector3.zero)
+            {
+                Vector3 counterFlank = ResolveAttackPoint(stagePoint, pressureTarget, 360f, 620f);
+                QueueAttack("submarine_counter", _subActiveBuffer, null, counterFlank != Vector3.zero ? counterFlank : stagePoint, 90, 5.2f, counterTeamId);
+            }
+            else
+            {
+                QueueMove("submarine_stage", _subActiveBuffer, stagePoint != Vector3.zero ? stagePoint : pressureTarget, 83, 4.0f);
             }
         }
 
@@ -390,9 +464,10 @@ namespace Hegemonia.AI.BrainMaster
             IA_SquadData escort,
             IA_SquadData heavy,
             IA_SquadData submarine,
-            Vector3 assemblyCenter)
+            Vector3 assemblyCenter,
+            bool allowCoordinateCounterstrike = false)
         {
-            if (target == null)
+            if (target == null && !allowCoordinateCounterstrike)
             {
                 return false;
             }
@@ -535,8 +610,11 @@ namespace Hegemonia.AI.BrainMaster
             IA_SquadData escort,
             IA_SquadData heavy,
             Transform navalTarget,
+            Vector3 pressureTarget,
             Vector3 baseCenter,
-            float now)
+            float now,
+            bool alertaAtivo,
+            int counterTeamId = 0)
         {
             _escortActiveBuffer.Clear();
             if (HasUnits(escort))
@@ -614,6 +692,25 @@ namespace Hegemonia.AI.BrainMaster
                     Vector3 attackPoint = ResolveAttackPoint(patrolA, navalTarget.position, -180f, 320f);
                     QueueAttack("ia03_naval_combat_" + id, _singleShipBuffer, navalTarget, attackPoint, 90, 4.2f);
                 }
+                else if (alertaAtivo && pressureTarget != Vector3.zero)
+                {
+                    Vector3 counterApproach = ResolveAttackPoint(patrolA, pressureTarget, -220f, 360f);
+                    if (counterTeamId > 0)
+                    {
+                        QueueAttack(
+                            "ia03_naval_counter_coord_" + id,
+                            _singleShipBuffer,
+                            null,
+                            counterApproach != Vector3.zero ? counterApproach : patrolA,
+                            89,
+                            5.0f,
+                            counterTeamId);
+                    }
+                    else
+                    {
+                        QueuePatrol("ia03_naval_counter_patrol_" + id, _singleShipBuffer, patrolA, counterApproach, 88, 6.0f);
+                    }
+                }
                 else
                 {
                     QueuePatrol("ia03_naval_patrol_" + id, _singleShipBuffer, patrolA, patrolB, 85, 8.0f);
@@ -647,8 +744,7 @@ namespace Hegemonia.AI.BrainMaster
                 cooldown,
                 payload);
 
-            string reason;
-            _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            TryEnqueueNavalCommand(request);
         }
 
         private void QueueMove(string key, List<GameObject> units, Vector3 destination, int priority, float cooldown)
@@ -676,11 +772,10 @@ namespace Hegemonia.AI.BrainMaster
                 cooldown,
                 payload);
 
-            string reason;
-            _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            TryEnqueueNavalCommand(request);
         }
 
-        private void QueueAttack(string key, List<GameObject> units, Transform target, Vector3 targetPosition, int priority, float cooldown)
+        private void QueueAttack(string key, List<GameObject> units, Transform target, Vector3 targetPosition, int priority, float cooldown, int explicitTargetTeamId = 0)
         {
             List<GameObject> availableUnits = CloneUnits(units);
             if (availableUnits.Count == 0)
@@ -691,14 +786,17 @@ namespace Hegemonia.AI.BrainMaster
             IdentidadeUnidade targetIdentity = target != null
                 ? target.GetComponentInParent<IdentidadeUnidade>()
                 : null;
+            int resolvedTeamId = targetIdentity != null ? targetIdentity.teamID : explicitTargetTeamId;
+            bool coordinateAttack = target == null && resolvedTeamId > 0;
 
             IA_AttackOrderData payload = new IA_AttackOrderData
             {
                 Units = availableUnits,
                 Target = target,
                 TargetPosition = targetPosition,
-                RequiresDeclaredWar = target != null,
-                TargetTeamId = targetIdentity != null ? targetIdentity.teamID : 0,
+                RequiresDeclaredWar = target != null || coordinateAttack,
+                TargetTeamId = resolvedTeamId,
+                AllowCoordinateAttackAgainstKnownEnemy = coordinateAttack,
                 AllowHostileNavalInterception = IsNavalTarget(target)
             };
 
@@ -713,8 +811,24 @@ namespace Hegemonia.AI.BrainMaster
                 cooldown,
                 payload);
 
+            TryEnqueueNavalCommand(request);
+        }
+
+        private void TryEnqueueNavalCommand(IA_CommandRequest request)
+        {
+            if (request == null || _context == null || _context.CommandQueue == null)
+            {
+                return;
+            }
+
+            float now = Time.time;
+            if (_context.CommandQueue.IsQueuedOrInCooldown(request, now))
+            {
+                return;
+            }
+
             string reason;
-            _context.CommandQueue.Enqueue(request, Time.time, out reason);
+            _context.CommandQueue.Enqueue(request, now, out reason);
         }
 
         private static bool IsNavalTarget(Transform target)

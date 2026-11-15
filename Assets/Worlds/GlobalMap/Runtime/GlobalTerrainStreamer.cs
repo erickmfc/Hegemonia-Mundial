@@ -767,8 +767,45 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             hasNavigableLand = HasNavigableLand();
         if (!hasNavigableLand)
             Debug.LogError("[GlobalMap] O NavMesh local terminou vazio para " + tileSet + ".", this);
+        else
+            ReconnectStrandedGroundAgents();
 
         completed(hasNavigableLand);
+    }
+
+    private void ReconnectStrandedGroundAgents()
+    {
+        if (world == null)
+            return;
+
+        ControleUnidade[] unidades = FindObjectsByType<ControleUnidade>(FindObjectsSortMode.None);
+        for (int i = 0; i < unidades.Length; i++)
+        {
+            ControleUnidade unidade = unidades[i];
+            if (unidade == null || !unidade.gameObject.activeInHierarchy || unidade.EhUnidadeNaval() || unidade.EhUnidadeAerea())
+                continue;
+
+            NavMeshAgent agent = unidade.GetComponent<NavMeshAgent>();
+            if (agent == null || agent.agentTypeID != LocalNavMeshAgentTypeId)
+                continue;
+
+            if (agent.enabled && agent.isOnNavMesh)
+                continue;
+
+            Vector3 pos = unidade.transform.position;
+            if (!TrySampleLandHeight(pos, out float landHeight))
+                continue;
+
+            Vector3 sampleOrigin = new Vector3(pos.x, landHeight, pos.z);
+            int mask = agent.areaMask != 0 ? agent.areaMask : NavMesh.AllAreas;
+            if (NavMesh.SamplePosition(sampleOrigin, out NavMeshHit hit, 24f, mask))
+            {
+                unidade.transform.position = hit.position;
+                agent.enabled = true;
+                if (!agent.isOnNavMesh)
+                    agent.Warp(hit.position);
+            }
+        }
     }
 
     private bool HasNavigableLand()

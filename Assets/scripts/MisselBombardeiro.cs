@@ -277,6 +277,11 @@ public class MisselBombardeiro : MonoBehaviour
         return Vector3.Distance(other.ClosestPoint(transform.position), alvoFixo) <= fusilProximidade;
     }
 
+    public void Explodir()
+    {
+        Detonar();
+    }
+
     private void Detonar()
     {
         if (!lancado) return;

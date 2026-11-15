@@ -2273,7 +2273,7 @@ public class Helicoptero : MonoBehaviour
 
         if (!helicePrincipal)
         {
-            var laminasPrincipais = new List<MeshRenderer>();
+            var laminasPrincipais = new List<(MeshRenderer renderer, Vector3 centerLocal)>();
             Vector3 somaCentro = Vector3.zero;
             for (int i = 0; i < candidatos.Count; i++)
             {
@@ -2285,12 +2285,38 @@ public class Helicoptero : MonoBehaviour
                 bool envergaduraRotor = maxXZ > totalBounds.size.z * 0.22f;
                 if (planoHorizontal && acimaDoCentro && envergaduraRotor)
                 {
-                    laminasPrincipais.Add(c.renderer);
+                    laminasPrincipais.Add((c.renderer, c.centerLocal));
                     somaCentro += c.centerLocal;
                 }
             }
 
-            if (laminasPrincipais.Count > 0)
+            if (usarRotacaoHorizontalNaHeliceTraseira && !heliceTraseira && laminasPrincipais.Count >= 2)
+            {
+                laminasPrincipais.Sort((a, b) => b.centerLocal.y.CompareTo(a.centerLocal.y));
+
+                GameObject pivotSup = new GameObject("HelicePrincipal_AutoPivot");
+                pivotSup.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
+                pivotSup.transform.position = transform.TransformPoint(laminasPrincipais[0].centerLocal);
+                pivotSup.transform.rotation = transform.rotation;
+                laminasPrincipais[0].renderer.transform.SetParent(pivotSup.transform, true);
+                helicePrincipal = pivotSup.transform;
+
+                Vector3 somaInf = Vector3.zero;
+                for (int i = 1; i < laminasPrincipais.Count; i++)
+                {
+                    somaInf += laminasPrincipais[i].centerLocal;
+                }
+                GameObject pivotInf = new GameObject("HeliceTraseira_AutoPivot");
+                pivotInf.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
+                pivotInf.transform.position = transform.TransformPoint(somaInf / (laminasPrincipais.Count - 1));
+                pivotInf.transform.rotation = transform.rotation;
+                for (int i = 1; i < laminasPrincipais.Count; i++)
+                {
+                    laminasPrincipais[i].renderer.transform.SetParent(pivotInf.transform, true);
+                }
+                heliceTraseira = pivotInf.transform;
+            }
+            else if (laminasPrincipais.Count > 0)
             {
                 Vector3 centroPivot = transform.TransformPoint(somaCentro / laminasPrincipais.Count);
                 GameObject pivot = new GameObject("HelicePrincipal_AutoPivot");
@@ -2299,7 +2325,7 @@ public class Helicoptero : MonoBehaviour
                 pivot.transform.rotation = transform.rotation;
                 for (int i = 0; i < laminasPrincipais.Count; i++)
                 {
-                    laminasPrincipais[i].transform.SetParent(pivot.transform, true);
+                    laminasPrincipais[i].renderer.transform.SetParent(pivot.transform, true);
                 }
                 helicePrincipal = pivot.transform;
             }

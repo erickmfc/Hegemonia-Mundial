@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 using Hegemonia.RTS;
 using Hegemonia.AI.BrainMaster;
@@ -46,6 +47,7 @@ public class MenuComandoController : MonoBehaviour
     private int bloquearAberturaAteFrame = -1;
     private bool bloquearAberturaAteEntradaDaCompraSerLiberada;
     public bool MenuAberto => menuAberto;
+    public bool CardExpandidoAberto => hudCardExpanded != null && hudCardOverlay != null && hudCardOverlay.style.display == DisplayStyle.Flex;
     public bool BarraContextualDisponivel => !menuAberto && unidadesSelecionadasMenu != null && unidadesSelecionadasMenu.Count > 0;
 
     // Zoom e Pan no mapa tático
@@ -104,8 +106,11 @@ public class MenuComandoController : MonoBehaviour
     private Label statTeam;
     private Label hpValor;
     private Label fuelValor;
+    private Label rationValor;
     private VisualElement hpBar;
     private VisualElement fuelBar;
+    private VisualElement rationBar;
+    private VisualElement rationRow;
 
     // SITREP
     private Label sitrepAliados;
@@ -123,6 +128,9 @@ public class MenuComandoController : MonoBehaviour
     private readonly Dictionary<int, Vector3> origemMisseis = new Dictionary<int, Vector3>(64);
     private readonly List<GameObject> misseisEmVoo = new List<GameObject>(64);
     private readonly List<int> idsMisseisAtivos = new List<int>(64);
+    private readonly List<MissileThreatTracker> bufferAmeacasMisseis = new List<MissileThreatTracker>(64);
+    private readonly HashSet<int> idsMisseisVistos = new HashSet<int>();
+    private readonly List<int> idsMisseisObsoletos = new List<int>(64);
 
     // Log
     private VisualElement logContainer;
@@ -182,6 +190,16 @@ public class MenuComandoController : MonoBehaviour
     private bool alertaCriticaHudFase;
     private string perfilPreviewHudAtual;
     private bool hudPreviewImagemConstruida;
+    private Button btnHudApoioAliado;
+    private VisualElement painelApoioAereoAliado;
+    private Label tituloApoioAereoAliado;
+    private Label detalheApoioAereoAliado;
+    private Button btnPopupSolicitarApoio;
+    private Button btnPopupIgnorarApoio;
+    private ControleAviao aviaoPopupApoioAliado;
+    private GerenciadorAeroporto basePopupApoioAliado;
+    private readonly Dictionary<int, float> cooldownPopupApoioPorAviao = new Dictionary<int, float>(16);
+    private readonly List<ControleUnidade> bufferControlesApoioAliado = new List<ControleUnidade>(32);
 
     private sealed class HudCardInfo
     {
@@ -395,6 +413,35 @@ public class MenuComandoController : MonoBehaviour
     // Unity lifecycle
     // -----------------------------------------------------------------------
     private bool bindUIFeito;
+    private bool inicializadoEmGameplay;
+
+    private static bool EhCenaDeMenuNome(Scene scene)
+    {
+        if (!scene.IsValid()) return false;
+        string nome = scene.name;
+        if (string.IsNullOrWhiteSpace(nome)) return false;
+        if (ConfiguracaoCenasJogo.EhCenaDeMenu(nome)) return true;
+
+        return string.Equals(nome, ConfiguracaoCenasJogo.CenaMenuFallback, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(nome, "Menu cena", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool EhCenaDeMenuAtual()
+    {
+        return EhCenaDeMenuNome(SceneManager.GetActiveScene());
+    }
+
+    private static void AoCarregarCenaGlobal(Scene scene, LoadSceneMode mode)
+    {
+        if (EhCenaDeMenuNome(scene))
+        {
+            if (Instancia != null)
+                Instancia.AplicarEstadoCenaDeMenu(true);
+            return;
+        }
+
+        GarantirInstanciaGlobal();
+    }
 
     private void Awake()
     {
@@ -425,19 +472,43 @@ public class MenuComandoController : MonoBehaviour
             DontDestroyOnLoad(gameObject);
         }
         RegistroEntidadesJogo.EntidadesAlteradas += MarcarCachesEntidadesSujo;
+        SceneManager.sceneLoaded -= AoCarregarCenaInstancia;
+        SceneManager.sceneLoaded += AoCarregarCenaInstancia;
 
         ResolverDocumento();
+        if (EhCenaDeMenuAtual())
+        {
+            AplicarEstadoCenaDeMenu(true);
+        }
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     public static void GarantirInstanciaGlobal()
     {
-        if (Instancia != null) return;
+        SceneManager.sceneLoaded -= AoCarregarCenaGlobal;
+        SceneManager.sceneLoaded += AoCarregarCenaGlobal;
+
+        if (EhCenaDeMenuAtual())
+        {
+            if (Instancia != null)
+            {
+                Instancia.AplicarEstadoCenaDeMenu(true);
+            }
+            return;
+        }
+
+        if (Instancia != null)
+        {
+            Instancia.AplicarEstadoCenaDeMenu(false);
+            return;
+        }
+
         MenuComandoController existente = FindFirstObjectByType<MenuComandoController>(FindObjectsInactive.Include);
         if (existente != null)
         {
             Instancia = existente;
             existente.gameObject.SetActive(true);
+            existente.AplicarEstadoCenaDeMenu(false);
             return;
         }
 
@@ -499,6 +570,20 @@ public class MenuComandoController : MonoBehaviour
 
     private void Start()
     {
+        if (EhCenaDeMenuAtual())
+        {
+            AplicarEstadoCenaDeMenu(true);
+            return;
+        }
+
+        InicializarParaGameplay();
+    }
+
+    private void InicializarParaGameplay()
+    {
+        if (inicializadoEmGameplay) return;
+        inicializadoEmGameplay = true;
+
         ResolverDocumento();
         menuAberto = false;
         hudExpandida = true;
@@ -530,6 +615,68 @@ public class MenuComandoController : MonoBehaviour
         CriarRenderTextureFLIR();
         GarantirControladorMenuQuartelGlobal();
         AdicionarLog("SISTEMA", "Menu Comando inicializado. Tecla [1] para abrir/fechar.", "sistema");
+    }
+
+    private void AoCarregarCenaInstancia(Scene scene, LoadSceneMode mode)
+    {
+        if (EhCenaDeMenuNome(scene))
+        {
+            AplicarEstadoCenaDeMenu(true);
+            return;
+        }
+
+        limitesMapaInicializados = false;
+        AplicarEstadoCenaDeMenu(false);
+        if (!inicializadoEmGameplay)
+        {
+            InicializarParaGameplay();
+        }
+        else
+        {
+            AtualizarLimitesMapa();
+            AtualizarBarraComandoContextual();
+            AtualizarVisibilidadeHudTatico();
+        }
+    }
+
+    private void AplicarEstadoCenaDeMenu(bool emMenu)
+    {
+        if (emMenu)
+        {
+            if (menuAberto)
+            {
+                FecharMenu();
+            }
+            else
+            {
+                FecharCardHudExpandido();
+                LiberarBloqueioInput();
+            }
+
+            ResolverDocumento();
+            if (root != null)
+            {
+                root.style.display = DisplayStyle.None;
+                root.pickingMode = PickingMode.Ignore;
+            }
+            if (menuComandoRoot != null) menuComandoRoot.style.display = DisplayStyle.None;
+            if (barraComandoContextual != null) barraComandoContextual.style.display = DisplayStyle.None;
+            if (hudDockReabrir != null) hudDockReabrir.style.display = DisplayStyle.None;
+            if (hudCardOverlay != null) hudCardOverlay.style.display = DisplayStyle.None;
+            return;
+        }
+
+        ResolverDocumento();
+        if (root != null)
+        {
+            root.style.display = EhCenaDeMenuAtual() ? DisplayStyle.None : DisplayStyle.Flex;
+            root.pickingMode = PickingMode.Ignore;
+        }
+        if (menuComandoRoot != null && !menuAberto)
+        {
+            menuComandoRoot.style.display = DisplayStyle.None;
+        }
+        AtualizarVisibilidadeHudTatico();
     }
 
     private static GerenciadorQuartel EncontrarQuartelAtivoParaMenu()
@@ -724,6 +871,12 @@ public class MenuComandoController : MonoBehaviour
 
     private void Update()
     {
+        if (EhCenaDeMenuAtual())
+        {
+            AplicarEstadoCenaDeMenu(true);
+            return;
+        }
+
         ResolverDocumento();
 
         if (Screen.width != hudLarguraResolucao || Screen.height != hudAlturaResolucao)
@@ -976,6 +1129,7 @@ public class MenuComandoController : MonoBehaviour
 
     private void OnDestroy()
     {
+        SceneManager.sceneLoaded -= AoCarregarCenaInstancia;
         FecharCardHudExpandido();
         RegistroEntidadesJogo.EntidadesAlteradas -= MarcarCachesEntidadesSujo;
         LocalizationManager.IdiomaAlterado -= AoAlterarIdiomaHudTatico;
@@ -997,6 +1151,12 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     public void AbrirMenu()
     {
+        if (EhCenaDeMenuAtual())
+        {
+            AplicarEstadoCenaDeMenu(true);
+            return;
+        }
+
         FecharCardHudExpandido();
         if (Construtor.EmModoConstrucaoAtivo
             || Time.frameCount <= bloquearAberturaAteFrame
@@ -1218,7 +1378,7 @@ public class MenuComandoController : MonoBehaviour
 
         if (root != null)
         {
-            root.style.display = DisplayStyle.Flex;
+            root.style.display = EhCenaDeMenuAtual() ? DisplayStyle.None : DisplayStyle.Flex;
             root.pickingMode = PickingMode.Ignore;
         }
         if (menuComandoRoot != null)
@@ -1327,8 +1487,11 @@ public class MenuComandoController : MonoBehaviour
         statTeam     = root.Q<Label>("stat-team");
         hpValor      = root.Q<Label>("hp-valor");
         fuelValor    = root.Q<Label>("fuel-valor");
+        rationValor  = root.Q<Label>("ration-valor");
         hpBar        = root.Q<VisualElement>("hp-bar");
         fuelBar      = root.Q<VisualElement>("fuel-bar");
+        rationBar    = root.Q<VisualElement>("ration-bar");
+        rationRow    = root.Q<VisualElement>("ration-row");
 
         sitrepAliados  = root.Q<Label>("sitrep-aliados");
         sitrepInimigos = root.Q<Label>("sitrep-inimigos");
@@ -1434,6 +1597,7 @@ public class MenuComandoController : MonoBehaviour
         if (btnContextoCentro != null) btnContextoCentro.clicked += AbrirMenuContextual;
         VincularHudTatico();
         VincularExpansaoCardsHud();
+        CriarBotaoEPopupApoioAereoAliado();
 
         var btnLancamento = root.Q<Button>("btn-lancar-missil");
         if (btnLancamento != null) VincularBotaoOrdem(btnLancamento, "LANCAR_MISSIL");
@@ -1559,6 +1723,12 @@ public class MenuComandoController : MonoBehaviour
 
     private void AtualizarBarraComandoContextual()
     {
+        if (EhCenaDeMenuAtual())
+        {
+            AtualizarVisibilidadeHudTatico();
+            return;
+        }
+
         if (barraComandoContextual == null) return;
 
         bool outraInterfaceAberta = MenuExclusivoTelaCheiaAberto();
@@ -1567,6 +1737,8 @@ public class MenuComandoController : MonoBehaviour
         {
             return;
         }
+
+        AtualizarPopupApoioAereoAliado();
 
         if (unidadesSelecionadasMenu.Count == 0)
         {
@@ -1579,6 +1751,7 @@ public class MenuComandoController : MonoBehaviour
                 ResetarHudTaticoSemSelecao();
             }
             AtualizarControlesArmamentoHud();
+            AtualizarBotaoApoioAereoAliadoHud();
             return;
         }
 
@@ -1681,15 +1854,25 @@ public class MenuComandoController : MonoBehaviour
 
         AtualizarHudTatico(unidadeSelecionadaMenu, grupo);
         AtualizarControlesArmamentoHud();
+        AtualizarBotaoApoioAereoAliadoHud();
     }
 
     private void AtualizarVisibilidadeHudTatico()
     {
-        bool podeExibir = !menuAberto && !MenuExclusivoTelaCheiaAberto();
+        bool emMenu = EhCenaDeMenuAtual();
+        if (emMenu && root != null)
+        {
+            root.style.display = DisplayStyle.None;
+            root.pickingMode = PickingMode.Ignore;
+        }
+
+        bool podeExibir = !emMenu && !menuAberto && !MenuExclusivoTelaCheiaAberto();
         if (barraComandoContextual != null)
             barraComandoContextual.style.display = podeExibir && hudExpandida ? DisplayStyle.Flex : DisplayStyle.None;
         if (hudDockReabrir != null)
             hudDockReabrir.style.display = podeExibir && !hudExpandida ? DisplayStyle.Flex : DisplayStyle.None;
+        if (!podeExibir && painelApoioAereoAliado != null)
+            painelApoioAereoAliado.style.display = DisplayStyle.None;
     }
 
     private static string TextoHud(string chave, string fallback)
@@ -1887,8 +2070,8 @@ public class MenuComandoController : MonoBehaviour
         hudAlturaResolucao = Screen.height;
         if (barraComandoContextual == null) return;
 
-        float alturaDesejada = Mathf.Clamp(Screen.height * 0.19f, 160f, 200f);
-        float alturaMaximaDaTela = Screen.height * 0.26f;
+        float alturaDesejada = Mathf.Clamp(Screen.height * 0.155f, 112f, 152f);
+        float alturaMaximaDaTela = Screen.height * 0.22f;
         barraComandoContextual.style.height = Mathf.Min(alturaDesejada, alturaMaximaDaTela);
         barraComandoContextual.EnableInClassList(
             "hud-small-resolution",
@@ -2096,6 +2279,463 @@ public class MenuComandoController : MonoBehaviour
         hudCardOverlay.Add(hudCardPanel);
         hudCardOverlay.style.display = DisplayStyle.None;
         root.Add(hudCardOverlay);
+    }
+
+    private void CriarBotaoEPopupApoioAereoAliado()
+    {
+        if (root == null) return;
+
+        if (btnHudApoioAliado == null)
+        {
+            VisualElement quickRow = root.Q<VisualElement>(className: "contexto-quick-row");
+            if (quickRow != null)
+            {
+                btnHudApoioAliado = new Button(() => ExecutarOrdemContextual("APOIO_AERO_ALIADO"))
+                {
+                    name = "btn-hud-apoio-aliado",
+                    text = "✈  APOIO ALIADO"
+                };
+                btnHudApoioAliado.AddToClassList("quick-action");
+                btnHudApoioAliado.AddToClassList("mono");
+                btnHudApoioAliado.pickingMode = PickingMode.Position;
+                btnHudApoioAliado.style.color = new Color(0.55f, 0.96f, 0.78f);
+                btnHudApoioAliado.style.borderTopColor = new Color(0.18f, 0.85f, 0.65f, 0.75f);
+                btnHudApoioAliado.style.borderRightColor = new Color(0.18f, 0.85f, 0.65f, 0.75f);
+                btnHudApoioAliado.style.borderBottomColor = new Color(0.18f, 0.85f, 0.65f, 0.75f);
+                btnHudApoioAliado.style.borderLeftColor = new Color(0.18f, 0.85f, 0.65f, 0.75f);
+                btnHudApoioAliado.style.display = DisplayStyle.None;
+
+                int indiceCentro = btnContextoCentro != null ? quickRow.IndexOf(btnContextoCentro) : -1;
+                if (indiceCentro >= 0) quickRow.Insert(indiceCentro, btnHudApoioAliado);
+                else quickRow.Add(btnHudApoioAliado);
+            }
+        }
+
+        if (painelApoioAereoAliado == null)
+        {
+            painelApoioAereoAliado = new VisualElement
+            {
+                name = "painel-apoio-aereo-aliado",
+                pickingMode = PickingMode.Position
+            };
+            painelApoioAereoAliado.style.position = Position.Absolute;
+            painelApoioAereoAliado.style.right = 16f;
+            painelApoioAereoAliado.style.bottom = 142f;
+            painelApoioAereoAliado.style.width = 330f;
+            painelApoioAereoAliado.style.paddingTop = 10f;
+            painelApoioAereoAliado.style.paddingRight = 12f;
+            painelApoioAereoAliado.style.paddingBottom = 10f;
+            painelApoioAereoAliado.style.paddingLeft = 12f;
+            painelApoioAereoAliado.style.backgroundColor = new Color(7f / 255f, 18f / 255f, 29f / 255f, 0.96f);
+            painelApoioAereoAliado.style.borderTopWidth = 2f;
+            painelApoioAereoAliado.style.borderRightWidth = 1f;
+            painelApoioAereoAliado.style.borderBottomWidth = 1f;
+            painelApoioAereoAliado.style.borderLeftWidth = 1f;
+            Color bordaPopup = new Color(0f, 0.88f, 1f, 0.75f);
+            painelApoioAereoAliado.style.borderTopColor = bordaPopup;
+            painelApoioAereoAliado.style.borderRightColor = bordaPopup;
+            painelApoioAereoAliado.style.borderBottomColor = bordaPopup;
+            painelApoioAereoAliado.style.borderLeftColor = bordaPopup;
+            painelApoioAereoAliado.style.borderTopLeftRadius = 4f;
+            painelApoioAereoAliado.style.borderTopRightRadius = 4f;
+            painelApoioAereoAliado.style.borderBottomLeftRadius = 4f;
+            painelApoioAereoAliado.style.borderBottomRightRadius = 4f;
+            painelApoioAereoAliado.style.display = DisplayStyle.None;
+            painelApoioAereoAliado.RegisterCallback<ClickEvent>(evt => evt.StopPropagation());
+
+            tituloApoioAereoAliado = new Label("✈ APOIO AÉREO ALIADO DISPONÍVEL")
+            {
+                name = "label-apoio-aliado-titulo",
+                pickingMode = PickingMode.Ignore
+            };
+            tituloApoioAereoAliado.AddToClassList("mono");
+            tituloApoioAereoAliado.style.color = new Color(0f, 0.90f, 1f);
+            tituloApoioAereoAliado.style.fontSize = 11f;
+            tituloApoioAereoAliado.style.unityFontStyleAndWeight = FontStyle.Bold;
+            tituloApoioAereoAliado.style.marginBottom = 4f;
+
+            detalheApoioAereoAliado = new Label(string.Empty)
+            {
+                name = "label-apoio-aliado-detalhe",
+                pickingMode = PickingMode.Ignore
+            };
+            detalheApoioAereoAliado.AddToClassList("mono");
+            detalheApoioAereoAliado.style.color = new Color(0.88f, 0.94f, 0.98f);
+            detalheApoioAereoAliado.style.fontSize = 10f;
+            detalheApoioAereoAliado.style.whiteSpace = WhiteSpace.Normal;
+            detalheApoioAereoAliado.style.marginBottom = 8f;
+
+            VisualElement botoesRow = new VisualElement { pickingMode = PickingMode.Ignore };
+            botoesRow.style.flexDirection = FlexDirection.Row;
+            botoesRow.style.justifyContent = Justify.FlexEnd;
+
+            btnPopupIgnorarApoio = new Button(IgnorarPopupApoioAereoAliado)
+            {
+                name = "btn-popup-ignorar-apoio",
+                text = "IGNORAR"
+            };
+            btnPopupIgnorarApoio.AddToClassList("mono");
+            btnPopupIgnorarApoio.style.height = 24f;
+            btnPopupIgnorarApoio.style.paddingLeft = 10f;
+            btnPopupIgnorarApoio.style.paddingRight = 10f;
+            btnPopupIgnorarApoio.style.marginRight = 6f;
+            btnPopupIgnorarApoio.style.fontSize = 10f;
+            btnPopupIgnorarApoio.style.color = new Color(0.75f, 0.84f, 0.90f);
+            btnPopupIgnorarApoio.style.backgroundColor = new Color(0.08f, 0.14f, 0.20f, 0.95f);
+            btnPopupIgnorarApoio.style.borderTopWidth = 1f;
+            btnPopupIgnorarApoio.style.borderRightWidth = 1f;
+            btnPopupIgnorarApoio.style.borderBottomWidth = 1f;
+            btnPopupIgnorarApoio.style.borderLeftWidth = 1f;
+            Color bordaIgnorar = new Color(0.32f, 0.45f, 0.55f, 0.7f);
+            btnPopupIgnorarApoio.style.borderTopColor = bordaIgnorar;
+            btnPopupIgnorarApoio.style.borderRightColor = bordaIgnorar;
+            btnPopupIgnorarApoio.style.borderBottomColor = bordaIgnorar;
+            btnPopupIgnorarApoio.style.borderLeftColor = bordaIgnorar;
+
+            btnPopupSolicitarApoio = new Button(() =>
+            {
+                if (aviaoPopupApoioAliado != null)
+                {
+                    SolicitarApoioAereoAliadoParaLista(
+                        new List<ControleAviao>(1) { aviaoPopupApoioAliado },
+                        basePopupApoioAliado);
+                }
+            })
+            {
+                name = "btn-popup-solicitar-apoio",
+                text = "SOLICITAR APOIO"
+            };
+            btnPopupSolicitarApoio.AddToClassList("mono");
+            btnPopupSolicitarApoio.style.height = 24f;
+            btnPopupSolicitarApoio.style.paddingLeft = 10f;
+            btnPopupSolicitarApoio.style.paddingRight = 10f;
+            btnPopupSolicitarApoio.style.fontSize = 10f;
+            btnPopupSolicitarApoio.style.unityFontStyleAndWeight = FontStyle.Bold;
+            btnPopupSolicitarApoio.style.color = new Color(0.95f, 1f, 0.98f);
+            btnPopupSolicitarApoio.style.backgroundColor = new Color(0.04f, 0.36f, 0.34f, 0.95f);
+            btnPopupSolicitarApoio.style.borderTopWidth = 1f;
+            btnPopupSolicitarApoio.style.borderRightWidth = 1f;
+            btnPopupSolicitarApoio.style.borderBottomWidth = 1f;
+            btnPopupSolicitarApoio.style.borderLeftWidth = 1f;
+            Color bordaSolicitar = new Color(0.18f, 0.90f, 0.72f, 0.9f);
+            btnPopupSolicitarApoio.style.borderTopColor = bordaSolicitar;
+            btnPopupSolicitarApoio.style.borderRightColor = bordaSolicitar;
+            btnPopupSolicitarApoio.style.borderBottomColor = bordaSolicitar;
+            btnPopupSolicitarApoio.style.borderLeftColor = bordaSolicitar;
+
+            botoesRow.Add(btnPopupIgnorarApoio);
+            botoesRow.Add(btnPopupSolicitarApoio);
+            painelApoioAereoAliado.Add(tituloApoioAereoAliado);
+            painelApoioAereoAliado.Add(detalheApoioAereoAliado);
+            painelApoioAereoAliado.Add(botoesRow);
+            root.Add(painelApoioAereoAliado);
+        }
+    }
+
+    private void AtualizarBotaoApoioAereoAliadoHud()
+    {
+        if (btnHudApoioAliado == null) return;
+
+        ControleAviao aviaoElegivel = null;
+        GerenciadorAeroporto baseAliadaRef = null;
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (unidade == null) continue;
+            ControleAviao aviao = unidade.GetComponent<ControleAviao>() ?? unidade.GetComponentInChildren<ControleAviao>(true);
+            if (aviao == null || ControleAviao.ObterTeamIdAviao(aviao) != TimeJogadorAtual) continue;
+            if (aviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao && aviao.estadoAtual != ControleAviao.EstadoAviao.Decolando) continue;
+
+            GerenciadorAeroporto baseAliada = aviao.EncontrarAeroportoAliadoParaApoio(false);
+            if (baseAliada != null)
+            {
+                aviaoElegivel = aviao;
+                baseAliadaRef = baseAliada;
+                break;
+            }
+        }
+
+        if (aviaoElegivel == null || baseAliadaRef == null)
+        {
+            btnHudApoioAliado.style.display = DisplayStyle.None;
+            return;
+        }
+
+        int teamAliado = ControleAviao.ObterTeamIdBase(baseAliadaRef);
+        bool jaAutorizado = ContextoTerritorialDiplomatico.ReabastecimentoAliadoAutorizado(TimeJogadorAtual, teamAliado);
+        string nomePais = SistemaGovernoMundial.Instancia != null
+            ? SistemaGovernoMundial.Instancia.NomePais(teamAliado)
+            : $"Equipe {teamAliado}";
+        string nomeBase = baseAliadaRef.name.Replace("(Clone)", string.Empty).Trim();
+
+        btnHudApoioAliado.text = jaAutorizado ? "✈  POUSAR EM ALIADO" : "✈  APOIO ALIADO";
+        btnHudApoioAliado.tooltip = jaAutorizado
+            ? $"Desviar para reabastecimento e rearmamento em {nomeBase} ({nomePais})."
+            : $"Solicitar autorização diplomática de pouso e reabastecimento em {nomeBase} ({nomePais}).";
+        btnHudApoioAliado.style.display = DisplayStyle.Flex;
+    }
+
+    private void AtualizarPopupApoioAereoAliado()
+    {
+        if (painelApoioAereoAliado == null) return;
+
+        if (aviaoPopupApoioAliado != null)
+        {
+            bool validoAtual = aviaoPopupApoioAliado.gameObject.activeInHierarchy
+                && ControleAviao.ObterTeamIdAviao(aviaoPopupApoioAliado) == TimeJogadorAtual
+                && aviaoPopupApoioAliado.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                && !aviaoPopupApoioAliado.ordemParaRetorno
+                && basePopupApoioAliado != null
+                && ControleAviao.PodeUsarBaseAliadaParaApoio(aviaoPopupApoioAliado, basePopupApoioAliado, false)
+                && AeronavePrecisaApoioAereoAliado(aviaoPopupApoioAliado, out _);
+            if (!validoAtual)
+            {
+                OcultarPopupApoioAereoAliado();
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        RegistroEntidadesJogo.FillControlesUnidade(bufferControlesApoioAliado);
+        float agora = Time.unscaledTime;
+
+        for (int i = 0; i < bufferControlesApoioAliado.Count; i++)
+        {
+            ControleUnidade controle = bufferControlesApoioAliado[i];
+            if (controle == null || !controle.gameObject.activeInHierarchy || !controle.EhUnidadeAerea()) continue;
+
+            IdentidadeUnidade identidade = controle.GetComponent<IdentidadeUnidade>() ?? controle.GetComponentInChildren<IdentidadeUnidade>(true);
+            if (identidade == null || identidade.teamID != TimeJogadorAtual) continue;
+
+            ControleAviao aviao = controle.GetComponent<ControleAviao>() ?? controle.GetComponentInChildren<ControleAviao>(true);
+            if (aviao == null || aviao.estadoAtual != ControleAviao.EstadoAviao.EmMissao || aviao.ordemParaRetorno) continue;
+
+            int aviaoId = aviao.GetInstanceID();
+            if (cooldownPopupApoioPorAviao.TryGetValue(aviaoId, out float expiraCooldown) && agora < expiraCooldown)
+            {
+                continue;
+            }
+
+            if (!AeronavePrecisaApoioAereoAliado(aviao, out string motivo))
+            {
+                continue;
+            }
+
+            ContextoPresencaTerritorial presenca = ContextoTerritorialDiplomatico.AvaliarPresenca(
+                identidade,
+                MeioPassagemTerritorial.Aereo,
+                ModoOperacionalTerritorial.Passivo);
+            if (!presenca.alianca || presenca.paisDoTerritorio <= 0 || presenca.paisDoTerritorio == TimeJogadorAtual)
+            {
+                continue;
+            }
+
+            GerenciadorAeroporto baseAliada = EncontrarAeroportoAliadoNoPais(aviao, presenca.paisDoTerritorio)
+                ?? aviao.EncontrarAeroportoAliadoParaApoio(false);
+            if (baseAliada == null)
+            {
+                continue;
+            }
+
+            aviaoPopupApoioAliado = aviao;
+            basePopupApoioAliado = baseAliada;
+            int teamAliado = ControleAviao.ObterTeamIdBase(baseAliada);
+            string nomePais = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.NomePais(teamAliado)
+                : $"Nação Aliada {teamAliado}";
+            string nomeBase = baseAliada.name.Replace("(Clone)", string.Empty).Trim();
+            string nomeAeronave = ObterNomeExibicao(aviao.gameObject);
+            bool jaAutorizado = ContextoTerritorialDiplomatico.ReabastecimentoAliadoAutorizado(TimeJogadorAtual, teamAliado);
+
+            if (tituloApoioAereoAliado != null)
+            {
+                tituloApoioAereoAliado.text = $"✈ APOIO AÉREO ALIADO — {nomePais.ToUpperInvariant()}";
+            }
+            if (detalheApoioAereoAliado != null)
+            {
+                detalheApoioAereoAliado.text = jaAutorizado
+                    ? $"{nomeAeronave} ({motivo}) sobrevoa território aliado. Desviar para pouso e reabastecimento em {nomeBase}?"
+                    : $"{nomeAeronave} ({motivo}) sobrevoa {nomePais}. Solicitar autorização de pouso e reabastecimento em {nomeBase}?";
+            }
+            if (btnPopupSolicitarApoio != null)
+            {
+                btnPopupSolicitarApoio.text = jaAutorizado ? "AUTORIZAR POUSO" : "SOLICITAR APOIO";
+            }
+
+            painelApoioAereoAliado.style.display = DisplayStyle.Flex;
+            break;
+        }
+    }
+
+    private void OcultarPopupApoioAereoAliado()
+    {
+        aviaoPopupApoioAliado = null;
+        basePopupApoioAliado = null;
+        if (painelApoioAereoAliado != null)
+        {
+            painelApoioAereoAliado.style.display = DisplayStyle.None;
+        }
+    }
+
+    private void IgnorarPopupApoioAereoAliado()
+    {
+        if (aviaoPopupApoioAliado != null)
+        {
+            cooldownPopupApoioPorAviao[aviaoPopupApoioAliado.GetInstanceID()] = Time.unscaledTime + 90f;
+        }
+        OcultarPopupApoioAereoAliado();
+    }
+
+    private static GerenciadorAeroporto EncontrarAeroportoAliadoNoPais(ControleAviao aviao, int teamAliado)
+    {
+        if (aviao == null || teamAliado <= 0) return null;
+        List<GerenciadorAeroporto> aeroportos = new List<GerenciadorAeroporto>();
+        RegistroEntidadesJogo.FillAeroportos(aeroportos);
+        GerenciadorAeroporto melhor = null;
+        float menorDistSqr = float.MaxValue;
+        Vector3 pos = aviao.transform.position;
+
+        for (int i = 0; i < aeroportos.Count; i++)
+        {
+            GerenciadorAeroporto aero = aeroportos[i];
+            if (ControleAviao.ObterTeamIdBase(aero) != teamAliado) continue;
+            if (!ControleAviao.PodeUsarBaseAliadaParaApoio(aviao, aero, false)) continue;
+
+            Vector3 delta = aero.transform.position - pos;
+            delta.y = 0f;
+            float distSqr = delta.sqrMagnitude;
+            if (distSqr < menorDistSqr)
+            {
+                menorDistSqr = distSqr;
+                melhor = aero;
+            }
+        }
+
+        return melhor;
+    }
+
+    private static bool AeronavePrecisaApoioAereoAliado(ControleAviao aviao, out string motivo)
+    {
+        motivo = string.Empty;
+        if (aviao == null) return false;
+
+        CombustivelUnidade combustivel = ObterCombustivelUnidade(aviao.gameObject);
+        bool combustivelBaixo = combustivel != null
+            && combustivel.usaCombustivel
+            && !combustivel.combustivelInfinito
+            && combustivel.Capacidade > 0f
+            && combustivel.Percentual <= 0.45f;
+
+        int totalMunicao = 0;
+        int totalLancadores = 0;
+        LancadorMisselCaca[] cacadores = aviao.GetComponentsInChildren<LancadorMisselCaca>(true);
+        for (int i = 0; i < cacadores.Length; i++)
+        {
+            if (cacadores[i] == null) continue;
+            totalLancadores++;
+            totalMunicao += Mathf.Max(0, cacadores[i].municaoAtual);
+        }
+        LancadorMisseis[] lancadores = aviao.GetComponentsInChildren<LancadorMisseis>(true);
+        for (int i = 0; i < lancadores.Length; i++)
+        {
+            if (lancadores[i] == null) continue;
+            totalLancadores++;
+            totalMunicao += Mathf.Max(0, lancadores[i].municaoAtual);
+        }
+
+        bool semMisseis = totalLancadores > 0 && totalMunicao <= 0;
+        if (!combustivelBaixo && !semMisseis) return false;
+
+        if (combustivelBaixo && semMisseis)
+            motivo = $"combustível {combustivel.Percentual * 100f:F0}% e sem mísseis";
+        else if (combustivelBaixo)
+            motivo = $"combustível {combustivel.Percentual * 100f:F0}%";
+        else
+            motivo = "sem mísseis";
+        return true;
+    }
+
+    private void SolicitarApoioAereoAliadoSelecionadas()
+    {
+        List<ControleAviao> avioes = new List<ControleAviao>(unidadesSelecionadasMenu.Count);
+        for (int i = 0; i < unidadesSelecionadasMenu.Count; i++)
+        {
+            ControleUnidade unidade = unidadesSelecionadasMenu[i];
+            if (unidade == null) continue;
+            ControleAviao aviao = unidade.GetComponent<ControleAviao>() ?? unidade.GetComponentInChildren<ControleAviao>(true);
+            if (aviao != null && ControleAviao.ObterTeamIdAviao(aviao) == TimeJogadorAtual)
+            {
+                avioes.Add(aviao);
+            }
+        }
+
+        SolicitarApoioAereoAliadoParaLista(avioes, null);
+    }
+
+    private void SolicitarApoioAereoAliadoParaLista(IReadOnlyList<ControleAviao> avioes, GerenciadorAeroporto basePreferencial)
+    {
+        if (avioes == null || avioes.Count == 0)
+        {
+            SetText(ordemFeedback, "⚠ Selecione uma aeronave em voo para solicitar apoio aliado.");
+            return;
+        }
+
+        int desviadas = 0;
+        string ultimaMensagem = string.Empty;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+
+        for (int i = 0; i < avioes.Count; i++)
+        {
+            ControleAviao aviao = avioes[i];
+            if (aviao == null) continue;
+            GerenciadorAeroporto baseAliada = (basePreferencial != null && ControleAviao.PodeUsarBaseAliadaParaApoio(aviao, basePreferencial, false))
+                ? basePreferencial
+                : aviao.EncontrarAeroportoAliadoParaApoio(false);
+            if (baseAliada == null) continue;
+
+            int teamAliado = ControleAviao.ObterTeamIdBase(baseAliada);
+            if (!ContextoTerritorialDiplomatico.ReabastecimentoAliadoAutorizado(TimeJogadorAtual, teamAliado))
+            {
+                if (governo == null || !governo.SolicitarApoioReabastecimentoAliadoJogador(teamAliado, out ultimaMensagem))
+                {
+                    if (string.IsNullOrWhiteSpace(ultimaMensagem))
+                    {
+                        ultimaMensagem = "Autorização diplomática indisponível no momento.";
+                    }
+                    continue;
+                }
+            }
+            else if (string.IsNullOrWhiteSpace(ultimaMensagem))
+            {
+                string nomePais = governo != null ? governo.NomePais(teamAliado) : $"Nação {teamAliado}";
+                ultimaMensagem = $"Apoio aéreo autorizado em {nomePais}.";
+            }
+
+            if (aviao.SolicitarPousoReabastecimentoAliado(baseAliada))
+            {
+                desviadas++;
+                cooldownPopupApoioPorAviao[aviao.GetInstanceID()] = Time.unscaledTime + 120f;
+            }
+        }
+
+        if (desviadas > 0)
+        {
+            string resumo = $"✈ [{desviadas} ANV] → APOIO EM AEROPORTO ALIADO. {ultimaMensagem}";
+            SetText(ordemFeedback, resumo);
+            if (contextoFeedback != null) contextoFeedback.text = resumo;
+            AdicionarLog("OPS", resumo, "normal");
+            OcultarPopupApoioAereoAliado();
+        }
+        else
+        {
+            string erro = string.IsNullOrWhiteSpace(ultimaMensagem)
+                ? "⚠ Nenhuma aeronave em voo possui aeroporto aliado disponível e com vaga livre."
+                : $"⚠ {ultimaMensagem}";
+            SetText(ordemFeedback, erro);
+            if (contextoFeedback != null) contextoFeedback.text = erro;
+        }
     }
 
     private HudCardInfo ObterInfoCardHud(VisualElement card)
@@ -4524,8 +5164,11 @@ public class MenuComandoController : MonoBehaviour
             SetText(statTeam, "—");
             SetText(hpValor, "—%");
             SetText(fuelValor, "—%");
+            SetText(rationValor, "—%");
             SetBarWidth(hpBar, 0f);
             SetBarWidth(fuelBar, 0f);
+            SetBarWidth(rationBar, 0f);
+            if (rationRow != null) rationRow.style.display = DisplayStyle.None;
             
             // Restaura texto padrão do FLIR se não há unidade
             if (flirTl != null) flirTl.text = "FLIR / AUTO-TRK";
@@ -4592,6 +5235,8 @@ public class MenuComandoController : MonoBehaviour
                 SetBarWidth(fuelBar, 1f);
             }
 
+            AtualizarBarraRacaoMultiplaSelecao();
+
             if (flirTc != null) flirTc.text = "HDG MÚLTIPLOS";
             
             // Restaura texto padrão do FLIR se múltipla seleção
@@ -4611,7 +5256,9 @@ public class MenuComandoController : MonoBehaviour
         if (id != null)
         {
             SetText(unidadeEmoji, ObterEmojiUnidade(id));
-            SetText(statTipo, ObterCategoriaExibicao(cu.gameObject, id));
+            int trip = TripulacaoUnidade.ResolverTripulacaoNominal(cu.gameObject);
+            string categoria = ObterCategoriaExibicao(cu.gameObject, id);
+            SetText(statTipo, trip > 0 ? $"{categoria} ({trip:N0} trip.)" : categoria);
             SetText(statTeam, EhUnidadeDoJogador(id) ? "ALIADO" : "INIMIGO");
         }
 
@@ -4676,6 +5323,8 @@ public class MenuComandoController : MonoBehaviour
             SetText(fuelValor, "N/A");
             SetBarWidth(fuelBar, 1f);
         }
+
+        AtualizarBarraRacaoSelecionada(cu.gameObject);
 
         // FLIR HDG
         if (flirTc != null)
@@ -5000,46 +5649,41 @@ public class MenuComandoController : MonoBehaviour
     {
         misseisEmVoo.Clear();
         idsMisseisAtivos.Clear();
-        Transform[] objetos = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-        HashSet<int> vistos = new HashSet<int>();
+        idsMisseisVistos.Clear();
+        idsMisseisObsoletos.Clear();
 
-        for (int i = 0; i < objetos.Length; i++)
+        // Consulta o registro ativo em memória (O(k)) em vez de varrer todos os Transforms da cena a cada 0,1s.
+        MissileThreatTracker.CopiarAmeacasAtivas(bufferAmeacasMisseis);
+        for (int i = 0; i < bufferAmeacasMisseis.Count; i++)
         {
-            Transform t = objetos[i];
-            if (t == null) continue;
-            GameObject raiz = t.root != null ? t.root.gameObject : t.gameObject;
-            if (raiz == null || !vistos.Add(raiz.GetInstanceID())) continue;
+            MissileThreatTracker tracker = bufferAmeacasMisseis[i];
+            if (tracker == null || tracker.RaizMissil == null) continue;
 
-            string tag = t.gameObject.tag ?? string.Empty;
-            string nome = t.gameObject.name ?? string.Empty;
-            bool tagMissel = tag.Equals("Missel", StringComparison.OrdinalIgnoreCase)
-                || tag.Equals("Missil", StringComparison.OrdinalIgnoreCase)
-                || tag.Equals("Missile", StringComparison.OrdinalIgnoreCase);
-            bool nomeMissel = nome.IndexOf("missel", StringComparison.OrdinalIgnoreCase) >= 0
-                || nome.IndexOf("missil", StringComparison.OrdinalIgnoreCase) >= 0
-                || nome.IndexOf("missile", StringComparison.OrdinalIgnoreCase) >= 0;
-            bool componenteMissel = raiz.GetComponentInChildren<MisselNaval>(true) != null
-                || raiz.GetComponentInChildren<MisselCaca>(true) != null
-                || raiz.GetComponentInChildren<MisselSubmarino>(true) != null
-                || raiz.GetComponentInChildren<MisselICBM>(true) != null
-                || raiz.GetComponentInChildren<MisselTatico>(true) != null
-                || raiz.GetComponentInChildren<MisselLeopardAutomatico>(true) != null
-                || raiz.GetComponentInChildren<MissilTeleguiado>(true) != null;
-            if (!tagMissel && !nomeMissel && !componenteMissel) continue;
+            GameObject raiz = tracker.RaizMissil.gameObject;
+            if (raiz == null || !raiz.activeInHierarchy) continue;
 
             int id = raiz.GetInstanceID();
+            if (!idsMisseisVistos.Add(id)) continue;
+
             misseisEmVoo.Add(raiz);
             idsMisseisAtivos.Add(id);
-            if (!origemMisseis.ContainsKey(id)) origemMisseis[id] = raiz.transform.position;
+            if (!origemMisseis.ContainsKey(id))
+            {
+                origemMisseis[id] = tracker.PontoLancamento;
+            }
         }
 
-        HashSet<int> ativos = new HashSet<int>(idsMisseisAtivos);
-        List<int> antigos = new List<int>();
         foreach (KeyValuePair<int, Vector3> origem in origemMisseis)
         {
-            if (!ativos.Contains(origem.Key)) antigos.Add(origem.Key);
+            if (!idsMisseisVistos.Contains(origem.Key))
+            {
+                idsMisseisObsoletos.Add(origem.Key);
+            }
         }
-        for (int i = 0; i < antigos.Count; i++) origemMisseis.Remove(antigos[i]);
+        for (int i = 0; i < idsMisseisObsoletos.Count; i++)
+        {
+            origemMisseis.Remove(idsMisseisObsoletos[i]);
+        }
 
         string texto = string.IsNullOrWhiteSpace(textoBase) ? string.Empty : textoBase;
         texto += $"\nEM VOO: {misseisEmVoo.Count}";
@@ -5441,6 +6085,10 @@ public class MenuComandoController : MonoBehaviour
                 }
                 SetText(ordemFeedback, $"✔ [{retornando} UDS] → RETORNANDO");
                 AdicionarLog("OPS", $"{retornando} unidades ordenadas a retornar", "normal");
+                break;
+
+            case "APOIO_AERO_ALIADO":
+                SolicitarApoioAereoAliadoSelecionadas();
                 break;
 
             case "TROCAR_CAMERA":
@@ -6409,6 +7057,85 @@ public class MenuComandoController : MonoBehaviour
         {
             flirAlerta.text = "ALERTA: " + msg;
             flirAlerta.style.color = Color.red;
+        }
+    }
+
+    private void AtualizarBarraRacaoSelecionada(GameObject alvo)
+    {
+        if (rationValor == null && rationBar == null && rationRow == null)
+        {
+            return;
+        }
+
+        RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(alvo);
+        if (racao != null && racao.UsaRacao && racao.Capacidade > 0f)
+        {
+            if (rationRow != null) rationRow.style.display = DisplayStyle.Flex;
+            float pct = racao.Percentual;
+            int pctInt = Mathf.RoundToInt(pct * 100f);
+            SetText(rationValor, racao.EstaFaminto ? "FAMINTO" : $"{pctInt}%");
+            SetBarWidth(rationBar, pct);
+            if (rationBar != null)
+            {
+                rationBar.style.backgroundColor = racao.EstaVazio
+                    ? new Color(1f, 0.2f, 0.2f)
+                    : pct <= 0.25f
+                        ? new Color(1f, 0.6f, 0.1f)
+                        : new Color(0.28f, 0.85f, 0.35f);
+            }
+        }
+        else
+        {
+            if (rationRow != null) rationRow.style.display = DisplayStyle.None;
+            SetText(rationValor, "N/A");
+            SetBarWidth(rationBar, 1f);
+        }
+    }
+
+    private void AtualizarBarraRacaoMultiplaSelecao()
+    {
+        if (rationValor == null && rationBar == null && rationRow == null)
+        {
+            return;
+        }
+
+        float soma = 0f;
+        float max = 0f;
+        bool algumaFaminta = false;
+
+        foreach (var u in unidadesSelecionadasMenu)
+        {
+            if (u == null) continue;
+            RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(u.gameObject);
+            if (racao != null && racao.UsaRacao && racao.Capacidade > 0f)
+            {
+                soma += racao.RacaoAtual;
+                max += racao.Capacidade;
+                if (racao.EstaFaminto) algumaFaminta = true;
+            }
+        }
+
+        if (max > 0f)
+        {
+            if (rationRow != null) rationRow.style.display = DisplayStyle.Flex;
+            float pct = Mathf.Clamp01(soma / max);
+            int pctInt = Mathf.RoundToInt(pct * 100f);
+            SetText(rationValor, algumaFaminta && pct <= 0.05f ? "FAMINTOS" : $"{pctInt}%");
+            SetBarWidth(rationBar, pct);
+            if (rationBar != null)
+            {
+                rationBar.style.backgroundColor = algumaFaminta
+                    ? new Color(1f, 0.2f, 0.2f)
+                    : pct <= 0.25f
+                        ? new Color(1f, 0.6f, 0.1f)
+                        : new Color(0.28f, 0.85f, 0.35f);
+            }
+        }
+        else
+        {
+            if (rationRow != null) rationRow.style.display = DisplayStyle.None;
+            SetText(rationValor, "N/A");
+            SetBarWidth(rationBar, 1f);
         }
     }
 }

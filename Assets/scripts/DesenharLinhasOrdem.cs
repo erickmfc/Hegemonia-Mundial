@@ -1386,10 +1386,10 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         ehNaval = controle != null && controle.EhUnidadeNaval();
         ehAereo = controle != null && controle.DominioAtual == DominioControleUnidade.Aereo;
         distanciaIdeal = distanciaDesejada > 0f
-            ? Mathf.Clamp(distanciaDesejada, 25f, 10000f)
-            : (ehNaval ? 170f : (ehAereo ? (controle != null && controle.TemHelicopteroExterno ? 60f : 140f) : 45f));
+            ? Mathf.Clamp(ehNaval ? distanciaDesejada * 3f : distanciaDesejada, 25f, 10000f)
+            : (ehNaval ? 510f : (ehAereo ? (controle != null && controle.TemHelicopteroExterno ? 60f : 140f) : 45f));
         intervaloAtualizacao = ehNaval ? 0.2f : (ehAereo ? 0.25f : 0.5f);
-        offsetLateralNaval = ehNaval ? (((GetInstanceID() & 1) == 0) ? 50f : -50f) : 0f;
+        offsetLateralNaval = ehNaval ? (((GetInstanceID() & 1) == 0) ? 150f : -150f) : 0f;
     }
 
     void Update()
@@ -1535,7 +1535,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         float distanciaDestino = PlanarDistance(transform.position, destinoEscolta);
         bool estaNaFrente = Vector3.Dot(Flatten(transform.position - alvoSeguido.position), frenteLider) > 0f;
 
-        if (estaNaFrente || distanciaLider < 75f)
+        if (estaNaFrente || distanciaLider < 225f)
         {
             float velocidadeFreio = velocidadeLider > 0.5f ? Mathf.Max(0.5f, velocidadeLider * 0.65f) : 0.1f;
             controle.AplicarLimiteVelocidade(velocidadeFreio);
@@ -1547,7 +1547,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
         {
             controle.EmitirOrdemMover(destinoEscolta, false);
 
-            if (distanciaLider > 140f)
+            if (distanciaLider > 420f)
             {
                 controle.RestaurarVelocidadeOriginal();
                 return;
@@ -1555,7 +1555,7 @@ public class ComportamentoSeguirUniversal : MonoBehaviour
 
             if (velocidadeLider > 0.5f)
             {
-                float velocidadeEscolta = distanciaLider > 95f ? velocidadeLider * 1.05f : velocidadeLider;
+                float velocidadeEscolta = distanciaLider > 285f ? velocidadeLider * 1.05f : velocidadeLider;
                 controle.AplicarLimiteVelocidade(velocidadeEscolta);
             }
             else

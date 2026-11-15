@@ -16,7 +16,8 @@ public static class IndicadorUnidadeVisibilidade
                 return true;
             }
 
-            if (MenuConstrucao.EstaAberto
+            if (MenuPausaController.EstaPausado
+                || MenuConstrucao.EstaAberto
                 || MenuGoverno.EstaAberto
                 || MenuMisseis.EstaAberto
                 || MenuPier.EstaAberto
@@ -30,7 +31,8 @@ public static class IndicadorUnidadeVisibilidade
                 return true;
             }
 
-            if (MenuComandoController.Instancia != null && MenuComandoController.Instancia.MenuAberto)
+            if (MenuComandoController.Instancia != null
+                && (MenuComandoController.Instancia.MenuAberto || MenuComandoController.Instancia.CardExpandidoAberto))
             {
                 return true;
             }

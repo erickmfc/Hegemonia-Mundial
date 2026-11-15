@@ -56,6 +56,12 @@ public class MisselSubmarino : MonoBehaviour
     private static readonly Collider[] bufferExplosao = new Collider[48];
     private bool jaExplodiu = false;
     private float tempoExpirar;
+    private GameObject origemAgressor;
+
+    public void DefinirOrigem(GameObject origem)
+    {
+        origemAgressor = origem;
+    }
 
     void OnEnable()
     {
@@ -68,6 +74,7 @@ public class MisselSubmarino : MonoBehaviour
     {
         IA_CombatTelemetry.UnregisterMissile();
         StopAllCoroutines();
+        origemAgressor = null;
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -469,6 +476,7 @@ public class MisselSubmarino : MonoBehaviour
         }
         
         // 3. Aplica dano
+        GameObject agressorImpacto = origemAgressor != null ? origemAgressor : gameObject;
         int objetosNaArea = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao);
         for (int i = 0; i < objetosNaArea; i++)
         {
@@ -484,7 +492,7 @@ public class MisselSubmarino : MonoBehaviour
             {
                 float distancia = Vector3.Distance(transform.position, obj.transform.position);
                 float multiplicador = 1f - Mathf.Clamp01(distancia / raioExplosao);
-                sistemaDano.ReceberDano(dano * multiplicador);
+                sistemaDano.ReceberDano(dano * multiplicador, agressorImpacto);
             }
             
             Rigidbody rbAlvo = obj.GetComponent<Rigidbody>();

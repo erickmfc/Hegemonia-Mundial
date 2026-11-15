@@ -372,6 +372,7 @@ public class MenuConstrucao : MonoBehaviour
         GarantirNaviosNovosNoCatalogo();
         GarantirHelicopterosNavaisNoCatalogo();
         GarantirF16BNoCatalogo();
+        GarantirAeronavesNovasNoCatalogo();
         GarantirCidadeEgitoNoCatalogo();
         GarantirCidadeModernaNoCatalogo();
         GarantirEconomiaAvancadaNoCatalogo();
@@ -875,6 +876,58 @@ public class MenuConstrucao : MonoBehaviour
         if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
         {
             quantidadesPorItem.Add(ficha.NomeItem, 1);
+        }
+    }
+
+    private void GarantirAeronavesNovasNoCatalogo()
+    {
+        string[] caminhos = { "Construcoes/Kamov", "Construcoes/Su34", "Construcoes/MIG29", "Construcoes/GrummanD" };
+        for (int i = 0; i < caminhos.Length; i++)
+        {
+            DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
+            if (ficha == null)
+            {
+                continue;
+            }
+
+            bool duplicada = false;
+            GameObject prefabFicha;
+            bool temPrefabFicha = ficha.TryGetPrefabBasico(out prefabFicha);
+            for (int j = 0; j < catalogo.Count; j++)
+            {
+                DadosConstrucao existente = catalogo[j];
+                if (existente == null)
+                {
+                    continue;
+                }
+
+                if (existente == ficha
+                    || string.Equals(existente.GetStableId(), ficha.GetStableId(), System.StringComparison.OrdinalIgnoreCase))
+                {
+                    duplicada = true;
+                    break;
+                }
+
+                GameObject prefabExistente;
+                if (temPrefabFicha
+                    && existente.TryGetPrefabBasico(out prefabExistente)
+                    && prefabExistente == prefabFicha)
+                {
+                    duplicada = true;
+                    break;
+                }
+            }
+
+            if (duplicada)
+            {
+                continue;
+            }
+
+            catalogo.Add(ficha);
+            if (!quantidadesPorItem.ContainsKey(ficha.NomeItem))
+            {
+                quantidadesPorItem.Add(ficha.NomeItem, 1);
+            }
         }
     }
 

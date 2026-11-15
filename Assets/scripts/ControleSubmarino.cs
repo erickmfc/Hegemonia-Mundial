@@ -111,6 +111,7 @@ public class ControleSubmarino : MonoBehaviour
     private float ultimoMovimento = -4f;
     private bool[] misseisUsados;
     private int totalLocaisValidos = 0;
+    public int TotalLocaisDisparoValidos => totalLocaisValidos;
     private Vector3 pontoAlvoAtual;
     private bool[] tubosTorpedoUsados;
     private int totalTubosValidos = 0;
@@ -937,6 +938,83 @@ public class ControleSubmarino : MonoBehaviour
         return true;
     }
 
+    public bool TentarLancarContraAtaqueIA(Vector3 pontoAlvo, Transform alvoT, float alcanceMaximoContraAtaque, out string motivo)
+    {
+        motivo = string.Empty;
+
+        if (meuControle != null && !meuControle.ModoCombateAtivo)
+        {
+            motivo = "submarino fora do modo combate";
+            return false;
+        }
+
+        if (modoAtual != ModoOperacao.Automatico)
+        {
+            motivo = "submarino fora do modo automatico";
+            return false;
+        }
+
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo)
+        {
+            motivo = "armamento travado em torpedos";
+            return false;
+        }
+
+        if (prefabMisselSubmarino == null || misseisDisponiveis <= 0)
+        {
+            motivo = "sem misseis submarinos disponiveis";
+            return false;
+        }
+
+        if (Time.time < proximoAtaqueIA)
+        {
+            motivo = "submarino em recarga de missil";
+            return false;
+        }
+
+        if (alcanceMaximoContraAtaque > 0f)
+        {
+            Vector3 delta = pontoAlvo - transform.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > alcanceMaximoContraAtaque * alcanceMaximoContraAtaque)
+            {
+                motivo = "alvo fora do alcance de contra-ataque";
+                return false;
+            }
+        }
+
+        if (alvoT != null)
+        {
+            if (alvoT == transform || alvoT.IsChildOf(transform))
+            {
+                motivo = "alvo invalido";
+                return false;
+            }
+
+            IdentidadeUnidade idAlvo = alvoT.GetComponentInParent<IdentidadeUnidade>();
+            int meuTime = minhaIdentidade != null ? minhaIdentidade.teamID : 0;
+            if (idAlvo != null && !ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(meuTime, idAlvo))
+            {
+                motivo = "alvo sem hostilidade ou guerra declarada";
+                return false;
+            }
+        }
+
+        int misseisAntes = misseisDisponiveis;
+        pontoAlvoAtual = pontoAlvo;
+        DispararMissel(pontoAlvoAtual, alvoT);
+
+        if (misseisAntes == misseisDisponiveis)
+        {
+            motivo = "nenhum slot de missil disponivel";
+            return false;
+        }
+
+        proximoAtaqueIA = Time.time + Mathf.Max(2f, cooldownAtaqueIA);
+        motivo = string.Empty;
+        return true;
+    }
+
     private void TentarAtaqueAutomatico()
     {
         if ((meuControle != null && !meuControle.ModoCombateAtivo)
@@ -1308,6 +1386,7 @@ public class ControleSubmarino : MonoBehaviour
                 continue;
             }
 
+            scriptMissel.DefinirOrigem(gameObject);
             scriptMissel.IniciarLancamento(alvo, estaSubmerso, alvoT);
             MissileThreatTracker.RegistrarLancamento(missel, this, alvo, alvoT, MissileThreatTracker.EstimarVelocidade(missel));
 
@@ -2054,6 +2133,12 @@ public class ControleSubmarino : MonoBehaviour
         }
 
         if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto || Camera.main == null)
+        {
+            return;
+        }
+
+        CombustivelUnidade comb = CombustivelUnidade.ObterParaObjeto(gameObject);
+        if (comb != null && comb.IndicadorUnificadoAtivo)
         {
             return;
         }

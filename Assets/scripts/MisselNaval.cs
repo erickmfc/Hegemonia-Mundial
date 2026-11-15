@@ -90,6 +90,7 @@ public class MisselNaval : MonoBehaviour
     {
         IA_CombatTelemetry.UnregisterMissile();
         StopAllCoroutines();
+        origemAgressor = null;
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
@@ -135,11 +136,22 @@ public class MisselNaval : MonoBehaviour
     }
 
     private Transform lancador;
+    private GameObject origemAgressor;
+
+    public void DefinirOrigem(GameObject origem)
+    {
+        origemAgressor = origem;
+    }
 
     public void IniciarAtaque(Vector3 alvo, Transform alvoT = null, Transform lancadorRef = null)
     {
         StopAllCoroutines();
         lancador = ResolverLancador(lancadorRef);
+        if (origemAgressor == null && lancador != null)
+        {
+            IdentidadeUnidade idOrigem = lancador.GetComponentInParent<IdentidadeUnidade>();
+            origemAgressor = idOrigem != null ? idOrigem.gameObject : lancador.gameObject;
+        }
         pontoAlvo = alvo;
         alvoTransform = alvoT;
         alvoEhAereo = DetectarAlvoAereo(alvoT, alvo);
@@ -568,7 +580,10 @@ public class MisselNaval : MonoBehaviour
             {
                 int idVida = alvoVida.GetInstanceID();
                 if (!alvosProcessados.Add(idVida)) continue;
-                alvoVida.ReceberDano(dano, lancador != null ? lancador.gameObject : null);
+                GameObject agressorImpacto = origemAgressor != null
+                    ? origemAgressor
+                    : (lancador != null ? lancador.gameObject : null);
+                alvoVida.ReceberDano(dano, agressorImpacto);
             }
 
             bufferExplosao[i] = null;

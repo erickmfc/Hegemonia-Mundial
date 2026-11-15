@@ -18,9 +18,21 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
     [Min(0f)] public float intervaloEntreLiberacoes = 2f;
     [Min(0f)] public float duracaoFallbackSinal = 0.8f;
 
+    private static readonly int HashParametroVelocidade = Animator.StringToHash("Velocidade");
+    private static readonly WaitForSeconds PausaDestinoPatrulha = new WaitForSeconds(0.4f);
+    private static readonly WaitForSeconds EsperaInativoPatrulha = new WaitForSeconds(0.5f);
+
     private readonly Dictionary<string, Animator> sinalizadores = new Dictionary<string, Animator>();
     private readonly Dictionary<string, AnimatorOverrideController> controlesSinal = new Dictionary<string, AnimatorOverrideController>();
     private bool equipeCriada;
+
+    private static bool AnimatorPodeReceberParametros(Animator animator)
+    {
+        return animator != null
+            && animator.isActiveAndEnabled
+            && animator.runtimeAnimatorController != null
+            && animator.isInitialized;
+    }
 
     public static float CalcularProximoInicio(float agora, float proximo, float intervalo)
     {
@@ -73,7 +85,10 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
     public IEnumerator SinalizarLiberacao(Transform catapulta)
     {
         string id = catapulta != null && catapulta.name == "Alinhamento (1)" ? "Catapulta_02" : "Catapulta_01";
-        if (!sinalizadores.TryGetValue(id, out Animator animator) || animator == null || animacaoSinalLiberacao == null)
+        if (!sinalizadores.TryGetValue(id, out Animator animator)
+            || animator == null
+            || animacaoSinalLiberacao == null
+            || !animator.gameObject.activeInHierarchy)
         {
             yield return new WaitForSeconds(duracaoFallbackSinal);
             yield break;
@@ -104,10 +119,16 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
 
         animator.runtimeAnimatorController = substituto;
         animator.enabled = true;
-        animator.SetFloat("Velocidade", 1f);
-        animator.Play("Base Layer.andando", 0, 0f);
+        if (AnimatorPodeReceberParametros(animator))
+        {
+            animator.SetFloat(HashParametroVelocidade, 1f);
+            animator.Play("Base Layer.andando", 0, 0f);
+        }
         yield return new WaitForSeconds(Mathf.Max(0.1f, animacaoSinalLiberacao.length));
-        animator.SetFloat("Velocidade", 0f);
+        if (AnimatorPodeReceberParametros(animator))
+        {
+            animator.SetFloat(HashParametroVelocidade, 0f);
+        }
     }
 
     private void CriarEquipe()
@@ -183,7 +204,10 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
         if (animator != null)
         {
             animator.applyRootMotion = false;
-            animator.SetFloat("Velocidade", 0f);
+            if (AnimatorPodeReceberParametros(animator))
+            {
+                animator.SetFloat(HashParametroVelocidade, 0f);
+            }
             sinalizadores[id] = animator;
         }
     }
@@ -195,7 +219,7 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
         if (trabalhador == null) return;
 
         Animator animator = trabalhador.GetComponentInChildren<Animator>(true);
-        if (animator != null)
+        if (animator != null && animator.runtimeAnimatorController != null)
         {
             animator.enabled = true;
             animator.applyRootMotion = false;
@@ -204,32 +228,53 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
             animator.updateMode = AnimatorUpdateMode.Normal;
             string parametroVelocidade = "Velocidade";
             bool possuiParametro = false;
-            foreach (AnimatorControllerParameter parametro in animator.parameters)
+            if (animator.isActiveAndEnabled)
             {
-                if (parametro.type == AnimatorControllerParameterType.Float
-                    && (parametro.name == "Velocidade" || parametro.name == "velocidade"))
+                foreach (AnimatorControllerParameter parametro in animator.parameters)
                 {
-                    parametroVelocidade = parametro.name;
-                    possuiParametro = true;
-                    break;
+                    if (parametro.type == AnimatorControllerParameterType.Float
+                        && (parametro.name == "Velocidade" || parametro.name == "velocidade"))
+                    {
+                        parametroVelocidade = parametro.name;
+                        possuiParametro = true;
+                        break;
+                    }
                 }
             }
             if (possuiParametro)
             {
-                animator.SetFloat(parametroVelocidade, 1f);
-                StartCoroutine(PatrulharConvés(trabalhador.transform, animator, parametroVelocidade, posto.position, posto.forward, layout.transform));
+                int hashParametro = Animator.StringToHash(parametroVelocidade);
+                if (AnimatorPodeReceberParametros(animator))
+                {
+                    animator.SetFloat(hashParametro, 1f);
+                }
+                StartCoroutine(PatrulharConvés(trabalhador.transform, animator, hashParametro, posto.position, posto.forward, layout.transform));
             }
         }
     }
 
-    private IEnumerator PatrulharConvés(Transform trabalhador, Animator animator, string parametroVelocidade, Vector3 origem, Vector3 frente, Transform convés)
+    private IEnumerator PatrulharConvés(Transform trabalhador, Animator animator, int hashVelocidade, Vector3 origem, Vector3 frente, Transform convés)
     {
         Vector3 origemLocal = convés.InverseTransformPoint(origem);
         Vector3 frenteLocal = convés.InverseTransformDirection(Vector3.ProjectOnPlane(frente, Vector3.up)).normalized;
         if (frenteLocal.sqrMagnitude < 0.01f) frenteLocal = Vector3.forward;
         int destinoAtual = 0;
+        bool animacaoAplicada = false;
+
         while (trabalhador != null && animator != null && convés != null)
         {
+            if (animator.runtimeAnimatorController == null)
+            {
+                yield break;
+            }
+
+            if (!trabalhador.gameObject.activeInHierarchy || !convés.gameObject.activeInHierarchy || !animator.isActiveAndEnabled)
+            {
+                animacaoAplicada = false;
+                yield return EsperaInativoPatrulha;
+                continue;
+            }
+
             Vector3 destinoLocal = origemLocal + frenteLocal * (destinoAtual == 0 ? 3f : -3f);
             Vector3 destino = convés.TransformPoint(destinoLocal);
             Vector3 direcao = destino - trabalhador.position;
@@ -237,22 +282,51 @@ public sealed class EquipeConvesEnterprise : MonoBehaviour
             if (direcao.sqrMagnitude <= 0.16f)
             {
                 destinoAtual = 1 - destinoAtual;
-                yield return new WaitForSeconds(0.4f);
+                yield return PausaDestinoPatrulha;
                 continue;
             }
             trabalhador.rotation = Quaternion.RotateTowards(trabalhador.rotation, Quaternion.LookRotation(direcao), 180f * Time.deltaTime);
             trabalhador.position = Vector3.MoveTowards(trabalhador.position, destino, velocidadePatrulha * Time.deltaTime);
-            animator.SetFloat(parametroVelocidade, 1f);
+            if (!animacaoAplicada && AnimatorPodeReceberParametros(animator))
+            {
+                animator.SetFloat(hashVelocidade, 1f);
+                animacaoAplicada = true;
+            }
             yield return null;
         }
     }
 
     private GameObject InstanciarTrabalhador(string id, Vector3 posicao, Quaternion rotacao, Transform equipe)
     {
-        GameObject trabalhador = Instantiate(prefabTrabalhador, posicao, rotacao, equipe);
+        NavMeshAgent agentePrefab = prefabTrabalhador != null ? prefabTrabalhador.GetComponentInChildren<NavMeshAgent>(true) : null;
+        bool agenteEstavaAtivoNoPrefab = agentePrefab != null && agentePrefab.enabled;
+        if (agenteEstavaAtivoNoPrefab)
+        {
+            agentePrefab.enabled = false;
+        }
+
+        GameObject trabalhador;
+        try
+        {
+            trabalhador = Instantiate(prefabTrabalhador, posicao, rotacao, equipe);
+        }
+        finally
+        {
+            if (agenteEstavaAtivoNoPrefab && agentePrefab != null)
+            {
+                agentePrefab.enabled = true;
+            }
+        }
+
         trabalhador.name = id;
+        trabalhador.SetActive(true);
         NavMeshAgent agente = trabalhador.GetComponentInChildren<NavMeshAgent>(true);
         if (agente != null) agente.enabled = false;
+        AnimadorUnidade[] animadoresUnidade = trabalhador.GetComponentsInChildren<AnimadorUnidade>(true);
+        for (int i = 0; i < animadoresUnidade.Length; i++)
+        {
+            if (animadoresUnidade[i] != null) animadoresUnidade[i].enabled = false;
+        }
         ControleUnidade[] controles = trabalhador.GetComponentsInChildren<ControleUnidade>(true);
         for (int i = 0; i < controles.Length; i++)
         {

@@ -150,6 +150,14 @@
                     </ui:VisualElement>
                     <ui:Label name="fuel-valor" text="—%" class="progress-val mono" />
                 </ui:VisualElement>
+
+                <ui:VisualElement name="ration-row" class="progress-row">
+                    <ui:Label text="RAÇÃO" class="progress-lbl mono" />
+                    <ui:VisualElement class="progress-track">
+                        <ui:VisualElement name="ration-bar" class="progress-fill hp-fill" />
+                    </ui:VisualElement>
+                    <ui:Label name="ration-valor" text="—%" class="progress-val mono" />
+                </ui:VisualElement>
             </ui:VisualElement>
 
             <!-- PAINEL 2: SITREP Global -->

@@ -116,6 +116,9 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
         if (tr.GetComponentInParent<MisselNaval>() != null) return true;
         if (tr.GetComponentInParent<MisselCaca>() != null) return true;
         if (tr.GetComponentInParent<MisselSubmarino>() != null) return true;
+        if (tr.GetComponentInParent<MisselBombardeiro>() != null) return true;
+        if (tr.GetComponentInParent<BombaBombardeiro>() != null) return true;
+        if (tr.GetComponentInParent<BombaAerea>() != null) return true;
         if (tr.GetComponentInParent<MisselICBM>() != null) return true;
         if (tr.GetComponentInParent<MisselTatico>() != null) return true;
         if (tr.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;
@@ -157,6 +160,9 @@ public class AntiMissilDetonadorProximidade : MonoBehaviour
         if (TentarInvocarMetodoSemArgumentos<MisselNaval>(objeto, "Explodir")) return true;
         if (TentarInvocarMetodoSemArgumentos<MisselCaca>(objeto, "Explodir")) return true;
         if (TentarInvocarMetodoSemArgumentos<MisselSubmarino>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<MisselBombardeiro>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<BombaBombardeiro>(objeto, "Explodir")) return true;
+        if (TentarInvocarMetodoSemArgumentos<BombaAerea>(objeto, "Explodir")) return true;
         if (TentarInvocarMetodoSemArgumentos<MisselICBM>(objeto, "Explodir")) return true;
         if (TentarInvocarMetodoSemArgumentos<MisselTatico>(objeto, "Explodir")) return true;
         if (TentarInvocarMetodoSemArgumentos<MisselLeopardAutomatico>(objeto, "Explodir")) return true;

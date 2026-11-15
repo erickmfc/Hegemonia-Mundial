@@ -43,7 +43,7 @@ public class BarraDeVida : MonoBehaviour
         bool unidadeSelecionada = (unidade != null && unidade.selecionado)
             || (helicoptero != null && helicoptero.selecionado);
 
-        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto && !unidadeSelecionada)
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
         {
             escondidoPorMenu = true;
             if (canvasLocal != null)

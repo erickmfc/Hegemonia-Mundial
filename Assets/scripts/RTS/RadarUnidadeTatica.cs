@@ -183,6 +183,13 @@ namespace Hegemonia.RTS
                 || Time.unscaledTime < proximaDecisaoIA)
                 return;
 
+            ControleAviao aviaoEstacionado = GetComponent<ControleAviao>();
+            if (aviaoEstacionado != null && aviaoEstacionado.EstaEstacionadoEDesligado)
+            {
+                radarLigado = false;
+                return;
+            }
+
             proximaDecisaoIA = Time.unscaledTime + 1.5f;
             bool patrulhando = false;
             ControleUnidade controle = GetComponent<ControleUnidade>();

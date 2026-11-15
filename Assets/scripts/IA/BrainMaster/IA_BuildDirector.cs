@@ -67,6 +67,7 @@ namespace Hegemonia.AI.BrainMaster
         private float _nextNavalAttemptTime;
         private float _nextDirectCreatyBuildTime;
         private readonly Dictionary<int, float> _directCreatyQueuedUntil = new Dictionary<int, float>();
+        private readonly Dictionary<int, int> _directCreatyFailureStreak = new Dictionary<int, int>();
         private float _nextNavalExpansionAttemptTime;
         private float _nextRareNavalExpansionWindowTime;
         private int _recoveryLevel;
@@ -5987,7 +5988,7 @@ namespace Hegemonia.AI.BrainMaster
                 float areaRadius = Mathf.Max(20f, bestPoint.PlacementAreaRadius);
                 if (!TryFindValidatedCandidate(bestKey, bestZone, bestPoint.transform.position, desiredTerrain, 0f, areaRadius, out candidate))
                 {
-                    _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 5f;
+                    SetDirectCreatyFailureBackoff(bestPoint.GetInstanceID(), now, 5f);
                     return false;
                 }
             }
@@ -6028,7 +6029,7 @@ namespace Hegemonia.AI.BrainMaster
                                  bestPoint.PrefabConstrucao);
                 if (!valid)
                 {
-                    _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 4f;
+                    SetDirectCreatyFailureBackoff(bestPoint.GetInstanceID(), now, 4f);
                     ReportValdoriaBuildBlock(bestKey, validationReason);
                     return false;
                 }
@@ -6039,13 +6040,26 @@ namespace Hegemonia.AI.BrainMaster
 
             if (!QueueBuild(bestKey, candidate, bestZone, 985, 2.5f, bestPoint))
             {
-                _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 4f;
+                SetDirectCreatyFailureBackoff(bestPoint.GetInstanceID(), now, 4f);
                 return false;
             }
 
+            _directCreatyFailureStreak.Remove(bestPoint.GetInstanceID());
             _nextDirectCreatyBuildTime = now + 2.5f;
             _directCreatyQueuedUntil[bestPoint.GetInstanceID()] = now + 25f;
             return true;
+        }
+
+        private void SetDirectCreatyFailureBackoff(int pointId, float now, float baseDelay)
+        {
+            int streak = 0;
+            _directCreatyFailureStreak.TryGetValue(pointId, out streak);
+            streak++;
+            _directCreatyFailureStreak[pointId] = streak;
+
+            float exponent = Mathf.Min(streak - 1, 3);
+            float delay = Mathf.Min(30f, baseDelay * Mathf.Pow(2f, exponent));
+            _directCreatyQueuedUntil[pointId] = now + delay;
         }
 
         private int CountOffshorePlatformsDirect()
@@ -6344,7 +6358,7 @@ namespace Hegemonia.AI.BrainMaster
             _placementFailureStreakByKey[retryKey] = streak;
 
             float retryDelay = isManual
-                ? 2.5f
+                ? (streak <= 1 ? 2.5f : (streak == 2 ? 6f : Mathf.Min(25f, ResolveEscalatedRetryDelay(streak))))
                 : Mathf.Max(4.5f, ResolveEscalatedRetryDelay(streak));
             _placementRetryCooldownUntil[retryKey] = now + retryDelay;
         }

@@ -62,6 +62,12 @@ public class Torreta : MonoBehaviour
 
     void Update()
     {
+        if (!TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
+        {
+            alvoAtual = null;
+            return;
+        }
+
         // --- PROTEÇÃO CONTRA ERRO DE "MISSING REFERENCE" ---
         if (alvoAtual == null) return;
 

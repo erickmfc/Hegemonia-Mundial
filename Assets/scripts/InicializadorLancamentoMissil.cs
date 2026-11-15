@@ -64,6 +64,7 @@ public static class InicializadorLancamentoMissil
         MisselNaval naval = missil.GetComponent<MisselNaval>();
         if (naval != null)
         {
+            naval.DefinirOrigem(donoFinal);
             naval.IniciarAtaque(alvoFinal, alvoMovel, lancador);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;
@@ -72,6 +73,7 @@ public static class InicializadorLancamentoMissil
         MisselSubmarino submarino = missil.GetComponent<MisselSubmarino>();
         if (submarino != null)
         {
+            submarino.DefinirOrigem(donoFinal);
             submarino.IniciarLancamento(alvoFinal, lancamentoSubmerso, alvoMovel);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;
@@ -106,7 +108,7 @@ public static class InicializadorLancamentoMissil
                 velocidade = lancador.forward * 40f;
             }
 
-            caca.IniciarAtaque(alvoFinal, velocidade, alvoMovel);
+            caca.IniciarAtaque(alvoFinal, velocidade, alvoMovel, donoFinal);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;
         }
@@ -123,6 +125,7 @@ public static class InicializadorLancamentoMissil
         MisselLeopardAutomatico leopard = missil.GetComponent<MisselLeopardAutomatico>();
         if (leopard != null && alvoMovel != null)
         {
+            leopard.DefinirOrigem(donoFinal);
             leopard.DefinirAlvo(alvoMovel);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;
@@ -140,6 +143,7 @@ public static class InicializadorLancamentoMissil
         MisselTatico tatico = missil.GetComponent<MisselTatico>();
         if (tatico != null)
         {
+            tatico.DefinirOrigem(donoFinal);
             tatico.IniciarLancamento(alvoFinal, alvoMovel);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;
@@ -148,6 +152,7 @@ public static class InicializadorLancamentoMissil
         MisselICBM icbm = missil.GetComponent<MisselICBM>();
         if (icbm != null)
         {
+            icbm.DefinirOrigem(donoFinal);
             icbm.IniciarLancamento(alvoFinal, alvoMovel);
             Registrar(missil, origem, alvoFinal, alvoMovel);
             return true;

@@ -206,6 +206,8 @@ public class CentroSuporteAereo : MonoBehaviour
     
     void OnGUI()
     {
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
+
         // HUD Básico para mostrar disponibilidade
         GUILayout.BeginArea(new Rect(20, Screen.height - 150, 200, 120));
         

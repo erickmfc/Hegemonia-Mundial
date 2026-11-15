@@ -381,9 +381,21 @@ namespace Hegemonia.AI.BrainMaster
                    || n.Contains("leviathan");
         }
 
+        private static bool IsC17Transport(GameObject unit, string normalizedName)
+        {
+            return unit.GetComponent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null
+                   || normalizedName.Contains("c17")
+                   || normalizedName.Contains("c-17");
+        }
+
         private static bool IsAirInterceptUnit(GameObject unit)
         {
             string n = IA_Text.Normalize(unit.name);
+            if (IsC17Transport(unit, n))
+            {
+                return false;
+            }
+
             return unit.GetComponent<ControleAviao>() != null
                    || unit.GetComponent<ControleAviaoCaca>() != null
                    || n.Contains("fa1")
@@ -408,6 +420,11 @@ namespace Hegemonia.AI.BrainMaster
         private static bool IsAirTransportUnit(GameObject unit)
         {
             string n = IA_Text.Normalize(unit.name);
+            if (IsC17Transport(unit, n))
+            {
+                return false;
+            }
+
             return unit.GetComponent<Helicoptero>() != null
                    || n.Contains("heli")
                    || n.Contains("ray")

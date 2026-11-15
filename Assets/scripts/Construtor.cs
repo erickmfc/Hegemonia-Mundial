@@ -1374,11 +1374,23 @@ public class Construtor : MonoBehaviour
         var agent = unidade.GetComponent<UnityEngine.AI.NavMeshAgent>();
         if (agent != null)
         {
+            Vector3 pontoBusca = unidade.transform.position;
+            float raioBusca = 8f;
+            if (GlobalTerrainStreamer.Instance != null)
+            {
+                raioBusca = 24f;
+                if (GlobalTerrainStreamer.Instance.TrySampleLandHeight(pontoBusca, out float alturaTerreno))
+                {
+                    pontoBusca.y = alturaTerreno;
+                }
+            }
+
+            int mascaraBusca = agent.areaMask != 0 ? agent.areaMask : UnityEngine.AI.NavMesh.AllAreas;
             if (UnityEngine.AI.NavMesh.SamplePosition(
-                unidade.transform.position,
+                pontoBusca,
                 out UnityEngine.AI.NavMeshHit pontoNavMesh,
-                8f,
-                UnityEngine.AI.NavMesh.AllAreas))
+                raioBusca,
+                mascaraBusca))
             {
                 agent.enabled = true;
                 if (!agent.isOnNavMesh)

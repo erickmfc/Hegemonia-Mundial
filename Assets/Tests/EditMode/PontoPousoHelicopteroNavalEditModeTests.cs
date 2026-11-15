@@ -80,6 +80,71 @@ public sealed class PontoPousoHelicopteroNavalEditModeTests
         }
     }
 
+    [Test]
+    public void PortaAvioesSemCreatyUsaVagaExternaPreferencialERespeitaTime()
+    {
+        GameObject carrier = new GameObject("CarrierSemCreaty");
+        GameObject heliAliadoObj = new GameObject("HeliAliado");
+        GameObject heliInimigoObj = new GameObject("HeliInimigo");
+        try
+        {
+            System.Type identidadeType = ResolveType("IdentidadeUnidade");
+            Component idCarrier = carrier.AddComponent(identidadeType);
+            identidadeType.GetField("teamID", Members).SetValue(idCarrier, 1);
+
+            GameObject grupoConves = new GameObject("VagasExternas");
+            grupoConves.transform.SetParent(carrier.transform);
+            GameObject grupoHangar = new GameObject("VagasInternas");
+            grupoHangar.transform.SetParent(carrier.transform);
+
+            GameObject vagaCaca = new GameObject("Vaga_Conves_01");
+            vagaCaca.transform.SetParent(grupoConves.transform);
+            vagaCaca.transform.position = new Vector3(0f, 20f, 0f);
+            System.Type vagaV2Type = ResolveType("VagaPortaAvioesV2");
+            Component compVagaCaca = vagaCaca.AddComponent(vagaV2Type);
+            System.Type tipoV2Enum = ResolveType("TipoAeronavePortaAvioesV2");
+            vagaV2Type.GetField("tipoPermitido", Members).SetValue(compVagaCaca, System.Enum.Parse(tipoV2Enum, "Caca"));
+
+            GameObject vagaGrande = new GameObject("Vaga_Conves_14_Grande");
+            vagaGrande.transform.SetParent(grupoConves.transform);
+            vagaGrande.transform.position = new Vector3(40f, 20f, 0f);
+            Component compVagaGrande = vagaGrande.AddComponent(vagaV2Type);
+            vagaV2Type.GetField("tipoPermitido", Members).SetValue(compVagaGrande, System.Enum.Parse(tipoV2Enum, "Qualquer"));
+
+            GameObject vagaHangar = new GameObject("Vaga_Hangar_01");
+            vagaHangar.transform.SetParent(grupoHangar.transform);
+            vagaHangar.transform.position = new Vector3(80f, 5f, 0f);
+
+            System.Type managerType = ResolveType("GerenciadorPortaAvioes");
+            Component manager = carrier.AddComponent(managerType);
+            managerType.GetField("patio", Members).SetValue(manager, grupoConves.transform);
+            managerType.GetField("hangarAviao", Members).SetValue(manager, grupoHangar.transform);
+
+            System.Type heliType = ResolveType("Helicoptero");
+            Component idAliado = heliAliadoObj.AddComponent(identidadeType);
+            identidadeType.GetField("teamID", Members).SetValue(idAliado, 1);
+            Component heliAliado = heliAliadoObj.AddComponent(heliType);
+
+            Component idInimigo = heliInimigoObj.AddComponent(identidadeType);
+            identidadeType.GetField("teamID", Members).SetValue(idInimigo, 2);
+            Component heliInimigo = heliInimigoObj.AddComponent(heliType);
+
+            Assert.That((bool)managerType.GetMethod("PodeReceberHelicoptero", Members).Invoke(manager, new object[] { heliAliado }), Is.True);
+            Assert.That((bool)managerType.GetMethod("PodeReceberHelicoptero", Members).Invoke(manager, new object[] { heliInimigo }), Is.False);
+
+            Transform escolhida = (Transform)managerType.GetMethod("ObterVagaHelicopteroCarrier", Members).Invoke(manager, new object[] { heliAliado });
+            Assert.That(escolhida, Is.EqualTo(vagaGrande.transform));
+            Assert.That((bool)managerType.GetMethod("PodeReservarVagaCreaty", Members).Invoke(manager, new object[] { vagaGrande.transform }), Is.True);
+            Assert.That((bool)managerType.GetMethod("PodeReservarVagaCreaty", Members).Invoke(manager, new object[] { vagaHangar.transform }), Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(carrier);
+            Object.DestroyImmediate(heliAliadoObj);
+            Object.DestroyImmediate(heliInimigoObj);
+        }
+    }
+
     private static MethodInfo MetodoConexao(Component ponto, System.Type tipoNavio)
     {
         return ponto.GetType().GetMethod("EstaConectadoAoNavio", Members, null, new[] { tipoNavio }, null);

@@ -8,8 +8,18 @@ using System.Collections.Generic;
 [RequireComponent(typeof(SistemaDeDanos))]
 public class LancadorMisselCaca : MonoBehaviour
 {
+    public enum GeracaoCaca
+    {
+        AutomaticaPorModelo = 0,
+        TerceiraGeracao = 3,
+        QuartaGeracao = 4
+    }
+
     private const float DuracaoMinimaAlvoForcado = 60f;
     private const float DuracaoAlvoAposDisparo = 8f;
+    private const float RaioDeteccaoTerceiraGeracao = 6000f;
+    private const float RaioDeteccaoQuartaGeracao = 9000f;
+    private const float RaioDeteccaoPadraoFallback = 1500f;
 
     [Header("Configuração de Munição e Vida")]
     public int municaoAtual = 2;    
@@ -20,6 +30,15 @@ public class LancadorMisselCaca : MonoBehaviour
     public GameObject missilCacaPrefab; 
     public float tempoRecarga = 2.0f;
     public float raioDeDeteccao = 600f;
+    [SerializeField] private GeracaoCaca geracaoCaca = GeracaoCaca.AutomaticaPorModelo;
+
+    [Header("Postura de Combate e Arco Frontal")]
+    [Tooltip("Meio-ângulo máximo frontal (em graus) para liberar lançamento de míssil.")]
+    [Range(10f, 90f)] [SerializeField] private float anguloMaximoDisparoFrontal = 38f;
+    [Tooltip("Distância mínima horizontal para manter postura de ataque sem grudar em outro caça.")]
+    [Min(200f)] [SerializeField] private float distanciaMinimaStandOffAereo = 900f;
+    [Tooltip("Distância mínima horizontal de afastamento contra alvos navais ou terrestres.")]
+    [Min(200f)] [SerializeField] private float distanciaMinimaStandOffSuperficie = 1200f;
 
     [Header("Debug")]
     [SerializeField] private bool debugLogs = false;
@@ -45,6 +64,12 @@ public class LancadorMisselCaca : MonoBehaviour
     private Transform _alvoIAForcado;
     private Vector3 _ultimoPontoAlvoIA;
     private float _tempoValidadeAlvoIA = -1f;
+    private MisselCaca _missilEmVoo;
+    private Transform _alvoDoMissilEmVoo;
+    private float _tempoExpiracaoEsperaImpacto = -1f;
+    private Transform _alvoPerseguicaoAtivo;
+    private bool _controlandoPerseguicaoVoo;
+    private bool _emManobraAfastamento;
 
     // Detecção
     // Struct: vive na stack, zero alocação por scan (antes era class = heap alloc por cada alvo detectado)
@@ -74,6 +99,7 @@ public class LancadorMisselCaca : MonoBehaviour
         {
             _alvoIAForcado = null;
             _tempoValidadeAlvoIA = -1f;
+            LiberarPerseguicaoVoo();
         }
     }
 
@@ -95,6 +121,10 @@ public class LancadorMisselCaca : MonoBehaviour
         ordensManuaisHud = manual;
         somenteAlvosAutorizadosHud = limitarAutomatico;
         _alvosAutorizadosHud.Clear();
+        if (manual)
+        {
+            LiberarPerseguicaoVoo();
+        }
         if (alvosAutorizados == null) return;
         for (int i = 0; i < alvosAutorizados.Count; i++)
         {
@@ -105,7 +135,8 @@ public class LancadorMisselCaca : MonoBehaviour
 
     void Start()
     {
-        if (raioDeDeteccao < 1500f) raioDeDeteccao = 1500f; // Garante que alcance bombardeiros muito altos
+        float pisoGeracao = ObterRaioMinimoGeracao();
+        if (raioDeDeteccao < pisoGeracao) raioDeDeteccao = pisoGeracao;
         _unidadeBase = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>()
             ?? GetComponentInChildren<ControleUnidade>(true);
@@ -154,11 +185,16 @@ public class LancadorMisselCaca : MonoBehaviour
     {
         if (cronometroRecarga > 0) cronometroRecarga -= Time.deltaTime;
 
+        bool aviaoEstacionadoEDesligado = _vooModerno != null && _vooModerno.EstaEstacionadoEDesligado;
+
         bool radarAtivoVisualmente = false;
-        if (_unidadeBase != null && _unidadeBase.selecionado) radarAtivoVisualmente = true;
-        if (!radarAtivoVisualmente && _vooModerno != null && _vooModerno.aeroportoOrigem != null)
+        if (!aviaoEstacionadoEDesligado)
         {
-            if (_vooModerno.aeroportoOrigem.aviaoSelecionadoParaMissao == _vooModerno) radarAtivoVisualmente = true;
+            if (_unidadeBase != null && _unidadeBase.selecionado) radarAtivoVisualmente = true;
+            if (!radarAtivoVisualmente && _vooModerno != null && _vooModerno.aeroportoOrigem != null)
+            {
+                if (_vooModerno.aeroportoOrigem.aviaoSelecionadoParaMissao == _vooModerno) radarAtivoVisualmente = true;
+            }
         }
 
         bool vooComOrdemAtiva = _vooModerno != null
@@ -192,6 +228,8 @@ public class LancadorMisselCaca : MonoBehaviour
             EscanearArea(radarAtivoVisualmente);
             ProcessarPatrulhaAutomatica();
         }
+
+        AtualizarPosturaPerseguicao(emMissao, alvoIAAtivo);
 
         // Sistema de Recarga Automática na Base
         ControleAviao.EstadoAviao estado = _vooModerno.estadoAtual;
@@ -233,33 +271,33 @@ public class LancadorMisselCaca : MonoBehaviour
                 {
                     Debug.Log($"[Base] {gameObject.name} recarregou mísseis no Hangar/Porta-Avioes.");
                 }
+            }
 
-                CombustivelUnidade combustivel = GetComponent<CombustivelUnidade>();
-                if (combustivel != null && combustivel.usaCombustivel && combustivel.Percentual <= 0.50f)
+            CombustivelUnidade combustivel = CombustivelUnidade.ObterParaObjeto(gameObject);
+            if (combustivel != null && combustivel.usaCombustivel && combustivel.Percentual < 0.99f)
+            {
+                if (_vooModerno != null)
                 {
-                    if (_vooModerno != null)
-                    {
-                        _vooModerno.ReabastecerSeAbaixoDe(0.50f);
-                    }
-                    else
-                    {
-                        ServicoAbastecimento.TentarAbastecer(
-                            combustivel,
-                            combustivel.Capacidade - combustivel.CombustivelAtual,
-                            out _);
-                    }
+                    _vooModerno.ReabastecerSeAbaixoDe(0.99f);
                 }
-
-                if (voltandoParaBase)
+                else
                 {
-                    voltandoParaBase = false;
-                    if (_vooModerno.aeroportoOrigem != null)
+                    ServicoAbastecimento.TentarAbastecer(
+                        combustivel,
+                        combustivel.Capacidade - combustivel.CombustivelAtual,
+                        out _);
+                }
+            }
+
+            if (voltandoParaBase && municaoAtual >= municaoMaxima)
+            {
+                voltandoParaBase = false;
+                if (_vooModerno != null && !_vooModerno.PossuiRetomadaDeMissaoPendente && _vooModerno.aeroportoOrigem != null)
+                {
+                    _vooModerno.IniciarMissaoCompleta(pontoPatrulha);
+                    if (debugLogs)
                     {
-                        _vooModerno.IniciarMissaoCompleta(pontoPatrulha);
-                        if (debugLogs)
-                        {
-                            Debug.Log($"[Base] {gameObject.name} voltando para a patrulha automatica.");
-                        }
+                        Debug.Log($"[Base] {gameObject.name} voltando para a patrulha automatica.");
                     }
                 }
             }
@@ -319,15 +357,20 @@ public class LancadorMisselCaca : MonoBehaviour
             }
         }
 
-        // Volta para a base se ficar sem munição
-        if (municaoAtual <= 0 && _vooModerno.aeroportoOrigem != null)
+        // Volta para o porta-aviões ou base aliada mais próxima se ficar sem munição
+        if (municaoAtual <= 0 && _vooModerno != null && !voltandoParaBase
+            && (_vooModerno.estadoAtual == ControleAviao.EstadoAviao.EmMissao || _vooModerno.estadoAtual == ControleAviao.EstadoAviao.Decolando))
         {
+            LiberarPerseguicaoVoo();
             pontoPatrulha = _vooModerno.alvoGPSVoo;
             voltandoParaBase = true;
-            _vooModerno.ComandoRetornarBase();
+            if (!_vooModerno.RetornarParaReabastecimentoEMissao("municao") && _vooModerno.aeroportoOrigem != null)
+            {
+                _vooModerno.ComandoRetornarBase();
+            }
             if (debugLogs)
             {
-                Debug.Log($"[Radar] {gameObject.name} sem municao. Retornando para a base via Aeroporto.");
+                Debug.Log($"[Radar] {gameObject.name} sem municao. Retornando para reabastecimento no porta-avioes/base mais proxima.");
             }
         }
     }
@@ -344,6 +387,7 @@ public class LancadorMisselCaca : MonoBehaviour
         _alvoIAForcado = null;
         _ultimoPontoAlvoIA = Vector3.zero;
         _tempoValidadeAlvoIA = -1f;
+        LiberarPerseguicaoVoo();
     }
 
     public void DefinirAlvoIA(Transform alvo, Vector3 alvoFallback, float duracaoSegundos = 4f)
@@ -370,6 +414,7 @@ public class LancadorMisselCaca : MonoBehaviour
             _vooModerno.alvoPrioritarioIA = true;
             _vooModerno.centroDaPatrulha = foco;
             _vooModerno.alvoGPSVoo = foco;
+            _controlandoPerseguicaoVoo = true;
         }
     }
 
@@ -387,7 +432,7 @@ public class LancadorMisselCaca : MonoBehaviour
         if (voltandoParaBase || modoPassivo) return false;
         if (municaoAtual <= 0 || cronometroRecarga > 0f) return false;
 
-        float alcanceMaximo = Mathf.Max(raioDeDeteccao, 1500f) * 1.2f;
+        float alcanceMaximo = Mathf.Max(raioDeDeteccao, ObterRaioMinimoGeracao());
         if ((_alvoIAForcado.position - transform.position).sqrMagnitude > alcanceMaximo * alcanceMaximo)
         {
             return false;
@@ -444,9 +489,64 @@ public class LancadorMisselCaca : MonoBehaviour
                              alvoTransform.GetComponentInParent<AviaoBombardeiro>() != null;
 
         if (ehBombardeiro) return 0;
-        if (NomeContem(nomeAlvo, "caca") || NomeContem(nomeAlvo, "jato") || alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null) return 1;
-        if (EhAlvoAereo(alvoTransform, idUnidade)) return 2;
+        if (NomeContem(nomeAlvo, "caca")
+            || NomeContem(nomeAlvo, "jato")
+            || alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null
+            || alvoTransform.GetComponentInParent<LancadorMisselCaca>() != null)
+        {
+            return 1;
+        }
+
+        bool ehCivilOuEconomico = EhAlvoCivilOuEconomico(alvoTransform, nomeAlvo);
+        if (EhAlvoAereo(alvoTransform, idUnidade))
+        {
+            return ehCivilOuEconomico ? 4 : 2;
+        }
+
+        if (ehCivilOuEconomico) return 4;
+
+        // Navios militares, aeroportos militares, construtores/fábricas, tendas e demais unidades combatentes
         return 3;
+    }
+
+    private static bool EhAlvoCivilOuEconomico(Transform alvoTransform, string nomeAlvo)
+    {
+        if (alvoTransform == null) return false;
+
+        if (alvoTransform.GetComponentInParent<GerenciadorAeroportoComercial>() != null
+            || alvoTransform.GetComponentInParent<ControleAviaoComercial>() != null
+            || alvoTransform.GetComponentInParent<Hegemonia.Aeronaves.C17.C17TransporteController>() != null)
+        {
+            return true;
+        }
+
+        // Exceções explícitas: estruturas claramente militares nunca são rebaixadas como civis
+        if (alvoTransform.GetComponentInParent<GerenciadorAeroporto>() != null
+            || NomeContem(nomeAlvo, "aeroporto militar")
+            || NomeContem(nomeAlvo, "tenda")
+            || NomeContem(nomeAlvo, "construtor")
+            || NomeContem(nomeAlvo, "quartel")
+            || NomeContem(nomeAlvo, "estaleiro")
+            || NomeContem(nomeAlvo, "militar")
+            || NomeContem(nomeAlvo, "bunker")
+            || NomeContem(nomeAlvo, "torreta"))
+        {
+            return false;
+        }
+
+        return NomeContem(nomeAlvo, "plataforma")
+            || NomeContem(nomeAlvo, "petroleo")
+            || NomeContem(nomeAlvo, "petrol")
+            || NomeContem(nomeAlvo, "petroleiro")
+            || NomeContem(nomeAlvo, "cargueiro")
+            || NomeContem(nomeAlvo, "comercial")
+            || NomeContem(nomeAlvo, "prefeitura")
+            || NomeContem(nomeAlvo, "cidade")
+            || NomeContem(nomeAlvo, "predio")
+            || NomeContem(nomeAlvo, "torre_turistica")
+            || NomeContem(nomeAlvo, "estadio")
+            || NomeContem(nomeAlvo, "food")
+            || NomeContem(nomeAlvo, "fazenda");
     }
 
     void EscanearArea(bool radarAtivoVisualmente)
@@ -524,6 +624,9 @@ public class LancadorMisselCaca : MonoBehaviour
     bool Disparar(Transform alvo)
     {
         if (municaoAtual <= 0 || alvo == null) return false;
+        if (!EstaAlvoVivo(alvo)) return false;
+        if (AguardandoImpactoMissil()) return false;
+        if (!EstaNoArcoFrontal(alvo)) return false;
         if (missilCacaPrefab == null)
         {
             if (!avisouPrefabMissilAusente)
@@ -566,13 +669,214 @@ public class LancadorMisselCaca : MonoBehaviour
             Vector3 velAtual = (_rb != null) ? _rb.linearVelocity : (transform.forward * 40f); 
             scriptVoo.IniciarAtaque(alvo.position, velAtual, alvo, gameObject);
             MissileThreatTracker.RegistrarLancamento(missil, this, alvo.position, alvo, Mathf.Max(velAtual.magnitude, MissileThreatTracker.EstimarVelocidade(missil)));
+
+            _missilEmVoo = scriptVoo;
+            _alvoDoMissilEmVoo = alvo;
+            float distanciaTiro = Vector3.Distance(transform.position, alvo.position);
+            float velocidadeCruzeiro = Mathf.Max(100f, scriptVoo.velocidadeMaxima);
+            float prazoEstimado = scriptVoo.tempoQuedaLivre + (distanciaTiro / velocidadeCruzeiro) * 1.45f + 5f;
+            _tempoExpiracaoEsperaImpacto = Time.time + Mathf.Clamp(prazoEstimado, 4f, 45f);
         }
 
         municaoAtual--;
         cronometroRecarga = tempoRecarga;
         
-        if (_audioSource != null) _audioSource.Play();
+        if (_audioSource != null && _audioSource.enabled && _audioSource.gameObject.activeInHierarchy)
+        {
+            _audioSource.Play();
+        }
         return true;
+    }
+
+    private bool AguardandoImpactoMissil()
+    {
+        if (_missilEmVoo == null) return false;
+
+        if (!_missilEmVoo.EstaEmVooAtivo || Time.time > _tempoExpiracaoEsperaImpacto)
+        {
+            _missilEmVoo = null;
+            _alvoDoMissilEmVoo = null;
+            _tempoExpiracaoEsperaImpacto = -1f;
+            return false;
+        }
+
+        if (!EstaAlvoVivo(_alvoDoMissilEmVoo))
+        {
+            _missilEmVoo = null;
+            _alvoDoMissilEmVoo = null;
+            _tempoExpiracaoEsperaImpacto = -1f;
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool EstaNoArcoFrontal(Transform alvo)
+    {
+        if (alvo == null) return false;
+
+        Vector3 paraAlvo = alvo.position - transform.position;
+        paraAlvo.y = 0f;
+        Vector3 frentePlano = transform.forward;
+        frentePlano.y = 0f;
+
+        if (paraAlvo.sqrMagnitude < 1f || frentePlano.sqrMagnitude < 0.0001f)
+        {
+            return true;
+        }
+
+        float cosLimite = Mathf.Cos(Mathf.Clamp(anguloMaximoDisparoFrontal, 10f, 90f) * Mathf.Deg2Rad);
+        return Vector3.Dot(frentePlano.normalized, paraAlvo.normalized) >= cosLimite;
+    }
+
+    private void AtualizarPosturaPerseguicao(bool emMissao, bool alvoIAAtivo)
+    {
+        if (!emMissao
+            || _vooModerno == null
+            || _vooModerno.ordemParaRetorno
+            || voltandoParaBase
+            || ModoPassivoOficial
+            || modoPassivo
+            || municaoAtual <= 0)
+        {
+            LiberarPerseguicaoVoo();
+            return;
+        }
+
+        Transform alvo = null;
+        bool ordemExplicitamenteForcada = false;
+
+        if (alvoIAAtivo && EstaAlvoVivo(_alvoIAForcado))
+        {
+            alvo = _alvoIAForcado;
+            ordemExplicitamenteForcada = true;
+        }
+        else if (!ordensManuaisHud)
+        {
+            alvo = ResolverAlvoPerseguicaoAutomatica();
+        }
+
+        if (alvo == null)
+        {
+            LiberarPerseguicaoVoo();
+            return;
+        }
+
+        if (_alvoPerseguicaoAtivo != alvo)
+        {
+            _alvoPerseguicaoAtivo = alvo;
+            _emManobraAfastamento = false;
+        }
+
+        Vector3 paraAlvoPlano = alvo.position - transform.position;
+        paraAlvoPlano.y = 0f;
+        float distPlanoSqr = paraAlvoPlano.sqrMagnitude;
+
+        float raioRadar = Mathf.Max(raioDeDeteccao, ObterRaioMinimoGeracao());
+        if (!ordemExplicitamenteForcada && distPlanoSqr > (raioRadar * 1.15f) * (raioRadar * 1.15f))
+        {
+            LiberarPerseguicaoVoo();
+            return;
+        }
+
+        IdentidadeUnidade idAlvo = ResolverIdentidadeAlvo(alvo);
+        float standOffBase = EhAlvoAereo(alvo, idAlvo) ? distanciaMinimaStandOffAereo : distanciaMinimaStandOffSuperficie;
+        float standOff = Mathf.Clamp(standOffBase, 250f, raioRadar * 0.5f);
+        float distSaidaAfastamento = standOff * 1.8f;
+
+        if (!_emManobraAfastamento && distPlanoSqr < standOff * standOff)
+        {
+            _emManobraAfastamento = true;
+        }
+        else if (_emManobraAfastamento && distPlanoSqr >= distSaidaAfastamento * distSaidaAfastamento)
+        {
+            _emManobraAfastamento = false;
+        }
+
+        Vector3 destino;
+        if (_emManobraAfastamento)
+        {
+            Vector3 dirSaida = distPlanoSqr > 1f ? -paraAlvoPlano.normalized : -transform.forward;
+            dirSaida.y = 0f;
+            if (dirSaida.sqrMagnitude < 0.0001f) dirSaida = Vector3.forward;
+            dirSaida.Normalize();
+            Vector3 lateral = new Vector3(-dirSaida.z, 0f, dirSaida.x);
+            destino = alvo.position + dirSaida * (standOff * 2.1f) + lateral * (standOff * 0.65f);
+        }
+        else
+        {
+            destino = alvo.position;
+        }
+
+        float altitudeDesejada = Mathf.Max(alvo.position.y, _vooModerno.altitudeVoo);
+        if (!float.IsNaN(destino.x) && !float.IsNaN(destino.y) && !float.IsNaN(destino.z))
+        {
+            destino.y = altitudeDesejada;
+            _vooModerno.alvoPrioritarioIA = true;
+            _vooModerno.centroDaPatrulha = destino;
+            _vooModerno.alvoGPSVoo = destino;
+            _controlandoPerseguicaoVoo = true;
+        }
+    }
+
+    private Transform ResolverAlvoPerseguicaoAutomatica()
+    {
+        if (AguardandoImpactoMissil() && EstaAlvoVivo(_alvoDoMissilEmVoo))
+        {
+            return _alvoDoMissilEmVoo;
+        }
+
+        Transform melhorDaLista = null;
+        int melhorPrioridadeLista = int.MaxValue;
+        for (int i = 0; i < inimigosNaArea.Count; i++)
+        {
+            AlvoDetectado candidato = inimigosNaArea[i];
+            if (!EstaAlvoVivo(candidato.transform)) continue;
+            if (somenteAlvosAutorizadosHud && !_alvosAutorizadosHud.Contains(candidato.transform)) continue;
+            IdentidadeUnidade id = ResolverIdentidadeAlvo(candidato.transform);
+            if (!ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(_meuTime, id)) continue;
+
+            melhorDaLista = candidato.transform;
+            melhorPrioridadeLista = candidato.prioridade;
+            break;
+        }
+
+        if (EstaAlvoVivo(_alvoPerseguicaoAtivo))
+        {
+            IdentidadeUnidade idAtual = ResolverIdentidadeAlvo(_alvoPerseguicaoAtivo);
+            if (ContextoTerritorialDiplomatico.PodeDispararPorHostilidadeOuGuerra(_meuTime, idAtual))
+            {
+                int prioAtual = ObterPrioridadeAlvo(_alvoPerseguicaoAtivo, idAtual);
+                if (melhorDaLista == null || prioAtual <= melhorPrioridadeLista)
+                {
+                    return _alvoPerseguicaoAtivo;
+                }
+            }
+        }
+
+        return melhorDaLista;
+    }
+
+    private void LiberarPerseguicaoVoo()
+    {
+        if (_controlandoPerseguicaoVoo && _vooModerno != null)
+        {
+            _vooModerno.alvoPrioritarioIA = false;
+        }
+        _controlandoPerseguicaoVoo = false;
+        _alvoPerseguicaoAtivo = null;
+        _emManobraAfastamento = false;
+    }
+
+    private static bool EstaAlvoVivo(Transform alvo)
+    {
+        if (alvo == null || !alvo.gameObject.activeInHierarchy) return false;
+        if (!ControleSubmarino.PodeSerAlvoConvencional(alvo)) return false;
+
+        SistemaDeDanos danos = alvo.GetComponent<SistemaDeDanos>()
+            ?? alvo.GetComponentInParent<SistemaDeDanos>()
+            ?? alvo.GetComponentInChildren<SistemaDeDanos>(true);
+        return danos == null || danos.vidaAtual > 0f;
     }
 
     private bool SolicitarAtaquePeloRadar(Transform alvo)
@@ -627,6 +931,7 @@ public class LancadorMisselCaca : MonoBehaviour
     {
         municaoAtual = municaoMaxima;
         indiceCano = 0;
+        voltandoParaBase = false;
 
         if (_renderersPorSaida != null && _renderersPorSaida.Length > 0)
         {
@@ -655,6 +960,34 @@ public class LancadorMisselCaca : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Resolve o alcance mínimo de detecção/lançamento conforme a geração do caça,
+    /// preservando valores maiores configurados manualmente no Inspector.
+    /// </summary>
+    private float ObterRaioMinimoGeracao()
+    {
+        if (geracaoCaca == GeracaoCaca.QuartaGeracao) return RaioDeteccaoQuartaGeracao;
+        if (geracaoCaca == GeracaoCaca.TerceiraGeracao) return RaioDeteccaoTerceiraGeracao;
+
+        string nomeModelo = gameObject != null ? gameObject.name : string.Empty;
+        if (NomeContem(nomeModelo, "F-16") || NomeContem(nomeModelo, "F16")
+            || NomeContem(nomeModelo, "G18")
+            || NomeContem(nomeModelo, "Su20") || NomeContem(nomeModelo, "Su-20")
+            || NomeContem(nomeModelo, "Su35") || NomeContem(nomeModelo, "Su-35") || NomeContem(nomeModelo, "su-35"))
+        {
+            return RaioDeteccaoQuartaGeracao;
+        }
+
+        if (NomeContem(nomeModelo, "Mirage")
+            || NomeContem(nomeModelo, "Su11") || NomeContem(nomeModelo, "Su-11")
+            || NomeContem(nomeModelo, "G15"))
+        {
+            return RaioDeteccaoTerceiraGeracao;
+        }
+
+        return RaioDeteccaoPadraoFallback;
+    }
+
     private static bool NomeContem(string texto, string termo)
     {
         return !string.IsNullOrEmpty(texto)
@@ -664,7 +997,8 @@ public class LancadorMisselCaca : MonoBehaviour
 
     void OnGUI()
     {
-        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto
+            || (_vooModerno != null && _vooModerno.EstaEstacionadoEDesligado))
         {
             return;
         }

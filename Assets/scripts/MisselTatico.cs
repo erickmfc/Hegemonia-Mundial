@@ -27,7 +27,21 @@ public class MisselTatico : MonoBehaviour
     private Quaternion rotacaoAlvo;
     private bool temAlvo = false;
     private bool explodiu = false;
+    private GameObject origemAgressor;
     private readonly Collider[] bufferExplosao = new Collider[96];
+
+    public void DefinirOrigem(GameObject origem)
+    {
+        origemAgressor = origem;
+    }
+
+    private void OnDisable()
+    {
+        CancelInvoke(nameof(ReativarColisao));
+        CancelInvoke(nameof(AutodestruirPorTempo));
+        origemAgressor = null;
+        lancado = false;
+    }
 
     // Configura o alvo e inicia
     public void IniciarLancamento(Vector3 pontoAlvo)
@@ -198,6 +212,7 @@ public class MisselTatico : MonoBehaviour
         }
         
         // Dano em Área
+        GameObject agressorImpacto = origemAgressor != null ? origemAgressor : gameObject;
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioDeDano, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
         {
@@ -212,7 +227,7 @@ public class MisselTatico : MonoBehaviour
                 ?? h.GetComponentInParent<SistemaDeDanos>();
             if (vida != null)
             {
-                vida.ReceberDano(dano);
+                vida.ReceberDano(dano, agressorImpacto);
             }
 
             // Física

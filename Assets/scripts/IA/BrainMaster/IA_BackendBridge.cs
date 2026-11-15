@@ -3073,9 +3073,32 @@ namespace Hegemonia.AI.BrainMaster
             // legados que ainda não carregam o id da reserva no payload.
             if (string.IsNullOrWhiteSpace(payload.ProductionOrderId))
             {
-                int alive = CountProductionUnits(kind, context != null ? context.ForceSnapshot : null);
                 string purpose = "command:" + (string.IsNullOrEmpty(request.Origin) ? "legacy" : request.Origin);
-                if (!IAAutoProductionRegistry.TryReserveProduction(_bridge.TeamId, unitType, purpose, alive + 1, alive, out payload.ProductionOrderId, Time.time, 180f))
+                bool reserved;
+                if (kind == IA01MilitaryAssetKind.OilTanker)
+                {
+                    IA_ForceSnapshot forceSnapshot = context != null ? context.ForceSnapshot : null;
+                    int rawCap = context.Brain.UsaCronogramaIA03
+                        ? Mathf.Max(1, context.Brain.IA03LimitePetroleiros)
+                        : Mathf.Max(1, context.Brain.TargetOilTankers);
+                    reserved = IA_ProductionDirector.TryReserveOilTankerSlot(
+                        _bridge.TeamId,
+                        context.Brain,
+                        forceSnapshot,
+                        item,
+                        context.CommandQueue,
+                        context.IntentBoard,
+                        purpose,
+                        rawCap,
+                        out payload.ProductionOrderId);
+                }
+                else
+                {
+                    int alive = CountProductionUnits(kind, context != null ? context.ForceSnapshot : null);
+                    reserved = IAAutoProductionRegistry.TryReserveProduction(_bridge.TeamId, unitType, purpose, alive + 1, alive, out payload.ProductionOrderId, Time.time, 180f);
+                }
+
+                if (!reserved)
                 {
                     message = "ordem automatica equivalente ou meta atendida";
                     return false;

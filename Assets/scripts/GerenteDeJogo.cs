@@ -226,10 +226,22 @@ public class GerenteDeJogo : MonoBehaviour
         TentarComprarUnidade(unidadeParaConstruir, preco, quantidade);
     }
 
+    public string UltimoMotivoFalhaCompra { get; private set; } = string.Empty;
+
     public bool TentarComprarUnidade(GameObject unidadeParaConstruir, long preco, int quantidade)
     {
+        return TentarComprarUnidade(unidadeParaConstruir, preco, quantidade, out _);
+    }
+
+    public bool TentarComprarUnidade(GameObject unidadeParaConstruir, long preco, int quantidade, out string motivoFalha)
+    {
+        motivoFalha = string.Empty;
+        UltimoMotivoFalhaCompra = string.Empty;
+
         if (unidadeParaConstruir == null || quantidade <= 0)
         {
+            motivoFalha = "Unidade ou quantidade inválida.";
+            UltimoMotivoFalhaCompra = motivoFalha;
             return false;
         }
 
@@ -257,14 +269,22 @@ public class GerenteDeJogo : MonoBehaviour
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         if (governo == null)
         {
-            if (SistemaGovernoMundial.ObterEfetivoNecessario(unidadeParaConstruir) > 0)
+            int nec = SistemaGovernoMundial.ObterEfetivoNecessario(unidadeParaConstruir);
+            if (nec > 0)
             {
+                motivoFalha = $"Governo nacional indisponível para mobilizar efetivo ({nec:N0} militares necessários).";
+                UltimoMotivoFalhaCompra = motivoFalha;
                 Debug.LogWarning($"[Produção] Pedido de {unidadeParaConstruir.name} recusado: governo nacional indisponível para mobilizar efetivo.");
                 return false;
             }
         }
         else if (!governo.PodeProduzirUnidadeComEfetivo(1, unidadeParaConstruir, quantidade))
         {
+            int necUnidade = SistemaGovernoMundial.ObterEfetivoNecessario(unidadeParaConstruir);
+            int necTotal = necUnidade * quantidade;
+            int disponivel = governo.ObterEfetivoDisponivel(1);
+            motivoFalha = $"Efetivo militar insuficiente: precisa {necTotal:N0}, disponível {disponivel:N0}.";
+            UltimoMotivoFalhaCompra = motivoFalha;
             Debug.LogWarning($"[Produção] Pedido de {unidadeParaConstruir.name} recusado: efetivo insuficiente para {quantidade} unidade(s).");
             return false;
         }
@@ -272,6 +292,10 @@ public class GerenteDeJogo : MonoBehaviour
         bool requerInstalacaoTerrestre = !ehPredio && !ehNavio && !ehAviao && !ehHelicoptero;
         if (requerInstalacaoTerrestre && !PossuiInstalacaoTerrestreOperacional(ehSoldado))
         {
+            motivoFalha = ehSoldado
+                ? "Nenhum Quartel operacional com energia encontrado para treinar infantaria."
+                : "Nenhuma Fábrica ou Quartel operacional com energia encontrado para produzir veículos.";
+            UltimoMotivoFalhaCompra = motivoFalha;
             Debug.LogWarning($"[Produção] Pedido de {unidadeParaConstruir.name} recusado: nenhum ponto terrestre operacional (fábrica/quartel com energia).");
             return false;
         }
@@ -281,7 +305,16 @@ public class GerenteDeJogo : MonoBehaviour
         GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
         if (recursos == null)
         {
+            motivoFalha = "Gerenciador de recursos indisponível.";
+            UltimoMotivoFalhaCompra = motivoFalha;
             Debug.LogError("❌ GerenciadorRecursos não encontrado! Crie um GameObject com este componente na cena.");
+            return false;
+        }
+
+        if (recursos.dinheiro < custoTotal)
+        {
+            motivoFalha = $"Dinheiro insuficiente: precisa $ {custoTotal:N0}, disponível $ {recursos.dinheiro:N0}.";
+            UltimoMotivoFalhaCompra = motivoFalha;
             return false;
         }
 

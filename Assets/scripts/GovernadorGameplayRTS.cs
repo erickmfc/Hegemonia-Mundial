@@ -140,6 +140,12 @@ public sealed class GovernadorGameplayRTS : MonoBehaviour
     private bool AvaliarProducao(GameObject prefab, TipoUnidade tipo, DadosConstrucao item, int quantidade, out string motivo)
     {
         motivo = string.Empty;
+        if (DadosConstrucao.EhUnidadeDesativadaDoJogo(item, prefab))
+        {
+            motivo = "Unidade desativada do catalogo naval.";
+            return false;
+        }
+
         // A contagem periódica atende HUD e aceleração; o gate de compra precisa
         // enxergar unidades que entraram em campo desde o último snapshot.
         AtualizarContagem(true);

@@ -427,14 +427,77 @@ public class PierMarinha : MonoBehaviour
         }
     }
 
+    [Header("Logistica Aerea de Suprimentos (HL S1)")]
+    [SerializeField] private float raioVarreduraNavios = 5000f;
+    [SerializeField] private float intervaloVarreduraLogistica = 6f;
+    private float proximaVarreduraLogistica = 0f;
+    private readonly List<IdentidadeUnidade> bufferVarreduraNavios = new List<IdentidadeUnidade>(128);
+
     void Update()
     {
         ProcessarManutencao();
         RegistrarLotePetroleo();
+        ProcessarVarreduraSuprimentoAereo();
 
         if (RTSInputBindings.GetKeyDown(RTSInputAction.Pier) && (MenuComandoController.Instancia == null || !MenuComandoController.Instancia.MenuAberto))
         {
             MenuPier.AlternarPorAtalho(this);
+        }
+    }
+
+    private void ProcessarVarreduraSuprimentoAereo()
+    {
+        if (Time.time < proximaVarreduraLogistica) return;
+        proximaVarreduraLogistica = Time.time + intervaloVarreduraLogistica;
+
+        int meuTime = ResolverOwnerTeamId();
+        if (meuTime <= 0) meuTime = 1;
+
+        RegistroEntidadesJogo.FillUnidades(bufferVarreduraNavios);
+        float raioSqr = raioVarreduraNavios * raioVarreduraNavios;
+        Vector3 minhaPos = transform.position;
+
+        Transform navioMaisNecessitado = null;
+        float menorPercentualTripulacao = 1f;
+
+        for (int i = 0; i < bufferVarreduraNavios.Count; i++)
+        {
+            IdentidadeUnidade id = bufferVarreduraNavios[i];
+            if (id == null || id.teamID != meuTime) continue;
+            if (id.tipoUnidade != TipoUnidade.Naval && id.GetComponent<IdentidadeNaval>() == null) continue;
+
+            float distSqr = (id.transform.position - minhaPos).sqrMagnitude;
+            if (distSqr > raioSqr) continue;
+
+            TripulacaoUnidade tripulacao = id.GetComponentInChildren<TripulacaoUnidade>();
+            if (tripulacao != null && tripulacao.TripulacaoMaxima > 0)
+            {
+                float pct = (float)tripulacao.TripulacaoAtual / tripulacao.TripulacaoMaxima;
+                if (pct < 0.95f && pct < menorPercentualTripulacao)
+                {
+                    menorPercentualTripulacao = pct;
+                    navioMaisNecessitado = id.transform;
+                }
+            }
+        }
+
+        if (navioMaisNecessitado != null)
+        {
+            DespacharHelicopteroSuprimento(navioMaisNecessitado);
+        }
+    }
+
+    private void DespacharHelicopteroSuprimento(Transform alvo)
+    {
+        HelicopteroTransporteSuprimentos[] helis = FindObjectsByType<HelicopteroTransporteSuprimentos>(FindObjectsSortMode.None);
+        for (int i = 0; i < helis.Length; i++)
+        {
+            HelicopteroTransporteSuprimentos heli = helis[i];
+            if (heli != null && !heli.EmMissao)
+            {
+                heli.IniciarMissaoSuprimento(alvo, this);
+                break;
+            }
         }
     }
 
@@ -535,6 +598,29 @@ public class PierMarinha : MonoBehaviour
                 else
                 {
                     vaga.timerRecargaCombustivel = 0f;
+                }
+
+                // 5. RACAO / SUPRIMENTO ALIMENTAR NAVAL (APENAS JOGADOR)
+                RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(navio.gameObject);
+                if (racao != null && racao.UsaRacao && racao.RacaoAtual < racao.Capacidade)
+                {
+                    racao.AbastecerUsandoEstoqueNacional(reabastecimentoCombustivelPorSegundo * 0.5f * Time.deltaTime);
+                }
+
+                // 6. RESGATE E REPOSICAO DE TRIPULACAO NO PIER
+                TripulacaoUnidade trip = TripulacaoUnidade.ObterParaObjeto(navio.gameObject);
+                if (trip != null && trip.UsaTripulacao && trip.TripulacaoAtual < trip.TripulacaoMaxima)
+                {
+                    if (racao == null || !racao.UsaRacao || racao.RacaoAtual > 1f)
+                    {
+                        vaga.timerRecargaContramedidas += Time.deltaTime;
+                        if (vaga.timerRecargaContramedidas >= 0.5f)
+                        {
+                            int loteCrew = Mathf.Max(1, Mathf.CeilToInt(trip.TripulacaoMaxima * 0.12f));
+                            trip.TentarReporTripulacao(loteCrew);
+                            vaga.timerRecargaContramedidas = 0f;
+                        }
+                    }
                 }
             }
             }

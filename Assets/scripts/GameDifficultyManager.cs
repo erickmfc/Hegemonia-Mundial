@@ -93,6 +93,14 @@ public sealed class GameDifficultyManager : MonoBehaviour
 {
     private const string PlayerPrefsKey = "hegemonia.dificuldade";
     private static GameDifficultyManager instancia;
+    private static bool emEncerramento;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetarEstadoEstatico()
+    {
+        instancia = null;
+        emEncerramento = false;
+    }
 
     private static readonly PerfilDificuldadeJogo PerfilFacil = new PerfilDificuldadeJogo(
         DificuldadeJogo.Facil, "facil", "difficulty.easy",
@@ -119,7 +127,22 @@ public sealed class GameDifficultyManager : MonoBehaviour
         }
     }
 
-    public static DificuldadeJogo DificuldadeAtual => Instancia.dificuldadeAtual;
+    public static DificuldadeJogo DificuldadeAtual
+    {
+        get
+        {
+            if (emEncerramento)
+            {
+                return CodigoParaDificuldade(PlayerPrefs.GetString(PlayerPrefsKey, PerfilNormal.Codigo));
+            }
+
+            GameDifficultyManager atual = Instancia;
+            return atual != null
+                ? atual.dificuldadeAtual
+                : CodigoParaDificuldade(PlayerPrefs.GetString(PlayerPrefsKey, PerfilNormal.Codigo));
+        }
+    }
+
     public static PerfilDificuldadeJogo PerfilAtual => ObterPerfil(DificuldadeAtual);
     public static event Action DificuldadeAlterada;
 
@@ -128,7 +151,7 @@ public sealed class GameDifficultyManager : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     public static void GarantirInstancia()
     {
-        if (instancia != null)
+        if (emEncerramento || instancia != null)
         {
             return;
         }
@@ -148,6 +171,7 @@ public sealed class GameDifficultyManager : MonoBehaviour
 
     private void Awake()
     {
+        emEncerramento = false;
         if (instancia != null && instancia != this)
         {
             Destroy(gameObject);
@@ -156,6 +180,19 @@ public sealed class GameDifficultyManager : MonoBehaviour
 
         instancia = this;
         Inicializar();
+    }
+
+    private void OnApplicationQuit()
+    {
+        emEncerramento = true;
+    }
+
+    private void OnDestroy()
+    {
+        if (instancia == this)
+        {
+            instancia = null;
+        }
     }
 
     private void Inicializar()

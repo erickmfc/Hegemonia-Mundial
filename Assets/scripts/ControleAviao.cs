@@ -53,6 +53,16 @@ public class ControleAviao : MonoBehaviour
             AudioRuntime.DefinirAudioPartidaAerea(gameObject, false);
 
         AudioRuntime.DefinirMotorAereo(gameObject, motorLigado);
+        if (novoEstado == EstadoAviao.ReservaHangar || novoEstado == EstadoAviao.ProntoNoPatio)
+        {
+            _emIgnicaoPartida = false;
+            AplicarEstadoSistemasAeronave(false, false);
+        }
+        else if (novoEstado == EstadoAviao.Decolando || novoEstado == EstadoAviao.EmMissao)
+        {
+            AplicarEstadoSistemasAeronave(true, true);
+        }
+
         if (novoEstado == EstadoAviao.ProntoNoPatio)
         {
             AbaixarRodas(true);
@@ -187,6 +197,73 @@ public class ControleAviao : MonoBehaviour
     protected KamikazeDrone _kamikazeDroneCache;
     private bool _kamikazeDroneCacheFeito;
 
+    private const float MultiplicadorAmplitudePatrulha = 2.5f;
+    private const float MultiplicadorVelocidadeAmeacaMissil = 1.5f;
+    private const float IntervaloChecagemMissilSegundos = 0.25f;
+    private const float DuracaoAlertaMissilSegundos = 5f;
+
+    [NonSerialized] private IdentidadeUnidade _identidadeUnidadeCache;
+    [NonSerialized] private bool _perfilManobraPatrulhaResolvido;
+    [NonSerialized] private bool _ehAeronavePesadaOuTransporte;
+    [NonSerialized] private bool _ehBombardeiroPesado;
+    [NonSerialized] private float _proximaChecagemMissil;
+    [NonSerialized] private float _tempoFimAlertaMissil = -100f;
+    [NonSerialized] private bool _sobAmeacaMissilAtiva;
+    [NonSerialized] private float _patrulhaAltitudeFatorAtual;
+    [NonSerialized] private float _patrulhaAltitudeVelocidadeSmooth;
+    [NonSerialized] private float _patrulhaAltitudeFatorAlvo;
+    [NonSerialized] private float _proximaTrocaAltitudePatrulha;
+    [NonSerialized] private int _faseSequenciaAltitude;
+    [NonSerialized] private float _patrulhaRollExtraAtual;
+    [NonSerialized] private float _patrulhaRollExtraVel;
+    [NonSerialized] private float _patrulhaRollAlvo;
+    [NonSerialized] private float _proximaTrocaRollPatrulha;
+    [NonSerialized] private int _etapaManobraRoll;
+    [NonSerialized] private int _ladoRollAtual = 1;
+    [NonSerialized] private float _amplitudeRollAtual = 30f;
+    [NonSerialized] private bool _timersManobraPatrulhaIniciados;
+    [NonSerialized] private int _direcaoCircuitoPatrulha = 1;
+    [NonSerialized] private int _passosPatrulhaNaVolta;
+    [NonSerialized] private int _voltasParaAlternarSentido = 1;
+    [NonSerialized] public GerenciadorAeroporto baseOrigemAnteriorAoApoioAliado;
+
+    /// <summary>
+    /// Razão de velocidade atual usada para escalar o consumo de combustível
+    /// acima de 100% (aceleração manual do HUD ou escape de míssil a 150%).
+    /// </summary>
+    public float FatorVelocidadeConsumoAtual
+    {
+        get
+        {
+            if (!estaEmModoVooFisico || velocidadeMaximaVoo <= 0.01f)
+            {
+                return Mathf.Max(1f, MultiplicadorVelocidadeComandoHud);
+            }
+
+            return Mathf.Max(1f, velocidadeVooAtual / velocidadeMaximaVoo);
+        }
+    }
+
+    public bool PossuiRetomadaDeMissaoPendente => retomarMissaoAposAbastecer || rotinaRetomadaMissao != null;
+
+    public bool PodeOperarNoPortaAvioes() => PodeUsarPortaAvioesEmVoo();
+
+    protected virtual bool PodeUsarPortaAvioesEmVoo()
+    {
+        GarantirPerfilManobraPatrulhaResolvido();
+        if (_ehAeronavePesadaOuTransporte || _ehBombardeiroPesado)
+        {
+            return false;
+        }
+
+        if (GetComponent<ControleAviaoCaca>() != null)
+        {
+            return true;
+        }
+
+        return aeroportoOrigem is GerenciadorPortaAvioes;
+    }
+
     protected bool EhC17Transporte()
     {
         if (!_ehC17CacheFeito)
@@ -227,6 +304,224 @@ public class ControleAviao : MonoBehaviour
         }
     }
 
+    [Header("=== PARTIDA E SISTEMAS ===")]
+    [Range(3f, 5f)] public float tempoIgnicaoPartida = 4f;
+
+    private ParticleSystem[] _particulasAeronave;
+    private bool[] _particulasAtivasPorPadrao;
+    private Light[] _luzesAeronave;
+    private bool[] _luzesAtivasPorPadrao;
+    private TrailRenderer[] _trilhasAeronave;
+    private bool[] _trilhasAtivasPorPadrao;
+    private bool _sistemasAeronaveCacheInicializado;
+    private bool _sistemasAeronaveLigados = true;
+    private bool _radarEstavaLigadoAntesDoPouso;
+    [NonSerialized] private bool _emIgnicaoPartida;
+
+    public bool EmIgnicaoPartida => _emIgnicaoPartida;
+    public bool SistemasAeronaveLigados => _sistemasAeronaveLigados;
+    public bool EstaEstacionadoEDesligado =>
+        (estadoAtual == EstadoAviao.ReservaHangar || estadoAtual == EstadoAviao.ProntoNoPatio)
+        && !_emIgnicaoPartida;
+
+    private bool EhComponenteDeEfeitoDano(Component comp)
+    {
+        if (comp == null) return false;
+        Transform t = comp.transform;
+        while (t != null && t != transform)
+        {
+            string n = t.name;
+            if (!string.IsNullOrEmpty(n)
+                && (n.StartsWith("FumacaLeve", StringComparison.OrdinalIgnoreCase)
+                    || n.StartsWith("FumacaEscura", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(n, "Fogo", StringComparison.OrdinalIgnoreCase)
+                    || n.IndexOf("dano unidade", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                return true;
+            }
+            t = t.parent;
+        }
+        return false;
+    }
+
+    private void InicializarCacheSistemasAeronave()
+    {
+        if (_sistemasAeronaveCacheInicializado) return;
+        _sistemasAeronaveCacheInicializado = true;
+
+        ParticleSystem[] todasParticulas = GetComponentsInChildren<ParticleSystem>(true);
+        List<ParticleSystem> listaParticulas = new List<ParticleSystem>(todasParticulas.Length);
+        List<bool> listaParticulasAtivas = new List<bool>(todasParticulas.Length);
+        for (int i = 0; i < todasParticulas.Length; i++)
+        {
+            ParticleSystem ps = todasParticulas[i];
+            if (ps == null || EhComponenteDeEfeitoDano(ps)) continue;
+            listaParticulas.Add(ps);
+            listaParticulasAtivas.Add(ps.main.playOnAwake || ps.isPlaying);
+        }
+        _particulasAeronave = listaParticulas.ToArray();
+        _particulasAtivasPorPadrao = listaParticulasAtivas.ToArray();
+
+        Light[] todasLuzes = GetComponentsInChildren<Light>(true);
+        List<Light> listaLuzes = new List<Light>(todasLuzes.Length);
+        List<bool> listaLuzesAtivas = new List<bool>(todasLuzes.Length);
+        for (int i = 0; i < todasLuzes.Length; i++)
+        {
+            Light l = todasLuzes[i];
+            if (l == null || EhComponenteDeEfeitoDano(l)) continue;
+            listaLuzes.Add(l);
+            listaLuzesAtivas.Add(l.enabled);
+        }
+        _luzesAeronave = listaLuzes.ToArray();
+        _luzesAtivasPorPadrao = listaLuzesAtivas.ToArray();
+
+        TrailRenderer[] todasTrilhas = GetComponentsInChildren<TrailRenderer>(true);
+        List<TrailRenderer> listaTrilhas = new List<TrailRenderer>(todasTrilhas.Length);
+        List<bool> listaTrilhasAtivas = new List<bool>(todasTrilhas.Length);
+        for (int i = 0; i < todasTrilhas.Length; i++)
+        {
+            TrailRenderer tr = todasTrilhas[i];
+            if (tr == null || EhComponenteDeEfeitoDano(tr)) continue;
+            listaTrilhas.Add(tr);
+            listaTrilhasAtivas.Add(tr.emitting);
+        }
+        _trilhasAeronave = listaTrilhas.ToArray();
+        _trilhasAtivasPorPadrao = listaTrilhasAtivas.ToArray();
+    }
+
+    public void AplicarEstadoSistemasAeronave(bool ligar, bool emVoo = true)
+    {
+        if (!Application.isPlaying) return;
+        InicializarCacheSistemasAeronave();
+        _sistemasAeronaveLigados = ligar;
+
+        if (_particulasAeronave != null)
+        {
+            for (int i = 0; i < _particulasAeronave.Length; i++)
+            {
+                ParticleSystem ps = _particulasAeronave[i];
+                if (ps == null) continue;
+                if (ligar)
+                {
+                    if (_particulasAtivasPorPadrao[i] && !ps.isPlaying)
+                    {
+                        ps.Play(true);
+                    }
+                }
+                else
+                {
+                    ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
+            }
+        }
+
+        if (_luzesAeronave != null)
+        {
+            for (int i = 0; i < _luzesAeronave.Length; i++)
+            {
+                Light l = _luzesAeronave[i];
+                if (l == null) continue;
+                l.enabled = ligar && _luzesAtivasPorPadrao[i];
+            }
+        }
+
+        if (_trilhasAeronave != null)
+        {
+            for (int i = 0; i < _trilhasAeronave.Length; i++)
+            {
+                TrailRenderer tr = _trilhasAeronave[i];
+                if (tr == null) continue;
+                if (ligar && emVoo)
+                {
+                    tr.emitting = _trilhasAtivasPorPadrao[i];
+                }
+                else
+                {
+                    tr.emitting = false;
+                    if (!ligar) tr.Clear();
+                }
+            }
+        }
+
+        ControleAviaoCaca caca = GetComponent<ControleAviaoCaca>();
+        if (caca != null)
+        {
+            if (caca.fogoNosMotores != null)
+            {
+                for (int i = 0; i < caca.fogoNosMotores.Count; i++)
+                {
+                    ParticleSystem ps = caca.fogoNosMotores[i];
+                    if (ps == null) continue;
+                    if (ligar && !ps.isPlaying) ps.Play(true);
+                    else if (!ligar) ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
+            }
+            if (caca.luzPosCombustao != null)
+            {
+                caca.luzPosCombustao.enabled = ligar;
+            }
+        }
+
+        Hegemonia.RTS.RadarUnidadeTatica radar = GetComponent<Hegemonia.RTS.RadarUnidadeTatica>();
+        if (radar != null)
+        {
+            if (!ligar)
+            {
+                if (radar.RadarLigado)
+                {
+                    _radarEstavaLigadoAntesDoPouso = true;
+                }
+                radar.DefinirRadar(false);
+            }
+            else if (_radarEstavaLigadoAntesDoPouso)
+            {
+                _radarEstavaLigadoAntesDoPouso = false;
+                IdentidadeUnidade id = _identidadeUnidadeCache != null ? _identidadeUnidadeCache : GetComponent<IdentidadeUnidade>();
+                if (id != null && id.teamID > 0)
+                {
+                    radar.TentarLigarRadar(id.teamID);
+                }
+                else
+                {
+                    radar.DefinirRadar(true);
+                }
+            }
+        }
+    }
+
+    public IEnumerator ExecutarIgnicaoPartidaAntesDeLocomover()
+    {
+        if (!Application.isPlaying) yield break;
+        if (_sistemasAeronaveLigados && !_emIgnicaoPartida && estadoAtual != EstadoAviao.ProntoNoPatio && estadoAtual != EstadoAviao.ReservaHangar)
+        {
+            yield break;
+        }
+
+        _emIgnicaoPartida = true;
+        AudioRuntime.DefinirAudioPartidaAerea(gameObject, true);
+        AudioRuntime.DefinirMotorAereo(gameObject, true);
+        AplicarEstadoSistemasAeronave(true, false);
+
+        float duracao = Mathf.Clamp(tempoIgnicaoPartida, 3f, 5f);
+        float fim = Time.time + duracao;
+        while (Time.time < fim)
+        {
+            if (this == null || !gameObject.activeInHierarchy)
+            {
+                _emIgnicaoPartida = false;
+                yield break;
+            }
+            if (_sistemaDanos != null && _sistemaDanos.Morreu)
+            {
+                _emIgnicaoPartida = false;
+                yield break;
+            }
+            yield return null;
+        }
+
+        _emIgnicaoPartida = false;
+    }
+
     protected virtual void Start()
     {
         // Aeronaves colocadas diretamente dentro de uma base na cena podem
@@ -254,6 +549,9 @@ public class ControleAviao : MonoBehaviour
         // Cache de componentes usados no Update
         _controleUnidade = GetComponent<ControleUnidade>()
             ?? GetComponentInParent<ControleUnidade>();
+        _identidadeUnidadeCache = GetComponent<IdentidadeUnidade>()
+            ?? GetComponentInParent<IdentidadeUnidade>();
+        GarantirPerfilManobraPatrulhaResolvido();
         _sistemaDanos = GetComponent<SistemaDeDanos>();
         _lancadorCaca = GetComponent<LancadorMisselCaca>();
         // R4: cache do C17 — evita GetComponent todo frame no Update
@@ -323,6 +621,15 @@ public class ControleAviao : MonoBehaviour
 
         // Cacheia altura de estacionamento para uso no pátio do porta-aviões
         _alturaEstacionamentoCache = ObterAlturaEstacionamento();
+
+        if (Application.isPlaying)
+        {
+            InicializarCacheSistemasAeronave();
+            if (estadoAtual == EstadoAviao.ReservaHangar || estadoAtual == EstadoAviao.ProntoNoPatio)
+            {
+                AplicarEstadoSistemasAeronave(false, false);
+            }
+        }
     }
 
     protected virtual void OnValidate()
@@ -555,12 +862,284 @@ public class ControleAviao : MonoBehaviour
         InfraPerformanceGameplay.AtualizarEstadoBase(estadoOtimizacao, transform, selecionado, engajado, heroico, 180f, 420f);
     }
 
+    protected virtual bool SuportaAlternanciaSentidoPatrulha =>
+        GarantirPerfilManobraPatrulhaResolvido() && !_ehAeronavePesadaOuTransporte;
+
+    protected virtual float MaxRollManobraPatrulhaEfetivo
+    {
+        get
+        {
+            GarantirPerfilManobraPatrulhaResolvido();
+            if (_ehAeronavePesadaOuTransporte) return 0f;
+            if (_ehBombardeiroPesado) return 28f;
+            return 90f;
+        }
+    }
+
+    protected virtual float MaxSubidaPatrulhaPercentual
+    {
+        get
+        {
+            GarantirPerfilManobraPatrulhaResolvido();
+            if (_ehAeronavePesadaOuTransporte) return 0f;
+            if (_ehBombardeiroPesado) return 0.15f;
+            return 0.30f;
+        }
+    }
+
+    protected virtual float MaxDescidaPatrulhaPercentual
+    {
+        get
+        {
+            GarantirPerfilManobraPatrulhaResolvido();
+            if (_ehAeronavePesadaOuTransporte) return 0f;
+            return 0.10f;
+        }
+    }
+
+    private bool GarantirPerfilManobraPatrulhaResolvido()
+    {
+        if (_perfilManobraPatrulhaResolvido) return true;
+        _perfilManobraPatrulhaResolvido = true;
+        _ehBombardeiroPesado = GetComponent<AviaoBombardeiro>() != null;
+        _ehAeronavePesadaOuTransporte = (this is BoeingE3Reconhecimento)
+            || (this is ControleAviaoAC130)
+            || (this is ControleAviaoComercial)
+            || EhC17Transporte()
+            || GetComponent<C700TransporteAereo>() != null;
+        return true;
+    }
+
+    private bool PodeAplicarVariacaoAltitudePatrulha(bool isKamikazeDiving = false)
+    {
+        return estadoAtual == EstadoAviao.EmMissao
+            && !ordemParaRetorno
+            && !emAtaqueMergulho
+            && !isKamikazeDiving
+            && estaEmModoVooFisico
+            && MaxSubidaPatrulhaPercentual > 0.001f
+            && (rotaPatrulhaSalva.Count > 0 || _sobAmeacaMissilAtiva);
+    }
+
+    private void ReiniciarEstadoManobrasPatrulha(bool restaurarSentido = true)
+    {
+        _patrulhaAltitudeFatorAtual = 0f;
+        _patrulhaAltitudeFatorAlvo = 0f;
+        _patrulhaAltitudeVelocidadeSmooth = 0f;
+        _patrulhaRollExtraAtual = 0f;
+        _patrulhaRollExtraVel = 0f;
+        _patrulhaRollAlvo = 0f;
+        _etapaManobraRoll = 0;
+        _faseSequenciaAltitude = 0;
+        _timersManobraPatrulhaIniciados = false;
+        if (restaurarSentido)
+        {
+            _direcaoCircuitoPatrulha = 1;
+            _passosPatrulhaNaVolta = 0;
+            _voltasParaAlternarSentido = UnityEngine.Random.Range(1, 3);
+        }
+    }
+
+    private void AtualizarDeteccaoAmeacaMissil()
+    {
+        if (estadoAtual != EstadoAviao.EmMissao)
+        {
+            _sobAmeacaMissilAtiva = false;
+            return;
+        }
+
+        float agora = Time.time;
+        bool danoRecente = (agora - _tempoUltimoDanoRecebido) < 6f;
+        bool detectouNovoMissil = false;
+
+        if (agora >= _proximaChecagemMissil)
+        {
+            _proximaChecagemMissil = agora + IntervaloChecagemMissilSegundos;
+            if (_identidadeUnidadeCache == null)
+            {
+                _identidadeUnidadeCache = GetComponent<IdentidadeUnidade>()
+                    ?? GetComponentInParent<IdentidadeUnidade>();
+            }
+            int meuTeam = _identidadeUnidadeCache != null ? _identidadeUnidadeCache.teamID : -1;
+            detectouNovoMissil = MissileThreatTracker.ExisteMissilAmeacandoUnidade(transform, meuTeam, 320f, 5.5f);
+            if (detectouNovoMissil)
+            {
+                _tempoFimAlertaMissil = agora + DuracaoAlertaMissilSegundos;
+            }
+        }
+
+        bool estavaEmAlerta = _sobAmeacaMissilAtiva;
+        bool emAlerta = detectouNovoMissil || danoRecente || agora <= _tempoFimAlertaMissil;
+        _sobAmeacaMissilAtiva = emAlerta;
+
+        if (emAlerta && !estavaEmAlerta)
+        {
+            IniciarManobraEvasivaSuave();
+        }
+    }
+
+    private void IniciarManobraEvasivaSuave()
+    {
+        if (!_timersManobraPatrulhaIniciados)
+        {
+            _timersManobraPatrulhaIniciados = true;
+        }
+
+        float maxRoll = MaxRollManobraPatrulhaEfetivo;
+        if (maxRoll > 5f)
+        {
+            _ladoRollAtual = _ladoRollAtual >= 0 ? -1 : 1;
+            _amplitudeRollAtual = Mathf.Min(90f, maxRoll);
+            _etapaManobraRoll = 1;
+            _patrulhaRollAlvo = _amplitudeRollAtual * _ladoRollAtual;
+            _proximaTrocaRollPatrulha = Time.time + 1.15f;
+        }
+
+        float maxSubida = MaxSubidaPatrulhaPercentual;
+        float maxDescida = MaxDescidaPatrulhaPercentual;
+        if (maxSubida > 0.01f)
+        {
+            bool prefereSubir = _patrulhaAltitudeFatorAtual <= 0.05f;
+            _patrulhaAltitudeFatorAlvo = prefereSubir ? maxSubida : -maxDescida;
+            _proximaTrocaAltitudePatrulha = Time.time + 2.2f;
+        }
+    }
+
+    private void AtualizarManobrasDinamicasPatrulha(float dt, float anguloPressaoLateralY, bool isKamikazeDiving)
+    {
+        if (dt <= 0f) return;
+
+        bool podeManobrarAltitude = PodeAplicarVariacaoAltitudePatrulha(isKamikazeDiving);
+        bool podeManobrarRoll = podeManobrarAltitude
+            && !isKamikazeDiving
+            && transform.position.y >= 25f
+            && MaxRollManobraPatrulhaEfetivo > 1f;
+
+        if (!podeManobrarAltitude)
+        {
+            _patrulhaAltitudeFatorAlvo = 0f;
+            _patrulhaAltitudeFatorAtual = Mathf.SmoothDamp(_patrulhaAltitudeFatorAtual, 0f, ref _patrulhaAltitudeVelocidadeSmooth, 0.9f, 0.35f, dt);
+        }
+        else
+        {
+            float agora = Time.time;
+            if (!_timersManobraPatrulhaIniciados)
+            {
+                _timersManobraPatrulhaIniciados = true;
+                _proximaTrocaAltitudePatrulha = agora + UnityEngine.Random.Range(4.5f, 8.5f);
+                _proximaTrocaRollPatrulha = agora + UnityEngine.Random.Range(3.5f, 7.5f);
+            }
+
+            if (agora >= _proximaTrocaAltitudePatrulha)
+            {
+                float maxSubida = MaxSubidaPatrulhaPercentual;
+                float maxDescida = MaxDescidaPatrulhaPercentual;
+                if (_sobAmeacaMissilAtiva)
+                {
+                    _patrulhaAltitudeFatorAlvo = _patrulhaAltitudeFatorAlvo >= 0.05f ? -maxDescida : maxSubida;
+                    _proximaTrocaAltitudePatrulha = agora + UnityEngine.Random.Range(2.0f, 3.2f);
+                }
+                else
+                {
+                    _faseSequenciaAltitude = (_faseSequenciaAltitude + 1) % 4;
+                    switch (_faseSequenciaAltitude)
+                    {
+                        case 1:
+                            _patrulhaAltitudeFatorAlvo = -maxDescida * UnityEngine.Random.Range(0.85f, 1.0f);
+                            _proximaTrocaAltitudePatrulha = agora + UnityEngine.Random.Range(5.5f, 8.5f);
+                            break;
+                        case 2:
+                            _patrulhaAltitudeFatorAlvo = maxSubida * UnityEngine.Random.Range(0.85f, 1.0f);
+                            _proximaTrocaAltitudePatrulha = agora + UnityEngine.Random.Range(6.5f, 10.5f);
+                            break;
+                        default:
+                            _patrulhaAltitudeFatorAlvo = 0f;
+                            _proximaTrocaAltitudePatrulha = agora + UnityEngine.Random.Range(7.5f, 13.0f);
+                            break;
+                    }
+                }
+            }
+
+            float tempoSuavizacaoAlt = _sobAmeacaMissilAtiva ? 1.25f : 2.8f;
+            _patrulhaAltitudeFatorAtual = Mathf.SmoothDamp(
+                _patrulhaAltitudeFatorAtual,
+                _patrulhaAltitudeFatorAlvo,
+                ref _patrulhaAltitudeVelocidadeSmooth,
+                tempoSuavizacaoAlt,
+                0.28f,
+                dt);
+        }
+
+        if (!podeManobrarRoll)
+        {
+            _etapaManobraRoll = 0;
+            _patrulhaRollAlvo = 0f;
+            _patrulhaRollExtraAtual = Mathf.SmoothDamp(_patrulhaRollExtraAtual, 0f, ref _patrulhaRollExtraVel, 0.55f, 160f, dt);
+            return;
+        }
+
+        float tempoAtual = Time.time;
+        float maxRoll = MaxRollManobraPatrulhaEfetivo;
+        if (_etapaManobraRoll == 0)
+        {
+            if (tempoAtual >= _proximaTrocaRollPatrulha
+                && (_sobAmeacaMissilAtiva || (velocidadeVooAtual > 20f && Mathf.Abs(anguloPressaoLateralY) < 28f)))
+            {
+                _ladoRollAtual = _ladoRollAtual >= 0 ? -1 : 1;
+                if (_sobAmeacaMissilAtiva)
+                {
+                    _amplitudeRollAtual = Mathf.Min(90f, maxRoll);
+                }
+                else
+                {
+                    bool giroCompleto90 = maxRoll >= 85f && UnityEngine.Random.value >= 0.58f;
+                    _amplitudeRollAtual = giroCompleto90
+                        ? Mathf.Min(90f, maxRoll)
+                        : Mathf.Min(UnityEngine.Random.Range(27f, 33f), maxRoll);
+                }
+
+                _etapaManobraRoll = 1;
+                _patrulhaRollAlvo = _amplitudeRollAtual * _ladoRollAtual;
+                _proximaTrocaRollPatrulha = tempoAtual + (_sobAmeacaMissilAtiva ? 1.15f : UnityEngine.Random.Range(1.9f, 2.9f));
+            }
+        }
+        else if (_etapaManobraRoll == 1 && tempoAtual >= _proximaTrocaRollPatrulha)
+        {
+            _etapaManobraRoll = 2;
+            _patrulhaRollAlvo = -_amplitudeRollAtual * _ladoRollAtual;
+            _proximaTrocaRollPatrulha = tempoAtual + (_sobAmeacaMissilAtiva ? 1.25f : UnityEngine.Random.Range(2.1f, 3.1f));
+        }
+        else if (_etapaManobraRoll == 2 && tempoAtual >= _proximaTrocaRollPatrulha)
+        {
+            _etapaManobraRoll = 3;
+            _patrulhaRollAlvo = 0f;
+            _proximaTrocaRollPatrulha = tempoAtual + (_sobAmeacaMissilAtiva ? 1.3f : UnityEngine.Random.Range(6.5f, 12.0f));
+        }
+        else if (_etapaManobraRoll == 3 && tempoAtual >= _proximaTrocaRollPatrulha)
+        {
+            _etapaManobraRoll = 0;
+        }
+
+        float tempoSuavizacaoRoll = _sobAmeacaMissilAtiva ? 0.55f : (_amplitudeRollAtual > 45f ? 0.95f : 0.80f);
+        _patrulhaRollExtraAtual = Mathf.SmoothDamp(
+            _patrulhaRollExtraAtual,
+            _patrulhaRollAlvo,
+            ref _patrulhaRollExtraVel,
+            tempoSuavizacaoRoll,
+            160f,
+            dt);
+    }
+
     protected virtual void ManobraVooRealista(float multDano = 1f)
     {
         alvoGPSVoo = LimitarPosicaoAosLimitesDoMapa(alvoGPSVoo);
         // R5: usa cache em vez de GetComponent<KamikazeDrone>() todo frame
         KamikazeDrone kd = _kamikazeDroneCacheFeito ? _kamikazeDroneCache : GetComponent<KamikazeDrone>();
         bool isKamikazeDiving = kd != null && kd.kamikazeAtivo;
+        float dt = Time.deltaTime;
+
+        AtualizarDeteccaoAmeacaMissil();
+
         bool exigeAfastamentoDoSolo = estadoAtual != EstadoAviao.Pousando
             && !isKamikazeDiving
             && !emAtaqueMergulho;
@@ -569,41 +1148,43 @@ public class ControleAviao : MonoBehaviour
             alvoGPSVoo.y = Mathf.Max(alvoGPSVoo.y, AltitudeMinimaSeguraNaPosicao(alvoGPSVoo));
         }
 
-        float dt = Time.deltaTime;
         Vector3 retaAteAlvo = alvoGPSVoo - transform.position;
         float anguloPressaoLateralY = 0f;
-        
+
+        Vector3 frenteAtual = transform.forward.sqrMagnitude > 0.0001f ? transform.forward.normalized : Vector3.forward;
+        Quaternion baseNavegacao = Quaternion.LookRotation(frenteAtual, Vector3.up);
+        Quaternion rotNavegacao = baseNavegacao;
+
         if (retaAteAlvo.sqrMagnitude > 0.1f)
         {
-            Vector3 upRef = Mathf.Abs(Vector3.Dot(retaAteAlvo.normalized, Vector3.up)) > 0.99f ? transform.up : Vector3.up;
-            Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo, upRef);
-            anguloPressaoLateralY = Vector3.SignedAngle(transform.forward, retaAteAlvo, Vector3.up);
-            
-            // Trata a taxa como graus por segundo. O Slerp anterior podia
-            // consumir quase todo o angulo em um unico frame, gerando o
-            // corte brusco visto quando o caça retornava para a base.
-            transform.rotation = Quaternion.RotateTowards(
-                transform.rotation,
+            Quaternion olharMundoDesejado = Quaternion.LookRotation(retaAteAlvo, Vector3.up);
+            anguloPressaoLateralY = Vector3.SignedAngle(frenteAtual, retaAteAlvo, Vector3.up);
+
+            // Trata a taxa como graus por segundo em uma base sem rolagem axial,
+            // garantindo que giros sobre o próprio eixo não desviem a trajetória.
+            rotNavegacao = Quaternion.RotateTowards(
+                baseNavegacao,
                 olharMundoDesejado,
                 Mathf.Max(1f, taxaDeGiroLeme) * dt);
         }
-        
+
+        AtualizarManobrasDinamicasPatrulha(dt, anguloPressaoLateralY, isKamikazeDiving);
+
         float multiplicadorPatrulha = 1f;
+        bool sobAmeacaMissil = _sobAmeacaMissilAtiva && !isKamikazeDiving;
         if (estadoAtual == EstadoAviao.EmMissao && !alvoPrioritarioIA && !emAtaqueMergulho)
         {
-            // R5: usa cache em vez de GetComponent<KamikazeDrone>() por frame
-            KamikazeDrone kdTemp = _kamikazeDroneCacheFeito ? _kamikazeDroneCache : GetComponent<KamikazeDrone>();
-            if (kdTemp == null || !kdTemp.kamikazeAtivo)
+            if (kd == null || !kd.kamikazeAtivo)
             {
-                bool sobAtaqueOuEngajado = (_lancadorCaca != null && _lancadorCaca.TemInimigosDetectados) 
+                bool sobAtaqueOuEngajado = (_lancadorCaca != null && _lancadorCaca.TemInimigosDetectados)
                                            || (Time.time - _tempoUltimoDanoRecebido < 8f);
-                if (sobAtaqueOuEngajado)
+                if (sobAmeacaMissil)
+                {
+                    multiplicadorPatrulha = MultiplicadorVelocidadeAmeacaMissil; // Emergência 150% contra míssil
+                }
+                else if (sobAtaqueOuEngajado)
                 {
                     multiplicadorPatrulha = 1.2f; // Acelera a 120% no combate/ataque
-                }
-                else
-                {
-                    multiplicadorPatrulha = 1.0f; // Velocidade máxima na patrulha normal (100%)
                 }
             }
         }
@@ -630,36 +1211,57 @@ public class ControleAviao : MonoBehaviour
             }
         }
 
-        float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * multiplicadorPatrulha)
-            * multDano * MultiplicadorVelocidadeComandoHud;
+        float fatorComandoHud = MultiplicadorVelocidadeComandoHud;
+        float fatorMissaoHud = sobAmeacaMissil && estadoAtual == EstadoAviao.EmMissao
+            ? Mathf.Clamp(Mathf.Max(fatorComandoHud * 1.25f, MultiplicadorVelocidadeAmeacaMissil), 0.5f, 2f)
+            : fatorComandoHud * multiplicadorPatrulha;
+
+        float velFinal = (velocidadeMaximaVoo * multiplicadorVelocidadeTurbo * fatorMissaoHud) * multDano;
         if (estadoAtual == EstadoAviao.Pousando)
         {
             velFinal = LimitarVelocidadeAproximacao(velFinal);
         }
         float taxaVelocidade = velFinal >= velocidadeVooAtual ? aceleracaoVoo : desaceleracaoVoo;
         velocidadeVooAtual = Mathf.MoveTowards(velocidadeVooAtual, velFinal, taxaVelocidade * dt);
-        Vector3 novaPos = transform.position + transform.forward * (velocidadeVooAtual * dt);
+        Vector3 direcaoNavegacao = rotNavegacao * Vector3.forward;
+        Vector3 novaPos = transform.position + direcaoNavegacao * (velocidadeVooAtual * dt);
 
         if (novaPos.y < 15f && !isKamikazeDiving)
         {
             novaPos.y = 15f;
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.Euler(0, transform.eulerAngles.y, 0), 30f * dt);
+            Vector3 frenteNivelada = new Vector3(direcaoNavegacao.x, 0f, direcaoNavegacao.z);
+            if (frenteNivelada.sqrMagnitude > 0.001f)
+            {
+                rotNavegacao = Quaternion.RotateTowards(rotNavegacao, Quaternion.LookRotation(frenteNivelada.normalized, Vector3.up), 30f * dt);
+            }
         }
 
         if (exigeAfastamentoDoSolo)
         {
             novaPos.y = Mathf.Max(novaPos.y, AltitudePisoFisicoNaPosicao(novaPos));
         }
-        
+
         transform.position = novaPos;
+
+        float fatorRollPouso = estadoAtual == EstadoAviao.Pousando ? 0.35f : 1f;
+        float inclinacaoCurva = Mathf.Clamp(anguloPressaoLateralY * -2.2f, -asaBankingMaximo, asaBankingMaximo) * fatorRollPouso;
+        float inclinacaoAlvoX = Mathf.Clamp(retaAteAlvo.y * -3.0f, -arfagemPitchMaxima, arfagemPitchMaxima);
+        giroLateralRoll = Mathf.Lerp(giroLateralRoll, inclinacaoCurva, dt * 4.5f);
+        empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, dt * 5f);
+        float rollTotal = Mathf.Clamp(giroLateralRoll + _patrulhaRollExtraAtual, -95f, 95f);
 
         if (modeloMecanicoVisual != null)
         {
-            float inclinacaoAlvoZ = Mathf.Clamp(anguloPressaoLateralY * -2.5f, -asaBankingMaximo, asaBankingMaximo);
-            float inclinacaoAlvoX = Mathf.Clamp(retaAteAlvo.y * -3.0f, -arfagemPitchMaxima, arfagemPitchMaxima);
-            giroLateralRoll = Mathf.Lerp(giroLateralRoll, inclinacaoAlvoZ, dt * 5f);
-            empinadaPitch = Mathf.Lerp(empinadaPitch, inclinacaoAlvoX, dt * 5f);
-            modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, giroLateralYInicial, giroLateralRoll);
+            transform.rotation = rotNavegacao;
+            modeloMecanicoVisual.localRotation = Quaternion.Euler(empinadaPitch, giroLateralYInicial, rollTotal);
+        }
+        else if (!isKamikazeDiving && novaPos.y >= 15f && (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando))
+        {
+            transform.rotation = rotNavegacao * Quaternion.AngleAxis(rollTotal, Vector3.forward);
+        }
+        else
+        {
+            transform.rotation = rotNavegacao;
         }
     }
 
@@ -667,6 +1269,10 @@ public class ControleAviao : MonoBehaviour
     {
         float altitudeMinima = Mathf.Max(AltitudeMinimaVooEfetiva, 60f);
         float altitudeCruzeiro = Mathf.Max(altitudeVoo, altitudeMinima);
+        if (PodeAplicarVariacaoAltitudePatrulha() && _patrulhaAltitudeFatorAtual < -0.001f)
+        {
+            altitudeCruzeiro = Mathf.Max(altitudeMinima, altitudeCruzeiro * (1f + _patrulhaAltitudeFatorAtual));
+        }
         if (TryObterAlturaSolo(posicao, out float alturaSolo))
         {
             return Mathf.Max(altitudeCruzeiro, alturaSolo + altitudeMinima);
@@ -1276,6 +1882,7 @@ public class ControleAviao : MonoBehaviour
             }
 
             sentidoOrbita = UnityEngine.Random.value >= 0.5f ? 1 : -1;
+            ReiniciarEstadoManobrasPatrulha(true);
             if (rotinaRetomadaMissao != null)
             {
                 StopCoroutine(rotinaRetomadaMissao);
@@ -1328,6 +1935,7 @@ public class ControleAviao : MonoBehaviour
         emAtaqueMergulho = false;
         alvoPrioritarioIA = false;
         indiceRetanguloPatrulha = 0;
+        ReiniciarEstadoManobrasPatrulha(true);
 
         // O lançamento do porta-aviões pode entregar uma rota multiponto já
         // registrada pelo menu. O destino recebido pelo método é apenas o
@@ -1368,18 +1976,7 @@ public class ControleAviao : MonoBehaviour
             bool patrulhaAtiva = emPatrulha || rotaPatrulhaSalva.Count > 0;
             if (patrulhaAtiva && rotaPatrulhaSalva.Count > 0)
             {
-                Vector3 proximoPonto = rotaPatrulhaSalva[indiceRetanguloPatrulha % rotaPatrulhaSalva.Count];
-                proximoPonto.y = Mathf.Max(proximoPonto.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
-                alvoGPSVoo = proximoPonto;
-                centroDaPatrulha = proximoPonto;
-
-                Vector3 diferenca = transform.position - proximoPonto;
-                diferenca.y = 0f;
-                float margem = Mathf.Max(45f, margemChegadaMissao);
-                if (diferenca.sqrMagnitude <= margem * margem)
-                {
-                    indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % rotaPatrulhaSalva.Count;
-                }
+                AvancarPassoPatrulhaEmRota(true);
             }
             else
             {
@@ -1420,27 +2017,11 @@ public class ControleAviao : MonoBehaviour
             yield return StartCoroutine(PousarEmAeroportoAposVooCarrier());
             yield break;
         }
-        if (carrier != null && carrier.SolicitarPousoOperacionalV2(this))
+        bool pousoV2Iniciado = false;
+        yield return StartCoroutine(AguardarESolicitarPousoCarrierV2(carrier, iniciado => pousoV2Iniciado = iniciado));
+        if (pousoV2Iniciado || estadoAtual != EstadoAviao.EmMissao)
         {
             yield break;
-        }
-
-        AeronaveEmbarcadaV2 embarcada = GetComponent<AeronaveEmbarcadaV2>();
-        WaitForSeconds intervaloFila = new WaitForSeconds(1f);
-        while (carrier != null && carrier.operacoesV2AssumiuControle && embarcada != null
-            && embarcada.Registro.estado == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera)
-        {
-            // A full deck is temporary: hold and retry instead of entering the
-            // legacy landing routine while V2 still owns the carrier.
-            Vector3 centro = carrier.transform.position;
-            Vector3 radial = transform.position - centro;
-            radial.y = 0f;
-            if (radial.sqrMagnitude < 1f) radial = carrier.transform.forward;
-            radial = Quaternion.AngleAxis(30f, Vector3.up) * radial.normalized;
-            alvoGPSVoo = centro + radial * Mathf.Max(600f, raioOrbitaMissao);
-            alvoGPSVoo.y = Mathf.Max(centro.y + altitudeVoo, AltitudeMinimaVooEfetiva);
-            yield return intervaloFila;
-            if (carrier != null && carrier.SolicitarPousoOperacionalV2(this)) yield break;
         }
 
         // Fallback seguro caso o layout V2 esteja ausente ou incompleto. O
@@ -1473,6 +2054,46 @@ public class ControleAviao : MonoBehaviour
                 ConcluirRetornoOperacionalNoCarrier();
             }
         }
+    }
+
+    private IEnumerator AguardarESolicitarPousoCarrierV2(GerenciadorPortaAvioes carrier, Action<bool> onConcluido)
+    {
+        if (carrier == null || !carrier.operacoesV2AssumiuControle)
+        {
+            onConcluido?.Invoke(false);
+            yield break;
+        }
+
+        if (carrier.SolicitarPousoOperacionalV2(this))
+        {
+            onConcluido?.Invoke(true);
+            yield break;
+        }
+
+        AeronaveEmbarcadaV2 embarcada = GetComponent<AeronaveEmbarcadaV2>();
+        WaitForSeconds intervaloFila = new WaitForSeconds(1f);
+        while (carrier != null
+            && carrier.operacoesV2AssumiuControle
+            && estadoAtual == EstadoAviao.EmMissao
+            && embarcada != null
+            && embarcada.Registro.estado == EstadoOperacaoPortaAvioesV2.CircuitoDeEspera)
+        {
+            Vector3 centro = carrier.transform.position;
+            Vector3 radial = transform.position - centro;
+            radial.y = 0f;
+            if (radial.sqrMagnitude < 1f) radial = carrier.transform.forward;
+            radial = Quaternion.AngleAxis(30f, Vector3.up) * radial.normalized;
+            alvoGPSVoo = centro + radial * Mathf.Max(600f, raioOrbitaMissao);
+            alvoGPSVoo.y = Mathf.Max(centro.y + altitudeVoo, AltitudeMinimaVooEfetiva);
+            yield return intervaloFila;
+            if (carrier != null && carrier.SolicitarPousoOperacionalV2(this))
+            {
+                onConcluido?.Invoke(true);
+                yield break;
+            }
+        }
+
+        onConcluido?.Invoke(false);
     }
 
     private IEnumerator PousarEmAeroportoAposVooCarrier()
@@ -1964,6 +2585,10 @@ public class ControleAviao : MonoBehaviour
             {
                 continue;
             }
+            if (candidata is GerenciadorPortaAvioes && !PodeUsarPortaAvioesEmVoo())
+            {
+                continue;
+            }
 
             if (!CalcularConsumoMissaoAteBase(destino, candidata, combustivel, out float consumoCandidata))
             {
@@ -2003,7 +2628,7 @@ public class ControleAviao : MonoBehaviour
         pontoRetorno.y = transform.position.y;
         float ida = Vector3.Distance(transform.position, destino);
         float volta = Vector3.Distance(destino, pontoRetorno);
-        float circuitoMinimo = Mathf.Clamp(raioOrbitaMissao * Mathf.PI * 0.5f, 180f, 900f);
+        float circuitoMinimo = Mathf.Clamp(raioOrbitaMissao * MultiplicadorAmplitudePatrulha * Mathf.PI * 0.5f, 450f, 2250f);
         consumoNecessario = combustivel.EstimarConsumoParaDistancia(
             ida + volta + circuitoMinimo,
             Mathf.Max(60f, velocidadeMaximaVoo));
@@ -2248,14 +2873,125 @@ public class ControleAviao : MonoBehaviour
         return true;
     }
 
+    public static int ObterTeamIdAviao(ControleAviao aviao)
+    {
+        if (aviao == null) return 1;
+        IdentidadeUnidade identidadeAviao = aviao.GetComponent<IdentidadeUnidade>() ?? aviao.GetComponentInParent<IdentidadeUnidade>();
+        return identidadeAviao != null ? identidadeAviao.teamID : 1;
+    }
+
+    public static int ObterTeamIdBase(GerenciadorAeroporto baseCandidata)
+    {
+        if (baseCandidata == null) return 1;
+        IdentidadeUnidade identidadeBase = baseCandidata.GetComponent<IdentidadeUnidade>() ?? baseCandidata.GetComponentInParent<IdentidadeUnidade>();
+        return identidadeBase != null ? identidadeBase.teamID : 1;
+    }
+
     public static bool BasesDaMesmaEquipe(ControleAviao aviao, GerenciadorAeroporto baseCandidata)
     {
         if (aviao == null || baseCandidata == null) return false;
-        IdentidadeUnidade identidadeAviao = aviao.GetComponent<IdentidadeUnidade>() ?? aviao.GetComponentInParent<IdentidadeUnidade>();
-        IdentidadeUnidade identidadeBase = baseCandidata.GetComponent<IdentidadeUnidade>();
-        int equipeAviao = identidadeAviao != null ? identidadeAviao.teamID : 1;
-        int equipeBase = identidadeBase != null ? identidadeBase.teamID : 1;
-        return equipeAviao == equipeBase;
+        return ObterTeamIdAviao(aviao) == ObterTeamIdBase(baseCandidata);
+    }
+
+    public static bool PodeUsarBaseAliadaParaApoio(
+        ControleAviao aviao,
+        GerenciadorAeroporto baseCandidata,
+        bool exigirAutorizacaoAtiva = true)
+    {
+        if (aviao == null || baseCandidata == null || !baseCandidata.gameObject.activeInHierarchy) return false;
+        if (baseCandidata is GerenciadorPortaAvioes || !BasePodeReceberRetorno(baseCandidata)) return false;
+
+        int equipeAviao = ObterTeamIdAviao(aviao);
+        int equipeBase = ObterTeamIdBase(baseCandidata);
+        if (equipeAviao <= 0 || equipeBase <= 0 || equipeAviao == equipeBase) return false;
+
+        bool permissaoOk = exigirAutorizacaoAtiva
+            ? ContextoTerritorialDiplomatico.ReabastecimentoAliadoAutorizado(equipeAviao, equipeBase)
+            : ContextoTerritorialDiplomatico.SaoAliadosParaApoioAereo(equipeAviao, equipeBase);
+        if (!permissaoOk) return false;
+
+        return baseCandidata == aviao.aeroportoOrigem || baseCandidata.ObterPrimeiraVagaLivre() != null;
+    }
+
+    public GerenciadorAeroporto EncontrarAeroportoAliadoParaApoio(bool apenasJaAutorizados)
+    {
+        if (EhC17Transporte()) return null;
+
+        RegistroEntidadesJogo.FillAeroportos(basesRetornoBuffer);
+        GerenciadorAeroporto melhorAliada = null;
+        float menorDistancia = float.MaxValue;
+
+        for (int i = 0; i < basesRetornoBuffer.Count; i++)
+        {
+            GerenciadorAeroporto candidata = basesRetornoBuffer[i];
+            if (!PodeUsarBaseAliadaParaApoio(this, candidata, apenasJaAutorizados))
+            {
+                continue;
+            }
+
+            float distancia = DistanciaHorizontalAtePonto(ObterPontoAproximacaoDaBase(candidata));
+            if (distancia < menorDistancia)
+            {
+                menorDistancia = distancia;
+                melhorAliada = candidata;
+            }
+        }
+
+        return melhorAliada;
+    }
+
+    public bool SolicitarPousoReabastecimentoAliado(GerenciadorAeroporto baseAliadaPreferencial = null)
+    {
+        if (EhC17Transporte()) return false;
+        if (estadoAtual != EstadoAviao.EmMissao && estadoAtual != EstadoAviao.Decolando)
+        {
+            return false;
+        }
+
+        GerenciadorAeroporto baseAliada = PodeUsarBaseAliadaParaApoio(this, baseAliadaPreferencial, true)
+            ? baseAliadaPreferencial
+            : EncontrarAeroportoAliadoParaApoio(true);
+        if (baseAliada == null)
+        {
+            return false;
+        }
+
+        if (aeroportoOrigem != null && BasesDaMesmaEquipe(this, aeroportoOrigem))
+        {
+            baseOrigemAnteriorAoApoioAliado = aeroportoOrigem;
+        }
+        else if (baseOrigemAnteriorAoApoioAliado == null || !BasesDaMesmaEquipe(this, baseOrigemAnteriorAoApoioAliado))
+        {
+            baseOrigemAnteriorAoApoioAliado = EncontrarMelhorBaseRetornoPropria();
+        }
+
+        destinoManualDefinido = false;
+        PrepararRetornoSeguro(baseAliada, "apoio_aliado");
+        return true;
+    }
+
+    public GerenciadorAeroporto EncontrarMelhorBaseRetornoPropria()
+    {
+        RegistroEntidadesJogo.FillAeroportos(basesRetornoBuffer);
+        GerenciadorAeroporto melhorPropria = null;
+        float menorDistancia = float.MaxValue;
+
+        for (int i = 0; i < basesRetornoBuffer.Count; i++)
+        {
+            GerenciadorAeroporto candidata = basesRetornoBuffer[i];
+            if (candidata == null || !candidata.gameObject.activeInHierarchy) continue;
+            if (!BasesDaMesmaEquipe(this, candidata) || !BasePodeReceberRetorno(candidata)) continue;
+            if (candidata is GerenciadorPortaAvioes && !PodeUsarPortaAvioesEmVoo()) continue;
+
+            float distancia = DistanciaHorizontalAtePonto(ObterPontoAproximacaoDaBase(candidata));
+            if (distancia < menorDistancia)
+            {
+                menorDistancia = distancia;
+                melhorPropria = candidata;
+            }
+        }
+
+        return melhorPropria;
     }
 
     public static bool PodeReceberPouso(GerenciadorAeroporto baseCandidata)
@@ -2289,6 +3025,13 @@ public class ControleAviao : MonoBehaviour
     private void AplicarBaseDestinoRetornoPendente()
     {
         GerenciadorAeroporto destino = baseDestinoRetornoPendente;
+        if (destino == null && aeroportoOrigem != null && !BasesDaMesmaEquipe(this, aeroportoOrigem))
+        {
+            destino = baseOrigemAnteriorAoApoioAliado != null && BasesDaMesmaEquipe(this, baseOrigemAnteriorAoApoioAliado)
+                ? baseOrigemAnteriorAoApoioAliado
+                : EncontrarMelhorBaseRetornoPropria();
+        }
+
         if (destino == null || destino == aeroportoOrigem)
         {
             baseDestinoRetornoPendente = null;
@@ -2296,6 +3039,10 @@ public class ControleAviao : MonoBehaviour
         }
 
         GerenciadorAeroporto basePartida = aeroportoOrigem;
+        bool saindoDeBaseAliadaParaCasa = basePartida != null
+            && !BasesDaMesmaEquipe(this, basePartida)
+            && BasesDaMesmaEquipe(this, destino);
+
         if (basePartida != null)
         {
             basePartida.avioesNoPatio.Remove(this);
@@ -2306,6 +3053,14 @@ public class ControleAviao : MonoBehaviour
         destinoPousoEscolhido = destino;
         vagaRetorno = null;
         baseDestinoRetornoPendente = null;
+        if (saindoDeBaseAliadaParaCasa)
+        {
+            baseOrigemAnteriorAoApoioAliado = null;
+            if (baseEstacionamentoAtual == basePartida)
+            {
+                baseEstacionamentoAtual = null;
+            }
+        }
         if (destino is GerenciadorPortaAvioes)
         {
             DefinirProtecaoCombustivelCarrier(true);
@@ -2375,6 +3130,7 @@ public class ControleAviao : MonoBehaviour
             : null;
         rotaPatrulhaSalva.Clear();
         indiceRetanguloPatrulha = 0;
+        ReiniciarEstadoManobrasPatrulha(true);
         if (rotaNormalizada == null || rotaNormalizada.Count == 0)
         {
             return;
@@ -2403,7 +3159,7 @@ public class ControleAviao : MonoBehaviour
         {
             for (int i = 0; i < rota.Count; i++)
             {
-                resultado.Add(rota[i]);
+                resultado.Add(LimitarPosicaoAosLimitesDoMapa(rota[i]));
             }
             return resultado;
         }
@@ -2432,12 +3188,15 @@ public class ControleAviao : MonoBehaviour
 
         if (rota.Count == 1)
         {
-            float meioComprimento = Mathf.Clamp(Mathf.Max(raioOrbitaMissao * 1.15f, 300f), 300f, 900f);
-            float meioLargura = Mathf.Clamp(meioComprimento * 0.45f, 160f, 520f);
-            resultado.Add(primeiro - longitudinal * meioComprimento - lateral * meioLargura);
-            resultado.Add(primeiro + longitudinal * meioComprimento - lateral * meioLargura);
-            resultado.Add(primeiro + longitudinal * meioComprimento + lateral * meioLargura);
-            resultado.Add(primeiro - longitudinal * meioComprimento + lateral * meioLargura);
+            float meioComprimento = Mathf.Clamp(
+                Mathf.Max(raioOrbitaMissao * 1.15f, 300f) * MultiplicadorAmplitudePatrulha,
+                750f,
+                2250f);
+            float meioLargura = Mathf.Clamp(meioComprimento * 0.45f, 400f, 1300f);
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro - longitudinal * meioComprimento - lateral * meioLargura));
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro + longitudinal * meioComprimento - lateral * meioLargura));
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro + longitudinal * meioComprimento + lateral * meioLargura));
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro - longitudinal * meioComprimento + lateral * meioLargura));
             return resultado;
         }
 
@@ -2445,11 +3204,14 @@ public class ControleAviao : MonoBehaviour
         {
             Vector3 segundo = rota[1];
             segundo.y = Mathf.Max(segundo.y, altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
-            float meioLargura = Mathf.Clamp(Vector3.Distance(primeiro, segundo) * 0.28f, 140f, 500f);
-            resultado.Add(primeiro - lateral * meioLargura);
-            resultado.Add(segundo - lateral * meioLargura);
-            resultado.Add(segundo + lateral * meioLargura);
-            resultado.Add(primeiro + lateral * meioLargura);
+            float meioLargura = Mathf.Clamp(
+                Vector3.Distance(primeiro, segundo) * 0.28f * MultiplicadorAmplitudePatrulha,
+                350f,
+                1250f);
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro - lateral * meioLargura));
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(segundo - lateral * meioLargura));
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(segundo + lateral * meioLargura));
+            resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro + lateral * meioLargura));
             return resultado;
         }
 
@@ -2462,14 +3224,61 @@ public class ControleAviao : MonoBehaviour
         deslocamentoLateral = Vector3.ProjectOnPlane(deslocamentoLateral, longitudinal);
         if (deslocamentoLateral.sqrMagnitude < 100f)
         {
-            deslocamentoLateral = lateral * Mathf.Clamp(raioOrbitaMissao * 0.9f, 180f, 500f);
+            deslocamentoLateral = lateral * Mathf.Clamp(raioOrbitaMissao * 0.9f * MultiplicadorAmplitudePatrulha, 450f, 1250f);
         }
 
-        resultado.Add(primeiro);
-        resultado.Add(segundoPonto);
-        resultado.Add(segundoPonto + deslocamentoLateral);
-        resultado.Add(primeiro + deslocamentoLateral);
+        resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro));
+        resultado.Add(LimitarPosicaoAosLimitesDoMapa(segundoPonto));
+        resultado.Add(LimitarPosicaoAosLimitesDoMapa(segundoPonto + deslocamentoLateral));
+        resultado.Add(LimitarPosicaoAosLimitesDoMapa(primeiro + deslocamentoLateral));
         return resultado;
+    }
+
+    protected void AvancarPassoPatrulhaEmRota(bool atualizarCentroPatrulha)
+    {
+        int total = rotaPatrulhaSalva.Count;
+        if (total <= 0) return;
+
+        int indiceSeguro = ((indiceRetanguloPatrulha % total) + total) % total;
+        indiceRetanguloPatrulha = indiceSeguro;
+
+        Vector3 pontoRota = rotaPatrulhaSalva[indiceSeguro];
+        float altitudeBase = Mathf.Max(pontoRota.y, altitudeVoo, AltitudeMinimaVooEfetiva);
+        if (PodeAplicarVariacaoAltitudePatrulha())
+        {
+            pontoRota.y = Mathf.Max(AltitudeMinimaVooEfetiva, altitudeBase * (1f + _patrulhaAltitudeFatorAtual));
+        }
+        else
+        {
+            pontoRota.y = altitudeBase;
+        }
+
+        alvoGPSVoo = pontoRota;
+        if (atualizarCentroPatrulha)
+        {
+            centroDaPatrulha = pontoRota;
+        }
+
+        Vector3 diferencaRota = transform.position - pontoRota;
+        diferencaRota.y = 0f;
+        float margemRota = Mathf.Max(45f, margemChegadaMissao);
+        if (diferencaRota.sqrMagnitude <= margemRota * margemRota)
+        {
+            int direcao = SuportaAlternanciaSentidoPatrulha && _direcaoCircuitoPatrulha < 0 ? -1 : 1;
+            if (total >= 3 && SuportaAlternanciaSentidoPatrulha)
+            {
+                _passosPatrulhaNaVolta++;
+                if (_passosPatrulhaNaVolta >= total * Mathf.Max(1, _voltasParaAlternarSentido))
+                {
+                    _passosPatrulhaNaVolta = 0;
+                    _direcaoCircuitoPatrulha = -direcao;
+                    _voltasParaAlternarSentido = UnityEngine.Random.Range(1, 3);
+                    direcao = _direcaoCircuitoPatrulha;
+                }
+            }
+
+            indiceRetanguloPatrulha = ((indiceSeguro + direcao) % total + total) % total;
+        }
     }
 
     public virtual void AtualizarDestinoPatrulha(Vector3 destino)
@@ -2490,7 +3299,7 @@ public class ControleAviao : MonoBehaviour
             return;
         }
 
-        GerenciadorAeroporto baseSegura = EncontrarMelhorBaseRetorno();
+        GerenciadorAeroporto baseSegura = EncontrarMelhorBaseRetorno(true);
         if (baseSegura == null)
         {
             // Sem base registrada não há destino seguro para o retorno. Ainda
@@ -2509,6 +3318,25 @@ public class ControleAviao : MonoBehaviour
         {
             PrepararRetornoSeguro(baseSegura, "combustivel");
         }
+    }
+
+    public bool RetornarParaReabastecimentoEMissao(string motivo = "municao")
+    {
+        if (EhC17Transporte()) return false;
+        if (estadoAtual != EstadoAviao.EmMissao && estadoAtual != EstadoAviao.Decolando)
+        {
+            return false;
+        }
+
+        GerenciadorAeroporto baseMaisProxima = EncontrarMelhorBaseRetorno(true);
+        if (baseMaisProxima == null || !BasePodeReceberRetorno(baseMaisProxima))
+        {
+            ComandoRetornarBase();
+            return ordemParaRetorno;
+        }
+
+        PrepararRetornoSeguro(baseMaisProxima, string.IsNullOrWhiteSpace(motivo) ? "municao" : motivo);
+        return ordemParaRetorno;
     }
 
     private bool DeveRetornarAgora(CombustivelUnidade combustivel, GerenciadorAeroporto baseSegura)
@@ -2563,8 +3391,30 @@ public class ControleAviao : MonoBehaviour
             return;
         }
 
+        if (rotaPatrulhaSalva.Count == 0 && ultimoObjetivoMissao == Vector3.zero)
+        {
+            Vector3 objetivoAtual = centroDaPatrulha != Vector3.zero ? centroDaPatrulha : alvoGPSVoo;
+            if (VetorDeVooValido(objetivoAtual))
+            {
+                ultimoObjetivoMissao = NormalizarDestinoDeVoo(objetivoAtual);
+            }
+        }
+
         ultimoMotivoRetorno = motivo;
-        retomarMissaoAposAbastecer = motivo == "combustivel";
+        retomarMissaoAposAbastecer = motivo == "combustivel" || motivo == "municao" || motivo == "apoio_aliado";
+
+        if (!BasesDaMesmaEquipe(this, baseSegura))
+        {
+            if (aeroportoOrigem != null && BasesDaMesmaEquipe(this, aeroportoOrigem))
+            {
+                baseOrigemAnteriorAoApoioAliado = aeroportoOrigem;
+            }
+            else if (baseOrigemAnteriorAoApoioAliado == null || !BasesDaMesmaEquipe(this, baseOrigemAnteriorAoApoioAliado))
+            {
+                baseOrigemAnteriorAoApoioAliado = EncontrarMelhorBaseRetornoPropria();
+            }
+            destinoManualDefinido = false;
+        }
 
         if (baseSegura != aeroportoOrigem)
         {
@@ -2584,59 +3434,119 @@ public class ControleAviao : MonoBehaviour
         ComandoRetornarBase();
     }
 
-    private GerenciadorAeroporto EncontrarMelhorBaseRetorno()
+    private GerenciadorAeroporto EncontrarMelhorBaseRetorno(bool priorizarBaseOuPortaAvioesMaisProximo = false)
     {
         if (destinoManualDefinido)
             return destinoPousoEscolhido != null && destinoPousoEscolhido.gameObject.activeInHierarchy
                 && BasePodeReceberRetorno(destinoPousoEscolhido) ? destinoPousoEscolhido : null;
 
-        // A missão pertence à base que lançou a aeronave. Nunca troca
-        // silenciosamente para outro aeroporto ou porta-aviões aliado.
-        if (BasePodeReceberRetorno(aeroportoOrigem))
+        GerenciadorAeroporto origemPropria = aeroportoOrigem != null
+            && aeroportoOrigem.gameObject.activeInHierarchy
+            && BasePodeReceberRetorno(aeroportoOrigem)
+            && BasesDaMesmaEquipe(this, aeroportoOrigem)
+            ? aeroportoOrigem
+            : (baseOrigemAnteriorAoApoioAliado != null
+                && baseOrigemAnteriorAoApoioAliado.gameObject.activeInHierarchy
+                && BasePodeReceberRetorno(baseOrigemAnteriorAoApoioAliado)
+                && BasesDaMesmaEquipe(this, baseOrigemAnteriorAoApoioAliado)
+                ? baseOrigemAnteriorAoApoioAliado
+                : null);
+
+        GerenciadorAeroporto origemValida = origemPropria;
+        if (!priorizarBaseOuPortaAvioesMaisProximo && origemValida != null)
         {
-            return aeroportoOrigem;
+            return origemValida;
         }
 
         RegistroEntidadesJogo.FillAeroportos(basesRetornoBuffer);
-        IdentidadeUnidade identidadeAviao = GetComponent<IdentidadeUnidade>()
-            ?? GetComponentInParent<IdentidadeUnidade>();
-        int equipeAviao = identidadeAviao != null ? identidadeAviao.teamID : 0;
+        float distanciaOrigem = origemValida != null
+            ? DistanciaHorizontalAtePonto(ObterPontoAproximacaoDaBase(origemValida))
+            : float.MaxValue;
+        bool aceitaPortaAvioes = PodeUsarPortaAvioesEmVoo();
 
-        GerenciadorAeroporto melhorAliado = null;
-        float melhorDistanciaAliada = float.MaxValue;
-        GerenciadorAeroporto melhorSemIdentidade = null;
-        float melhorDistanciaSemIdentidade = float.MaxValue;
+        GerenciadorAeroporto melhorCandidata = null;
+        float melhorScore = float.MaxValue;
+        float melhorDistanciaReal = float.MaxValue;
 
         for (int i = 0; i < basesRetornoBuffer.Count; i++)
         {
             GerenciadorAeroporto candidata = basesRetornoBuffer[i];
-            if (!BasePodeReceberRetorno(candidata))
+            if (candidata == null || !candidata.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+            if (!BasesDaMesmaEquipe(this, candidata) || !BasePodeReceberRetorno(candidata))
             {
                 continue;
             }
 
-            IdentidadeUnidade identidadeBase = candidata.GetComponent<IdentidadeUnidade>();
-            int equipeBase = identidadeBase != null ? identidadeBase.teamID : 0;
-            bool identidadeConflitante = equipeAviao > 1 && equipeBase > 1 && equipeBase != equipeAviao;
-            if (identidadeConflitante) continue;
-
-            float distancia = (candidata.transform.position - transform.position).sqrMagnitude;
-            if (equipeAviao > 1 && equipeBase == equipeAviao)
+            GerenciadorPortaAvioes portaAvioes = candidata as GerenciadorPortaAvioes;
+            if (portaAvioes != null && !aceitaPortaAvioes)
             {
-                if (distancia < melhorDistanciaAliada)
+                continue;
+            }
+
+            bool possuiVagaLivre = candidata.ObterPrimeiraVagaLivre() != null;
+            if (candidata != origemValida && !possuiVagaLivre)
+            {
+                if (portaAvioes == null || !portaAvioes.operacoesV2AssumiuControle)
                 {
-                    melhorDistanciaAliada = distancia;
-                    melhorAliado = candidata;
+                    continue;
                 }
             }
-            else if (equipeBase <= 1 && distancia < melhorDistanciaSemIdentidade)
+
+            float distancia = DistanciaHorizontalAtePonto(ObterPontoAproximacaoDaBase(candidata));
+            float score = distancia;
+            if (portaAvioes != null)
             {
-                melhorDistanciaSemIdentidade = distancia;
-                melhorSemIdentidade = candidata;
+                score *= possuiVagaLivre ? 0.85f : 0.96f;
+            }
+
+            if (score < melhorScore)
+            {
+                melhorScore = score;
+                melhorDistanciaReal = distancia;
+                melhorCandidata = candidata;
             }
         }
 
-        return melhorAliado != null ? melhorAliado : melhorSemIdentidade;
+        GerenciadorAeroporto melhorPropria = origemValida;
+        float distanciaPropriaEfetiva = distanciaOrigem;
+        if (origemValida != null)
+        {
+            if (melhorCandidata != null && melhorCandidata != origemValida && melhorDistanciaReal < distanciaOrigem * 0.88f)
+            {
+                melhorPropria = melhorCandidata;
+                distanciaPropriaEfetiva = melhorDistanciaReal;
+            }
+        }
+        else
+        {
+            melhorPropria = melhorCandidata;
+            distanciaPropriaEfetiva = melhorDistanciaReal;
+        }
+
+        if (priorizarBaseOuPortaAvioesMaisProximo)
+        {
+            GerenciadorAeroporto baseAliada = EncontrarAeroportoAliadoParaApoio(true);
+            if (baseAliada != null)
+            {
+                float distanciaAliada = DistanciaHorizontalAtePonto(ObterPontoAproximacaoDaBase(baseAliada));
+                if (melhorPropria == null || distanciaAliada < distanciaPropriaEfetiva * 0.85f)
+                {
+                    return baseAliada;
+                }
+            }
+        }
+
+        return melhorPropria;
+    }
+
+    private float DistanciaHorizontalAtePonto(Vector3 ponto)
+    {
+        Vector3 delta = ponto - transform.position;
+        delta.y = 0f;
+        return delta.magnitude;
     }
 
     private static bool BasePodeReceberRetorno(GerenciadorAeroporto baseCandidata)
@@ -2715,7 +3625,52 @@ public class ControleAviao : MonoBehaviour
         float espera = aeroportoOrigem is GerenciadorPortaAvioes ? 4f : 1f;
         yield return new WaitForSeconds(espera);
 
-        if (estadoAtual != EstadoAviao.ProntoNoPatio)
+        if (estadoAtual != EstadoAviao.ProntoNoPatio || ordemParaRetorno)
+        {
+            rotinaRetomadaMissao = null;
+            yield break;
+        }
+
+        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+        if (carrier != null && carrier.operacoesV2AssumiuControle)
+        {
+            float limiteEsperaCatapulta = Time.time + 45f;
+            WaitForSeconds intervaloRetry = new WaitForSeconds(1.25f);
+            while (estadoAtual == EstadoAviao.ProntoNoPatio
+                && !ordemParaRetorno
+                && aeroportoOrigem == carrier
+                && carrier != null
+                && carrier.operacoesV2AssumiuControle)
+            {
+                bool iniciou = false;
+                if (rotaPatrulhaSalva.Count > 0)
+                {
+                    iniciou = carrier.SolicitarPatrulhaRetomadaV2(this, rotaPatrulhaSalva);
+                }
+                else if (ultimoObjetivoMissao != Vector3.zero)
+                {
+                    iniciou = carrier.SolicitarMissaoRetomadaV2(this, ultimoObjetivoMissao);
+                }
+                else
+                {
+                    break;
+                }
+
+                if (iniciou)
+                {
+                    rotinaRetomadaMissao = null;
+                    yield break;
+                }
+
+                if (Time.time >= limiteEsperaCatapulta)
+                {
+                    break;
+                }
+                yield return intervaloRetry;
+            }
+        }
+
+        if (estadoAtual != EstadoAviao.ProntoNoPatio || ordemParaRetorno)
         {
             rotinaRetomadaMissao = null;
             yield break;
@@ -2724,12 +3679,6 @@ public class ControleAviao : MonoBehaviour
         ControleUnidade controleUnidade = ObterControleUnidadeAtual();
         if (rotaPatrulhaSalva.Count > 0 && controleUnidade != null)
         {
-            GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
-            if (carrier != null && carrier.SolicitarPatrulhaRetomadaV2(this, rotaPatrulhaSalva))
-            {
-                rotinaRetomadaMissao = null;
-                yield break;
-            }
             // Resume the existing mission locally. Re-emitting its identical
             // movement order can be accepted as idempotent without launching
             // the aircraft, leaving it refuelled but parked forever.
@@ -2738,6 +3687,18 @@ public class ControleAviao : MonoBehaviour
         else if (ultimoObjetivoMissao != Vector3.zero)
         {
             IniciarMissaoCompleta(ultimoObjetivoMissao);
+        }
+        else if (aeroportoOrigem != null && !BasesDaMesmaEquipe(this, aeroportoOrigem))
+        {
+            GerenciadorAeroporto baseCasa = baseOrigemAnteriorAoApoioAliado != null && BasesDaMesmaEquipe(this, baseOrigemAnteriorAoApoioAliado)
+                ? baseOrigemAnteriorAoApoioAliado
+                : EncontrarMelhorBaseRetornoPropria();
+            if (baseCasa != null)
+            {
+                Vector3 pontoCasa = baseCasa.transform.position;
+                pontoCasa.y = Mathf.Max(pontoCasa.y + altitudeVoo, AltitudeMinimaVooEfetiva, 60f);
+                IniciarMissaoCompleta(pontoCasa);
+            }
         }
 
         rotinaRetomadaMissao = null;
@@ -2835,12 +3796,25 @@ public class ControleAviao : MonoBehaviour
         }
 
         ordemParaRetorno = false;
+        bool precisavaIgnicao = estadoAtual == EstadoAviao.ProntoNoPatio
+            || estadoAtual == EstadoAviao.ReservaHangar
+            || !_sistemasAeronaveLigados;
         DefinirEstado(EstadoAviao.Decolando);
         if (vagaRetorno == null && EhVagaPatioDaBase(transform.parent))
         {
             // Preserva somente uma vaga real. O pai raiz do aeroporto, o
             // grupo da pista ou o hangar não são destinos de estacionamento.
             vagaRetorno = transform.parent;
+        }
+
+        if (precisavaIgnicao)
+        {
+            yield return StartCoroutine(ExecutarIgnicaoPartidaAntesDeLocomover());
+            if (this == null || !gameObject.activeInHierarchy || estadoAtual != EstadoAviao.Decolando)
+            {
+                yield break;
+            }
+            AplicarEstadoSistemasAeronave(true, true);
         }
 
         // === [DECOLAGEM] ===
@@ -2964,18 +3938,7 @@ public class ControleAviao : MonoBehaviour
                 // aleatório e ignorava parte do traçado manual.
                 if (rotaPatrulhaSalva.Count > 0)
                 {
-                    Vector3 pontoRota = rotaPatrulhaSalva[indiceRetanguloPatrulha % rotaPatrulhaSalva.Count];
-                    pontoRota.y = Mathf.Max(pontoRota.y, altitudeVoo, AltitudeMinimaVooEfetiva);
-                    alvoGPSVoo = pontoRota;
-
-                    Vector3 diferencaRota = transform.position - pontoRota;
-                    diferencaRota.y = 0f;
-                    float margemRota = Mathf.Max(45f, margemChegadaMissao);
-                    if (diferencaRota.sqrMagnitude <= margemRota * margemRota)
-                    {
-                        indiceRetanguloPatrulha = (indiceRetanguloPatrulha + 1) % rotaPatrulhaSalva.Count;
-                    }
-
+                    AvancarPassoPatrulhaEmRota(false);
                     yield return null;
                     continue;
                 }
@@ -3041,13 +4004,26 @@ public class ControleAviao : MonoBehaviour
         // --- RETORNO À BASE ---
         ordemParaRetorno = false;
         retornoAutomaticoAposChegadaCentro = false;
+
+        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+        if (carrier != null && carrier.operacoesV2AssumiuControle)
+        {
+            DefinirProtecaoCombustivelCarrier(true);
+            bool pousoV2Iniciado = false;
+            yield return StartCoroutine(AguardarESolicitarPousoCarrierV2(carrier, iniciado => pousoV2Iniciado = iniciado));
+            if (pousoV2Iniciado || estadoAtual != EstadoAviao.EmMissao)
+            {
+                yield break;
+            }
+            carrier = aeroportoOrigem as GerenciadorPortaAvioes;
+        }
+
         DefinirEstado(EstadoAviao.Pousando);
         if (aeroportoOrigem is GerenciadorPortaAvioes)
         {
             DefinirProtecaoCombustivelCarrier(true);
         }
 
-        GerenciadorPortaAvioes carrier = aeroportoOrigem as GerenciadorPortaAvioes;
         if (aeroportoOrigem == null || aeroportoOrigem.waypointsDecida == null || aeroportoOrigem.waypointsDecida.Count < 2
             || aeroportoOrigem.waypointsDecida[0] == null || aeroportoOrigem.waypointsDecida[1] == null)
         {
@@ -3322,6 +4298,18 @@ public class ControleAviao : MonoBehaviour
                 {
                     canhoes[i].RecarregarCompletoNaBase();
                 }
+            }
+        }
+
+        if (aeroportoOrigem != null && !BasesDaMesmaEquipe(this, aeroportoOrigem))
+        {
+            GerenciadorAeroporto baseCasa = baseOrigemAnteriorAoApoioAliado != null && BasesDaMesmaEquipe(this, baseOrigemAnteriorAoApoioAliado)
+                ? baseOrigemAnteriorAoApoioAliado
+                : EncontrarMelhorBaseRetornoPropria();
+            if (baseCasa != null)
+            {
+                baseDestinoRetornoPendente = baseCasa;
+                destinoPousoEscolhido = baseCasa;
             }
         }
 

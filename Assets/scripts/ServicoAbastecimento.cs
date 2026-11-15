@@ -18,6 +18,19 @@ public static class ServicoAbastecimento
             return 0f;
         }
 
+        TripulacaoUnidade.Garantir(unidade);
+        IdentidadeUnidade idUnidade = unidade.GetComponent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInParent<IdentidadeUnidade>()
+            ?? unidade.GetComponentInChildren<IdentidadeUnidade>(true);
+        if (idUnidade != null && idUnidade.teamID > 0 && idUnidade.teamID == RacaoUnidade.ObterTeamJogadorAtual())
+        {
+            RacaoUnidade racao = RacaoUnidade.Garantir(unidade, false);
+            if (racao != null && racao.UsaRacao && racao.Capacidade > 0f)
+            {
+                racao.AbastecerUsandoEstoqueNacional(racao.Capacidade, idUnidade.teamID);
+            }
+        }
+
         CombustivelUnidade combustivel = CombustivelUnidade.Garantir(unidade, false);
         if (combustivel == null || !combustivel.PrepararTanqueParaCargaInicialPaga())
         {

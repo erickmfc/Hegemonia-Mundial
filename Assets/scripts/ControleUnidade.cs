@@ -76,6 +76,7 @@ public class ControleUnidade : MonoBehaviour
     private ControleAviao controleAviao;
     private ControleAviaoCaca controleAviaoCaca;
     private LancadorMisselCaca lancadorMisselCaca;
+    private AviaoBombardeiro aviaoBombardeiro;
     private C700TransporteAereo c700TransporteAereo;
     private HovercraftTransporte hovercraftTransporte;
     private ControleNavioRealista controleNavioRealista;
@@ -212,6 +213,11 @@ public class ControleUnidade : MonoBehaviour
         {
             lancadorMisselCaca = GetComponentInChildren<LancadorMisselCaca>(true);
         }
+        aviaoBombardeiro = GetComponent<AviaoBombardeiro>();
+        if (aviaoBombardeiro == null)
+        {
+            aviaoBombardeiro = GetComponentInChildren<AviaoBombardeiro>(true);
+        }
         c700TransporteAereo = GetComponent<C700TransporteAereo>()
             ?? GetComponentInChildren<C700TransporteAereo>(true);
         hovercraftTransporte = GetComponent<HovercraftTransporte>()
@@ -272,6 +278,15 @@ public class ControleUnidade : MonoBehaviour
         if (!ehNavioAbastecimento)
         {
             CombustivelUnidade.Garantir(gameObject);
+        }
+
+        TripulacaoUnidade.Garantir(gameObject);
+        IdentidadeUnidade idUnidade = GetComponent<IdentidadeUnidade>()
+            ?? GetComponentInParent<IdentidadeUnidade>()
+            ?? GetComponentInChildren<IdentidadeUnidade>(true);
+        if (idUnidade != null && idUnidade.teamID > 0 && idUnidade.teamID == RacaoUnidade.ObterTeamJogadorAtual())
+        {
+            RacaoUnidade.Garantir(gameObject);
         }
 
         CachearDetalheVeicularDistante();
@@ -930,6 +945,13 @@ public class ControleUnidade : MonoBehaviour
         TipoOrdemMovimento tipo)
     {
         ultimoMotivoRecusaOrdem = string.Empty;
+
+        if (!TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
+        {
+            ultimoMotivoRecusaOrdem = "unidade inoperante (sem tripulação)";
+            DefinirDesligado(true);
+            return false;
+        }
 
         // Resolve coastal water clicks before validating the route's fuel
         // autonomy. Otherwise a valid shore approach is rejected based on the
@@ -1610,14 +1632,36 @@ public class ControleUnidade : MonoBehaviour
             // Assim falta de combustível, tripulação ou pista não deixa a
             // aeronave em combate sem uma missão efetivamente registrada.
             DefinirModoCombate(true);
-            if (lancadorMisselCaca != null && alvoTransform != null)
+            bool alvoEhAereo = alvoTransform != null
+                && (alvoTransform.GetComponentInParent<ControleAviao>() != null
+                    || alvoTransform.GetComponentInParent<ControleAviaoCaca>() != null
+                    || alvoTransform.GetComponentInParent<Helicoptero>() != null
+                    || alvoTransform.GetComponentInParent<C700TransporteAereo>() != null);
+
+            if (lancadorMisselCaca != null)
             {
-                lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, 6f);
+                lancadorMisselCaca.modoPassivo = false;
+                lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, alvoTransform != null ? 15f : 20f);
+            }
+
+            if (aviaoBombardeiro != null)
+            {
+                aviaoBombardeiro.alvoAreaSolo = pontoAlvo;
+                aviaoBombardeiro.alvoMassa1 = pontoAlvo + new Vector3(-35f, 0f, -10f);
+                aviaoBombardeiro.alvoMassa2 = pontoAlvo + new Vector3(35f, 0f, 10f);
+                aviaoBombardeiro.modoDeAtaque = alvoEhAereo
+                    ? AviaoBombardeiro.ModoAtaque.Patrulha
+                    : AviaoBombardeiro.ModoAtaque.AtaqueAoSolo;
             }
 
             if (controleAviao != null)
             {
                 controleAviao.alvoEstrategico = pontoAlvo;
+                controleAviao.centroDaPatrulha = pontoAlvo;
+                if (alvoTransform != null || lancadorMisselCaca != null || aviaoBombardeiro != null)
+                {
+                    controleAviao.alvoPrioritarioIA = true;
+                }
             }
             DefinirAlvoPrioritario(alvoTransform);
         }
@@ -2192,11 +2236,18 @@ public class ControleUnidade : MonoBehaviour
                  
                  try 
                  {
-                     int areaMaskRecuperacao = EhUnidadeNaval()
-                         ? (agente.areaMask != 0 ? agente.areaMask : (1 << 3))
-                         : NavMesh.AllAreas;
+                     int areaMaskRecuperacao = agente.areaMask != 0
+                         ? agente.areaMask
+                         : (EhUnidadeNaval() ? (1 << 3) : NavMesh.AllAreas);
+                     Vector3 origemBusca = transform.position;
+                     if (!EhUnidadeNaval() && GlobalTerrainStreamer.Instance != null
+                         && GlobalTerrainStreamer.Instance.TrySampleLandHeight(origemBusca, out float alturaTerrenoLocal))
+                     {
+                         origemBusca.y = alturaTerrenoLocal;
+                     }
+
                      NavMeshHit hit;
-                     bool pontoNavMeshValido = NavMesh.SamplePosition(transform.position, out hit, 100f, areaMaskRecuperacao);
+                     bool pontoNavMeshValido = NavMesh.SamplePosition(origemBusca, out hit, 100f, areaMaskRecuperacao);
 
                      // Nunca habilita o agente fora da malha. Isso elimina o
                      // aviso "not close enough to the NavMesh" sem alterar o

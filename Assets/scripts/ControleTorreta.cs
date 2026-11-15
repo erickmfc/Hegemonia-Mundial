@@ -193,6 +193,7 @@ public class ControleTorreta : MonoBehaviour
 
     // Buffer de colisores privado para não gerar lixo na memória
     private Collider[] bufferColisores = new Collider[40];
+    private readonly List<MissileThreatTracker> _rastrosMisseisBuffer = new List<MissileThreatTracker>(32);
     // R3: layer mask calculada uma vez para excluir terreno ("Chao"), oceano ("Water"), "UI" e "TransparentFX"
     // do OverlapSphereNonAlloc, preservando 100% de compatibilidade com unidades/mísseis em qualquer outra layer.
     private static int _maskDeteccaoTorreta = 0;
@@ -312,6 +313,18 @@ public class ControleTorreta : MonoBehaviour
             alcance = 2200f;
 
         souAntiAereo = DeterminarSouAntiAereo();
+        if (!interceptarMisseis && DeveAtivarInterceptacaoAntiMissilAutomatica())
+        {
+            interceptarMisseis = true;
+        }
+
+        if (NomeIndicaDefesaAntimissil(NormalizarIdentificadorAntiAereo(transform.name)))
+        {
+            souAntiAereo = true;
+            interceptarMisseis = true;
+            if (alcance < 650f) alcance = 650f;
+            if (velocidadeGiro < 120f) velocidadeGiro = 120f;
+        }
 
         balasAtuais = tamanhoCartucho;
         misseisAtuais = capacidadeMisseis;
@@ -581,7 +594,12 @@ public class ControleTorreta : MonoBehaviour
             return;
         }
 
-        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(transform.position, alcance, bufferColisores, ObterMaskDeteccao(), QueryTriggerInteraction.Ignore);
+        int quantidadeEncontrada = Physics.OverlapSphereNonAlloc(
+            transform.position,
+            alcance,
+            bufferColisores,
+            ObterMaskDeteccao(),
+            QueryTriggerInteraction.Collide);
         float menorDistancia = Mathf.Infinity;
         Transform melhorAlvo = null;
 
@@ -617,13 +635,16 @@ public class ControleTorreta : MonoBehaviour
 
             bool ehMissil = ObterEhMissilComCache(alvoTr);
             bool ehTorpedo = ObterEhTorpedoComCache(alvoTr);
+            if (hit.isTrigger && !ehMissil && !ehTorpedo)
+            {
+                continue;
+            }
+
             bool ehInimigo = false;
 
             if (interceptarMisseis && ehMissil)
             {
-                Vector3 direcaoDoMissil = alvoTr.forward;
-                Vector3 direcaoParaMim = (transform.position - alvoTr.position).normalized;
-                if (Vector3.Dot(direcaoDoMissil, direcaoParaMim) > 0.2f)
+                if (EhMissilAmeacaParaInterceptar(alvoTr))
                 {
                     ehInimigo = true;
                 }
@@ -668,24 +689,7 @@ public class ControleTorreta : MonoBehaviour
             }
 
             IdentidadeUnidade idAlvo2 = ObterIdentidadeUnidadeComCache(alvoTr);
-            bool alvoAereo = ehMissil || ehTorpedo || alvoTr.position.y > 6f ||
-                             (idAlvo2 != null && idAlvo2.tipoUnidade == TipoUnidade.Aereo) ||
-                             TagSafe.Matches(alvoTr, "Aereo") || TagSafe.Matches(alvoTr, "Areo") ||
-                             ObterEhAviaoComCache(alvoTr) || ObterEhHeliComCache(alvoTr) ||
-                             ObterEhC700ComCache(alvoTr);
-
-            if (!alvoAereo)
-            {
-                string nm = alvoTr.name;
-                alvoAereo = nm.Contains("aviao", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("heli", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("caca", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("drone", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("c700", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("b260", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("bombardeiro", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("transporte", System.StringComparison.OrdinalIgnoreCase);
-            }
+            bool alvoAereo = ehMissil || ehTorpedo || EhAlvoAereoPorReferencia(alvoTr, idAlvo2);
 
             if (debugRadar)
             {
@@ -716,6 +720,11 @@ public class ControleTorreta : MonoBehaviour
                 menorDistancia = dist;
                 melhorAlvo = ResolverTransformAlvo(alvoTr);
             }
+        }
+
+        if (melhorAlvo == null && interceptarMisseis)
+        {
+            melhorAlvo = ProcurarMissilNoRastreadorGlobal();
         }
 
         if (melhorAlvo == null)
@@ -814,6 +823,59 @@ public class ControleTorreta : MonoBehaviour
         return true;
     }
 
+    public bool NotificarAtaqueRecebido(Transform agressor, int agressorTeamId)
+    {
+        if (modoPassivo || bloquearMovimentoAutomatico || (modoManualNave && !souAntiAereo))
+        {
+            return false;
+        }
+
+        if (agressorTeamId <= 0 || agressorTeamId == meuTime)
+        {
+            return false;
+        }
+
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null)
+        {
+            RelacaoPaisGoverno relacao = governo.ObterRelacao(meuTime, agressorTeamId);
+            if (relacao != null && relacao.cessarFogoAtivo)
+            {
+                return false;
+            }
+        }
+
+        Transform alvoResolvido = ResolverTransformAlvo(agressor);
+        if (alvoResolvido == null || !alvoResolvido.gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        if (EhParteDaMinhaUnidade(alvoResolvido) || !ControleSubmarino.PodeSerAlvoConvencional(alvoResolvido))
+        {
+            return false;
+        }
+
+        if ((alvoResolvido.position - transform.position).sqrMagnitude > alcance * alcance)
+        {
+            return false;
+        }
+
+        IdentidadeUnidade idAlvo = ObterIdentidadeUnidadeComCache(alvoResolvido);
+        bool alvoAereo = EhAlvoAereoPorReferencia(alvoResolvido, idAlvo);
+        if (souAntiAereo && !alvoAereo) return false;
+        if (!souAntiAereo && alvoAereo) return false;
+
+        if ((alvoPrioritario != null && alvoPrioritario.gameObject.activeInHierarchy)
+            || (alvoAtual != null && alvoAtual.gameObject.activeInHierarchy))
+        {
+            return false;
+        }
+
+        SetarAlvo(alvoResolvido);
+        return true;
+    }
+
     private Transform ProcurarAlvoNoRegistroGlobal()
     {
         RegistroEntidadesJogo.FillUnidades(_unidadesRegistroRadar);
@@ -834,24 +896,7 @@ public class ControleTorreta : MonoBehaviour
             float distSqr = (alvoTr.position - transform.position).sqrMagnitude;
             if (distSqr > alcanceSqr) continue;
 
-            bool alvoAereo = alvoTr.position.y > 6f
-                || idAlvo.tipoUnidade == TipoUnidade.Aereo
-                || ObterEhAviaoComCache(alvoTr)
-                || ObterEhHeliComCache(alvoTr)
-                || ObterEhC700ComCache(alvoTr);
-
-            if (!alvoAereo)
-            {
-                string nm = alvoTr.name;
-                alvoAereo = nm.Contains("aviao", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("heli", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("caca", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("drone", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("c700", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("b260", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("bombardeiro", System.StringComparison.OrdinalIgnoreCase) ||
-                            nm.Contains("transporte", System.StringComparison.OrdinalIgnoreCase);
-            }
+            bool alvoAereo = EhAlvoAereoPorReferencia(alvoTr, idAlvo);
 
             if (souAntiAereo && !alvoAereo) continue;
             if (!souAntiAereo && alvoAereo) continue;
@@ -1088,7 +1133,7 @@ public class ControleTorreta : MonoBehaviour
     void Update()
     {
         AtualizarAgendamentoBusca();
-        if (bloquearMovimentoAutomatico)
+        if (bloquearMovimentoAutomatico || !TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
         {
             SetarAlvo(null);
             return;
@@ -1763,6 +1808,146 @@ public class ControleTorreta : MonoBehaviour
             linhaDeAlcance.enabled = deveMostrar;
     }
 
+    private bool DeveAtivarInterceptacaoAntiMissilAutomatica()
+    {
+        string nomeObj = NormalizarIdentificadorAntiAereo(transform.name);
+        string nomeBase = NormalizarIdentificadorAntiAereo(transform.root != null ? transform.root.name : string.Empty);
+        return NomeIndicaDefesaAntimissil(nomeObj)
+            || NomeIndicaDefesaAntimissil(nomeBase)
+            || (souAntiAereo && usarMisselParaInterceptar);
+    }
+
+    private static bool NomeIndicaDefesaAntimissil(string nome)
+    {
+        if (string.IsNullOrEmpty(nome)) return false;
+        return nome.Contains("ciws")
+            || nome.Contains("phalanx")
+            || nome.Contains("antimiss")
+            || nome.Contains("anti_miss")
+            || nome.Contains("anti-miss");
+    }
+
+    private bool EhMissilAmeacaParaInterceptar(Transform alvoTr)
+    {
+        if (alvoTr == null) return false;
+
+        MissileThreatTracker tracker = alvoTr.GetComponentInParent<MissileThreatTracker>();
+        if (tracker != null)
+        {
+            if (tracker.Interceptor) return false;
+
+            int teamOrigem = tracker.TeamOrigem;
+            if (teamOrigem <= 0)
+            {
+                IdentidadeUnidade idFallback = ObterIdentidadeUnidadeComCache(alvoTr);
+                if (idFallback != null) teamOrigem = idFallback.teamID;
+            }
+
+            if (teamOrigem > 0 && teamOrigem == meuTime) return false;
+            if (teamOrigem > 0 && SistemaGovernoMundial.Instancia != null)
+            {
+                RelacaoPaisGoverno relacao = SistemaGovernoMundial.Instancia.ObterRelacao(meuTime, teamOrigem);
+                if (relacao != null && relacao.cessarFogoAtivo) return false;
+            }
+
+            if (tracker.AlvoTransform != null)
+            {
+                if (EhParteDaMinhaUnidade(tracker.AlvoTransform)) return true;
+                IdentidadeUnidade idAlvoProtegido = ObterIdentidadeUnidadeComCache(tracker.AlvoTransform);
+                if (idAlvoProtegido != null && idAlvoProtegido.teamID == meuTime) return true;
+            }
+
+            if (tracker.AlvoTeam > 0 && tracker.AlvoTeam == meuTime) return true;
+            if (tracker.EstaAmeacandoPonto(transform.position, alcance * 1.15f, 4.5f)) return true;
+
+            float raioProximo = Mathf.Min(alcance * 0.45f, 350f);
+            if ((alvoTr.position - transform.position).sqrMagnitude <= raioProximo * raioProximo)
+            {
+                return true;
+            }
+
+            Vector3 dirParaDefesa = transform.position - alvoTr.position;
+            Vector3 velMissil = tracker.ObterVelocidadeAtual();
+            if (dirParaDefesa.sqrMagnitude > 0.01f && velMissil.sqrMagnitude > 0.01f)
+            {
+                return Vector3.Dot(dirParaDefesa.normalized, velMissil.normalized) > -0.15f;
+            }
+
+            return true;
+        }
+
+        IdentidadeUnidade idMissil = ObterIdentidadeUnidadeComCache(alvoTr);
+        if (idMissil != null)
+        {
+            if (idMissil.teamID > 0 && idMissil.teamID == meuTime) return false;
+            if (idMissil.teamID > 0 && SistemaGovernoMundial.Instancia != null)
+            {
+                RelacaoPaisGoverno relacao = SistemaGovernoMundial.Instancia.ObterRelacao(meuTime, idMissil.teamID);
+                if (relacao != null && relacao.cessarFogoAtivo) return false;
+            }
+        }
+
+        return (alvoTr.position - transform.position).sqrMagnitude <= alcance * alcance;
+    }
+
+    private Transform ProcurarMissilNoRastreadorGlobal()
+    {
+        MissileThreatTracker.CopiarAmeacasAtivas(_rastrosMisseisBuffer);
+        if (_rastrosMisseisBuffer.Count == 0) return null;
+
+        float alcanceSqr = alcance * alcance;
+        float menorDistSqr = Mathf.Infinity;
+        Transform melhorMissil = null;
+
+        for (int i = 0; i < _rastrosMisseisBuffer.Count; i++)
+        {
+            MissileThreatTracker tracker = _rastrosMisseisBuffer[i];
+            if (tracker == null || tracker.Interceptor) continue;
+
+            Transform raiz = tracker.RaizMissil;
+            if (raiz == null || !raiz.gameObject.activeInHierarchy) continue;
+            if (EhParteDaMinhaUnidade(raiz)) continue;
+
+            float distSqr = (raiz.position - transform.position).sqrMagnitude;
+            if (distSqr > alcanceSqr) continue;
+            if (!EhMissilAmeacaParaInterceptar(raiz)) continue;
+
+            if (distSqr < menorDistSqr)
+            {
+                menorDistSqr = distSqr;
+                melhorMissil = raiz;
+            }
+        }
+
+        _rastrosMisseisBuffer.Clear();
+        return melhorMissil;
+    }
+
+    private bool EhAlvoAereoPorReferencia(Transform alvoTr, IdentidadeUnidade idAlvo)
+    {
+        if (alvoTr == null) return false;
+        if (alvoTr.position.y > 6f
+            || (idAlvo != null && idAlvo.tipoUnidade == TipoUnidade.Aereo)
+            || TagSafe.Matches(alvoTr, "Aereo")
+            || TagSafe.Matches(alvoTr, "Areo")
+            || ObterEhAviaoComCache(alvoTr)
+            || ObterEhHeliComCache(alvoTr)
+            || ObterEhC700ComCache(alvoTr))
+        {
+            return true;
+        }
+
+        string nm = alvoTr.name;
+        return nm.Contains("aviao", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("heli", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("caca", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("drone", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("c700", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("b260", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("bombardeiro", System.StringComparison.OrdinalIgnoreCase)
+            || nm.Contains("transporte", System.StringComparison.OrdinalIgnoreCase);
+    }
+
     bool DeterminarSouAntiAereo()
     {
         string etiqueta = NormalizarIdentificadorAntiAereo(etiquetaAlvo);
@@ -1905,6 +2090,9 @@ public class ControleTorreta : MonoBehaviour
                  alvo.GetComponentInParent<MisselICBM>() != null ||
                  alvo.GetComponentInParent<MisselNaval>() != null ||
                  alvo.GetComponentInParent<MisselSubmarino>() != null ||
+                 alvo.GetComponentInParent<MisselBombardeiro>() != null ||
+                 alvo.GetComponentInParent<BombaBombardeiro>() != null ||
+                 alvo.GetComponentInParent<BombaAerea>() != null ||
                  alvo.GetComponentInParent<MisselTatico>() != null ||
                  alvo.GetComponentInParent<MisselLeopardAutomatico>() != null;
 

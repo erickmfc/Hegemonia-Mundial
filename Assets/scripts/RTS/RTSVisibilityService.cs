@@ -41,6 +41,8 @@ namespace Hegemonia.RTS
         public int missileId;
         public int targetSceneHandle;
         public int sourceTeamId;
+        public MissileThreatTracker.PlataformaLancamentoMissil sourcePlatform;
+        public int colorVariantIndex;
         public Vector3 lastKnownPosition;
         public Vector3 lastKnownDirection;
         public float lastKnownSpeed;
@@ -87,6 +89,7 @@ namespace Hegemonia.RTS
         private readonly List<int> nearbyAlliedTeamsBuffer = new List<int>(8);
         private readonly List<int> teamsDetectingEmissionBuffer = new List<int>(8);
         private readonly Dictionary<long, float> nextRadarCounterstrikeAt = new Dictionary<long, float>(32);
+        private readonly Dictionary<long, float> nextTeamCounterstrikeAt = new Dictionary<long, float>(16);
         private readonly RaycastHit[] terrainRaycastHits = new RaycastHit[24];
         private float nextScanAt;
 
@@ -386,6 +389,8 @@ namespace Hegemonia.RTS
 
             contato.targetSceneHandle = tracker.RaizMissil.gameObject.scene.handle;
             contato.sourceTeamId = tracker.TeamOrigem;
+            contato.sourcePlatform = tracker.PlataformaOrigem;
+            contato.colorVariantIndex = tracker.VarianteCor;
             contato.lastKnownPosition = position;
             contato.lastKnownDirection = velocity.sqrMagnitude > 0.01f ? velocity.normalized : tracker.RaizMissil.forward;
             contato.lastKnownSpeed = velocity.magnitude;
@@ -676,6 +681,39 @@ namespace Hegemonia.RTS
             }
         }
 
+        public void NotificarAgressaoParaContraAtaque(
+            int equipeVitima,
+            int equipeAgressora,
+            IdentidadeUnidade agressor,
+            Vector3 pontoAtaque)
+        {
+            if (equipeVitima <= 1 || equipeAgressora <= 0 || equipeVitima == equipeAgressora)
+                return;
+
+            if (agressor != null && agressor.isActiveAndEnabled && agressor.gameObject.activeInHierarchy)
+            {
+                ReportContact(equipeVitima, agressor, RTSDetectionSource.Radar, Mathf.Max(memoryDuration, 120f));
+                TentarContraAtaquePorCoordenada(equipeVitima, agressor);
+                return;
+            }
+
+            if (!ContextoTerritorialDiplomatico.HaHostilidadeOuGuerra(equipeVitima, equipeAgressora))
+                return;
+
+            long chave = ((long)equipeVitima << 32) | (uint)equipeAgressora;
+            float agora = Time.unscaledTime;
+            if (nextTeamCounterstrikeAt.TryGetValue(chave, out float proximaTentativa)
+                && agora < proximaTentativa)
+                return;
+
+            RegistroEntidadesJogo.FillUnidades(unitsBuffer);
+            nextTeamCounterstrikeAt[chave] = agora + 3f;
+            bool lancouMissil = TentarLancarMissilEstrategico(equipeVitima, pontoAtaque, null);
+            bool despachouAviao = TentarDespacharAviaoDeResposta(equipeVitima, pontoAtaque, null);
+            if (lancouMissil || despachouAviao)
+                nextTeamCounterstrikeAt[chave] = agora + 30f;
+        }
+
         private void TentarContraAtaquePorCoordenada(int equipeInimiga, IdentidadeUnidade emissor)
         {
             if (emissor == null
@@ -687,6 +725,7 @@ namespace Hegemonia.RTS
                 && agora < proximaTentativa)
                 return;
 
+            RegistroEntidadesJogo.FillUnidades(unitsBuffer);
             // Evita procurar armamentos a cada varredura quando a IA ainda não
             // possui unidade pronta. Uma resposta bem-sucedida fica em recarga
             // por 120 s para não transformar a emissão contínua em salvas infinitas.
@@ -699,38 +738,155 @@ namespace Hegemonia.RTS
 
         private bool TentarLancarMissilEstrategico(int equipe, IdentidadeUnidade alvo)
         {
+            return alvo != null && TentarLancarMissilEstrategico(equipe, alvo.transform.position, alvo.transform);
+        }
+
+        private bool TentarLancarMissilEstrategico(int equipe, Vector3 pontoAlvo, Transform alvoTransform)
+        {
             float menorDistancia = float.PositiveInfinity;
             LancadorMisseis escolhido = null;
             LancadorMisseis alternativo = null;
+
+            float menorDistanciaSilo = float.PositiveInfinity;
+            SiloLancadorEstrategico siloEscolhido = null;
+
+            float menorDistanciaNaval = float.PositiveInfinity;
+            LancadorNaval navalEscolhido = null;
+            LancadorNaval navalAlternativo = null;
+
+            float menorDistanciaSub = float.PositiveInfinity;
+            ControleSubmarino subEscolhido = null;
+            ControleSubmarino subAlternativo = null;
 
             for (int i = 0; i < unitsBuffer.Count; i++)
             {
                 IdentidadeUnidade unidade = unitsBuffer[i];
                 if (unidade == null || unidade.teamID != equipe || !unidade.gameObject.activeInHierarchy) continue;
+
+                ControleUnidade controleUnidade = unidade.GetComponent<ControleUnidade>()
+                    ?? unidade.GetComponentInParent<ControleUnidade>();
+
                 LancadorMisseis lancador = unidade.GetComponent<LancadorMisseis>()
                     ?? unidade.GetComponentInChildren<LancadorMisseis>(true);
-                if (lancador == null || lancador.municaoAtual <= 0) continue;
-
-                float distancia = (lancador.transform.position - alvo.transform.position).sqrMagnitude;
-                if (distancia < menorDistancia)
+                if (lancador != null && lancador.municaoAtual > 0)
                 {
-                    alternativo = escolhido;
-                    menorDistancia = distancia;
-                    escolhido = lancador;
+                    float distancia = (lancador.transform.position - pontoAlvo).sqrMagnitude;
+                    if (distancia < menorDistancia)
+                    {
+                        alternativo = escolhido;
+                        menorDistancia = distancia;
+                        escolhido = lancador;
+                    }
+                    else if (alternativo == null)
+                    {
+                        alternativo = lancador;
+                    }
                 }
-                else if (alternativo == null)
+
+                if (controleUnidade == null || controleUnidade.ModoCombateAtivo)
                 {
-                    alternativo = lancador;
+                    SiloLancadorEstrategico silo = unidade.GetComponent<SiloLancadorEstrategico>()
+                        ?? unidade.GetComponentInChildren<SiloLancadorEstrategico>(true);
+                    if (silo != null
+                        && silo.enabled
+                        && silo.gameObject.activeInHierarchy
+                        && silo.ProntoParaLancar
+                        && silo.prefabMisselEstrategico != null)
+                    {
+                        float distSiloSqr = (silo.transform.position - pontoAlvo).sqrMagnitude;
+                        float maxSilo = silo.AlcanceMaximo > 0f ? silo.AlcanceMaximo : float.PositiveInfinity;
+                        if (distSiloSqr <= maxSilo * maxSilo && distSiloSqr < menorDistanciaSilo)
+                        {
+                            menorDistanciaSilo = distSiloSqr;
+                            siloEscolhido = silo;
+                        }
+                    }
+
+                    LancadorNaval lancadorNaval = unidade.GetComponent<LancadorNaval>()
+                        ?? unidade.GetComponentInChildren<LancadorNaval>(true);
+                    if (lancadorNaval != null
+                        && lancadorNaval.enabled
+                        && lancadorNaval.gameObject.activeInHierarchy
+                        && lancadorNaval.modoAtual == LancadorNaval.ModoOperacao.Automatico
+                        && lancadorNaval.ArmamentoSelecionadoHud != LancadorNaval.ArmamentoHud.Torpedo
+                        && ((lancadorNaval.PrefabMissilSelecionado != null && lancadorNaval.MunicaoMissilSelecionadoAtual > 0)
+                            || (lancadorNaval.prefabMissel != null && lancadorNaval.municaoTotal > 0)
+                            || (lancadorNaval.prefabMisselCruzeiro != null && lancadorNaval.MunicaoCruzeiroAtual > 0)))
+                    {
+                        float distNaval = (lancadorNaval.transform.position - pontoAlvo).sqrMagnitude;
+                        if (distNaval < menorDistanciaNaval)
+                        {
+                            navalAlternativo = navalEscolhido;
+                            menorDistanciaNaval = distNaval;
+                            navalEscolhido = lancadorNaval;
+                        }
+                        else if (navalAlternativo == null)
+                        {
+                            navalAlternativo = lancadorNaval;
+                        }
+                    }
+
+                    ControleSubmarino submarino = unidade.GetComponent<ControleSubmarino>()
+                        ?? unidade.GetComponentInChildren<ControleSubmarino>(true);
+                    if (submarino != null
+                        && submarino.enabled
+                        && submarino.gameObject.activeInHierarchy
+                        && submarino.modoAtual == ControleSubmarino.ModoOperacao.Automatico
+                        && submarino.ArmamentoSelecionadoHud != ControleSubmarino.ArmamentoHud.Torpedo
+                        && submarino.prefabMisselSubmarino != null
+                        && submarino.misseisDisponiveis > 0)
+                    {
+                        float distSub = (submarino.transform.position - pontoAlvo).sqrMagnitude;
+                        if (distSub < menorDistanciaSub)
+                        {
+                            subAlternativo = subEscolhido;
+                            menorDistanciaSub = distSub;
+                            subEscolhido = submarino;
+                        }
+                        else if (subAlternativo == null)
+                        {
+                            subAlternativo = submarino;
+                        }
+                    }
                 }
             }
 
             if (escolhido != null
-                && escolhido.TentarLancarCoordenado(alvo.transform.position, alvo.transform, false, out _))
+                && escolhido.TentarLancarCoordenado(pontoAlvo, alvoTransform, false, out _))
                 return true;
 
             if (alternativo != null
                 && alternativo != escolhido
-                && alternativo.TentarLancarCoordenado(alvo.transform.position, alvo.transform, false, out _))
+                && alternativo.TentarLancarCoordenado(pontoAlvo, alvoTransform, false, out _))
+                return true;
+
+            if (siloEscolhido != null && siloEscolhido.TentarLancarNaArea(pontoAlvo))
+                return true;
+
+            if (navalEscolhido != null
+                && navalEscolhido.TentarLancarContraAtaqueIA(
+                    pontoAlvo,
+                    alvoTransform,
+                    Mathf.Max(navalEscolhido.alcanceRadar, 4500f),
+                    out _))
+                return true;
+
+            if (navalAlternativo != null
+                && navalAlternativo != navalEscolhido
+                && navalAlternativo.TentarLancarContraAtaqueIA(
+                    pontoAlvo,
+                    alvoTransform,
+                    Mathf.Max(navalAlternativo.alcanceRadar, 4500f),
+                    out _))
+                return true;
+
+            if (subEscolhido != null
+                && subEscolhido.TentarLancarContraAtaqueIA(pontoAlvo, alvoTransform, 4500f, out _))
+                return true;
+
+            if (subAlternativo != null
+                && subAlternativo != subEscolhido
+                && subAlternativo.TentarLancarContraAtaqueIA(pontoAlvo, alvoTransform, 4500f, out _))
                 return true;
 
             return false;
@@ -738,14 +894,25 @@ namespace Hegemonia.RTS
 
         private bool TentarDespacharAviaoDeResposta(int equipe, IdentidadeUnidade alvo)
         {
-            float menorDistancia = float.PositiveInfinity;
+            return alvo != null && TentarDespacharAviaoDeResposta(equipe, alvo.transform.position, alvo.transform);
+        }
+
+        private bool TentarDespacharAviaoDeResposta(int equipe, Vector3 pontoAlvo, Transform alvoTransform)
+        {
+            float menorDistanciaPronto = float.PositiveInfinity;
             ControleUnidade controleEscolhido = null;
-            ControleAviao aviaoEscolhido = null;
+            float menorDistanciaEmMissao = float.PositiveInfinity;
+            ControleUnidade controleEmMissaoEscolhido = null;
+
             for (int i = 0; i < unitsBuffer.Count; i++)
             {
                 IdentidadeUnidade unidade = unitsBuffer[i];
                 if (unidade == null || unidade.teamID != equipe || unidade.tipoUnidade != TipoUnidade.Aereo
                     || !unidade.gameObject.activeInHierarchy)
+                    continue;
+
+                if (unidade.GetComponent<C700TransporteAereo>() != null
+                    || unidade.GetComponentInChildren<C700TransporteAereo>(true) != null)
                     continue;
 
                 ControleAviao aviao = unidade.GetComponent<ControleAviao>()
@@ -759,23 +926,46 @@ namespace Hegemonia.RTS
                     || unidade.GetComponentInChildren<AviaoBombardeiro>(true) != null
                     || unidade.GetComponent<ControleAviaoCaca>() != null
                     || unidade.GetComponentInChildren<ControleAviaoCaca>(true) != null;
-                if (aviao == null || controle == null
-                    || !temArmamentoDeAtaque
-                    || aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio
-                    || aviao.aeroportoOrigem == null || !aviao.aeroportoOrigem.EhAeroportoMilitar()
-                    || !aviao.PodeExecutarMissaoComRetorno(alvo.transform.position))
+                if (aviao == null || controle == null || !temArmamentoDeAtaque)
                     continue;
 
-                float distancia = (aviao.transform.position - alvo.transform.position).sqrMagnitude;
-                if (distancia >= menorDistancia) continue;
-                menorDistancia = distancia;
-                controleEscolhido = controle;
-                aviaoEscolhido = aviao;
+                if (aviao.aeroportoOrigem is GerenciadorAeroportoComercial)
+                    continue;
+
+                if (!aviao.PodeExecutarMissaoComRetorno(pontoAlvo))
+                    continue;
+
+                float distancia = (aviao.transform.position - pontoAlvo).sqrMagnitude;
+                bool baseAereaValida = aviao.aeroportoOrigem != null
+                    && (aviao.aeroportoOrigem.EhAeroportoMilitar()
+                        || aviao.aeroportoOrigem is GerenciadorPortaAvioes);
+
+                if (aviao.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio && baseAereaValida)
+                {
+                    if (distancia < menorDistanciaPronto)
+                    {
+                        menorDistanciaPronto = distancia;
+                        controleEscolhido = controle;
+                    }
+                }
+                else if (aviao.estadoAtual == ControleAviao.EstadoAviao.EmMissao
+                    && !aviao.ordemParaRetorno
+                    && !aviao.alvoPrioritarioIA
+                    && !aviao.emAtaqueMergulho)
+                {
+                    if (distancia < menorDistanciaEmMissao)
+                    {
+                        menorDistanciaEmMissao = distancia;
+                        controleEmMissaoEscolhido = controle;
+                    }
+                }
             }
 
-            return controleEscolhido != null
-                && aviaoEscolhido != null
-                && controleEscolhido.EmitirMissaoAereaOfensiva(alvo.transform.position, alvo.transform);
+            if (controleEscolhido != null && controleEscolhido.EmitirMissaoAereaOfensiva(pontoAlvo, alvoTransform))
+                return true;
+
+            return controleEmMissaoEscolhido != null
+                && controleEmMissaoEscolhido.EmitirMissaoAereaOfensiva(pontoAlvo, alvoTransform);
         }
 
         private bool RadarTemLinhaDeVisao(Vector3 origem, IdentidadeUnidade observador, IdentidadeUnidade alvo)

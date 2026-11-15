@@ -67,6 +67,10 @@ public class MapaGeralController : MonoBehaviour
     private readonly Color corBordaMar       = new Color32(115, 150, 164, 190);
     private readonly Color corPredioProprio  = new Color32(190, 207, 203, 255);
     private readonly Color corUnidadePropria = new Color32(75, 196, 205, 255);
+    private readonly Color corMissilNavioA   = new Color32(75, 196, 205, 255);
+    private readonly Color corMissilNavioB   = new Color32(255, 214, 70, 255);
+    private readonly Color corMissilAviaoA   = new Color32(104, 232, 124, 255);
+    private readonly Color corMissilAviaoB   = new Color32(218, 128, 255, 255);
     private readonly Color corUnidadeNeutro  = new Color32(194, 184, 157, 255);
     private readonly Color corInimigoAtual   = new Color32(219, 103, 94, 255);
     private readonly Color corInimigoMemoria = new Color32(202, 133, 101, 165);
@@ -89,6 +93,7 @@ public class MapaGeralController : MonoBehaviour
     private readonly HashSet<int> _unidadesMoveisMapa = new HashSet<int>();
     private readonly List<MissileThreatTracker> _misseisAtivos = new List<MissileThreatTracker>(64);
     private readonly List<RTSMissileVisibilityContact> _contatosMisseis = new List<RTSMissileVisibilityContact>(64);
+    private readonly List<BoeingE3Reconhecimento> _bufferAeronavesRecon = new List<BoeingE3Reconhecimento>(16);
     private readonly Vector3[] _cantosTerritorioInimigo = new Vector3[4];
     private float _tempoRefreshCache = 0f;
     private DesenharLinhasOrdem _desenharOrdens;
@@ -949,7 +954,7 @@ public class MapaGeralController : MonoBehaviour
         var todos = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
         foreach (var u in todos)
         {
-            if (u == null) continue;
+            if (u == null || MarcadorTerritorio.EhSlotDeCidadeNaoConstruido(u)) continue;
             _cacheUnidades.Add(u);
             int id = u.GetInstanceID();
             bool ehImovel = EhImovelMapa(u.gameObject);
@@ -1290,6 +1295,7 @@ public class MapaGeralController : MonoBehaviour
         }
 
         // Os mesmos registros de entidades e visibilidade alimentam os dois modos.
+        DesenharCoberturaRadarAwacsNoMapa();
         DesenharIconesNoMapa();
         DesenharDisparosNoMapa();
         if (mapaCartograficoAtivo) DesenharCamadasMapa();
@@ -1826,6 +1832,49 @@ public class MapaGeralController : MonoBehaviour
             centroMapa.y + profundidadeBase * 0.5f - Mathf.Clamp01(uv.y) * profundidadeBase);
     }
 
+    private void DesenharCoberturaRadarAwacsNoMapa()
+    {
+        if (!camadaRadares || cameraMapa == null || Event.current.type != EventType.Repaint) return;
+
+        BoeingE3Reconhecimento.CopiarAeronavesReconhecimentoAtivas(_bufferAeronavesRecon);
+        if (_bufferAeronavesRecon.Count == 0) return;
+
+        const int segmentos = 48;
+        Color corCirculo = new Color(0.28f, 0.88f, 1f, 0.36f);
+
+        for (int i = 0; i < _bufferAeronavesRecon.Count; i++)
+        {
+            BoeingE3Reconhecimento awacs = _bufferAeronavesRecon[i];
+            if (awacs == null || !awacs.EstaEmOperacaoReconhecimento || awacs.EquipeReconhecimento != meuTeamID)
+                continue;
+
+            Vector3 posMundo = awacs.transform.position;
+            Vector3 centroTela = cameraMapa.WorldToScreenPoint(posMundo);
+            if (centroTela.z <= 0f) continue;
+
+            Vector3 bordaTela = cameraMapa.WorldToScreenPoint(posMundo + Vector3.right * awacs.AlcanceReconhecimentoAtual);
+            Vector2 centroGui = new Vector2(centroTela.x, Screen.height - centroTela.y);
+            Vector2 bordaGui = new Vector2(bordaTela.x, Screen.height - bordaTela.y);
+            float raioPx = Vector2.Distance(centroGui, bordaGui);
+            if (raioPx < 4f) continue;
+
+            if (centroGui.x + raioPx < 0f || centroGui.x - raioPx > Screen.width
+                || centroGui.y + raioPx < 0f || centroGui.y - raioPx > Screen.height)
+            {
+                continue;
+            }
+
+            Vector2 anterior = centroGui + new Vector2(raioPx, 0f);
+            for (int s = 1; s <= segmentos; s++)
+            {
+                float ang = (s / (float)segmentos) * Mathf.PI * 2f;
+                Vector2 atual = centroGui + new Vector2(Mathf.Cos(ang) * raioPx, Mathf.Sin(ang) * raioPx);
+                DesenharLinhaTela(anterior, atual, corCirculo, 1.25f);
+                anterior = atual;
+            }
+        }
+    }
+
     private void DesenharLinhaTela(Vector2 inicio, Vector2 fim, Color cor, float espessura)
     {
         Vector2 delta = fim - inicio;
@@ -1994,7 +2043,7 @@ public class MapaGeralController : MonoBehaviour
 
         foreach (var id in _cacheUnidades)
         {
-            if (id == null || id.gameObject == null) continue;
+            if (id == null || id.gameObject == null || !id.gameObject.activeInHierarchy || MarcadorTerritorio.EhSlotDeCidadeNaoConstruido(id)) continue;
 
             bool ehAliado  = (id.teamID == meuTeamID);
             int instanceId = id.GetInstanceID();
@@ -2157,7 +2206,7 @@ public class MapaGeralController : MonoBehaviour
             if ((categoria & 32) != 0 && _texRadar != null) return _texRadar;
             if ((categoria & 16) != 0 && _texAviao != null) return _texAviao;
             if ((categoria & 8) != 0 && _texNavioGuerra != null) return _texNavioGuerra;
-            return _texInfoUnidade != null ? _texInfoUnidade : _texMarcadorUnidade;
+            return null;
         }
 
         if (id != null)
@@ -2280,6 +2329,19 @@ public class MapaGeralController : MonoBehaviour
             DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.45f, -0.45f), new Vector2(-0.45f, 0.65f), cor, ultimaPosicaoConhecida);
             DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(0.45f, -0.45f), new Vector2(0.45f, 0.65f), cor, ultimaPosicaoConhecida);
         }
+        else if ((categoria & 2) != 0)
+        {
+            Vector2 c1 = new Vector2(-0.65f, -0.65f);
+            Vector2 c2 = new Vector2(0.65f, -0.65f);
+            Vector2 c3 = new Vector2(0.65f, 0.65f);
+            Vector2 c4 = new Vector2(-0.65f, 0.65f);
+            DesenharLinhaIcone(x, y, tamanho, 0f, c1, c2, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, c2, c3, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, c3, c4, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, c4, c1, cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(-0.35f, 0.1f), new Vector2(0f, -0.35f), cor, ultimaPosicaoConhecida);
+            DesenharLinhaIcone(x, y, tamanho, 0f, new Vector2(0f, -0.35f), new Vector2(0.35f, 0.1f), cor, ultimaPosicaoConhecida);
+        }
         else
         {
             Vector2 topo = new Vector2(0f, -0.7f);
@@ -2352,12 +2414,24 @@ public class MapaGeralController : MonoBehaviour
             bool aoVivoConhecido = tracker != null && tracker.RaizMissil != null
                 && (equipeConhecidaAliada || contato.currentlyVisible);
             Vector3 posicao = aoVivoConhecido ? tracker.RaizMissil.position : contato.lastKnownPosition;
+            DesenharHistoricoMissil(contato, posicao, aoVivoConhecido);
+        }
+
+        for (int i = 0; i < _contatosMisseis.Count; i++)
+        {
+            RTSMissileVisibilityContact contato = _contatosMisseis[i];
+            if (contato == null) continue;
+
+            MissileThreatTracker tracker = EncontrarMissilAtivo(contato.missileId);
+            bool equipeConhecidaAliada = contato.sourceTeamId == meuTeamID;
+            bool aoVivoConhecido = tracker != null && tracker.RaizMissil != null
+                && (equipeConhecidaAliada || contato.currentlyVisible);
+            Vector3 posicao = aoVivoConhecido ? tracker.RaizMissil.position : contato.lastKnownPosition;
             Vector3 velocidade = aoVivoConhecido ? tracker.ObterVelocidadeAtual() : contato.lastKnownDirection * contato.lastKnownSpeed;
             Vector3 direcaoPlano = velocidade;
             direcaoPlano.y = 0f;
-            DesenharHistoricoMissil(contato, posicao, aoVivoConhecido);
-            DesenharMarcadorMissil(posicao, direcaoPlano, contato.sourceTeamId, !contato.currentlyVisible && !equipeConhecidaAliada,
-                contato.missileId == _missilSelecionadoId, contato.lastSeenAt);
+            DesenharMarcadorMissil(posicao, direcaoPlano, contato.sourceTeamId, contato.sourcePlatform, contato.colorVariantIndex,
+                !contato.currentlyVisible && !equipeConhecidaAliada, contato.missileId == _missilSelecionadoId, contato.lastSeenAt);
         }
     }
 
@@ -2562,7 +2636,7 @@ public class MapaGeralController : MonoBehaviour
     private void DesenharHistoricoMissil(RTSMissileVisibilityContact contato, Vector3 posicaoAtual, bool contatoAtual)
     {
         if (contato == null || contato.trajectory == null || contato.trajectory.Count < 2) return;
-        Color cor = CorDoDisparo(contato.sourceTeamId);
+        Color cor = CorDoMissil(contato.sourceTeamId, contato.sourcePlatform, contato.colorVariantIndex);
         if (!contatoAtual && contato.sourceTeamId != meuTeamID) cor.a = 0.42f;
         Vector3 anterior = Vector3.zero;
         bool anteriorVisivel = false;
@@ -2591,6 +2665,7 @@ public class MapaGeralController : MonoBehaviour
     }
 
     private void DesenharMarcadorMissil(Vector3 posicao, Vector3 direcao, int equipeOrigem,
+        MissileThreatTracker.PlataformaLancamentoMissil plataformaOrigem, int varianteCor,
         bool ultimoConhecido, bool selecionado, float ultimoContatoEm)
     {
         Vector3 tela = cameraMapa.WorldToScreenPoint(posicao);
@@ -2599,7 +2674,7 @@ public class MapaGeralController : MonoBehaviour
         float sy = Screen.height - tela.y;
         if (sx < -20f || sx > Screen.width + 20f || sy < -20f || sy > Screen.height + 20f) return;
 
-        Color cor = CorDoDisparo(equipeOrigem);
+        Color cor = CorDoMissil(equipeOrigem, plataformaOrigem, varianteCor);
         if (equipeOrigem <= 0) cor = new Color32(224, 184, 104, 255);
         if (ultimoConhecido) cor.a *= 0.58f;
         float alcanceRumo = Mathf.Clamp(cameraMapa.orthographicSize * 0.05f, 20f, 90f);
@@ -2766,6 +2841,19 @@ public class MapaGeralController : MonoBehaviour
         if (team == meuTeamID) return corUnidadePropria;
         if (team > 0) return corInimigoAtual;
         return new Color32(224, 184, 104, 255);
+    }
+
+    Color CorDoMissil(int team, MissileThreatTracker.PlataformaLancamentoMissil plataforma, int varianteCor)
+    {
+        if (team != meuTeamID) return CorDoDisparo(team);
+
+        bool segundaCor = (varianteCor & 1) != 0;
+        if (plataforma == MissileThreatTracker.PlataformaLancamentoMissil.Navio)
+            return segundaCor ? corMissilNavioB : corMissilNavioA;
+        if (plataforma == MissileThreatTracker.PlataformaLancamentoMissil.Aviao)
+            return segundaCor ? corMissilAviaoB : corMissilAviaoA;
+
+        return corUnidadePropria;
     }
 
     void DesenharIcone(float cx, float cy, float tamanho, Color cor, float angulo)

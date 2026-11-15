@@ -29,8 +29,6 @@ namespace Hegemonia.Performance
 
         private void Start()
         {
-            distanciaCullingSqr = distanciaCulling * distanciaCulling;
-
             if (renderersDecorativos.Count == 0)
             {
                 // Localiza container visual consolidado se existir, ou renderers locais
@@ -53,6 +51,30 @@ namespace Hegemonia.Performance
                     }
                 }
             }
+
+            float raioBounds = 0f;
+            Bounds? boundsCombinado = null;
+            for (int i = 0; i < renderersDecorativos.Count; i++)
+            {
+                Renderer r = renderersDecorativos[i];
+                if (r == null || !r.gameObject.activeInHierarchy) continue;
+                if (boundsCombinado == null) boundsCombinado = r.bounds;
+                else
+                {
+                    Bounds b = boundsCombinado.Value;
+                    b.Encapsulate(r.bounds);
+                    boundsCombinado = b;
+                }
+            }
+            if (boundsCombinado.HasValue)
+                raioBounds = boundsCombinado.Value.extents.magnitude;
+
+            // Cidades e grandes estruturas no mapa global não devem desaparecer quando a câmera RTS sobe/afasta.
+            float distanciaBase = GetComponent<CidadeComplexoUrbano>() != null
+                ? Mathf.Max(distanciaCulling, 12000f)
+                : distanciaCulling;
+            float distanciaEfetiva = distanciaBase + raioBounds;
+            distanciaCullingSqr = distanciaEfetiva * distanciaEfetiva;
 
             // Espaçar início para não acumular no mesmo frame
             proximaChecagem = Time.time + Random.Range(0f, intervaloChecagem);

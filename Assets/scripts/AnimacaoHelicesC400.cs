@@ -13,10 +13,12 @@ public sealed class AnimacaoHelicesC400 : MonoBehaviour
 
     private Transform[] helices;
     private C700TransporteAereo transporte;
+    private ControleAviao aviao;
 
     private void Awake()
     {
         transporte = GetComponent<C700TransporteAereo>();
+        aviao = GetComponent<ControleAviao>();
         Transform[] transforms = GetComponentsInChildren<Transform>(true);
         List<Transform> encontradas = new List<Transform>(4);
         for (int i = 0; i < transforms.Length; i++)
@@ -38,11 +40,16 @@ public sealed class AnimacaoHelicesC400 : MonoBehaviour
 
     private void Update()
     {
-        bool girando = girarQuandoEstacionado || transporte == null
-            || (transporte.estadoAtual != C700TransporteAereo.EstadoC700.Solo
+        bool girando = girarQuandoEstacionado
+            || (transporte != null
+                && transporte.estadoAtual != C700TransporteAereo.EstadoC700.Solo
                 && transporte.estadoAtual != C700TransporteAereo.EstadoC700.Estacionado
                 && transporte.estadoAtual != C700TransporteAereo.EstadoC700.Carregando
-                && transporte.estadoAtual != C700TransporteAereo.EstadoC700.FalhaMissao);
+                && transporte.estadoAtual != C700TransporteAereo.EstadoC700.FalhaMissao)
+            || (aviao != null
+                && aviao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio
+                && aviao.estadoAtual != ControleAviao.EstadoAviao.ReservaHangar)
+            || (transporte == null && aviao == null);
         if (!girando || helices == null) return;
 
         float velocidade = Mathf.Max(0f, velocidadeGrausPorSegundo) * Time.deltaTime;

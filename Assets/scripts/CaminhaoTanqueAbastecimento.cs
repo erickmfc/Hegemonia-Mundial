@@ -57,6 +57,7 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
     private float proximaBusca;
     private float proximaRevisaoRota;
     private float proximaAtualizacaoTexto;
+    private float proximaRecargaAutomatica;
     private float recargaManualAcumulada;
     private string idOrdemMovimento;
     private string mensagemStatus = string.Empty;
@@ -92,6 +93,18 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
         cargaAtual = Mathf.Clamp(cargaAtual, 0f, capacidadeCarga);
     }
 
+    private void Start()
+    {
+        ResolverReferencias();
+        if (ResolverTeamId() > 1 && !ModoAutomaticoAtivo)
+        {
+            modoOperacao = ModoOperacaoAbastecimento.Automatico;
+            abastecerAutomaticamente = true;
+            DefinirStatus("AUTOMÁTICO", 4f);
+            proximaBusca = 0f;
+        }
+    }
+
     private void OnDisable()
     {
         CancelarOrdemDeMovimento();
@@ -100,10 +113,22 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
     private void Update()
     {
         ResolverReferencias();
+        if (ModoAutomaticoAtivo
+            && estadoOperacao == EstadoOperacao.Parado
+            && ResolverTeamId() > 1
+            && CapacidadeCarga > 0f
+            && CargaAtual < CapacidadeCarga * 0.25f
+            && Time.time >= proximaRecargaAutomatica)
+        {
+            proximaRecargaAutomatica = Time.time + 2f;
+            ServicoAbastecimento.TentarCarregarCaminhao(this, CapacidadeCarga - CargaAtual, out _);
+        }
+
         if (Time.time >= proximaBusca)
         {
             proximaBusca = Time.time + Mathf.Max(0.25f, intervaloBusca);
             AtualizarRadar();
+            DistribuirRacaoTerrestreProxima();
 
             if (ModoAutomaticoAtivo && estadoOperacao == EstadoOperacao.Parado && CargaAtual > 0.01f)
             {
@@ -397,6 +422,14 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
         float solicitado = Mathf.Min(Mathf.Max(0f, taxaTransferencia) * Time.deltaTime, CargaAtual, espaco);
         float aplicado = combustivelAlvoAtual.Abastecer(solicitado);
         RemoverCarga(aplicado);
+        if (identidadeAlvoAtual != null)
+        {
+            RacaoUnidade racaoAlvo = RacaoUnidade.ObterParaObjeto(identidadeAlvoAtual.gameObject);
+            if (racaoAlvo != null && racaoAlvo.UsaRacao && racaoAlvo.RacaoAtual < racaoAlvo.Capacidade)
+            {
+                racaoAlvo.AbastecerUsandoEstoqueNacional(Mathf.Max(60f, taxaTransferencia * 3f) * Time.deltaTime);
+            }
+        }
         if (aplicado <= 0.001f)
         {
             CancelarOperacao("ABASTECIMENTO NÃO DISPONÍVEL");
@@ -452,7 +485,7 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!mostrarIndicadorSelecionado || !EstaSelecionado())
+        if (!mostrarIndicadorSelecionado || !EstaSelecionado() || IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
         {
             return;
         }
@@ -543,6 +576,47 @@ public class CaminhaoTanqueAbastecimento : MonoBehaviour
     {
         mensagemStatus = texto ?? string.Empty;
         mensagemStatusAte = Time.time + Mathf.Max(0.1f, duracao);
+    }
+
+    private void DistribuirRacaoTerrestreProxima()
+    {
+        int meuTime = ResolverTeamId();
+        if (meuTime <= 0 || meuTime != RacaoUnidade.ObterTeamJogadorAtual())
+        {
+            return;
+        }
+
+        RegistroEntidadesJogo.FillUnidades(unidadesRegistradas);
+        float raio = Mathf.Max(20f, raioAbastecimento * 1.4f);
+        float raioSqr = raio * raio;
+        Vector3 pos = transform.position;
+
+        for (int i = 0; i < unidadesRegistradas.Count; i++)
+        {
+            IdentidadeUnidade alvo = unidadesRegistradas[i];
+            if (alvo == null || !alvo.gameObject.activeInHierarchy || alvo.teamID != meuTime)
+            {
+                continue;
+            }
+
+            if (alvo.tipoUnidade != TipoUnidade.Infantaria && alvo.tipoUnidade != TipoUnidade.Veiculo)
+            {
+                continue;
+            }
+
+            Vector3 delta = alvo.transform.position - pos;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > raioSqr)
+            {
+                continue;
+            }
+
+            RacaoUnidade racao = RacaoUnidade.ObterParaObjeto(alvo.gameObject);
+            if (racao != null && racao.UsaRacao && racao.RacaoAtual < racao.Capacidade * 0.98f)
+            {
+                racao.AbastecerUsandoEstoqueNacional(racao.Capacidade * 0.5f, meuTime);
+            }
+        }
     }
 
     private static float DistanciaHorizontal(Vector3 a, Vector3 b)

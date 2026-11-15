@@ -41,6 +41,8 @@ public class ControleAviaoCaca : MonoBehaviour
     public enum EstadoVoo { NoChao, Decolando, Voando, Pousando }
     [SerializeField]
     private EstadoVoo estadoAtual = EstadoVoo.NoChao;
+    public EstadoVoo EstadoAtual => estadoAtual;
+    public bool EstaNoChao => estadoAtual == EstadoVoo.NoChao;
 
     private float velocidadeAtual = 0f;
     public float VelocidadeAtual => velocidadeAtual;
@@ -141,10 +143,11 @@ public class ControleAviaoCaca : MonoBehaviour
         audioSourcePassagem = objSom.AddComponent<AudioSource>();
         audioSourcePassagem.spatialBlend = 1f;
         audioSourcePassagem.minDistance = 9f;
-        audioSourcePassagem.maxDistance = 150f;
+        audioSourcePassagem.maxDistance = 1000f;
         audioSourcePassagem.playOnAwake = false;
         audioSourcePassagem.clip = somPassagem;
         audioSourcePassagem.loop = false;
+        AudioRuntime.ConfigurarFonteGenerica(audioSourcePassagem);
         ultimaPosicaoSomPassagem = transform.position;
     }
 
@@ -524,6 +527,12 @@ public class ControleAviaoCaca : MonoBehaviour
 
     void ControlarEfeitosMotor(bool ligado)
     {
+        ControleAviao vooModerno = GetComponent<ControleAviao>();
+        if (vooModerno != null && vooModerno.EstaEstacionadoEDesligado)
+        {
+            ligado = false;
+        }
+
         if (fogoNosMotores != null)
         {
             for (int i = 0, count = fogoNosMotores.Count; i < count; i++)
@@ -531,7 +540,7 @@ public class ControleAviaoCaca : MonoBehaviour
                 ParticleSystem ps = fogoNosMotores[i];
                 if (ps == null) continue;
                 if (ligado && !ps.isPlaying) ps.Play();
-                else if (!ligado && ps.isPlaying) ps.Stop();
+                else if (!ligado && ps.isPlaying) ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
         }
         

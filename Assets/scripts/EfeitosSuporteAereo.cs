@@ -8,10 +8,21 @@ public class BombaAerea : MonoBehaviour
     public AudioClip somExplosao;
     private readonly Collider[] bufferExplosao = new Collider[96];
     private bool explodiu;
+    private GameObject origemAgressor;
+
+    public void DefinirOrigem(GameObject origem)
+    {
+        origemAgressor = origem;
+    }
 
     private void OnEnable()
     {
         explodiu = false;
+    }
+
+    private void OnDisable()
+    {
+        origemAgressor = null;
     }
 
     void OnCollisionEnter(Collision collision)
@@ -19,7 +30,7 @@ public class BombaAerea : MonoBehaviour
         Explodir();
     }
     
-    void Explodir()
+    public void Explodir()
     {
         if (explodiu)
         {
@@ -29,6 +40,7 @@ public class BombaAerea : MonoBehaviour
         explodiu = true;
 
         // 1. Dano em área
+        GameObject agressorImpacto = origemAgressor != null ? origemAgressor : gameObject;
         int hits = Physics.OverlapSphereNonAlloc(transform.position, raioExplosao, bufferExplosao, Physics.AllLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
         {
@@ -47,7 +59,7 @@ public class BombaAerea : MonoBehaviour
                 // Dano reduz com a distância (mais longe = menos dano)
                 float distancia = Vector3.Distance(transform.position, hit.transform.position);
                 float fatorDano = 1f - Mathf.Clamp01(distancia / raioExplosao);
-                vida.ReceberDano(dano * fatorDano);
+                vida.ReceberDano(dano * fatorDano, agressorImpacto);
             }
         }
         

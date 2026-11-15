@@ -827,26 +827,59 @@ public class SistemaAntiMissil : MonoBehaviour
         if (!EhMissilInimigo(candidato)) return false;
         // ─────────────────────────────────────────────────────────────────────
 
+        MissileThreatTracker tracker = candidato.GetComponentInParent<MissileThreatTracker>();
+        if (tracker != null && tracker.Interceptor)
+        {
+            return false;
+        }
+
         Vector3 velocidade = ObterVelocidadeAmeaca(candidato);
         float moduloVelocidade = velocidade.magnitude;
         if (moduloVelocidade <= velocidadeMinimaAmeaca)
         {
             Vector3 fallbackDirecao = candidato.forward;
-            if (fallbackDirecao.sqrMagnitude <= 0.0001f) return false;
+            if (fallbackDirecao.sqrMagnitude > 0.0001f)
+            {
+                Vector3 vetorFallback = transform.position - candidato.position;
+                if (vetorFallback.sqrMagnitude <= 0.0001f) return true;
 
-            Vector3 vetorFallback = transform.position - candidato.position;
-            if (vetorFallback.sqrMagnitude <= 0.0001f) return true;
+                float dotFallback = Vector3.Dot(fallbackDirecao.normalized, vetorFallback.normalized);
+                if (dotFallback >= dotMinimoAmeaca) return true;
+            }
+        }
+        else
+        {
+            Vector3 direcaoVoo = velocidade / moduloVelocidade;
+            Vector3 vetorParaMim = transform.position - candidato.position;
+            if (vetorParaMim.sqrMagnitude <= 0.0001f) return true;
 
-            float dotFallback = Vector3.Dot(fallbackDirecao.normalized, vetorFallback.normalized);
-            return dotFallback >= dotMinimoAmeaca;
+            float dot = Vector3.Dot(direcaoVoo, vetorParaMim.normalized);
+            if (dot >= dotMinimoAmeaca) return true;
         }
 
-        Vector3 direcaoVoo = velocidade / moduloVelocidade;
-        Vector3 vetorParaMim = transform.position - candidato.position;
-        if (vetorParaMim.sqrMagnitude <= 0.0001f) return true;
+        // Defesa de escolta / área: intercepta também mísseis ou bombas cujo
+        // alvo ou trajetória prevista entrem no envelope da bateria anti-míssil
+        // (cobre navios vizinhos, porta-aviões e mergulho vertical de VLS).
+        float raioInterceptacao = Mathf.Max(alcanceRadar * Mathf.Max(1f, multiplicadorAntecipacaoAlcance), alcanceRadar);
+        if (tracker != null)
+        {
+            if (tracker.EstaAmeacandoPonto(transform.position, raioInterceptacao, Mathf.Max(janelaAntecipacaoSegundos, 4.5f)))
+            {
+                return true;
+            }
 
-        float dot = Vector3.Dot(direcaoVoo, vetorParaMim.normalized);
-        return dot >= dotMinimoAmeaca;
+            if (tracker.AlvoTransform != null && minhaIdentidade != null)
+            {
+                IdentidadeUnidade idAlvo = tracker.AlvoTransform.GetComponentInParent<IdentidadeUnidade>();
+                if (idAlvo != null && idAlvo.teamID == minhaIdentidade.teamID
+                    && (tracker.AlvoTransform.position - transform.position).sqrMagnitude <= raioInterceptacao * raioInterceptacao)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     Vector3 ObterVelocidadeAmeaca(Transform candidato)
@@ -952,6 +985,9 @@ public class SistemaAntiMissil : MonoBehaviour
         if (referencia.GetComponentInParent<MisselNaval>() != null) return true;
         if (referencia.GetComponentInParent<MisselCaca>() != null) return true;
         if (referencia.GetComponentInParent<MisselSubmarino>() != null) return true;
+        if (referencia.GetComponentInParent<MisselBombardeiro>() != null) return true;
+        if (referencia.GetComponentInParent<BombaBombardeiro>() != null) return true;
+        if (referencia.GetComponentInParent<BombaAerea>() != null) return true;
         if (referencia.GetComponentInParent<MisselICBM>() != null) return true;
         if (referencia.GetComponentInParent<MisselTatico>() != null) return true;
         if (referencia.GetComponentInParent<MisselLeopardAutomatico>() != null) return true;

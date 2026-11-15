@@ -63,6 +63,14 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     [Min(500f)] public float alcanceReconhecimento = 4500f;
     [Min(500f)] public float alcanceSubmarinoNaSuperficie = 3200f;
     [Min(0.25f)] public float intervaloVarredura = 1.5f;
+
+    [Header("=== PORTA-AVIOES ===")]
+    public bool podePousarEmPortaAvioes = false;
+
+    protected override bool PodeUsarPortaAvioesEmVoo()
+    {
+        return podePousarEmPortaAvioes;
+    }
     [Min(1f)] public float memoriaContato = 30f;
     public bool receberInformacoesDeOutrosSensores = true;
     public bool retransmitirParaAliados = true;
@@ -80,12 +88,26 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
     [Tooltip("Multiplicador aplicado ao tanque aereo base de 600 unidades. 9x resulta em 5.400 unidades.")]
     [Min(1f)] public float multiplicadorCapacidadeCombustivelE3 = 9f;
 
+    [Header("=== VISUAL DOMO DE RADAR ===")]
+    public bool exibirDomoRadarPermanente = true;
+    public Color corDomoRadar = new Color(0.22f, 0.85f, 1f, 0.06f);
+    public Color corBordaDomoRadar = new Color(0.32f, 0.92f, 1f, 0.28f);
+
+    private static readonly List<BoeingE3Reconhecimento> instanciasAtivas =
+        new List<BoeingE3Reconhecimento>(16);
+
     private IdentidadeUnidade identidade;
     private RTSVisibilityService servicoVisibilidade;
     private float proximaVarredura;
     private int equipe;
     private Quaternion rotacaoVisualPrefab = Quaternion.identity;
     private bool visualPrefabInicializado;
+    private GameObject domoRadarObj;
+    private Renderer domoRadarRenderer;
+    private LineRenderer bordaDomoRenderer;
+    private Material domoRadarMaterial;
+    private Material bordaDomoMaterial;
+    private float ultimoAlcanceDomo = -1f;
     private readonly List<IdentidadeUnidade> bufferUnidades = new List<IdentidadeUnidade>(256);
     private readonly List<MissileThreatTracker> bufferMisseis = new List<MissileThreatTracker>(64);
     private readonly HashSet<int> misseisJaAlertados = new HashSet<int>();
@@ -93,6 +115,39 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
 
     public int EquipeReconhecimento => equipe;
     public int QuantidadeContatosAtivos => contatosAtivos.Count;
+    public float AlcanceReconhecimentoAtual => Mathf.Max(500f, alcanceReconhecimento);
+    public bool EstaEmOperacaoReconhecimento =>
+        reconhecimentoAtivo
+        && gameObject.activeInHierarchy
+        && (estadoAtual == EstadoAviao.EmMissao || estadoAtual == EstadoAviao.Decolando);
+
+    public static void CopiarAeronavesReconhecimentoAtivas(List<BoeingE3Reconhecimento> destino)
+    {
+        if (destino == null) return;
+        destino.Clear();
+        for (int i = 0; i < instanciasAtivas.Count; i++)
+        {
+            BoeingE3Reconhecimento inst = instanciasAtivas[i];
+            if (inst != null) destino.Add(inst);
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (!instanciasAtivas.Contains(this))
+        {
+            instanciasAtivas.Add(this);
+        }
+    }
+
+    private void OnDisable()
+    {
+        instanciasAtivas.Remove(this);
+        if (domoRadarObj != null)
+        {
+            domoRadarObj.SetActive(false);
+        }
+    }
 
     private void Awake()
     {
@@ -185,6 +240,7 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
         // durante taxi/pouso. O E-3 precisa manter a matriz de importacao
         // completa em qualquer estado.
         AplicarVisualNivelado();
+        AtualizarDomoRadarVisual();
         if (!reconhecimentoAtivo || !gameObject.activeInHierarchy)
         {
             return;
@@ -722,10 +778,132 @@ public sealed class BoeingE3Reconhecimento : ControleAviao
 
     private void OnDestroy()
     {
+        instanciasAtivas.Remove(this);
+        if (domoRadarObj != null)
+        {
+            Destroy(domoRadarObj);
+            domoRadarObj = null;
+        }
+        if (domoRadarMaterial != null)
+        {
+            Destroy(domoRadarMaterial);
+            domoRadarMaterial = null;
+        }
+        if (bordaDomoMaterial != null)
+        {
+            Destroy(bordaDomoMaterial);
+            bordaDomoMaterial = null;
+        }
         if (servicoVisibilidade != null)
         {
             servicoVisibilidade.OnContactUpdated -= AoReceberContatoDeOutroSensor;
             servicoVisibilidade = null;
         }
+    }
+
+    private void AtualizarDomoRadarVisual()
+    {
+        bool deveMostrar = exibirDomoRadarPermanente
+            && EstaEmOperacaoReconhecimento
+            && equipe == 1;
+
+        if (!deveMostrar)
+        {
+            if (domoRadarObj != null && domoRadarObj.activeSelf)
+            {
+                domoRadarObj.SetActive(false);
+            }
+            return;
+        }
+
+        GarantirDomoRadarVisual();
+        if (domoRadarObj == null) return;
+
+        if (!domoRadarObj.activeSelf)
+        {
+            domoRadarObj.SetActive(true);
+        }
+
+        float raio = AlcanceReconhecimentoAtual;
+        Vector3 escalaPai = transform.lossyScale;
+        float sx = Mathf.Max(0.001f, Mathf.Abs(escalaPai.x));
+        float sy = Mathf.Max(0.001f, Mathf.Abs(escalaPai.y));
+        float sz = Mathf.Max(0.001f, Mathf.Abs(escalaPai.z));
+        float diametro = raio * 2f;
+
+        domoRadarObj.transform.rotation = Quaternion.identity;
+        domoRadarObj.transform.localScale = new Vector3(diametro / sx, diametro / sy, diametro / sz);
+
+        if (domoRadarMaterial != null)
+        {
+            domoRadarMaterial.color = corDomoRadar;
+        }
+
+        if (bordaDomoRenderer != null)
+        {
+            if (bordaDomoMaterial != null)
+            {
+                bordaDomoMaterial.color = corBordaDomoRadar;
+            }
+            bordaDomoRenderer.startColor = corBordaDomoRadar;
+            bordaDomoRenderer.endColor = corBordaDomoRadar;
+
+            if (!Mathf.Approximately(ultimoAlcanceDomo, raio))
+            {
+                ultimoAlcanceDomo = raio;
+                const int segmentos = 72;
+                bordaDomoRenderer.positionCount = segmentos;
+                for (int i = 0; i < segmentos; i++)
+                {
+                    float ang = (i / (float)segmentos) * Mathf.PI * 2f;
+                    // Coordenadas locais da esfera unitaria (raio = 0.5).
+                    bordaDomoRenderer.SetPosition(i, new Vector3(Mathf.Cos(ang) * 0.5f, 0f, Mathf.Sin(ang) * 0.5f));
+                }
+            }
+        }
+    }
+
+    private void GarantirDomoRadarVisual()
+    {
+        if (domoRadarObj != null) return;
+
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null) return;
+
+        domoRadarObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        domoRadarObj.name = "_DomoRadarVisual";
+        domoRadarObj.layer = LayerMask.NameToLayer("Ignore Raycast") >= 0
+            ? LayerMask.NameToLayer("Ignore Raycast")
+            : 2;
+        domoRadarObj.transform.SetParent(transform, false);
+        domoRadarObj.transform.localPosition = Vector3.zero;
+        domoRadarObj.transform.rotation = Quaternion.identity;
+
+        Collider col = domoRadarObj.GetComponent<Collider>();
+        if (col != null)
+        {
+            Destroy(col);
+        }
+
+        domoRadarRenderer = domoRadarObj.GetComponent<Renderer>();
+        if (domoRadarRenderer != null)
+        {
+            domoRadarMaterial = new Material(shader) { name = "Mat_DomoRadar_AWACS" };
+            domoRadarMaterial.color = corDomoRadar;
+            domoRadarRenderer.sharedMaterial = domoRadarMaterial;
+            domoRadarRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            domoRadarRenderer.receiveShadows = false;
+        }
+
+        bordaDomoRenderer = domoRadarObj.AddComponent<LineRenderer>();
+        bordaDomoMaterial = new Material(shader) { name = "Mat_BordaDomoRadar_AWACS" };
+        bordaDomoMaterial.color = corBordaDomoRadar;
+        bordaDomoRenderer.sharedMaterial = bordaDomoMaterial;
+        bordaDomoRenderer.useWorldSpace = false;
+        bordaDomoRenderer.loop = true;
+        bordaDomoRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        bordaDomoRenderer.receiveShadows = false;
+        bordaDomoRenderer.widthMultiplier = Mathf.Clamp(AlcanceReconhecimentoAtual * 0.002f, 20f, 120f);
+        ultimoAlcanceDomo = -1f;
     }
 }

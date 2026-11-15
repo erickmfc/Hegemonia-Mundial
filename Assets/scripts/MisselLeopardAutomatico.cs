@@ -40,7 +40,13 @@ public class MisselLeopardAutomatico : MonoBehaviour
     private Rigidbody rb;
     private Vector3 ultimaPosicaoGuiagem;
     private bool possuiUltimaPosicaoGuiagem;
-    
+    private GameObject origemAgressor;
+
+    public void DefinirOrigem(GameObject origem)
+    {
+        origemAgressor = origem;
+    }
+
     public void DefinirAlvo(Transform alvo)
     {
         alvoFocado = alvo;
@@ -234,6 +240,7 @@ public class MisselLeopardAutomatico : MonoBehaviour
         }
         
         // 3. Dano em Área
+        GameObject agressorImpacto = origemAgressor != null ? origemAgressor : gameObject;
         Collider[] objetosNaArea = Physics.OverlapSphere(transform.position, raioExplosao);
         foreach (Collider obj in objetosNaArea)
         {
@@ -244,7 +251,7 @@ public class MisselLeopardAutomatico : MonoBehaviour
             {
                 float dist = Vector3.Distance(transform.position, obj.transform.position);
                 float mult = 1f - Mathf.Clamp01(dist / raioExplosao);
-                sistemaDano.ReceberDano(dano * mult);
+                sistemaDano.ReceberDano(dano * mult, agressorImpacto);
             }
             
             // Empurra

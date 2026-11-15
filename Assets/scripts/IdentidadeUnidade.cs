@@ -40,6 +40,15 @@ public class IdentidadeUnidade : MonoBehaviour
         {
             CensoImperial.Instancia.RegistrarUnidade(tipoUnidade, teamID, gameObject);
         }
+
+        if (tipoUnidade != TipoUnidade.Estrutura)
+        {
+            TripulacaoUnidade.Garantir(gameObject);
+            if (teamID > 0 && teamID == RacaoUnidade.ObterTeamJogadorAtual())
+            {
+                RacaoUnidade.Garantir(gameObject);
+            }
+        }
     }
 
     void OnEnable()

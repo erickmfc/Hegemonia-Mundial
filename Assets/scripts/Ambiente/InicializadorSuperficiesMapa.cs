@@ -214,6 +214,26 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         return false;
     }
 
+    internal static bool CenaPossuiSuperficieAguaVisivel()
+    {
+        if (PossuiSuperficieVisualAguaSeparada())
+        {
+            return true;
+        }
+
+        Terrain[] terrains = FindObjectsByType<Terrain>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < terrains.Length; i++)
+        {
+            Terrain terrain = terrains[i];
+            if (terrain != null && terrain.enabled && EhTerrenoAguaDeclarada(terrain))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static Material ConfigurarMaterialTerrain(Terrain terrain, Material materialBase)
     {
         if (terrain == null || terrain.terrainData == null || materialBase == null)
@@ -490,16 +510,28 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         }
 
         // Cenas novas podem ter um Terrain usado como suporte do plano de
-        // água. O nome e a camada são a declaração explícita do autor da
-        // cena; não inferimos água dos demais Terrain_... para não alterar
-        // os terrenos que ainda serão configurados depois.
+        // água. O nome, a camada e o shader oceânico explícito identificam
+        // a superfície aquática do autor sem inferir água de terrenos de solo.
         string nome = terrain.name.ToLowerInvariant();
         return nome == "agua"
             || nome == "água"
             || nome == "water"
             || nome == "ocean"
             || nome == "sea"
-            || terrain.gameObject.layer == 4;
+            || terrain.gameObject.layer == 4
+            || EhTerrenoComMaterialAgua(terrain);
+    }
+
+    private static bool EhTerrenoComMaterialAgua(Terrain terrain)
+    {
+        if (terrain == null || terrain.materialTemplate == null || terrain.materialTemplate.shader == null)
+        {
+            return false;
+        }
+
+        string nomeShader = terrain.materialTemplate.shader.name;
+        return string.Equals(nomeShader, "Nature/OceanAdvanced", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(nomeShader, "Nature/Ocean", System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool EhTerrenoFronteiraVisualMdHistoria(Terrain terrain)

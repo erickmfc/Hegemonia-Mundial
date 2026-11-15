@@ -159,7 +159,7 @@ public class TorretaAntiaerea : MonoBehaviour
 
     void Update()
     {
-        if (modoPassivo)
+        if (modoPassivo || !TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
         {
             alvoAtual = null;
             return;

@@ -60,6 +60,43 @@ namespace Hegemonia.AI.BrainMaster
         public int CompletedSuccessCount { get; private set; }
         public int CompletedFailureCount { get; private set; }
 
+        public bool IsQueuedOrInCooldown(IA_CommandRequest request, float now)
+        {
+            if (request == null)
+            {
+                return false;
+            }
+
+            string normalizedFamily = BuildNormalizedFamily(request);
+            string dedupKey = BuildNormalizedDedupKey(request, normalizedFamily);
+            if (string.IsNullOrEmpty(dedupKey))
+            {
+                return false;
+            }
+
+            if (_dedupInQueue.Contains(dedupKey))
+            {
+                return true;
+            }
+
+            float cooldownUntil;
+            return _cooldownUntilByDedup.TryGetValue(dedupKey, out cooldownUntil) && cooldownUntil > now;
+        }
+
+        private static string BuildNormalizedFamily(IA_CommandRequest request)
+        {
+            string family = NormalizeMetaField(request.Family, request.Type.ToString().ToLowerInvariant());
+            return IA_CommandFactory.NormalizeFamily(family, request.Type);
+        }
+
+        private static string BuildNormalizedDedupKey(IA_CommandRequest request, string normalizedFamily)
+        {
+            return IA_SharedRuntimeSupport.BuildCommandDedupKey(
+                normalizedFamily,
+                string.IsNullOrWhiteSpace(request.DedupKey) ? request.Type.ToString() : request.DedupKey,
+                request.Payload);
+        }
+
         public bool Enqueue(IA_CommandRequest request, float now, out string reason)
         {
             reason = string.Empty;
@@ -73,12 +110,8 @@ namespace Hegemonia.AI.BrainMaster
             request.Origin = NormalizeMetaField(request.Origin, "desconhecido");
             request.Domain = NormalizeMetaField(request.Domain, request.Type.ToString());
             request.Reason = NormalizeMetaField(request.Reason, "sem motivo declarado");
-            request.Family = NormalizeMetaField(request.Family, request.Type.ToString().ToLowerInvariant());
-            request.Family = IA_CommandFactory.NormalizeFamily(request.Family, request.Type);
-            request.DedupKey = IA_SharedRuntimeSupport.BuildCommandDedupKey(
-                request.Family,
-                string.IsNullOrWhiteSpace(request.DedupKey) ? request.Type.ToString() : request.DedupKey,
-                request.Payload);
+            request.Family = BuildNormalizedFamily(request);
+            request.DedupKey = BuildNormalizedDedupKey(request, request.Family);
             request.EnqueueTime = now;
             request.CreatedAt = now;
             request.AttemptCount = 0;
@@ -288,6 +321,32 @@ namespace Hegemonia.AI.BrainMaster
         public List<IA_CommandRecord> GetRecentHistory(int maxItems)
         {
             return _history.Reverse().Take(Mathf.Max(1, maxItems)).ToList();
+        }
+
+        public void FillPendingProduceOrders(List<IA_ProduceOrderData> destination)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                IA_CommandRequest req = _pending[i];
+                if (req != null && req.Type == IA_CommandType.Produce && req.Payload is IA_ProduceOrderData order)
+                {
+                    destination.Add(order);
+                }
+            }
+
+            foreach (IA_CommandRequest req in _awaitingConfirmation.Values)
+            {
+                if (req != null && req.Type == IA_CommandType.Produce && req.Payload is IA_ProduceOrderData order)
+                {
+                    destination.Add(order);
+                }
+            }
         }
 
         public int ContarProducoesPendentesMoveis(

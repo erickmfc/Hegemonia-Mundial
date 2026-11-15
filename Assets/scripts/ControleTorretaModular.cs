@@ -201,7 +201,7 @@ public class ControleTorretaModular : MonoBehaviour
     void Update()
     {
         AtualizarAgendamentoBusca();
-        if (bloquearMovimentoAutomatico)
+        if (bloquearMovimentoAutomatico || !TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
         {
             alvoAtual = null;
             return;

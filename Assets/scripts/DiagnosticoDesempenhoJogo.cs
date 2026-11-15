@@ -147,7 +147,9 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     [SerializeField] private bool ativarAutomaticamenteQuandoPresenteNaCena = true;
     [Tooltip("Use somente em cenas de medicao. A captura automatica coleta FrameTiming e pode afetar o FPS medido.")]
     [SerializeField] private bool permitirCapturaAutomatica = false;
+#pragma warning disable CS0414
     [SerializeField] private bool mostrarOverlayNaAtivacaoAutomatica = false;
+#pragma warning restore CS0414
 
     [Header("Eventos")]
     [SerializeField] private bool registrarCarregamentoDeCena = true;

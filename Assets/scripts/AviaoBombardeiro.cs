@@ -571,6 +571,12 @@ public class AviaoBombardeiro : MonoBehaviour
             float velAviao = controleAviao != null ? controleAviao.velocidadeMaximaVoo : 120f;
             Vector3 velHoriz = transform.forward * velAviao;
             bomba.IniciarQueda(velHoriz, pontoFinalExato, this.gameObject);
+            MissileThreatTracker.RegistrarLancamento(
+                objArma,
+                this,
+                pontoFinalExato,
+                alvoMovelRef,
+                Mathf.Max(velAviao, MissileThreatTracker.EstimarVelocidade(objArma)));
             return;
         }
 
@@ -583,15 +589,21 @@ public class AviaoBombardeiro : MonoBehaviour
                 missel.IniciarLancamentoRastreado(alvoMovelRef, this.gameObject);
             else
                 missel.IniciarLancamento(pontoFinalExato, this.gameObject);
+            MissileThreatTracker.RegistrarLancamento(
+                objArma,
+                this,
+                pontoFinalExato,
+                alvoMovelRef,
+                Mathf.Max(missel.velocidadeMaxima, MissileThreatTracker.EstimarVelocidade(objArma)));
             return;
         }
 
         // ─── 3. MÍSSEIS ESPECÍFICOS DO JOGO BASE ─────────────────
         var icbm = objArma.GetComponent<MisselICBM>();
-        if (icbm != null) { icbm.IniciarLancamento(pontoFinalExato, alvoMovelRef); return; }
+        if (icbm != null) { icbm.DefinirOrigem(gameObject); icbm.IniciarLancamento(pontoFinalExato, alvoMovelRef); return; }
 
         var tatico = objArma.GetComponent<MisselTatico>();
-        if (tatico != null) { tatico.IniciarLancamento(pontoFinalExato, alvoMovelRef); return; }
+        if (tatico != null) { tatico.DefinirOrigem(gameObject); tatico.IniciarLancamento(pontoFinalExato, alvoMovelRef); return; }
 
         // ─── 4. PROJÉTIL GENÉRICO (Fallback) ─────────────────────
         Projetil p = objArma.GetComponent<Projetil>();

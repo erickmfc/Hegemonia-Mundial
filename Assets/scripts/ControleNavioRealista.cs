@@ -450,6 +450,12 @@ public class ControleNavioRealista : MonoBehaviour
             return;
         }
 
+        if (GlobalTerrainStreamer.Instance != null
+            && name.IndexOf("Enterprise", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            offsetAlturaAgua += 5f;
+        }
+
         // A navegação usa o plano do mar. Assim que sai do estaleiro, o
         // casco recebe a altura correta sem esperar a primeira ordem.
         float nivelMar = ObterNivelMarCacheado();
@@ -1391,6 +1397,13 @@ public class ControleNavioRealista : MonoBehaviour
             return false;
         }
 
+        if (!TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
+        {
+            ultimoMotivoRecusaDestino = "unidade inoperante (sem tripulação)";
+            DefinirDesligado(true);
+            return false;
+        }
+
         if (!NavalPlacementResolver.IsWaterAtPosition(destino))
         {
             ultimoMotivoRecusaDestino = "destino fora da água navegável";
@@ -1722,6 +1735,11 @@ public class ControleNavioRealista : MonoBehaviour
 
     private bool UnidadePermiteCombate()
     {
+        if (!TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
+        {
+            return false;
+        }
+
         ControleUnidade controle = GetComponentInParent<ControleUnidade>()
             ?? GetComponent<ControleUnidade>()
             ?? GetComponentInChildren<ControleUnidade>(true);

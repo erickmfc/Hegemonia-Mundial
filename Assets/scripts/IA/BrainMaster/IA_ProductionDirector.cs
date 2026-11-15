@@ -140,7 +140,12 @@ namespace Hegemonia.AI.BrainMaster
                 DiagnosticoDesempenhoJogo.DefinirContadorMetrica("fighters_ready", snapshot.ReadyFighters);
                 int navalCount = snapshot.NavalUnits;
                 int submarineCount = snapshot.Submarines;
-                int oilTankerCount = snapshot.OilTankers;
+                int oilTankerCount = CountLiveAndPendingOilTankers(
+                    _context != null && _context.Brain != null ? _context.Brain.TeamId : 0,
+                    snapshot,
+                    ResolveOilTankerCatalogData(),
+                    _context != null ? _context.CommandQueue : null,
+                    _context != null ? _context.IntentBoard : null);
                 int truckCount = snapshot.GroundTransports;
                 int hoverCount = snapshot.HoverTransports;
                 bool hasBarracks = snapshot.HasBarracks;
@@ -269,6 +274,7 @@ namespace Hegemonia.AI.BrainMaster
                         ? (snapshot.PlatformCount > 0 && snapshot.PierCount > 0 ? Mathf.Min(1, oilTankerTarget) : 1)
                         : 0;
                 }
+                oilTankerTarget = ResolveEffectiveOilTankerCap(brain, snapshot, oilTankerTarget);
                 int subTarget = (brain == null || brain.IA03NavioMilitarLiberado)
                     && hasNavalBase && fleetCombatCount >= 1 && (counter.ReinforceCoast || counter.NavalWeight > 0.18f)
                     ? 1
@@ -594,9 +600,19 @@ namespace Hegemonia.AI.BrainMaster
             // produzido assim que o estaleiro existir, antes de navios militares e cargueiros.
             bool hasNavalBase = (snapshot.HasNavalBase || HasImmediateNavalBase())
                                 && snapshot.ShipyardCount > 0;
-            int targetTankers = brain.UsaCronogramaIA03 ? Mathf.Max(1, brain.IA03LimitePetroleiros) : 1;
+            int teamId = brain != null ? brain.TeamId : 0;
+            int targetTankers = ResolveEffectiveOilTankerCap(
+                brain,
+                snapshot,
+                hasNavalBase ? (brain.UsaCronogramaIA03 ? Mathf.Max(1, brain.IA03LimitePetroleiros) : 1) : 0);
+            int effectiveOilTankers = CountLiveAndPendingOilTankers(
+                teamId,
+                snapshot,
+                ResolveOilTankerCatalogData(),
+                _context != null ? _context.CommandQueue : null,
+                _context != null ? _context.IntentBoard : null);
             bool oilTankerAvailable = HasOilTankerCatalog();
-            if (hasNavalBase && targetTankers > 0 && snapshot.OilTankers < 1 && oilTankerAvailable)
+            if (hasNavalBase && targetTankers > 0 && effectiveOilTankers < 1 && oilTankerAvailable)
             {
                 return QueueOilTanker(999, 5.0f);
             }
@@ -604,7 +620,7 @@ namespace Hegemonia.AI.BrainMaster
             if (hasNavalBase
                 && snapshot.PierCount > 0
                 && snapshot.PlatformCount > 0
-                && snapshot.OilTankers < targetTankers
+                && effectiveOilTankers < targetTankers
                 && QueueOilTanker(999, 5.0f))
             {
                 return true;
@@ -746,15 +762,41 @@ namespace Hegemonia.AI.BrainMaster
             }
 
             IA01MilitaryAssetKind assetKind = IA01MilitaryProductionGuard.Classify(data);
+            int teamId = _context != null && _context.Brain != null ? _context.Brain.TeamId : 0;
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            IA_ForceSnapshot snapshot = GetSnapshot();
             string orderId = string.Empty;
-            bool reserved = assetKind == IA01MilitaryAssetKind.Other
-                || IA01MilitaryProductionGuard.TryReserveSingle(
-                    _context.Brain != null ? _context.Brain.TeamId : 0,
-                    assetKind,
-                    CurrentCountFor(assetKind, GetSnapshot()),
-                    Time.time,
-                    assetKind == IA01MilitaryAssetKind.Naval || assetKind == IA01MilitaryAssetKind.OilTanker ? 180f : 45f,
+            bool reserved;
+            if (assetKind == IA01MilitaryAssetKind.Other)
+            {
+                reserved = true;
+            }
+            else if (assetKind == IA01MilitaryAssetKind.OilTanker)
+            {
+                int rawCap = brain != null
+                    ? (brain.UsaCronogramaIA03 ? Mathf.Max(1, brain.IA03LimitePetroleiros) : Mathf.Max(1, brain.TargetOilTankers))
+                    : 1;
+                reserved = TryReserveOilTankerSlot(
+                    teamId,
+                    brain,
+                    snapshot,
+                    data,
+                    _context != null ? _context.CommandQueue : null,
+                    _context != null ? _context.IntentBoard : null,
+                    "military",
+                    rawCap,
                     out orderId);
+            }
+            else
+            {
+                reserved = IA01MilitaryProductionGuard.TryReserveSingle(
+                    teamId,
+                    assetKind,
+                    CurrentCountFor(assetKind, snapshot),
+                    Time.time,
+                    assetKind == IA01MilitaryAssetKind.Naval ? 180f : 45f,
+                    out orderId);
+            }
             if (!reserved)
             {
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_GUARD", "ordem ja pendente para " + assetKind);
@@ -790,16 +832,306 @@ namespace Hegemonia.AI.BrainMaster
             }
             else
             {
-                if (assetKind != IA01MilitaryAssetKind.Other)
-                    IA01MilitaryProductionGuard.Cancel(_context.Brain != null ? _context.Brain.TeamId : 0, assetKind, Time.time);
+                if (!string.IsNullOrEmpty(orderId))
+                    IAAutoProductionRegistry.Release(orderId, Time.time);
+                else if (assetKind != IA01MilitaryAssetKind.Other)
+                    IA01MilitaryProductionGuard.Cancel(teamId, assetKind, Time.time);
                 IA_RuntimeTextTrace.LogText(_context != null && _context.Brain != null ? _context.Brain.TeamId : -1, "IA_ProductionDirector", "PROD_FAIL", "item=" + data.NomeItem + (string.IsNullOrEmpty(reason) ? string.Empty : " | motivo=" + reason));
             }
 
             return enqueued;
         }
 
+        private static readonly List<IdentidadeUnidade> _oilTankerUnitsBuffer = new List<IdentidadeUnidade>(64);
+        private static readonly List<Estaleiro> _oilTankerShipyardsBuffer = new List<Estaleiro>(16);
+        private static readonly List<IA_ProduceOrderData> _oilTankerOrdersBuffer = new List<IA_ProduceOrderData>(32);
+
+        internal static int ResolveEffectiveOilTankerCap(IA_BrainMaster brain, IA_ForceSnapshot snapshot, int rawTarget)
+        {
+            int cap = Mathf.Max(0, rawTarget);
+            if (cap <= 0)
+            {
+                return 0;
+            }
+
+            if (brain != null)
+            {
+                if (brain.UsaCronogramaIA03)
+                {
+                    if (!brain.IA03EstaleiroEPetroleiroLiberado)
+                    {
+                        return 0;
+                    }
+
+                    cap = Mathf.Min(cap, Mathf.Max(1, brain.IA03LimitePetroleiros));
+                }
+                else if (brain.TargetOilTankers > 0)
+                {
+                    cap = Mathf.Min(cap, brain.TargetOilTankers);
+                }
+            }
+
+            if (cap > 0 && snapshot != null && (snapshot.PierCount <= 0 || snapshot.PlatformCount <= 0))
+            {
+                cap = 1;
+            }
+
+            return cap;
+        }
+
+        internal static bool TryReserveOilTankerSlot(
+            int teamId,
+            IA_BrainMaster brain,
+            IA_ForceSnapshot snapshot,
+            DadosConstrucao oilTankerData,
+            IA_CommandQueue queue,
+            IA_NationalIntentBoard intentBoard,
+            string purpose,
+            int rawTarget,
+            out string orderId)
+        {
+            orderId = string.Empty;
+            int effectiveCap = ResolveEffectiveOilTankerCap(brain, snapshot, rawTarget);
+            if (effectiveCap <= 0)
+            {
+                return false;
+            }
+
+            int liveCount;
+            int shipyardPending;
+            int unregisteredQueued;
+            int totalCommitted = CountLiveAndPendingOilTankersInternal(
+                teamId,
+                snapshot,
+                oilTankerData,
+                queue,
+                intentBoard,
+                out liveCount,
+                out shipyardPending,
+                out unregisteredQueued);
+            if (totalCommitted >= effectiveCap)
+            {
+                return false;
+            }
+
+            IAProductionDiagnostics diag = IAAutoProductionRegistry.GetDiagnostics(
+                teamId,
+                IA01MilitaryAssetKind.OilTanker.ToString(),
+                effectiveCap,
+                liveCount);
+            int untrackedShipyard = Mathf.Max(0, shipyardPending - diag.Constructing);
+            int aliveForRegistry = liveCount + untrackedShipyard + unregisteredQueued;
+            return IAAutoProductionRegistry.TryReserveProduction(
+                teamId,
+                IA01MilitaryAssetKind.OilTanker.ToString(),
+                string.IsNullOrEmpty(purpose) ? "military" : purpose,
+                effectiveCap,
+                aliveForRegistry,
+                out orderId,
+                Time.time,
+                180f);
+        }
+
+        internal static int CountLiveAndPendingOilTankers(
+            int teamId,
+            IA_ForceSnapshot snapshot,
+            DadosConstrucao oilTankerData,
+            IA_CommandQueue queue = null,
+            IA_NationalIntentBoard intentBoard = null)
+        {
+            return CountLiveAndPendingOilTankersInternal(
+                teamId,
+                snapshot,
+                oilTankerData,
+                queue,
+                intentBoard,
+                out _,
+                out _,
+                out _);
+        }
+
+        private static int CountLiveAndPendingOilTankersInternal(
+            int teamId,
+            IA_ForceSnapshot snapshot,
+            DadosConstrucao oilTankerData,
+            IA_CommandQueue queue,
+            IA_NationalIntentBoard intentBoard,
+            out int liveCount,
+            out int shipyardPending,
+            out int unregisteredQueued)
+        {
+            liveCount = snapshot != null ? Mathf.Max(0, snapshot.OilTankers) : 0;
+            shipyardPending = 0;
+            unregisteredQueued = 0;
+
+            if (teamId > 0)
+            {
+                int sceneLive = 0;
+                _oilTankerUnitsBuffer.Clear();
+                RegistroEntidadesJogo.FillUnidades(_oilTankerUnitsBuffer);
+                for (int i = 0; i < _oilTankerUnitsBuffer.Count; i++)
+                {
+                    IdentidadeUnidade id = _oilTankerUnitsBuffer[i];
+                    if (id == null || id.teamID != teamId || !id.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    if (EhObjetoPetroleiro(id.gameObject))
+                    {
+                        sceneLive++;
+                    }
+                }
+                _oilTankerUnitsBuffer.Clear();
+                if (sceneLive > liveCount)
+                {
+                    liveCount = sceneLive;
+                }
+
+                GameObject prefabFiltro = null;
+                if (oilTankerData != null)
+                {
+                    oilTankerData.TryGetPrefabBasico(out prefabFiltro);
+                }
+
+                if (prefabFiltro != null)
+                {
+                    _oilTankerShipyardsBuffer.Clear();
+                    RegistroEntidadesJogo.FillEstaleiros(_oilTankerShipyardsBuffer);
+                    for (int i = 0; i < _oilTankerShipyardsBuffer.Count; i++)
+                    {
+                        Estaleiro est = _oilTankerShipyardsBuffer[i];
+                        if (est == null || !est.gameObject.activeInHierarchy)
+                        {
+                            continue;
+                        }
+
+                        IdentidadeUnidade idEst = est.GetComponentInParent<IdentidadeUnidade>()
+                            ?? est.GetComponent<IdentidadeUnidade>();
+                        if (idEst != null && idEst.teamID == teamId)
+                        {
+                            shipyardPending += est.ContarUnidadesPendentes(prefabFiltro);
+                        }
+                    }
+                    _oilTankerShipyardsBuffer.Clear();
+                }
+            }
+
+            if (queue != null)
+            {
+                _oilTankerOrdersBuffer.Clear();
+                queue.FillPendingProduceOrders(_oilTankerOrdersBuffer);
+                unregisteredQueued += CountUnregisteredOilTankerOrders(_oilTankerOrdersBuffer);
+                _oilTankerOrdersBuffer.Clear();
+            }
+
+            if (intentBoard != null)
+            {
+                _oilTankerOrdersBuffer.Clear();
+                intentBoard.FillPendingProduceOrders(_oilTankerOrdersBuffer);
+                unregisteredQueued += CountUnregisteredOilTankerOrders(_oilTankerOrdersBuffer);
+                _oilTankerOrdersBuffer.Clear();
+            }
+
+            IAProductionDiagnostics diag = IAAutoProductionRegistry.GetDiagnostics(
+                teamId,
+                IA01MilitaryAssetKind.OilTanker.ToString(),
+                0,
+                liveCount);
+            int registryActive = diag.Reserved + diag.Queued + diag.Constructing;
+            int pendingTotal = Mathf.Max(registryActive, shipyardPending) + unregisteredQueued;
+            return liveCount + pendingTotal;
+        }
+
+        private static bool EhObjetoPetroleiro(GameObject obj)
+        {
+            if (obj == null)
+            {
+                return false;
+            }
+
+            if (obj.GetComponent<NavioPetroleiro>() != null)
+            {
+                return true;
+            }
+
+            return EhTextoPetroleiro(IA_Text.Normalize(obj.name));
+        }
+
+        private static bool EhTextoPetroleiro(string normalizedName)
+        {
+            return !string.IsNullOrEmpty(normalizedName)
+                && (normalizedName.Contains("petroleiro")
+                    || normalizedName.Contains("petrolifero")
+                    || normalizedName.Contains("oil tanker")
+                    || normalizedName.Contains("oiltanker")
+                    || normalizedName.Contains("tanker"));
+        }
+
+        private static int CountUnregisteredOilTankerOrders(List<IA_ProduceOrderData> orders)
+        {
+            if (orders == null || orders.Count == 0)
+            {
+                return 0;
+            }
+
+            int total = 0;
+            for (int i = 0; i < orders.Count; i++)
+            {
+                IA_ProduceOrderData order = orders[i];
+                if (order == null || !string.IsNullOrWhiteSpace(order.ProductionOrderId))
+                {
+                    continue;
+                }
+
+                if (EhTextoPetroleiro(IA_Text.Normalize(order.ItemKey)))
+                {
+                    total += Mathf.Max(1, order.Quantity);
+                }
+            }
+
+            return total;
+        }
+
+        private DadosConstrucao ResolveOilTankerCatalogData()
+        {
+            if (_context == null || _context.Backend == null)
+            {
+                return null;
+            }
+
+            return _context.Backend.FindFirstAvailable(
+                "petroleiro",
+                "navio petroleiro",
+                "navio petrolifero",
+                "oil tanker",
+                "tanker");
+        }
+
         private bool QueueOilTanker(int priority, float cooldown)
         {
+            IA_BrainMaster brain = _context != null ? _context.Brain : null;
+            IA_ForceSnapshot snapshot = GetSnapshot();
+            int rawCap = brain != null
+                ? (brain.UsaCronogramaIA03 ? Mathf.Max(1, brain.IA03LimitePetroleiros) : Mathf.Max(1, brain.TargetOilTankers))
+                : 1;
+            int cap = ResolveEffectiveOilTankerCap(brain, snapshot, rawCap);
+            if (cap <= 0)
+            {
+                return false;
+            }
+
+            int teamId = brain != null ? brain.TeamId : 0;
+            if (CountLiveAndPendingOilTankers(
+                    teamId,
+                    snapshot,
+                    ResolveOilTankerCatalogData(),
+                    _context != null ? _context.CommandQueue : null,
+                    _context != null ? _context.IntentBoard : null) >= cap)
+            {
+                return false;
+            }
+
             return QueueProduceBest(priority, cooldown, "petroleiro", "navio petroleiro", "navio petrolifero", "oil tanker", "tanker");
         }
 

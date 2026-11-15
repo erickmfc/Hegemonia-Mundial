@@ -595,9 +595,16 @@ public class Estaleiro : MonoBehaviour
         return true;
     }
 
+    public string UltimoMotivoFalha { get; private set; } = string.Empty;
+
     public bool ConstruirUnidade(GameObject prefabDoNavio, string productionOrderId = "")
     {
-        return ConstruirUnidadeRastreada(prefabDoNavio, productionOrderId, null);
+        return ConstruirUnidadeRastreada(prefabDoNavio, productionOrderId, null, out _);
+    }
+
+    public bool ConstruirUnidade(GameObject prefabDoNavio, out string motivoFalha, string productionOrderId = "")
+    {
+        return ConstruirUnidadeRastreada(prefabDoNavio, productionOrderId, null, out motivoFalha);
     }
 
     public bool ConstruirUnidadeRastreada(
@@ -605,8 +612,42 @@ public class Estaleiro : MonoBehaviour
         string productionOrderId,
         System.Action onPhysicalAcceptance)
     {
-        if (prefabDoNavio == null || !PossuiEnergiaOperacional || !PodeProduzirComEfetivo(prefabDoNavio))
+        return ConstruirUnidadeRastreada(prefabDoNavio, productionOrderId, onPhysicalAcceptance, out _);
+    }
+
+    public bool ConstruirUnidadeRastreada(
+        GameObject prefabDoNavio,
+        string productionOrderId,
+        System.Action onPhysicalAcceptance,
+        out string motivoFalha)
+    {
+        motivoFalha = string.Empty;
+        UltimoMotivoFalha = string.Empty;
+
+        if (prefabDoNavio == null)
         {
+            motivoFalha = "Prefab naval inválido.";
+            UltimoMotivoFalha = motivoFalha;
+            return false;
+        }
+
+        if (!PossuiEnergiaOperacional)
+        {
+            motivoFalha = $"Estaleiro '{name.Replace("(Clone)", string.Empty).Trim()}' está sem energia operacional.";
+            UltimoMotivoFalha = motivoFalha;
+            return false;
+        }
+
+        if (!PodeProduzirComEfetivo(prefabDoNavio))
+        {
+            int necessario = SistemaGovernoMundial.ObterEfetivoNecessario(prefabDoNavio, TipoUnidade.Naval);
+            IdentidadeUnidade idEstaleiro = GetComponent<IdentidadeUnidade>() ?? GetComponentInParent<IdentidadeUnidade>();
+            int meuTeam = idEstaleiro != null && idEstaleiro.teamID > 0 ? idEstaleiro.teamID : 1;
+            int disponivel = SistemaGovernoMundial.Instancia != null
+                ? SistemaGovernoMundial.Instancia.ObterEfetivoDisponivel(meuTeam)
+                : 0;
+            motivoFalha = $"Efetivo militar insuficiente: precisa {necessario:N0}, disponível {disponivel:N0}.";
+            UltimoMotivoFalha = motivoFalha;
             return false;
         }
 
@@ -623,6 +664,8 @@ public class Estaleiro : MonoBehaviour
         bool poseValida = NavalPlacementResolver.IsCurrentStructurePoseValid(gameObject, out validacaoNaval);
         if (!IgnorarRegrasCosteirasManuais() && !poseValida && !EstaNaConstrucaoValida(nivelAguaAtual))
         {
+            motivoFalha = $"Estaleiro em posição costeira inválida ({validacaoNaval}).";
+            UltimoMotivoFalha = motivoFalha;
             Debug.LogWarning("[Estaleiro] Construção naval bloqueada: " + validacaoNaval);
             return false;
         }
@@ -632,6 +675,8 @@ public class Estaleiro : MonoBehaviour
             int limiteEspera = LimiteFilaNaval;
             if (filaNaval.Count >= limiteEspera)
             {
+                motivoFalha = $"Fila naval do estaleiro cheia ({filaNaval.Count}/{limiteEspera}).";
+                UltimoMotivoFalha = motivoFalha;
                 Debug.LogWarning($"[Estaleiro] Fila naval cheia ({limiteEspera}). Pedido recusado.");
                 return false;
             }
@@ -648,6 +693,8 @@ public class Estaleiro : MonoBehaviour
             int limiteLote = LimiteFilaNaval;
             if (filaNaval.Count >= limiteLote)
             {
+                motivoFalha = $"Fila naval do estaleiro cheia ({filaNaval.Count}/{limiteLote}).";
+                UltimoMotivoFalha = motivoFalha;
                 Debug.LogWarning($"[Estaleiro] Fila naval cheia ({limiteLote}). Pedido recusado.");
                 return false;
             }
@@ -666,6 +713,8 @@ public class Estaleiro : MonoBehaviour
             int limite = LimiteFilaNaval;
             if (filaNaval.Count >= limite)
             {
+                motivoFalha = $"Fila naval do estaleiro cheia ({filaNaval.Count}/{limite}).";
+                UltimoMotivoFalha = motivoFalha;
                 Debug.LogWarning($"[Estaleiro] Fila naval cheia ({limite}). Pedido recusado.");
                 return false;
             }
@@ -686,6 +735,8 @@ public class Estaleiro : MonoBehaviour
         }
         else
         {
+            motivoFalha = "Todos os slots do estaleiro estão ocupados.";
+            UltimoMotivoFalha = motivoFalha;
             Debug.LogWarning("[Estaleiro] Todos os slots estão ocupados!");
             return false;
         }
@@ -997,94 +1048,103 @@ public class Estaleiro : MonoBehaviour
 
         // A partir daqui a unidade já recebeu o efetivo nacional; a entrega é
         // terminal mesmo se um passo visual/operacional posterior falhar.
-        if (!string.IsNullOrEmpty(slot.productionOrderId))
+        try
         {
-            IAAutoProductionRegistry.Complete(slot.productionOrderId, Time.time);
+            if (!string.IsNullOrEmpty(slot.productionOrderId))
+            {
+                IAAutoProductionRegistry.Complete(slot.productionOrderId, Time.time);
+            }
+
+            ServicoAbastecimento.AbastecerUnidadeProduzida(navioPronto);
+            RegistrarNavioAguardandoCombustivel(navioPronto, ownerTeam);
+
+            var ctrl = navioPronto.GetComponent<ControleUnidade>();
+            if (ctrl == null)
+            {
+                ctrl = navioPronto.AddComponent<ControleUnidade>();
+            }
+            else if (!ctrl.enabled)
+            {
+                ctrl.enabled = true;
+            }
+
+            // Calcula destino de saída: usa o pontoDeSaida do estaleiro ou avança na direção da água
+            Vector3 destinoSaida;
+            if (pontoDeSaida != null)
+            {
+                destinoSaida = pontoDeSaida.position;
+                destinoSaida.y = nivelAguaAtual;
+            }
+            else
+            {
+                float distanciaSaida = ehNavioGrande
+                    ? Mathf.Max(110f, offsetAguaFrente + 70f)
+                    : Mathf.Max(60f, offsetAguaFrente + 25f);
+                destinoSaida = posFinal + (waterForward * distanciaSaida);
+                destinoSaida.y = nivelAguaAtual;
+            }
+
+            // NavMesh.SamplePosition aqui poderia encontrar a malha terrestre da
+            // costa e deslocar o navio para fora do nível do mar. O spawn já foi
+            // resolvido para a água em posFinal; preserve essa posição de atracagem.
+
+            var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
+            if (controleSubmarino != null)
+            {
+                controleSubmarino.ForcarEstadoSuperficieImediato();
+            }
+
+            // Registrar no General se for IA
+            if (idNavio.teamID != 1)
+            {
+                DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
+            }
+
+            // --- LÓGICA ESPECÍFICA PARA PETROLEIRO ---
+            NavioPetroleiro petroleiro = navioPronto.GetComponent<NavioPetroleiro>();
+            if (petroleiro != null)
+            {
+                petroleiro.DefinirEquipeOperacao(ownerTeam);
+                petroleiro.DefinirSaidaEstaleiro(destinoSaida);
+            }
+
+            bool ehCargueiro = slot.prefabAtual != null &&
+                (slot.prefabAtual.GetComponent<NavioCargaMercado>() != null ||
+                 slot.prefabAtual.name.IndexOf("navio de carga", System.StringComparison.OrdinalIgnoreCase) >= 0);
+            if (ehCargueiro)
+            {
+                NavioCargaMercado cargueiro = navioPronto.GetComponent<NavioCargaMercado>();
+                if (cargueiro == null) cargueiro = navioPronto.AddComponent<NavioCargaMercado>();
+                cargueiro.Inicializar(ownerTeam, false);
+                // O cargueiro termina no mesmo ponto de atracagem dos demais
+                // navios; a logistica pode despacha-lo depois.
+                cargueiro.PararNoPonto(posFinal);
+            }
+
+            // Efeitos
+            if (efeitoConclusao != null)
+            {
+                Instantiate(efeitoConclusao, slot.pontoDeConstrucao != null ? slot.pontoDeConstrucao.position : posFinal, Quaternion.identity);
+            }
+
+            if (logarDebug)
+            {
+                Debug.Log($"[Estaleiro] Navio liberado: {navioPronto.name} | atracagem={slot.nomeSlot} | spawn={navioPronto.transform.position} | saida={destinoSaida}");
+            }
+            Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(navioPronto);
+            RegistrarTempoDiagnostico("naval_spawn_init_ms", initStart);
         }
-
-        ServicoAbastecimento.AbastecerUnidadeProduzida(navioPronto);
-        RegistrarNavioAguardandoCombustivel(navioPronto, ownerTeam);
-
-        var ctrl = navioPronto.GetComponent<ControleUnidade>();
-        if (ctrl == null)
+        catch (System.Exception ex)
         {
-            ctrl = navioPronto.AddComponent<ControleUnidade>();
+            Debug.LogWarning($"[Estaleiro] Exceção não-fatal no pós-processamento de '{(navioPronto != null ? navioPronto.name : "navio")}': {ex.Message}");
         }
-        else if (!ctrl.enabled)
+        finally
         {
-            ctrl.enabled = true;
+            // Libera o slot obrigatoriamente para impedir loop de spawn em frames consecutivos
+            LiberarSlot(slot);
+            naviosConcluidosNoLote++;
+            ProcessarFimDoLote();
         }
-
-        // Calcula destino de saída: usa o pontoDeSaida do estaleiro ou avança na direção da água
-        Vector3 destinoSaida;
-        if (pontoDeSaida != null)
-        {
-            destinoSaida = pontoDeSaida.position;
-            destinoSaida.y = nivelAguaAtual;
-        }
-        else
-        {
-            float distanciaSaida = ehNavioGrande
-                ? Mathf.Max(110f, offsetAguaFrente + 70f)
-                : Mathf.Max(60f, offsetAguaFrente + 25f);
-            destinoSaida = posFinal + (waterForward * distanciaSaida);
-            destinoSaida.y = nivelAguaAtual;
-        }
-
-        // NavMesh.SamplePosition aqui poderia encontrar a malha terrestre da
-        // costa e deslocar o navio para fora do nível do mar. O spawn já foi
-        // resolvido para a água em posFinal; preserve essa posição de atracagem.
-
-        var controleSubmarino = navioPronto.GetComponent<ControleSubmarino>();
-        if (controleSubmarino != null)
-        {
-            controleSubmarino.ForcarEstadoSuperficieImediato();
-        }
-
-        // Registrar no General se for IA
-        if (idNavio.teamID != 1)
-        {
-            DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("spawn_registrations");
-        }
-
-        // --- LÓGICA ESPECÍFICA PARA PETROLEIRO ---
-        NavioPetroleiro petroleiro = navioPronto.GetComponent<NavioPetroleiro>();
-        if (petroleiro != null)
-        {
-            petroleiro.DefinirEquipeOperacao(ownerTeam);
-            petroleiro.DefinirSaidaEstaleiro(destinoSaida);
-        }
-
-        bool ehCargueiro = slot.prefabAtual != null &&
-            (slot.prefabAtual.GetComponent<NavioCargaMercado>() != null ||
-             slot.prefabAtual.name.IndexOf("navio de carga", System.StringComparison.OrdinalIgnoreCase) >= 0);
-        if (ehCargueiro)
-        {
-            NavioCargaMercado cargueiro = navioPronto.GetComponent<NavioCargaMercado>();
-            if (cargueiro == null) cargueiro = navioPronto.AddComponent<NavioCargaMercado>();
-            cargueiro.Inicializar(ownerTeam, false);
-            // O cargueiro termina no mesmo ponto de atracagem dos demais
-            // navios; a logistica pode despacha-lo depois.
-            cargueiro.PararNoPonto(posFinal);
-        }
-
-        // Efeitos
-        if (efeitoConclusao != null)
-        {
-            Instantiate(efeitoConclusao, slot.pontoDeConstrucao != null ? slot.pontoDeConstrucao.position : posFinal, Quaternion.identity);
-        }
-
-        if (logarDebug)
-        {
-            Debug.Log($"[Estaleiro] Navio liberado: {navioPronto.name} | atracagem={slot.nomeSlot} | spawn={navioPronto.transform.position} | saida={destinoSaida}");
-        }
-        Hegemonia.Performance.OtimizadorHierarquiaCena.OtimizarAlvo(navioPronto);
-        RegistrarTempoDiagnostico("naval_spawn_init_ms", initStart);
-
-        // Libera o slot
-        LiberarSlot(slot);
-        naviosConcluidosNoLote++;
-        ProcessarFimDoLote();
     }
 
     private void RegistrarNavioAguardandoCombustivel(GameObject navio, int teamId)

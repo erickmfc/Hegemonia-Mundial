@@ -23,6 +23,7 @@ public class CombustivelUnidade : MonoBehaviour
     // foi calibrado para cenários locais e impedia até um voo de ida e volta
     // entre países. A mesma taxa efetiva alimenta a previsão e o gasto real.
     private const float FatorConsumoCacaMapaGlobal = 0.125f;
+    private const float FatorConsumoTerrestreMapaGlobal = 0.15f;
 
     [Header("Config")]
     public bool usaCombustivel = true;
@@ -58,8 +59,17 @@ public class CombustivelUnidade : MonoBehaviour
     private float proximaAtualizacaoIndicador;
     private string textoIndicadorCache = "";
     private ControleUnidade controleCache;
+    private ControleAviao aviaoCache;
+    private RacaoUnidade racaoCache;
     private Camera cameraCache;
     [System.NonSerialized] private bool cargaInicialPagaAplicada;
+
+    public bool IndicadorUnificadoAtivo =>
+        mostrarIndicadorMundo
+        && usaCombustivel
+        && !combustivelInfinito
+        && Capacidade > 0f
+        && PodeMostrarIndicadorAoJogador();
     private static readonly StringBuilder textoBuilder = new StringBuilder(96);
     private static GlobalTerrainStreamer streamerGlobalCache;
     private static float proximaBuscaStreamerGlobal;
@@ -80,6 +90,7 @@ public class CombustivelUnidade : MonoBehaviour
     public bool EstaVazio => usaCombustivel && Capacidade > 0f && combustivelAtual <= 0.01f;
     public bool EstaBaixo => usaCombustivel && Capacidade > 0f && Percentual <= limiteBaixoPercentual;
     public bool PodeOperar => combustivelInfinito || !usaCombustivel || !EstaVazio;
+    public float FatorConsumoPorVelocidadeAtual => ObterMultiplicadorConsumoPorVelocidade();
 
     private void Awake()
     {
@@ -124,7 +135,7 @@ public class CombustivelUnidade : MonoBehaviour
 
             if (!sendoTransportado)
             {
-                Consumir(ConsumoEfetivoPorSegundoMovendo() * dt);
+                Consumir(ConsumoEfetivoPorSegundoMovendo() * ObterMultiplicadorConsumoPorVelocidade() * dt);
             }
         }
 
@@ -152,10 +163,9 @@ public class CombustivelUnidade : MonoBehaviour
         }
 
         bool selecionado = EstaSelecionado();
-        // Menus continuam suprimindo indicadores de unidades distantes, mas
-        // nunca escondem o status da unidade que o jogador acabou de
-        // selecionar. Isso preserva HP/combustivel legiveis durante ordens.
-        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto && !selecionado)
+        // Menus e paineis de interface abertos sempre ocultam indicadores de unidades
+        // (incluindo unidades e navios selecionados) para evitar sobreposicao visual.
+        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
         {
             return;
         }
@@ -170,13 +180,27 @@ public class CombustivelUnidade : MonoBehaviour
             return;
         }
 
+        if (racaoCache == null)
+        {
+            racaoCache = RacaoUnidade.ObterParaObjeto(gameObject);
+        }
+
+        RacaoUnidade racao = racaoCache != null && racaoCache.UsaRacao ? racaoCache : null;
+
         bool combustivelBaixoVisivel = EstaBaixo
             && IndicadorUnidadeVisibilidade.EstaDentroDoRaioDaCamera(
                 transform,
                 cameraCache,
                 IndicadorUnidadeVisibilidade.RaioMaximoCombustivelBaixo);
 
-        if (!selecionado && !combustivelBaixoVisivel)
+        bool racaoBaixaVisivel = racao != null
+            && (racao.EstaBaixo || racao.EstaFaminto)
+            && IndicadorUnidadeVisibilidade.EstaDentroDoRaioDaCamera(
+                transform,
+                cameraCache,
+                IndicadorUnidadeVisibilidade.RaioMaximoCombustivelBaixo);
+
+        if (!selecionado && !combustivelBaixoVisivel && !racaoBaixaVisivel)
         {
             return;
         }
@@ -187,32 +211,81 @@ public class CombustivelUnidade : MonoBehaviour
             return;
         }
 
-        if (Time.unscaledTime >= proximaAtualizacaoIndicador)
+        if (Time.unscaledTime >= proximaAtualizacaoIndicador || string.IsNullOrEmpty(textoIndicadorCache))
         {
             proximaAtualizacaoIndicador = Time.unscaledTime + Mathf.Max(0.05f, intervaloIndicador);
             textoIndicadorCache = ConstruirTextoIndicador(selecionado);
         }
 
-        int numLinhas = textoIndicadorCache.Split('\n').Length;
-        bool expandido = selecionado || numLinhas > 1;
-        
-        float largura = expandido ? 160f : 108f;
-        float altura = 20f + ((numLinhas - 1) * 16f); // Adiciona 16px para cada linha extra
-        if (expandido && numLinhas == 1) altura = 30f; // Caso seja selecionado mas ainda tenha 1 linha
-        
+        string[] linhas = textoIndicadorCache.Split('\n');
+        string linhaFuel = linhas.Length > 0 ? linhas[0] : TextoStatusCurto();
+        string linhaSecundaria = (selecionado && linhas.Length > 1) ? linhas[1] : string.Empty;
+
+        bool temRacao = racao != null;
+        bool expandido = selecionado || !string.IsNullOrEmpty(linhaSecundaria);
+
+        float largura = expandido ? 204f : 144f;
+        float posYCursor = 4f;
+        float altura = 4f + 16f + 6f; // padding top + FUEL label + FUEL bar (4px) + gap (2px)
+        if (temRacao)
+        {
+            altura += 16f + 6f; // RAÇÃO label + RAÇÃO bar (4px) + gap (2px)
+        }
+        if (!string.IsNullOrEmpty(linhaSecundaria))
+        {
+            altura += 16f;
+        }
+        altura += 4f; // bottom padding
+
         float posX = tela.x + 18f;
         float posY = Screen.height - tela.y - altura * 0.55f;
 
         Rect fundo = new Rect(posX, posY, largura, altura);
-        Rect barra = new Rect(fundo.x + 5f, fundo.y + fundo.height - 5f, (largura - 10f) * Percentual, 3f);
+        float larguraInterna = largura - 12f;
 
         Color corAntiga = GUI.color;
-        GUI.color = new Color(0f, 0f, 0f, 0.65f);
+        GUI.color = new Color(0.03f, 0.05f, 0.09f, 0.78f);
         GUI.DrawTexture(fundo, Texture2D.whiteTexture);
-        GUI.color = CorDoNivel();
-        GUI.DrawTexture(barra, Texture2D.whiteTexture);
+
+        // Linha 1: FUEL + Barra
         GUI.color = Color.white;
-        GUI.Label(new Rect(fundo.x + 6f, fundo.y + 2f, largura - 12f, altura - 4f), textoIndicadorCache);
+        GUI.Label(new Rect(fundo.x + 6f, fundo.y + posYCursor, larguraInterna, 16f), linhaFuel);
+        posYCursor += 16f;
+
+        Rect fundoBarraFuel = new Rect(fundo.x + 6f, fundo.y + posYCursor, larguraInterna, 4f);
+        GUI.color = new Color(0f, 0f, 0f, 0.65f);
+        GUI.DrawTexture(fundoBarraFuel, Texture2D.whiteTexture);
+        GUI.color = CorDoNivel();
+        GUI.DrawTexture(new Rect(fundoBarraFuel.x, fundoBarraFuel.y, larguraInterna * Percentual, 4f), Texture2D.whiteTexture);
+        posYCursor += 6f;
+
+        // Linha 2: RAÇÃO + Barra (quando aplicável)
+        if (temRacao)
+        {
+            float pctRacao = racao.Percentual;
+            string textoRacao = $"RAÇÃO {Mathf.RoundToInt(pctRacao * 100f)}% ({Mathf.RoundToInt(racao.racaoAtual)}/{Mathf.RoundToInt(racao.Capacidade)})";
+            GUI.color = Color.white;
+            GUI.Label(new Rect(fundo.x + 6f, fundo.y + posYCursor, larguraInterna, 16f), textoRacao);
+            posYCursor += 16f;
+
+            Rect fundoBarraRacao = new Rect(fundo.x + 6f, fundo.y + posYCursor, larguraInterna, 4f);
+            GUI.color = new Color(0f, 0f, 0f, 0.65f);
+            GUI.DrawTexture(fundoBarraRacao, Texture2D.whiteTexture);
+            Color corRacao = pctRacao <= 0.25f
+                ? new Color(0.95f, 0.25f, 0.22f, 1f)
+                : (pctRacao <= 0.50f ? new Color(0.95f, 0.78f, 0.18f, 1f) : new Color(0.28f, 0.88f, 0.45f, 1f));
+            GUI.color = corRacao;
+            GUI.DrawTexture(new Rect(fundoBarraRacao.x, fundoBarraRacao.y, larguraInterna * pctRacao, 4f), Texture2D.whiteTexture);
+            posYCursor += 6f;
+        }
+
+        // Linha 3: Modo + Armamentos / Carga (quando selecionada)
+        if (!string.IsNullOrEmpty(linhaSecundaria))
+        {
+            GUI.color = new Color(0.85f, 0.92f, 1f, 0.96f);
+            GUI.Label(new Rect(fundo.x + 6f, fundo.y + posYCursor, larguraInterna, 16f), linhaSecundaria);
+        }
+
         GUI.color = corAntiga;
     }
 
@@ -442,11 +515,8 @@ public class CombustivelUnidade : MonoBehaviour
         return ConsumoEfetivoPorSegundoMovendo() * tempo;
     }
 
-    private float ConsumoEfetivoPorSegundoMovendo()
+    private static bool EstaEmMapaGlobal()
     {
-        if (classe != ClasseCombustivelUnidade.Aerea || GetComponent<ControleAviaoCaca>() == null)
-            return consumoPorSegundoMovendo;
-
         if (!buscaStreamerGlobalFeita || Time.unscaledTime >= proximaBuscaStreamerGlobal)
         {
             streamerGlobalCache = FindFirstObjectByType<GlobalTerrainStreamer>();
@@ -454,8 +524,46 @@ public class CombustivelUnidade : MonoBehaviour
             buscaStreamerGlobalFeita = true;
         }
 
-        bool mapaGlobalAtivo = streamerGlobalCache != null && streamerGlobalCache.world != null;
-        return consumoPorSegundoMovendo * (mapaGlobalAtivo ? FatorConsumoCacaMapaGlobal : 1f);
+        return streamerGlobalCache != null && streamerGlobalCache.world != null;
+    }
+
+    private float ConsumoEfetivoPorSegundoMovendo()
+    {
+        if (classe == ClasseCombustivelUnidade.Aerea && GetComponent<ControleAviaoCaca>() != null)
+        {
+            return consumoPorSegundoMovendo * (EstaEmMapaGlobal() ? FatorConsumoCacaMapaGlobal : 1f);
+        }
+
+        if (classe == ClasseCombustivelUnidade.Terrestre)
+        {
+            return consumoPorSegundoMovendo * (EstaEmMapaGlobal() ? FatorConsumoTerrestreMapaGlobal : 1f);
+        }
+
+        return consumoPorSegundoMovendo;
+    }
+
+    private float ObterMultiplicadorConsumoPorVelocidade()
+    {
+        if (controleCache == null)
+        {
+            controleCache = GetComponent<ControleUnidade>() ?? GetComponentInParent<ControleUnidade>();
+        }
+        if (aviaoCache == null)
+        {
+            aviaoCache = GetComponent<ControleAviao>() ?? GetComponentInParent<ControleAviao>();
+        }
+
+        float fatorHud = controleCache != null ? controleCache.MultiplicadorVelocidadeComandoHud : 1f;
+        float fatorAviao = aviaoCache != null ? aviaoCache.FatorVelocidadeConsumoAtual : 1f;
+        float fatorVelocidade = Mathf.Max(1f, Mathf.Max(fatorHud, fatorAviao));
+        if (fatorVelocidade <= 1.001f)
+        {
+            return 1f;
+        }
+
+        // Acima de 100%, o consumo acelera progressivamente (150% -> 1,75x; 200% -> 2,5x).
+        float excesso = fatorVelocidade - 1f;
+        return Mathf.Clamp(1f + (excesso * 1.5f), 1f, 3.5f);
     }
 
     public bool PossuiAutonomiaParaRota(Vector3 origem, IList<Vector3> rota, float velocidadeMetrosSegundo)
@@ -737,6 +845,7 @@ public class CombustivelUnidade : MonoBehaviour
         {
             case ClasseCombustivelUnidade.Naval:
                 if (NomeContem("Sovereign")) return 50000f;
+                if (NomeContem("Enterprise")) return 18000f; // 21.600 apos regra naval (+20%)
                 if (NomeContem("Liberty")) return 15000f;
                 if (NomeContem("Wall")) return 23200f;
                 if (NomeContem("F200")) return 4800f;
@@ -866,7 +975,7 @@ public class CombustivelUnidade : MonoBehaviour
 
         if (GetComponent<Helicoptero>() != null)
         {
-            if (NomeContem("flow")) return 10f; // Flow transporte: 3.000
+            if (NomeContem("flow") || NomeContem("chinook") || NomeContem("ch-47")) return 20f; // Flow CH-47 transporte: 6.000 (autonomia dobrada)
             if (NomeContem("supra")) return 8f; // Supra ataque: 2.400
             return 6f; // Vans/Falcao Negro e H-RAY: 1.800
         }
@@ -978,6 +1087,16 @@ public class CombustivelUnidade : MonoBehaviour
             string armas = lancadorNaval.prefabMisselCruzeiro != null
                 ? $"MSL {lancadorNaval.MunicaoTridenteAtual}/{lancadorNaval.MunicaoTridenteMaxima} CRZ {lancadorNaval.MunicaoCruzeiroAtual}/{lancadorNaval.MunicaoCruzeiroMaxima} TOR {lancadorNaval.torpedosTotal}/{lancadorNaval.torpedosMaximos}"
                 : $"MSL {lancadorNaval.MunicaoTridenteAtual}/{lancadorNaval.MunicaoTridenteMaxima} TOR {lancadorNaval.torpedosTotal}/{lancadorNaval.torpedosMaximos}";
+            return string.IsNullOrEmpty(modo) ? armas : $"{modo} {armas}";
+        }
+
+        ControleSubmarino sub = GetComponent<ControleSubmarino>();
+        if (sub == null) sub = GetComponentInChildren<ControleSubmarino>();
+        if (sub != null)
+        {
+            string armas = sub.prefabTorpedo != null
+                ? $"MSL {sub.misseisDisponiveis}/{sub.TotalLocaisDisparoValidos} TOR {sub.torpedosDisponiveis}"
+                : $"MSL {sub.misseisDisponiveis}/{sub.TotalLocaisDisparoValidos}";
             return string.IsNullOrEmpty(modo) ? armas : $"{modo} {armas}";
         }
 
