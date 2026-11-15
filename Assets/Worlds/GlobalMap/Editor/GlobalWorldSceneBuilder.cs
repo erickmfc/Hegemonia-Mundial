@@ -409,6 +409,8 @@ public static class GlobalWorldSceneBuilder
         Camera worldCamera = cameraObject.GetComponent<Camera>();
 
         CreateSingleExistingOcean(oceanGroup.transform, world, sun);
+        oceanGroup.AddComponent<GlobalHorizonAtmosphere>();
+        oceanGroup.AddComponent<CicloDiaNoite>();
 
         GameObject streamerObject = new GameObject("GlobalTerrainStreamer");
         streamerObject.transform.SetParent(streamingGroup.transform, false);
@@ -441,7 +443,11 @@ public static class GlobalWorldSceneBuilder
         diagnostics.streamer = streamer;
         diagnostics.visible = true;
 
-        RenderSettings.fog = false;
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogColor = new Color(0.62f, 0.75f, 0.85f, 1f);
+        RenderSettings.fogStartDistance = 45000f;
+        RenderSettings.fogEndDistance = 280000f;
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
         RenderSettings.ambientSkyColor = new Color(0.50f, 0.58f, 0.66f);
         RenderSettings.ambientEquatorColor = new Color(0.31f, 0.36f, 0.41f);

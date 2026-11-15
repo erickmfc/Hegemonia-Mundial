@@ -14,12 +14,12 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  m_FogMode: 3
+  m_Fog: 1
+  m_FogColor: {r: 0.62, g: 0.75, b: 0.85, a: 1}
+  m_FogMode: 1
   m_FogDensity: 0.01
-  m_LinearFogStart: 0
-  m_LinearFogEnd: 300
+  m_LinearFogStart: 45000
+  m_LinearFogEnd: 280000
   m_AmbientSkyColor: {r: 0.5, g: 0.58, b: 0.66, a: 1}
   m_AmbientEquatorColor: {r: 0.31, g: 0.36, b: 0.41, a: 1}
   m_AmbientGroundColor: {r: 0.16, g: 0.18, b: 0.2, a: 1}
@@ -16152,6 +16152,87 @@ MonoBehaviour:
   BootstrapStage: 0
   GizmoColor: {r: 1, g: 0.82, b: 0.15, a: 1}
   GizmoRadius: 5
+--- !u!1 &1987654321
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1987654322}
+  - component: {fileID: 1987654323}
+  - component: {fileID: 1987654324}
+  m_Layer: 0
+  m_Name: GlobalHorizonAtmosphere
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1987654322
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987654321}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1987654323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987654321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5a7b2c39d4f4061b2c3d4e5f6071920, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GlobalHorizonAtmosphere
+  playableWorldSize: {x: 512000, y: 512000}
+  seaLevel: 0
+  horizonExtension: 1200000
+  seamOverlap: 250
+  verticalOffset: -0.2
+  horizonSeaMaterial: {fileID: 2100000, guid: d4f6a1b28c3e4950a1b2c3d4e5f60718, type: 3}
+  fallbackSeaColor: {r: 0.026275955, g: 0.13437988, b: 0.19852942, a: 1}
+  applyMaritimeProceduralSkybox: 1
+  skyTint: {r: 0.46, g: 0.64, b: 0.8, a: 1}
+  skyGroundColor: {r: 0.11, g: 0.22, b: 0.31, a: 1}
+  horizonFogColor: {r: 0.62, g: 0.75, b: 0.85, a: 1}
+  baseFogStart: 45000
+  baseFogEnd: 280000
+  altitudeFogStartMultiplier: 2.2
+  altitudeFogEndMultiplier: 4.5
+--- !u!114 &1987654324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1987654321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1a2b3c4d5e64789a0b1c2d3e4f50617, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CicloDiaNoite
+  luzPrincipal: {fileID: 2034409424}
+  atmosferaHorizonte: {fileID: 1987654323}
+  modo: 0
+  duracaoCicloSegundos: 450
+  horaAtual: 10.5
+  horaFixaDia: 12
+  horaFixaTarde: 17.65
+  horaFixaNoite: 23
+  azimuteY: -32
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -16169,3 +16250,4 @@ SceneRoots:
   - {fileID: 2064377788}
   - {fileID: 1856837727}
   - {fileID: 1118805666}
+  - {fileID: 1987654322}
