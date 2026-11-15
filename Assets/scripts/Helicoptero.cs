@@ -82,6 +82,8 @@ public class Helicoptero : MonoBehaviour
     public EixoRotacaoHelice eixoRotacaoHeliceTraseira = EixoRotacaoHelice.X;
     [Tooltip("Use em helicópteros de duas hélices superiores, onde a traseira também deve girar no plano horizontal.")]
     public bool usarRotacaoHorizontalNaHeliceTraseira = false;
+    [Tooltip("Em helicópteros tandem (como CH-47 Chinook), os dois rotores giram em sentidos opostos (contra-rotativos).")]
+    public bool inverterSentidoHeliceTraseira = false;
     public AudioSource audioMotor;
     public float pitchMinimo = 0.5f;
     public float pitchMaximo = 1.2f;
@@ -119,6 +121,7 @@ public class Helicoptero : MonoBehaviour
     private bool preparandoDecolagem = false;
     private bool aplicarAltitudeCruzeiroNaDecolagem = true;
     private Animation animacaoDecolagem;
+    private Animator[] animatorsModelo;
     private Transform alvoComandoAtaque;
 
     // Missao especial pausada durante o retorno para abastecimento. A rota e o
@@ -155,6 +158,16 @@ public class Helicoptero : MonoBehaviour
     private Rigidbody rb;
     private static int proximoIdExibicao = 1;
     private static readonly List<Helicoptero> _bufferHelicopterosConsulta = new List<Helicoptero>(32);
+    private static AudioClip _audioRotorPadraoCache;
+
+    private static AudioClip ObterAudioRotorPadrao()
+    {
+        if (_audioRotorPadraoCache == null)
+        {
+            _audioRotorPadraoCache = Resources.Load<AudioClip>("Audio/helicoptero_loop");
+        }
+        return _audioRotorPadraoCache;
+    }
     [SerializeField, HideInInspector] private int idExibicao = 0;
     private readonly RaycastHit[] _bufferRaycastSolo = new RaycastHit[32];
     private float _cacheAlturaSolo = 0f;
@@ -233,24 +246,44 @@ public class Helicoptero : MonoBehaviour
         }
 
         // 2. Localiza as hélices automaticamente
-        if(!helicePrincipal) helicePrincipal = transform.Find("helice_principal") ?? transform.Find("MainRotor") ?? EncontrarFilhoPorNomeParcial("front_rotor") ?? EncontrarFilhoPorNomeParcial("main_rotor") ?? EncontrarFilhoPorNomeParcial("propel") ?? EncontrarFilhoPorNomeParcial("helice");
-        if(!heliceTraseira) heliceTraseira = transform.Find("helice_traseira") ?? transform.Find("TailRotor") ?? EncontrarFilhoPorNomeParcial("back_rotor") ?? EncontrarFilhoPorNomeParcial("tail_rotor") ?? EncontrarFilhoPorNomeParcial("tail");
+        if(!helicePrincipal) helicePrincipal = transform.Find("helice_principal") ?? transform.Find("MainRotor") ?? EncontrarFilhoPorNomeParcial("helice rente") ?? EncontrarFilhoPorNomeParcial("front_rotor") ?? EncontrarFilhoPorNomeParcial("main_rotor") ?? EncontrarFilhoPorNomeParcial("propel") ?? EncontrarFilhoPorNomeParcial("helice");
+        if(!heliceTraseira) heliceTraseira = transform.Find("helice_traseira") ?? transform.Find("TailRotor") ?? EncontrarFilhoPorNomeParcial("helice traseira") ?? EncontrarFilhoPorNomeParcial("back_rotor") ?? EncontrarFilhoPorNomeParcial("tail_rotor") ?? EncontrarFilhoPorNomeParcial("tail");
+        if (!helicePrincipal || !heliceTraseira)
+        {
+            DetectarHelicesPorGeometria();
+        }
 
         animacaoDecolagem = GetComponent<Animation>();
         if (!animacaoDecolagem) animacaoDecolagem = GetComponentInChildren<Animation>(true);
-        if (animacaoDecolagem) animacaoDecolagem.playAutomatically = false;
+        foreach (Animation anim in GetComponentsInChildren<Animation>(true))
+        {
+            if (anim == null) continue;
+            anim.playAutomatically = false;
+            if (!estaVoando && !motorLigado && anim.isPlaying)
+            {
+                anim.Stop();
+            }
+        }
+        animatorsModelo = GetComponentsInChildren<Animator>(true);
+        SincronizarAnimadoresHelices();
 
         if(!audioMotor) audioMotor = GetComponent<AudioSource>();
         if(!audioMotor) audioMotor = GetComponentInChildren<AudioSource>(true);
+        if(!audioMotor) audioMotor = gameObject.AddComponent<AudioSource>();
         if(audioMotor)
         {
+            AudioClip clipRotorPadrao = ObterAudioRotorPadrao();
+            if (clipRotorPadrao != null)
+            {
+                audioMotor.clip = clipRotorPadrao;
+            }
+            AudioRuntime.ConfigurarFonteGenerica(audioMotor);
             audioMotor.loop = true;
             audioMotor.playOnAwake = false;
             audioMotor.spatialBlend = 1f;
-            audioMotor.rolloffMode = AudioRolloffMode.Logarithmic;
             audioMotor.dopplerLevel = 0f;
             audioMotor.minDistance = 9f;
-            audioMotor.maxDistance = 150f;
+            audioMotor.maxDistance = 1000f;
             audioMotor.rolloffMode = AudioRolloffMode.Linear;
             audioMotor.priority = Mathf.Min(audioMotor.priority, 48);
             audioMotor.volume = 0;
@@ -280,6 +313,7 @@ public class Helicoptero : MonoBehaviour
             long inicioLogica = InfraPerformanceGameplay.MarcarInicioMedicao();
             AvaliarRetornoSeguro();
             VerificarInatividade();
+            ProcessarResgateESuprimentoProximo(intervaloLogica);
             AtualizarEtiquetaFlutuante();
             InfraPerformanceGameplay.RegistrarTempoDecorrido(CategoriaBudgetGameplay.Logistica, inicioLogica);
         }
@@ -348,6 +382,66 @@ public class Helicoptero : MonoBehaviour
         destino = AjustarDestinoParaVoo(alvoComandoAtaque.position);
     }
 
+    private float _proximoAvisoResgateHeli;
+    private static readonly System.Collections.Generic.List<IdentidadeUnidade> _bufferResgateHeli =
+        new System.Collections.Generic.List<IdentidadeUnidade>(128);
+
+    private void ProcessarResgateESuprimentoProximo(float dtTick)
+    {
+        if (!TripulacaoUnidade.UnidadeEstaOperacional(gameObject))
+        {
+            return;
+        }
+
+        IdentidadeUnidade minhaId = GetComponent<IdentidadeUnidade>() ?? GetComponentInParent<IdentidadeUnidade>();
+        int meuTeam = minhaId != null && minhaId.teamID > 0 ? minhaId.teamID : 1;
+        float raio = Mathf.Max(55f, raioTransferenciaNavio);
+        float raioSqr = raio * raio;
+
+        _bufferResgateHeli.Clear();
+        RegistroEntidadesJogo.FillUnidades(_bufferResgateHeli);
+
+        for (int i = 0; i < _bufferResgateHeli.Count; i++)
+        {
+            IdentidadeUnidade alvoId = _bufferResgateHeli[i];
+            if (alvoId == null || alvoId.teamID != meuTeam) continue;
+            if (alvoId.transform.root == transform.root) continue;
+            if (TripulacaoUnidade.EhEstruturaImovel(alvoId.gameObject)) continue;
+
+            Vector3 delta = alvoId.transform.position - transform.position;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > raioSqr) continue;
+
+            RacaoUnidade racaoAlvo = RacaoUnidade.ObterParaObjeto(alvoId.gameObject);
+            TripulacaoUnidade tripAlvo = TripulacaoUnidade.ObterParaObjeto(alvoId.gameObject);
+            bool precisaRacao = racaoAlvo != null && racaoAlvo.UsaRacao && racaoAlvo.RacaoAtual < racaoAlvo.Capacidade * 0.98f;
+            bool precisaTripulacao = tripAlvo != null && tripAlvo.UsaTripulacao && tripAlvo.TripulacaoAtual < tripAlvo.TripulacaoMaxima;
+            if (!precisaRacao && !precisaTripulacao) continue;
+
+            if (precisaRacao)
+            {
+                float falta = racaoAlvo.Capacidade - racaoAlvo.RacaoAtual;
+                float loteRacao = Mathf.Min(falta, Mathf.Max(60f, 180f * Mathf.Max(0.15f, dtTick)));
+                racaoAlvo.AbastecerUsandoEstoqueNacional(loteRacao, meuTeam);
+            }
+
+            if (precisaTripulacao && (racaoAlvo == null || !racaoAlvo.UsaRacao || racaoAlvo.RacaoAtual > 1f))
+            {
+                bool estavaInoperante = tripAlvo.EstaSemTripulacao;
+                int loteTrip = Mathf.Max(1, Mathf.CeilToInt(tripAlvo.TripulacaoMaxima * 0.12f));
+                int repostos = tripAlvo.TentarReporTripulacao(loteTrip);
+                if (repostos > 0 && estavaInoperante && meuTeam == RacaoUnidade.ObterTeamJogadorAtual()
+                    && Time.unscaledTime >= _proximoAvisoResgateHeli)
+                {
+                    _proximoAvisoResgateHeli = Time.unscaledTime + 4f;
+                    HUDAjudaRTS.MostrarMensagemTemporaria(
+                        $"Helicóptero entregou suprimentos e tripulação em {alvoId.name.Replace("(Clone)", string.Empty).Trim()}!",
+                        3.5f);
+                }
+            }
+        }
+    }
+
     private void LateUpdate()
     {
         OrientarEtiquetaParaCamera();
@@ -359,18 +453,25 @@ public class Helicoptero : MonoBehaviour
         float speed = motorLigado ? (1.0f / tempoSpinUp) : (1.0f / tempoSpinDown);
         
         velocidadeAtualHelice = Mathf.MoveTowards(velocidadeAtualHelice, target, speed * Time.deltaTime);
+        if (!motorLigado && !estaVoando && !preparandoDecolagem && !estaPousando && velocidadeAtualHelice <= 0.01f)
+        {
+            velocidadeAtualHelice = 0f;
+        }
+
+        SincronizarAnimadoresHelices();
 
         float rotacao = velocidadeAtualHelice * velocidadeHelice * Time.deltaTime;
         if(helicePrincipal) helicePrincipal.Rotate(0, rotacao, 0);
         if (heliceTraseira)
         {
+            float rotacaoTraseira = inverterSentidoHeliceTraseira ? -rotacao : rotacao;
             if (usarRotacaoHorizontalNaHeliceTraseira)
             {
-                heliceTraseira.Rotate(Vector3.up * rotacao, Space.World);
+                heliceTraseira.Rotate(Vector3.up * rotacaoTraseira, Space.World);
             }
             else
             {
-                heliceTraseira.Rotate(ObterEixoRotacao(eixoRotacaoHeliceTraseira) * rotacao, Space.Self);
+                heliceTraseira.Rotate(ObterEixoRotacao(eixoRotacaoHeliceTraseira) * rotacaoTraseira, Space.Self);
             }
         }
 
@@ -379,12 +480,44 @@ public class Helicoptero : MonoBehaviour
             if(velocidadeAtualHelice > 0.01f)
             {
                 if(audioMotor.enabled && audioMotor.gameObject.activeInHierarchy && !audioMotor.isPlaying) audioMotor.Play();
-                audioMotor.volume = Mathf.Lerp(0, volumeMaximo, velocidadeAtualHelice);
+                audioMotor.volume = Mathf.Lerp(0, volumeMaximo, velocidadeAtualHelice)
+                    * AudioRuntime.ObterMultiplicadorAltitudeAerea(transform.position.y);
                 audioMotor.pitch = Mathf.Lerp(pitchMinimo, pitchMaximo, velocidadeAtualHelice);
             }
             else { if(audioMotor.isPlaying) audioMotor.Stop(); }
         }
     }
+
+    private void SincronizarAnimadoresHelices()
+    {
+        bool heliceEmMovimento = motorLigado || estaVoando || preparandoDecolagem || velocidadeAtualHelice > 0.001f;
+        float velocidadeAnim = heliceEmMovimento ? Mathf.Clamp01(Mathf.Max(velocidadeAtualHelice, motorLigado ? 0.15f : 0f)) : 0f;
+
+        if (animatorsModelo != null)
+        {
+            for (int i = 0; i < animatorsModelo.Length; i++)
+            {
+                Animator anim = animatorsModelo[i];
+                if (anim != null)
+                {
+                    anim.speed = velocidadeAnim;
+                }
+            }
+        }
+
+        if (!heliceEmMovimento && animacaoDecolagem != null && animacaoDecolagem.isPlaying)
+        {
+            animacaoDecolagem.Stop();
+        }
+    }
+
+    private static int _frameRayClique0 = -1;
+    private static bool _rayClique0Valido = false;
+    private static RaycastHit _hitClique0Cache;
+
+    private static int _frameRayClique1 = -1;
+    private static bool _rayClique1Valido = false;
+    private static RaycastHit _hitClique1Cache;
 
     void GestaoDeInput()
     {
@@ -398,14 +531,26 @@ public class Helicoptero : MonoBehaviour
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
             if (capturaManualAtiva) return;
 
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-
-            if (Physics.Raycast(ray, out hit, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            if (Time.frameCount != _frameRayClique0)
             {
-                if (hit.transform == transform || hit.transform.IsChildOf(transform))
+                _frameRayClique0 = Time.frameCount;
+                Camera cam0 = ObterCameraPrincipalOtimizada();
+                if (cam0 != null)
                 {
-                    if (Vector3.Distance(hit.point, transform.position) <= raioDoClique) selecionado = true;
+                    Ray ray = cam0.ScreenPointToRay(Input.mousePosition);
+                    _rayClique0Valido = Physics.Raycast(ray, out _hitClique0Cache, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                }
+                else
+                {
+                    _rayClique0Valido = false;
+                }
+            }
+
+            if (_rayClique0Valido)
+            {
+                if (_hitClique0Cache.transform == transform || _hitClique0Cache.transform.IsChildOf(transform))
+                {
+                    if (Vector3.Distance(_hitClique0Cache.point, transform.position) <= raioDoClique) selecionado = true;
                     else selecionado = false;
                 }
                 else if (selecionado) selecionado = false;
@@ -418,9 +563,24 @@ public class Helicoptero : MonoBehaviour
 
         if (Input.GetMouseButtonDown(1))
         {
-            Ray r = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(r, out RaycastHit h, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) 
+            if (Time.frameCount != _frameRayClique1)
             {
+                _frameRayClique1 = Time.frameCount;
+                Camera cam1 = ObterCameraPrincipalOtimizada();
+                if (cam1 != null)
+                {
+                    Ray r = cam1.ScreenPointToRay(Input.mousePosition);
+                    _rayClique1Valido = Physics.Raycast(r, out _hitClique1Cache, Mathf.Infinity, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                }
+                else
+                {
+                    _rayClique1Valido = false;
+                }
+            }
+
+            if (_rayClique1Valido) 
+            {
+                RaycastHit h = _hitClique1Cache;
                 string rootName = h.transform.root.name.ToLower();
                 string colName = h.collider.name.ToLower();
                 
@@ -560,11 +720,25 @@ public class Helicoptero : MonoBehaviour
         AtualizarTextoEtiqueta();
     }
 
+    private static Camera _cameraCache;
+    private static int _frameCameraCache = -1;
+    private static Camera ObterCameraPrincipalOtimizada()
+    {
+        if (_cameraCache == null || Time.frameCount != _frameCameraCache)
+        {
+            _cameraCache = Camera.main;
+            _frameCameraCache = Time.frameCount;
+        }
+        return _cameraCache;
+    }
+
     private void OrientarEtiquetaParaCamera()
     {
-        if (_etiquetaFlutuante == null || Camera.main == null) return;
+        if (_etiquetaFlutuante == null) return;
+        Camera cam = ObterCameraPrincipalOtimizada();
+        if (cam == null) return;
 
-        Vector3 direcao = _etiquetaFlutuante.transform.position - Camera.main.transform.position;
+        Vector3 direcao = _etiquetaFlutuante.transform.position - cam.transform.position;
         direcao.y = 0f;
         if (direcao.sqrMagnitude > 0.0001f)
         {
@@ -2052,6 +2226,117 @@ public class Helicoptero : MonoBehaviour
         if (combustivel.CombustivelAtual <= consumoRetorno + reserva)
         {
             RetornarParaVagaAeroporto();
+        }
+    }
+
+    private void DetectarHelicesPorGeometria()
+    {
+        MeshRenderer[] renderers = GetComponentsInChildren<MeshRenderer>(true);
+        if (renderers == null || renderers.Length == 0)
+        {
+            return;
+        }
+
+        Bounds totalBounds = new Bounds();
+        bool temTotal = false;
+        var candidatos = new List<(MeshRenderer renderer, Vector3 centerLocal, Vector3 sizeLocal)>(renderers.Length);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            MeshRenderer r = renderers[i];
+            if (r == null) continue;
+            string nome = r.name.ToLowerInvariant();
+            if (nome.Contains("canvas") || nome.Contains("bar") || nome.Contains("selecao")) continue;
+
+            Bounds b = r.bounds;
+            Vector3 cLocal = transform.InverseTransformPoint(b.center);
+            Vector3 sLocal = new Vector3(
+                b.size.x / Mathf.Max(0.001f, Mathf.Abs(transform.lossyScale.x)),
+                b.size.y / Mathf.Max(0.001f, Mathf.Abs(transform.lossyScale.y)),
+                b.size.z / Mathf.Max(0.001f, Mathf.Abs(transform.lossyScale.z)));
+
+            Bounds lb = new Bounds(cLocal, sLocal);
+            if (!temTotal)
+            {
+                totalBounds = lb;
+                temTotal = true;
+            }
+            else
+            {
+                totalBounds.Encapsulate(lb);
+            }
+
+            candidatos.Add((r, cLocal, sLocal));
+        }
+
+        if (!temTotal) return;
+
+        if (!helicePrincipal)
+        {
+            var laminasPrincipais = new List<MeshRenderer>();
+            Vector3 somaCentro = Vector3.zero;
+            for (int i = 0; i < candidatos.Count; i++)
+            {
+                var c = candidatos[i];
+                float maxXZ = Mathf.Max(c.sizeLocal.x, c.sizeLocal.z);
+                float minXZ = Mathf.Min(c.sizeLocal.x, c.sizeLocal.z);
+                bool planoHorizontal = c.sizeLocal.y < Mathf.Max(0.25f, minXZ * 0.35f);
+                bool acimaDoCentro = c.centerLocal.y > totalBounds.center.y + totalBounds.size.y * 0.1f;
+                bool envergaduraRotor = maxXZ > totalBounds.size.z * 0.22f;
+                if (planoHorizontal && acimaDoCentro && envergaduraRotor)
+                {
+                    laminasPrincipais.Add(c.renderer);
+                    somaCentro += c.centerLocal;
+                }
+            }
+
+            if (laminasPrincipais.Count > 0)
+            {
+                Vector3 centroPivot = transform.TransformPoint(somaCentro / laminasPrincipais.Count);
+                GameObject pivot = new GameObject("HelicePrincipal_AutoPivot");
+                pivot.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
+                pivot.transform.position = centroPivot;
+                pivot.transform.rotation = transform.rotation;
+                for (int i = 0; i < laminasPrincipais.Count; i++)
+                {
+                    laminasPrincipais[i].transform.SetParent(pivot.transform, true);
+                }
+                helicePrincipal = pivot.transform;
+            }
+        }
+
+        if (!heliceTraseira)
+        {
+            var laminasTraseiras = new List<MeshRenderer>();
+            Vector3 somaCentro = Vector3.zero;
+            for (int i = 0; i < candidatos.Count; i++)
+            {
+                var c = candidatos[i];
+                if (helicePrincipal != null && c.renderer.transform.IsChildOf(helicePrincipal)) continue;
+                bool naCauda = c.centerLocal.z < totalBounds.center.z - totalBounds.size.z * 0.32f;
+                bool parteAltaCauda = c.centerLocal.y > totalBounds.center.y;
+                float maxDim = Mathf.Max(c.sizeLocal.x, Mathf.Max(c.sizeLocal.y, c.sizeLocal.z));
+                bool compacto = maxDim < totalBounds.size.z * 0.28f && maxDim > 0.2f;
+                if (naCauda && parteAltaCauda && compacto)
+                {
+                    laminasTraseiras.Add(c.renderer);
+                    somaCentro += c.centerLocal;
+                }
+            }
+
+            if (laminasTraseiras.Count > 0)
+            {
+                Vector3 centroPivot = transform.TransformPoint(somaCentro / laminasTraseiras.Count);
+                GameObject pivot = new GameObject("HeliceTraseira_AutoPivot");
+                pivot.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
+                pivot.transform.position = centroPivot;
+                pivot.transform.rotation = transform.rotation;
+                for (int i = 0; i < laminasTraseiras.Count; i++)
+                {
+                    laminasTraseiras[i].transform.SetParent(pivot.transform, true);
+                }
+                heliceTraseira = pivot.transform;
+            }
         }
     }
 }

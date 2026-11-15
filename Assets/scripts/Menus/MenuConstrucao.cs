@@ -390,7 +390,8 @@ public class MenuConstrucao : MonoBehaviour
                 continue;
             }
 
-            if (EhConstrucaoUrbanaManual(item, prefab))
+            if (EhConstrucaoUrbanaManual(item, prefab)
+                || DadosConstrucao.EhUnidadeDesativadaDoJogo(item, prefab))
             {
                 continue;
             }
@@ -817,7 +818,7 @@ public class MenuConstrucao : MonoBehaviour
 
     private void GarantirHelicopterosNavaisNoCatalogo()
     {
-        string[] caminhos = { "Construcoes/MI80Marine", "Construcoes/CH60Marine" };
+        string[] caminhos = { "Construcoes/MI80Marine", "Construcoes/CH60Marine", "Construcoes/HLS1" };
         for (int i = 0; i < caminhos.Length; i++)
         {
             DadosConstrucao ficha = Resources.Load<DadosConstrucao>(caminhos[i]);
@@ -3532,7 +3533,9 @@ public class MenuConstrucao : MonoBehaviour
             || prefab.GetComponent<CacaVooRealista>() != null
             || prefab.GetComponentInChildren<CacaVooRealista>(true) != null
             || prefab.GetComponent<Helicoptero>() != null
-            || prefab.GetComponentInChildren<Helicoptero>(true) != null;
+            || prefab.GetComponentInChildren<Helicoptero>(true) != null
+            || prefab.GetComponent<HelicopteroTransporteSuprimentos>() != null
+            || prefab.GetComponentInChildren<HelicopteroTransporteSuprimentos>(true) != null;
     }
 
     string ObterDescricaoFallback(DadosConstrucao.CategoriaItem categoria)
@@ -3863,13 +3866,16 @@ public class MenuConstrucao : MonoBehaviour
 
     void ProduzirUnidadeTerrestre(DadosConstrucao item, int quantidade, Image cardImage)
     {
-        if (!gerente.TentarComprarUnidade(item.PrefabDaUnidade, PrecoEfetivo(item), quantidade))
+        if (!gerente.TentarComprarUnidade(item.PrefabDaUnidade, PrecoEfetivo(item), quantidade, out string motivoFalha))
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(LocalizationManager.T(
-                "build.ground_production_unavailable",
-                "Produção bloqueada. Verifique instalação terrestre operacional, efetivo e saldo."));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": pedido terrestre recusado");
+            string aviso = !string.IsNullOrEmpty(motivoFalha)
+                ? $"Não foi possível produzir {item.NomeItem}: {motivoFalha}"
+                : LocalizationManager.T(
+                    "build.ground_production_unavailable",
+                    "Produção bloqueada. Verifique instalação terrestre operacional, efetivo e saldo.");
+            EmitirAvisoJogador(aviso);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": " + motivoFalha);
             return;
         }
 
@@ -3889,7 +3895,10 @@ public class MenuConstrucao : MonoBehaviour
     void ProduzirUnidadeAerea(DadosConstrucao item, int quantidade, Image cardImage)
     {
         bool helicopteroMarinho = item != null && item.PrefabDaUnidade != null
-            && (item.PrefabDaUnidade.name == "MI-80_Marine" || item.PrefabDaUnidade.name == "Sh60_Marine");
+            && (item.PrefabDaUnidade.name == "MI-80_Marine"
+                || item.PrefabDaUnidade.name == "Sh60_Marine"
+                || item.PrefabDaUnidade.name == "HL S1"
+                || string.Equals(item.ItemId, "HL_S1", System.StringComparison.OrdinalIgnoreCase));
         bool isHelicopter = false;
         bool ehUH60GuardaCosteira = item != null
             && (string.Equals(item.ItemId, "UH60_GUARDA_COSTEIRA", System.StringComparison.OrdinalIgnoreCase)
@@ -3897,7 +3906,9 @@ public class MenuConstrucao : MonoBehaviour
         if (item != null && item.PrefabDaUnidade != null)
         {
             isHelicopter = item.PrefabDaUnidade.GetComponent<Helicoptero>() != null || 
-                           item.PrefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null;
+                           item.PrefabDaUnidade.GetComponentInChildren<Helicoptero>(true) != null ||
+                           item.PrefabDaUnidade.GetComponent<HelicopteroTransporteSuprimentos>() != null ||
+                           item.PrefabDaUnidade.GetComponentInChildren<HelicopteroTransporteSuprimentos>(true) != null;
         }
 
         RegistroEntidadesJogo.FillAeroportos(bufferAeroportos);
@@ -4078,24 +4089,28 @@ public class MenuConstrucao : MonoBehaviour
         }
 
         int comprados = 0;
+        long precoUnitarioAereo = PrecoEfetivo(item);
+        string ultimoMotivoAereo = string.Empty;
         for (int i = 0; i < quantidade; i++)
         {
             SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
-            bool precisaEfetivo = SistemaGovernoMundial.ObterEfetivoNecessario(
+            int efetivoNecessario = SistemaGovernoMundial.ObterEfetivoNecessario(
                 item.PrefabDaUnidade,
-                TipoUnidade.Aereo) > 0;
+                TipoUnidade.Aereo);
+            bool precisaEfetivo = efetivoNecessario > 0;
             if (precisaEfetivo
                 && (governo == null
                     || !governo.PodeProduzirUnidadeComEfetivo(1, item.PrefabDaUnidade, 1, TipoUnidade.Aereo)))
             {
-                EmitirAvisoJogador(string.Format(
-                    LocalizationManager.T("build.no_manpower", "Efetivo insuficiente para produzir {0}."),
-                    item.NomeItem));
+                int disp = governo != null ? governo.ObterEfetivoDisponivel(1) : 0;
+                ultimoMotivoAereo = $"Efetivo militar insuficiente: precisa {efetivoNecessario:N0}, disponível {disp:N0}.";
                 break;
             }
 
-            if (!gerente.TentarGastarDinheiro(PrecoEfetivo(item)))
+            if (!gerente.TentarGastarDinheiro(precoUnitarioAereo))
             {
+                long saldoAtual = GerenciadorRecursos.Instancia != null ? GerenciadorRecursos.Instancia.dinheiro : 0L;
+                ultimoMotivoAereo = $"Dinheiro insuficiente: precisa $ {precoUnitarioAereo:N0}, disponível $ {saldoAtual:N0}.";
                 break;
             }
 
@@ -4155,7 +4170,16 @@ public class MenuConstrucao : MonoBehaviour
                     compraConcluida = PrepararHelicopteroComprado(heliObj, targetHeliporto);
                 }
                 else if (!compraConcluida && targetAeroporto != null)
-                    compraConcluida = targetAeroporto.ComprarAviao(item.PrefabDaUnidade);
+                {
+                    if (targetAeroporto.ComprarAviao(item.PrefabDaUnidade, out string motivoAero))
+                    {
+                        compraConcluida = true;
+                    }
+                    else if (!string.IsNullOrEmpty(motivoAero))
+                    {
+                        ultimoMotivoAereo = motivoAero;
+                    }
+                }
             }
             else if (targetHeliporto != null)
             {
@@ -4173,11 +4197,11 @@ public class MenuConstrucao : MonoBehaviour
                     if (governoHelicoptero != null
                         && !governoHelicoptero.TentarMobilizarEfetivoDaUnidade(1, heliObj))
                     {
+                        int nec = SistemaGovernoMundial.ObterEfetivoNecessario(item.PrefabDaUnidade, TipoUnidade.Aereo);
+                        int disp = governoHelicoptero.ObterEfetivoDisponivel(1);
+                        ultimoMotivoAereo = $"Efetivo militar insuficiente: precisa {nec:N0}, disponível {disp:N0}.";
                         Destroy(heliObj);
                         ReembolsarDinheiro(PrecoEfetivo(item));
-                        EmitirAvisoJogador(string.Format(
-                            LocalizationManager.T("build.no_manpower", "Efetivo insuficiente para produzir {0}."),
-                            item.NomeItem));
                         break;
                     }
 
@@ -4197,7 +4221,14 @@ public class MenuConstrucao : MonoBehaviour
             }
             else if (targetAeroporto != null)
             {
-                compraConcluida = targetAeroporto.ComprarAviao(item.PrefabDaUnidade);
+                if (targetAeroporto.ComprarAviao(item.PrefabDaUnidade, out string motivoAero))
+                {
+                    compraConcluida = true;
+                }
+                else if (!string.IsNullOrEmpty(motivoAero))
+                {
+                    ultimoMotivoAereo = motivoAero;
+                }
             }
 
             if (compraConcluida)
@@ -4207,10 +4238,11 @@ public class MenuConstrucao : MonoBehaviour
             else
             {
                 ReembolsarDinheiro(PrecoEfetivo(item));
-                EmitirAvisoJogador(string.Format(
-                    LocalizationManager.T("build.aircraft_spawn_failed", "Falha ao entregar {0}; o valor foi devolvido."),
-                    item.NomeItem));
-                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": falha no spawn; valor devolvido");
+                if (string.IsNullOrEmpty(ultimoMotivoAereo))
+                {
+                    ultimoMotivoAereo = "Falha ao entregar a aeronave na base (verifique vagas e energia).";
+                }
+                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": " + ultimoMotivoAereo);
                 break;
             }
         }
@@ -4218,8 +4250,11 @@ public class MenuConstrucao : MonoBehaviour
         if (comprados <= 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.aircraft_not_purchased", "Nao foi possivel comprar {0}."), item.NomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": compra sem aeronave entregue");
+            string avisoAereo = !string.IsNullOrEmpty(ultimoMotivoAereo)
+                ? $"Não foi possível comprar {item.NomeItem}: {ultimoMotivoAereo}"
+                : string.Format(LocalizationManager.T("build.aircraft_not_purchased", "Nao foi possivel comprar {0}."), item.NomeItem);
+            EmitirAvisoJogador(avisoAereo);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": " + avisoAereo);
             return;
         }
 
@@ -4257,8 +4292,11 @@ public class MenuConstrucao : MonoBehaviour
     void ProduzirUnidadeNaval(DadosConstrucao item, int quantidade, Image cardImage)
     {
         bool ehNavioGrande = EhNavioGrande(item.PrefabDaUnidade);
-        List<Estaleiro> estaleiros = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
-            .Where(e => e != null && EhEstruturaDoJogador(e) && EstruturaNavalOperacional(e))
+        List<Estaleiro> estaleirosDoJogador = Object.FindObjectsByType<Estaleiro>(FindObjectsSortMode.None)
+            .Where(e => e != null && EhEstruturaDoJogador(e))
+            .ToList();
+        List<Estaleiro> estaleiros = estaleirosDoJogador
+            .Where(e => EstruturaNavalOperacional(e))
             .ToList();
 
         // Pier e estrutura de atracagem/logistica. A fila de producao naval do
@@ -4267,42 +4305,63 @@ public class MenuConstrucao : MonoBehaviour
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
             DiagnosticarEstruturasNavaisJogador();
-            EmitirAvisoJogador(ehNavioGrande
-                ? LocalizationManager.T("build.need_shipyard_big", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir esse navio grande.")
-                : LocalizationManager.T("build.need_shipyard", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir navios."));
+            string avisoSemEstaleiro = estaleirosDoJogador.Count > 0
+                ? $"Estaleiro sem energia operacional para produzir {item.NomeItem}."
+                : (ehNavioGrande
+                    ? LocalizationManager.T("build.need_shipyard_big", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir esse navio grande.")
+                    : LocalizationManager.T("build.need_shipyard", "Bloqueado: construa um ESTALEIRO costeiro valido para produzir navios."));
+            EmitirAvisoJogador(avisoSemEstaleiro);
             DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": sem estrutura naval");
             return;
         }
 
         int enfileirados = 0;
+        long precoUnitario = PrecoEfetivo(item);
+        string ultimoMotivoNaval = string.Empty;
         for (int i = 0; i < quantidade; i++)
         {
-            if (!gerente.TentarGastarDinheiro(PrecoEfetivo(item)))
+            if (!gerente.TentarGastarDinheiro(precoUnitario))
             {
+                long saldoAtual = GerenciadorRecursos.Instancia != null ? GerenciadorRecursos.Instancia.dinheiro : 0L;
+                ultimoMotivoNaval = $"Dinheiro insuficiente: precisa $ {precoUnitario:N0}, disponível $ {saldoAtual:N0}.";
                 break;
             }
 
             bool sucesso = false;
+            string motivoTentativa = string.Empty;
             foreach (Estaleiro estaleiro in estaleiros)
             {
-                if (estaleiro == null || !estaleiro.TemVaga || !EstruturaNavalOperacional(estaleiro))
+                if (estaleiro == null || !EstruturaNavalOperacional(estaleiro))
                 {
                     continue;
                 }
 
-                if (estaleiro.ConstruirUnidade(item.PrefabDaUnidade))
+                if (!estaleiro.TemVaga)
+                {
+                    motivoTentativa = "Fila do estaleiro cheia.";
+                    continue;
+                }
+
+                if (estaleiro.ConstruirUnidade(item.PrefabDaUnidade, out string motivoEstaleiro))
                 {
                     sucesso = true;
                     enfileirados++;
                     break;
                 }
+
+                if (!string.IsNullOrEmpty(motivoEstaleiro))
+                {
+                    motivoTentativa = motivoEstaleiro;
+                }
             }
 
             if (!sucesso)
             {
-                ReembolsarDinheiro(PrecoEfetivo(item));
-                EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_fail", "Falha ao produzir '{0}' em estruturas navais validas."), item.NomeItem));
-                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": estrutura naval recusou");
+                ReembolsarDinheiro(precoUnitario);
+                ultimoMotivoNaval = !string.IsNullOrEmpty(motivoTentativa)
+                    ? motivoTentativa
+                    : "Nenhuma vaga/condição operacional disponível no estaleiro.";
+                DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": " + ultimoMotivoNaval);
                 break;
             }
         }
@@ -4310,8 +4369,11 @@ public class MenuConstrucao : MonoBehaviour
         if (enfileirados <= 0)
         {
             if (cardImage != null) StartCoroutine(FlashCardErro(cardImage));
-            EmitirAvisoJogador(string.Format(LocalizationManager.T("build.naval_none", "Nao foi possivel produzir {0}."), item.NomeItem));
-            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": nenhum enfileirado");
+            string avisoDetalhado = !string.IsNullOrEmpty(ultimoMotivoNaval)
+                ? $"Não foi possível produzir {item.NomeItem}: {ultimoMotivoNaval}"
+                : string.Format(LocalizationManager.T("build.naval_none", "Nao foi possivel produzir {0}."), item.NomeItem);
+            EmitirAvisoJogador(avisoDetalhado);
+            DiagnosticoDesempenhoJogo.RegistrarEvento("CompraFalha", item.NomeItem + ": nenhum enfileirado (" + ultimoMotivoNaval + ")");
             return;
         }
 

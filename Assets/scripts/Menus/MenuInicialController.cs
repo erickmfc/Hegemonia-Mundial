@@ -101,7 +101,8 @@ public class MenuInicialController : MonoBehaviour
             return;
         }
 
-        usarCenaDeFundoExistente = cenaAtiva.name == ConfiguracaoCenasJogo.CenaMenuPrincipalCanonica;
+        usarCenaDeFundoExistente = ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name)
+            && !string.Equals(cenaAtiva.name, ConfiguracaoCenasJogo.CenaMenuFallback, System.StringComparison.OrdinalIgnoreCase);
         sistemaSave = SistemaSaveGame.GarantirInstancia();
         fontePadrao = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
@@ -114,7 +115,10 @@ public class MenuInicialController : MonoBehaviour
         {
             DesativarControladoresCameraDaCenaMenu();
             InicializarAnimacaoCenaExistente();
-            GarantirAguaVisivelNoDiorama();
+            if (!InicializadorSuperficiesMapa.CenaPossuiSuperficieAguaVisivel())
+            {
+                GarantirAguaVisivelNoDiorama();
+            }
             DesativarAgentesDaCenaMenu();
             // O cenário do menu usa prefabs da campanha como diorama. Eles precisam
             // permanecer visíveis, mas sem lógica de combate/movimento para não iniciar
@@ -1190,10 +1194,9 @@ public class MenuInicialController : MonoBehaviour
         vinheta.offsetMin = Vector2.zero;
         vinheta.offsetMax = Vector2.zero;
 
-        RectTransform painel = CriarPainel("PainelLateral", canvasMenuPrincipal.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(520f, 0f), corPainel);
-        CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -18f), new Vector2(0f, 174f), corPainelTopo);
+        RectTransform painel = CriarPainel("PainelLateral", canvasMenuPrincipal.transform, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(520f, 0f), new Color(0.02f, 0.05f, 0.07f, 0.78f));
+        CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -18f), new Vector2(0f, 174f), new Color(0.03f, 0.1f, 0.14f, 0.52f));
         CriarPainel("BrilhoBorda", painel, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(-2f, 0f), new Vector2(3f, 0f), corBorda);
-        CriarPainel("LinhaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 3f), new Color(0.25f, 0.9f, 0.96f, 0.95f));
 
         RectTransform coluna = new GameObject("ColunaMenu").AddComponent<RectTransform>();
         coluna.SetParent(painel, false);
@@ -1202,33 +1205,52 @@ public class MenuInicialController : MonoBehaviour
         coluna.offsetMin = new Vector2(34f, 28f);
         coluna.offsetMax = new Vector2(-34f, -28f);
 
-        CriarTexto("Selo", coluna, "CENTRO DE COMANDO  //  HGM-01", 11, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.35f, 0.91f, 0.94f, 0.98f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -6f), new Vector2(0f, 22f));
-        CriarTexto("Titulo", coluna, "HEGEMONIA\nGLOBAL", 43, FontStyle.Bold, TextAnchor.UpperLeft, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 104f));
-        CriarTexto("Subtitulo", coluna, LocalizationManager.T("menu.main.subtitle", "Estratégia, território e poder"), 16, FontStyle.Normal, TextAnchor.UpperLeft, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -122f), new Vector2(0f, 24f));
-        CriarPainel("DivisorAcoes", coluna, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -158f), new Vector2(0f, 1f), new Color(0.24f, 0.68f, 0.72f, 0.32f));
-        CriarTexto("SecaoAcoes", coluna, "OPERAÇÕES  /  SELECIONE UMA DIRETRIZ", 11, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.53f, 0.84f, 0.86f, 0.95f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -170f), new Vector2(0f, 22f));
+        IdiomaJogo idioma = LocalizationManager.IdiomaAtual;
+        bool ehPtBr = idioma == IdiomaJogo.PtBr;
+
+        CriarTexto("Selo", coluna, ObterTextoSelo(idioma), 12, FontStyle.Bold, TextAnchor.UpperLeft, new Color(0.56f, 0.72f, 0.76f, 0.96f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -6f), new Vector2(0f, 22f));
+        CriarTexto("Titulo", coluna, ObterTextoTitulo(idioma), 44, FontStyle.Bold, TextAnchor.UpperLeft, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -24f), new Vector2(0f, 108f));
+        CriarPainel("LinhaTopo", coluna, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -138f), new Vector2(0f, 3f), new Color(0.18f, 0.86f, 0.94f, 0.95f));
+        CriarTexto("Subtitulo", coluna, ObterTextoSubtitulo(idioma), 16, FontStyle.Normal, TextAnchor.UpperLeft, corTextoSuave, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -150f), new Vector2(0f, 26f));
 
         RectTransform grupoBotoes = new GameObject("GrupoBotoes").AddComponent<RectTransform>();
         grupoBotoes.SetParent(coluna, false);
         grupoBotoes.anchorMin = new Vector2(0f, 1f);
         grupoBotoes.anchorMax = new Vector2(1f, 1f);
         grupoBotoes.pivot = new Vector2(0.5f, 1f);
-        grupoBotoes.anchoredPosition = new Vector2(0f, -202f);
-        grupoBotoes.sizeDelta = new Vector2(0f, 620f);
+        grupoBotoes.anchoredPosition = new Vector2(0f, -196f);
+        grupoBotoes.sizeDelta = new Vector2(0f, 410f);
 
         float posicaoY = 0f;
-        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.new", "Nova Campanha"), "CP", corBotaoDestaque, true, Btn_NovaCampanha, ref posicaoY);
-        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.tutorial", "Tutorial"), "TR", corBotao, true, Btn_Tutorial, ref posicaoY);
-        CriarBotao(grupoBotoes, "Escaramuça", "SK", corBotao, true, Btn_Escaramuca, ref posicaoY);
-        CriarBotao(grupoBotoes, "Multijogador", "MP", corBotao, true, Btn_Multijogador, ref posicaoY);
-        botaoCarregar = CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, true, Btn_CarregarJogo, ref posicaoY);
-        CriarBotao(grupoBotoes, "Audio", "AU", corBotao, true, AbrirConfiguracoesAudio, ref posicaoY);
-        CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.language", "Idioma") + ": " + LocalizationManager.Instancia.NomeIdiomaAtual(), "LG", corBotao, true, Btn_AlternarIdioma, ref posicaoY);
-            CriarBotao(grupoBotoes, LocalizationManager.T("menu.main.exit", "Sair"), "EX", corBotaoSair, true, Btn_Sair, ref posicaoY);
+        CriarBotaoMenuSprite(grupoBotoes, "NovaCampanhaButton", ehPtBr ? "UI/MenuPrincipal/btn_nova_campanha" : "UI/MenuPrincipal/btn_template_active", true, Btn_NovaCampanha, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 1) : LocalizationManager.T("menu.main.new", "Nova Campanha"), "CP", corBotaoDestaque, !ehPtBr, true);
+        CriarBotaoMenuSprite(grupoBotoes, "TutorialButton", ehPtBr ? "UI/MenuPrincipal/btn_tutorial" : "UI/MenuPrincipal/btn_template_normal", true, Btn_Tutorial, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 2) : LocalizationManager.T("menu.main.tutorial", "Tutorial"), "TR", corBotao, !ehPtBr, false);
+        CriarBotaoMenuSprite(grupoBotoes, "EscaramucaButton", ehPtBr ? "UI/MenuPrincipal/btn_escaramuca" : "UI/MenuPrincipal/btn_template_normal", true, Btn_Escaramuca, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 3) : "Escaramuça", "SK", corBotao, !ehPtBr, false);
+        CriarBotaoMenuSprite(grupoBotoes, "MultijogadorButton", ehPtBr ? "UI/MenuPrincipal/btn_multijogador" : "UI/MenuPrincipal/btn_template_normal", true, Btn_Multijogador, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 4) : "Multijogador", "MP", corBotao, !ehPtBr, false);
+        botaoCarregar = CriarBotaoMenuSprite(grupoBotoes, "CarregarJogoButton", ehPtBr ? "UI/MenuPrincipal/btn_carregar_jogo" : "UI/MenuPrincipal/btn_template_normal", true, Btn_CarregarJogo, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 5) : LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, !ehPtBr, false);
 
-        RectTransform statusBox = CriarPainel("StatusBox", coluna, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 112f), new Vector2(0f, 68f), new Color(0.035f, 0.13f, 0.15f, 0.96f));
-        statusText = CriarTexto("Status", statusBox, string.Empty, 15, FontStyle.Bold, TextAnchor.MiddleLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(16f, 0f), new Vector2(-32f, 0f));
-        CriarTexto("Rodape", coluna, "SISTEMA ONLINE  /  ESC para pausar  /  F1 para ajuda", 11, FontStyle.Normal, TextAnchor.LowerLeft, new Color(0.42f, 0.62f, 0.65f, 0.9f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 20f), new Vector2(0f, 28f));
+        RectTransform barraInferior = new GameObject("BarraInferiorBotoes").AddComponent<RectTransform>();
+        barraInferior.SetParent(coluna, false);
+        barraInferior.anchorMin = new Vector2(0f, 0f);
+        barraInferior.anchorMax = new Vector2(1f, 0f);
+        barraInferior.pivot = new Vector2(0.5f, 0f);
+        barraInferior.anchoredPosition = new Vector2(0f, 114f);
+        barraInferior.sizeDelta = new Vector2(0f, 46f);
+
+        HorizontalLayoutGroup layoutInferior = barraInferior.gameObject.AddComponent<HorizontalLayoutGroup>();
+        layoutInferior.spacing = 8f;
+        layoutInferior.childAlignment = TextAnchor.MiddleCenter;
+        layoutInferior.childControlWidth = true;
+        layoutInferior.childControlHeight = true;
+        layoutInferior.childForceExpandWidth = false;
+        layoutInferior.childForceExpandHeight = true;
+
+        CriarBotaoCompactoSprite(barraInferior, "AudioButton", ehPtBr ? "UI/MenuPrincipal/btn_audio" : "UI/MenuPrincipal/btn_template_audio", 122f, AbrirConfiguracoesAudio, ObterRotuloAudio(idioma), "AU", corBotao, !ehPtBr);
+        CriarBotaoCompactoSprite(barraInferior, "IdiomaButton", ObterCaminhoSpriteIdiomaAtual(), 198f, Btn_AlternarIdioma, LocalizationManager.Instancia.NomeIdiomaAtual(), "LG", corBotao, false);
+        CriarBotaoCompactoSprite(barraInferior, "SairButton", ehPtBr ? "UI/MenuPrincipal/btn_sair" : "UI/MenuPrincipal/btn_template_sair", 116f, Btn_Sair, ObterRotuloSair(idioma), "EX", corBotaoSair, !ehPtBr);
+
+        RectTransform statusBox = CriarPainel("StatusBox", coluna, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 52f), new Vector2(0f, 48f), new Color(0.02f, 0.08f, 0.1f, 0.58f));
+        statusText = CriarTexto("Status", statusBox, string.Empty, 15, FontStyle.Normal, TextAnchor.MiddleLeft, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(10f, 0f), new Vector2(-20f, 0f));
+        CriarTexto("Rodape", coluna, ObterTextoRodape(idioma), 12, FontStyle.Normal, TextAnchor.LowerLeft, new Color(0.45f, 0.82f, 0.86f, 0.92f), new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 16f), new Vector2(0f, 26f));
 
         CriarPainel("HUDSuperiorDireito", canvasMenuPrincipal.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-34f, -34f), new Vector2(330f, 82f), new Color(0.02f, 0.07f, 0.09f, 0.72f));
         CriarTexto("Setor", canvasMenuPrincipal.transform, "ATLANTIC THEATER  //  SECTOR 07", 12, FontStyle.Bold, TextAnchor.MiddleLeft, new Color(0.5f, 0.88f, 0.88f, 0.95f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-190f, -38f), new Vector2(300f, 22f));
@@ -1347,6 +1369,276 @@ public class MenuInicialController : MonoBehaviour
 
         posicaoY += multilinha ? 104f : 68f;
         return botao;
+    }
+
+    private string ObterCaminhoSpriteIdiomaAtual()
+    {
+        switch (LocalizationManager.IdiomaAtual)
+        {
+            case IdiomaJogo.EnUs:
+                return "UI/MenuPrincipal/btn_lang_en";
+            case IdiomaJogo.ZhHans:
+                return "UI/MenuPrincipal/btn_lang_zh";
+            default:
+                return "UI/MenuPrincipal/btn_lang_ptbr";
+        }
+    }
+
+    private static string ObterTextoSelo(IdiomaJogo idioma)
+    {
+        switch (idioma)
+        {
+            case IdiomaJogo.EnUs: return "COMMAND CENTER  //  HGM-01";
+            case IdiomaJogo.ZhHans: return "指挥中心  //  HGM-01";
+            default: return "CENTRO DE COMANDO  //  HGM-01";
+        }
+    }
+
+    private static string ObterTextoTitulo(IdiomaJogo idioma)
+    {
+        switch (idioma)
+        {
+            case IdiomaJogo.EnUs: return "GLOBAL\nHEGEMONY";
+            case IdiomaJogo.ZhHans: return "全球霸权";
+            default: return "HEGEMONIA\nGLOBAL";
+        }
+    }
+
+    private static string ObterTextoSubtitulo(IdiomaJogo idioma)
+    {
+        switch (idioma)
+        {
+            case IdiomaJogo.EnUs: return "New campaign and load game";
+            case IdiomaJogo.ZhHans: return "新战役与载入游戏";
+            default: return "Nova campanha e carregar jogo";
+        }
+    }
+
+    private static string ObterTextoRodape(IdiomaJogo idioma)
+    {
+        switch (idioma)
+        {
+            case IdiomaJogo.EnUs: return "SYSTEM ONLINE  //  ESC to pause  /  F1 for help";
+            case IdiomaJogo.ZhHans: return "系统在线  //  ESC 暂停  /  F1 帮助";
+            default: return "SISTEMA ONLINE  //  ESC para pausar  /  F1 para ajuda";
+        }
+    }
+
+    private static string ObterRotuloBotaoMenu(IdiomaJogo idioma, int indice)
+    {
+        if (idioma == IdiomaJogo.ZhHans)
+        {
+            switch (indice)
+            {
+                case 1: return "01 // 新战役";
+                case 2: return "02 // 教程";
+                case 3: return "03 // 遭遇战";
+                case 4: return "04 // 多人游戏";
+                default: return "05 // 载入游戏";
+            }
+        }
+
+        switch (indice)
+        {
+            case 1: return "01 // NEW CAMPAIGN";
+            case 2: return "02 // TUTORIAL";
+            case 3: return "03 // SKIRMISH";
+            case 4: return "04 // MULTIPLAYER";
+            default: return "05 // LOAD GAME";
+        }
+    }
+
+    private static string ObterRotuloAudio(IdiomaJogo idioma)
+    {
+        switch (idioma)
+        {
+            case IdiomaJogo.EnUs: return "AUDIO";
+            case IdiomaJogo.ZhHans: return "音频";
+            default: return "ÁUDIO";
+        }
+    }
+
+    private static string ObterRotuloSair(IdiomaJogo idioma)
+    {
+        switch (idioma)
+        {
+            case IdiomaJogo.EnUs: return "EXIT";
+            case IdiomaJogo.ZhHans: return "退出";
+            default: return "SAIR";
+        }
+    }
+
+    private Button CriarBotaoMenuSprite(
+        Transform parent,
+        string nomeObjeto,
+        string caminhoSprite,
+        bool interativo,
+        UnityEngine.Events.UnityAction acao,
+        ref float posicaoY,
+        string fallbackTitulo,
+        string fallbackIcone,
+        Color fallbackCor,
+        bool desenharTextoSobreSprite = false,
+        bool destaqueCiano = false)
+    {
+        Sprite spriteBotao = Resources.Load<Sprite>(caminhoSprite);
+        if (spriteBotao == null)
+        {
+            return CriarBotao(parent, fallbackTitulo, fallbackIcone, fallbackCor, interativo, acao, ref posicaoY);
+        }
+
+        GameObject botaoObject = new GameObject(nomeObjeto);
+        botaoObject.transform.SetParent(parent, false);
+
+        RectTransform rect = botaoObject.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -posicaoY);
+        rect.sizeDelta = new Vector2(0f, 68f);
+
+        Image imagem = botaoObject.AddComponent<Image>();
+        imagem.sprite = spriteBotao;
+        imagem.preserveAspect = true;
+        imagem.color = Color.white;
+        imagem.raycastTarget = true;
+
+        Button botao = botaoObject.AddComponent<Button>();
+        ConfigurarCoresBotaoSprite(botao, interativo);
+        botao.interactable = interativo;
+        botao.onClick.AddListener(acao);
+
+        if (desenharTextoSobreSprite)
+        {
+            string[] partes = fallbackTitulo.Split(new[] { "//" }, 2, System.StringSplitOptions.None);
+            string textoFormatado = partes.Length == 2
+                ? string.Format(
+                    "<color={0}>{1}//</color> {2}",
+                    destaqueCiano ? "#5AE2F0" : "#9BB8C0",
+                    partes[0].Trim() + " ",
+                    partes[1].Trim())
+                : fallbackTitulo;
+
+            Text label = CriarTexto(
+                "Label",
+                botaoObject.transform,
+                textoFormatado,
+                21,
+                FontStyle.Bold,
+                TextAnchor.MiddleLeft,
+                interativo ? Color.white : corTextoDesabilitado,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(24f, 0f),
+                new Vector2(-92f, 0f));
+            label.supportRichText = true;
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 14;
+            label.resizeTextMaxSize = 21;
+
+            Text badge = CriarTexto(
+                "Badge",
+                botaoObject.transform,
+                fallbackIcone,
+                16,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                interativo ? new Color(0.92f, 0.98f, 0.99f, 0.96f) : corTextoDesabilitado,
+                new Vector2(1f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(-42f, 0f),
+                new Vector2(46f, 0f));
+            badge.resizeTextForBestFit = true;
+            badge.resizeTextMinSize = 11;
+            badge.resizeTextMaxSize = 16;
+        }
+
+        posicaoY += 74f;
+        return botao;
+    }
+
+    private Button CriarBotaoCompactoSprite(
+        Transform parent,
+        string nomeObjeto,
+        string caminhoSprite,
+        float larguraPreferida,
+        UnityEngine.Events.UnityAction acao,
+        string fallbackTitulo,
+        string fallbackIcone,
+        Color fallbackCor,
+        bool desenharTextoSobreSprite = false)
+    {
+        Sprite spriteBotao = Resources.Load<Sprite>(caminhoSprite);
+        GameObject botaoObject = new GameObject(nomeObjeto);
+        botaoObject.transform.SetParent(parent, false);
+
+        LayoutElement layout = botaoObject.AddComponent<LayoutElement>();
+        layout.preferredWidth = larguraPreferida;
+        layout.flexibleWidth = 1f;
+        layout.preferredHeight = 46f;
+
+        Image imagem = botaoObject.AddComponent<Image>();
+        Button botao = botaoObject.AddComponent<Button>();
+        botao.onClick.AddListener(acao);
+
+        if (spriteBotao != null)
+        {
+            imagem.sprite = spriteBotao;
+            imagem.preserveAspect = true;
+            imagem.color = Color.white;
+            ConfigurarCoresBotaoSprite(botao, true);
+
+            if (desenharTextoSobreSprite)
+            {
+                Text label = CriarTexto(
+                    "Label",
+                    botaoObject.transform,
+                    fallbackTitulo,
+                    15,
+                    FontStyle.Bold,
+                    TextAnchor.MiddleCenter,
+                    Color.white,
+                    new Vector2(0f, 0f),
+                    new Vector2(1f, 1f),
+                    new Vector2(22f, 0f),
+                    new Vector2(-34f, 0f));
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = 10;
+                label.resizeTextMaxSize = 15;
+            }
+        }
+        else
+        {
+            imagem.color = fallbackCor;
+            ColorBlock cores = botao.colors;
+            cores.normalColor = fallbackCor;
+            cores.highlightedColor = corBotaoHover;
+            cores.pressedColor = new Color(fallbackCor.r * 0.84f, fallbackCor.g * 0.84f, fallbackCor.b * 0.84f, fallbackCor.a);
+            cores.selectedColor = corBotaoHover;
+            cores.fadeDuration = 0.08f;
+            botao.colors = cores;
+            CriarTexto("Label", botaoObject.transform, fallbackTitulo.ToUpper(), 13, FontStyle.Bold, TextAnchor.MiddleCenter, corTexto, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        }
+
+        return botao;
+    }
+
+    private static void ConfigurarCoresBotaoSprite(Button botao, bool interativo)
+    {
+        if (botao == null)
+        {
+            return;
+        }
+
+        Color normal = interativo ? Color.white : new Color(0.55f, 0.6f, 0.64f, 0.65f);
+        ColorBlock cores = botao.colors;
+        cores.normalColor = normal;
+        cores.highlightedColor = interativo ? new Color(0.86f, 0.98f, 1f, 1f) : normal;
+        cores.pressedColor = interativo ? new Color(0.76f, 0.88f, 0.92f, 1f) : normal;
+        cores.selectedColor = interativo ? new Color(0.92f, 1f, 1f, 1f) : normal;
+        cores.disabledColor = new Color(0.55f, 0.6f, 0.64f, 0.65f);
+        cores.fadeDuration = 0.08f;
+        botao.colors = cores;
     }
 
     private GameObject CriarBloco(Transform parent, string nome, Vector3 posicaoLocal, Vector3 escalaLocal, Color cor)
@@ -1497,6 +1789,18 @@ public class MenuInicialController : MonoBehaviour
 
         bool possuiSave = sistemaSave.PossuiSave();
         botaoCarregar.interactable = possuiSave;
+
+        Image imgCarregar = botaoCarregar.targetGraphic as Image;
+        if (imgCarregar != null && imgCarregar.sprite != null)
+        {
+            ConfigurarCoresBotaoSprite(botaoCarregar, possuiSave);
+            Text[] textosSprite = botaoCarregar.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < textosSprite.Length; i++)
+            {
+                textosSprite[i].color = possuiSave ? Color.white : corTextoDesabilitado;
+            }
+            return;
+        }
 
         ColorBlock cores = botaoCarregar.colors;
         cores.normalColor = possuiSave ? corBotao : corBotaoBloqueado;

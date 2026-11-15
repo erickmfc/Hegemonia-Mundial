@@ -25,6 +25,10 @@ public class MenuPausaController : MonoBehaviour
     private SistemaSaveGame sistemaSave;
     private Canvas canvasMenu;
     private GameObject raizMenu;
+    private GameObject painelPrincipalBotoes;
+    private GameObject painelSubConfiguracoes;
+    private GameObject painelSubEstatisticas;
+    private Text textoEstatisticas;
     private Text statusText;
     private GameObject statusBoxObject;
     private GameObject hudTempoObject;
@@ -190,6 +194,7 @@ public class MenuPausaController : MonoBehaviour
 
     private void FecharMenuVisual()
     {
+        VoltarParaMenuPrincipalPausa();
         if (raizMenu != null)
         {
             raizMenu.SetActive(false);
@@ -475,6 +480,7 @@ public class MenuPausaController : MonoBehaviour
         LocalizationManager.Instancia.ProximoIdioma();
         RecriarInterface();
         raizMenu.SetActive(true);
+        AbrirSubmenuConfiguracoes();
         AtualizarStatus(string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), false);
     }
 
@@ -483,6 +489,7 @@ public class MenuPausaController : MonoBehaviour
         GameDifficultyManager.Instancia.ProximaDificuldade();
         RecriarInterface();
         raizMenu.SetActive(true);
+        AbrirSubmenuConfiguracoes();
         AtualizarStatus(
             string.Format(
                 LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"),
@@ -597,6 +604,88 @@ public class MenuPausaController : MonoBehaviour
         overlay.offsetMin = Vector2.zero;
         overlay.offsetMax = Vector2.zero;
 
+        Sprite molduraSprite = Resources.Load<Sprite>("UI/MenuPausa/painel_pausa_moldura");
+        if (molduraSprite != null)
+        {
+            ConstruirInterfaceComMoldura(molduraSprite);
+        }
+        else
+        {
+            ConstruirInterfaceLegada();
+        }
+
+        ConstruirHUDTempo();
+        cicloHUDN = ResolverEstadoCicloHUDN();
+    }
+
+    private void ConstruirInterfaceComMoldura(Sprite molduraSprite)
+    {
+        // Proporcao exata da moldura recortada: 775 x 975 -> 680 x 855 em 1920x1080
+        RectTransform painel = new GameObject("PainelCentral").AddComponent<RectTransform>();
+        painel.SetParent(raizMenu.transform, false);
+        painel.anchorMin = new Vector2(0.5f, 0.5f);
+        painel.anchorMax = new Vector2(0.5f, 0.5f);
+        painel.pivot = new Vector2(0.5f, 0.5f);
+        painel.anchoredPosition = new Vector2(0f, -26f);
+        painel.sizeDelta = new Vector2(680f, 855f);
+        painel.localScale = new Vector3(0.9f, 0.9f, 1f);
+
+        Image imagemMoldura = painel.gameObject.AddComponent<Image>();
+        imagemMoldura.sprite = molduraSprite;
+        imagemMoldura.preserveAspect = true;
+        imagemMoldura.color = Color.white;
+        imagemMoldura.raycastTarget = true;
+
+        IdiomaJogo idioma = LocalizationManager.IdiomaAtual;
+        bool ehPtBr = idioma == IdiomaJogo.PtBr;
+
+        if (!ehPtBr)
+        {
+            RectTransform mascaraTitulo = CriarPainel("MascaraTitulo", painel, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -152f), new Vector2(540f, 48f), new Color(0.05f, 0.1f, 0.16f, 0.96f));
+            CriarTexto("TituloLocalizado", mascaraTitulo, idioma == IdiomaJogo.ZhHans ? "全球霸权" : "GLOBAL HEGEMONY", 30, FontStyle.Bold, TextAnchor.MiddleCenter, corTexto, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        }
+
+        // Area interna dos botoes dentro da moldura
+        RectTransform areaInterna = new GameObject("AreaInternaMenu").AddComponent<RectTransform>();
+        areaInterna.SetParent(painel, false);
+        areaInterna.anchorMin = new Vector2(0.5f, 1f);
+        areaInterna.anchorMax = new Vector2(0.5f, 1f);
+        areaInterna.pivot = new Vector2(0.5f, 1f);
+        areaInterna.anchoredPosition = new Vector2(0f, -228f);
+        areaInterna.sizeDelta = new Vector2(578f, 560f);
+
+        painelPrincipalBotoes = new GameObject("BotoesMenuPausa");
+        painelPrincipalBotoes.transform.SetParent(areaInterna, false);
+        RectTransform rectBotoes = painelPrincipalBotoes.AddComponent<RectTransform>();
+        rectBotoes.anchorMin = Vector2.zero;
+        rectBotoes.anchorMax = Vector2.one;
+        rectBotoes.offsetMin = Vector2.zero;
+        rectBotoes.offsetMax = Vector2.zero;
+
+        float posY = 0f;
+        CriarBotaoPausaSprite(rectBotoes, "RetomarJogoButton", ehPtBr ? "UI/MenuPausa/btn_retomar_jogo" : "UI/MenuPausa/btn_template_pausa_azul", 76f, RetomarJogo, ref posY, ObterTextoPausa(idioma, "resume"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "ConfiguracoesButton", ehPtBr ? "UI/MenuPausa/btn_configuracoes" : "UI/MenuPausa/btn_template_pausa_normal", 60f, AbrirSubmenuConfiguracoes, ref posY, ObterTextoPausa(idioma, "settings"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "DiplomaciaButton", ehPtBr ? "UI/MenuPausa/btn_diplomacia" : "UI/MenuPausa/btn_template_pausa_normal", 60f, AbrirDiplomacia, ref posY, ObterTextoPausa(idioma, "diplomacy"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "EstatisticasButton", ehPtBr ? "UI/MenuPausa/btn_estatisticas" : "UI/MenuPausa/btn_template_pausa_normal", 60f, AbrirEstatisticas, ref posY, ObterTextoPausa(idioma, "stats"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "SalvarJogoButton", ehPtBr ? "UI/MenuPausa/btn_salvar_jogo" : "UI/MenuPausa/btn_template_pausa_normal", 60f, SalvarJogo, ref posY, ObterTextoPausa(idioma, "save"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "CarregarJogoButton", ehPtBr ? "UI/MenuPausa/btn_carregar_jogo" : "UI/MenuPausa/btn_template_pausa_normal", 60f, CarregarJogo, ref posY, ObterTextoPausa(idioma, "load"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "ReiniciarPartidaButton", ehPtBr ? "UI/MenuPausa/btn_reiniciar_partida" : "UI/MenuPausa/btn_template_pausa_normal", 60f, ReiniciarPartida, ref posY, ObterTextoPausa(idioma, "restart"), !ehPtBr);
+        CriarBotaoPausaSprite(rectBotoes, "SairMenuButton", ehPtBr ? "UI/MenuPausa/btn_sair_menu" : "UI/MenuPausa/btn_template_pausa_vermelho", 62f, SairParaMenuPrincipal, ref posY, ObterTextoPausa(idioma, "exit"), !ehPtBr);
+
+        ConstruirSubmenuConfiguracoes(areaInterna, idioma);
+        ConstruirSubmenuEstatisticas(areaInterna, idioma);
+
+        RectTransform statusBox = CriarPainel("StatusBox", painel, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(540f, 38f), new Color(0.04f, 0.1f, 0.16f, 0.96f));
+        Outline statusOutline = statusBox.gameObject.AddComponent<Outline>();
+        statusOutline.effectColor = new Color(0.32f, 0.78f, 0.98f, 0.6f);
+        statusOutline.effectDistance = new Vector2(1f, -1f);
+        statusBoxObject = statusBox.gameObject;
+        statusText = CriarTexto("Status", statusBox, string.Empty, 15, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoSuave, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-24f, 0f));
+        statusBoxObject.SetActive(false);
+    }
+
+    private void ConstruirInterfaceLegada()
+    {
         RectTransform painel = CriarPainel("PainelCentral", raizMenu.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(580f, 900f), corPainel);
         CriarPainel("FaixaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 150f), corPainelTopo);
         CriarPainel("LinhaTopo", painel, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -22f), new Vector2(0f, 3f), new Color(0.56f, 0.86f, 0.93f, 0.9f));
@@ -634,8 +723,6 @@ public class MenuPausaController : MonoBehaviour
         statusText = CriarTexto("Status", statusBox, string.Empty, 16, FontStyle.Bold, TextAnchor.MiddleCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, new Vector2(-32f, 0f));
         statusBoxObject.SetActive(false);
         CriarTexto("Rodape", painel, LocalizationManager.T("pause.footer", "ESC retoma a partida."), 14, FontStyle.Normal, TextAnchor.LowerCenter, corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 22f), new Vector2(-48f, 20f));
-        ConstruirHUDTempo();
-        cicloHUDN = ResolverEstadoCicloHUDN();
     }
 
     private void RecriarInterface()
@@ -674,8 +761,9 @@ public class MenuPausaController : MonoBehaviour
         texturaMolduraTempo = Resources.Load<Texture2D>("UI/PainelTempo/08_moldura_conectora");
 
         RectTransform faixa = CriarPainel("ControlesTempoSimulacao", canvasMenu.transform,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -83f),
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -74f),
             new Vector2(670f, 80f), new Color(0f, 0f, 0f, 0f));
+        faixa.localScale = new Vector3(0.75f, 0.75f, 1f);
         hudTempoObject = faixa.gameObject;
 
         Image fundoFaixa = faixa.GetComponent<Image>();
@@ -878,6 +966,240 @@ public class MenuPausaController : MonoBehaviour
         sombra.effectColor = new Color(0f, 0f, 0f, 0.3f);
         sombra.effectDistance = new Vector2(1f, -1f);
         return texto;
+    }
+
+    private void AbrirSubmenuConfiguracoes()
+    {
+        if (painelPrincipalBotoes != null) painelPrincipalBotoes.SetActive(false);
+        if (painelSubEstatisticas != null) painelSubEstatisticas.SetActive(false);
+        if (painelSubConfiguracoes != null) painelSubConfiguracoes.SetActive(true);
+        OcultarStatus();
+    }
+
+    private void AbrirDiplomacia()
+    {
+        MenuGoverno menuGoverno = MenuGoverno.Instancia != null
+            ? MenuGoverno.Instancia
+            : Object.FindFirstObjectByType<MenuGoverno>(FindObjectsInactive.Include);
+        if (menuGoverno != null)
+        {
+            RestaurarFluxoNormal();
+            FecharMenuVisual();
+            menuGoverno.AlternarMenu(true);
+            return;
+        }
+
+        AtualizarStatus("Painel de Governo/Diplomacia indisponível nesta cena.", true);
+    }
+
+    private void AbrirEstatisticas()
+    {
+        if (painelPrincipalBotoes != null) painelPrincipalBotoes.SetActive(false);
+        if (painelSubConfiguracoes != null) painelSubConfiguracoes.SetActive(false);
+        if (painelSubEstatisticas != null)
+        {
+            AtualizarTextoEstatisticas();
+            painelSubEstatisticas.SetActive(true);
+        }
+        OcultarStatus();
+    }
+
+    private void VoltarParaMenuPrincipalPausa()
+    {
+        if (painelSubConfiguracoes != null) painelSubConfiguracoes.SetActive(false);
+        if (painelSubEstatisticas != null) painelSubEstatisticas.SetActive(false);
+        if (painelPrincipalBotoes != null) painelPrincipalBotoes.SetActive(true);
+    }
+
+    private void ConstruirSubmenuConfiguracoes(RectTransform parent, IdiomaJogo idioma)
+    {
+        painelSubConfiguracoes = new GameObject("SubmenuConfiguracoes");
+        painelSubConfiguracoes.transform.SetParent(parent, false);
+        RectTransform rect = painelSubConfiguracoes.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        CriarTexto("TituloConfig", rect, ObterTextoPausa(idioma, "settings"), 22, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.45f, 0.92f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -12f), new Vector2(0f, 34f));
+
+        float posY = 66f;
+        CriarBotao(rect, string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), "LG", corBotao, AlternarIdioma, ref posY);
+        CriarBotao(rect, string.Format(LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"), GameDifficultyManager.Instancia.NomeDificuldadeAtual()), "DF", corBotao, AlternarDificuldade, ref posY);
+        CriarBotao(rect, ObterTextoPausa(idioma, "audio"), "AU", corBotao, AbrirConfiguracoesAudio, ref posY);
+        posY += 20f;
+        CriarBotao(rect, ObterTextoPausa(idioma, "back"), "<<", corBotaoDestaque, VoltarParaMenuPrincipalPausa, ref posY);
+
+        painelSubConfiguracoes.SetActive(false);
+    }
+
+    private void ConstruirSubmenuEstatisticas(RectTransform parent, IdiomaJogo idioma)
+    {
+        painelSubEstatisticas = new GameObject("SubmenuEstatisticas");
+        painelSubEstatisticas.transform.SetParent(parent, false);
+        RectTransform rect = painelSubEstatisticas.AddComponent<RectTransform>();
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        CriarTexto("TituloStats", rect, ObterTextoPausa(idioma, "stats"), 22, FontStyle.Bold, TextAnchor.UpperCenter, new Color(0.45f, 0.92f, 1f, 1f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -12f), new Vector2(0f, 34f));
+
+        RectTransform caixaStats = CriarPainel("CaixaStats", rect, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -66f), new Vector2(520f, 340f), new Color(0.04f, 0.09f, 0.14f, 0.94f));
+        Outline outlineStats = caixaStats.gameObject.AddComponent<Outline>();
+        outlineStats.effectColor = new Color(0.32f, 0.78f, 0.98f, 0.45f);
+        outlineStats.effectDistance = new Vector2(1f, -1f);
+
+        textoEstatisticas = CriarTexto("TextoStats", caixaStats, string.Empty, 17, FontStyle.Normal, TextAnchor.UpperLeft, corTexto, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-36f, -36f));
+
+        float posY = 430f;
+        CriarBotao(rect, ObterTextoPausa(idioma, "back"), "<<", corBotaoDestaque, VoltarParaMenuPrincipalPausa, ref posY);
+        painelSubEstatisticas.SetActive(false);
+    }
+
+    private void AtualizarTextoEstatisticas()
+    {
+        if (textoEstatisticas == null) return;
+
+        GerenciadorRecursos recursos = GerenciadorRecursos.Instancia;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        string tesouro = recursos != null ? $"$ {recursos.dinheiro:N0}" : "N/D";
+        int efetivo = governo != null ? governo.ObterEfetivoDisponivel(1) : 0;
+
+        int unidades = 0;
+        int estruturas = 0;
+        IdentidadeUnidade[] todas = Object.FindObjectsByType<IdentidadeUnidade>(FindObjectsSortMode.None);
+        for (int i = 0; i < todas.Length; i++)
+        {
+            IdentidadeUnidade id = todas[i];
+            if (id == null || id.teamID != 1) continue;
+            if (id.tipoUnidade == TipoUnidade.Estrutura) estruturas++;
+            else unidades++;
+        }
+
+        textoEstatisticas.text =
+            $"NAÇÃO: HEGEMONIA\n\n" +
+            $"• Tesouro Nacional: {tesouro}\n" +
+            $"• Efetivo Militar Disponível: {efetivo:N0}\n" +
+            $"• Unidades Ativas (Time 1): {unidades}\n" +
+            $"• Estruturas Ativas (Time 1): {estruturas}\n" +
+            $"• Dificuldade: {GameDifficultyManager.Instancia.NomeDificuldadeAtual()}\n" +
+            $"• Tempo de Sessão: {Mathf.FloorToInt(Time.unscaledTime)} s";
+    }
+
+    private static string ObterTextoPausa(IdiomaJogo idioma, string chave)
+    {
+        if (idioma == IdiomaJogo.EnUs)
+        {
+            switch (chave)
+            {
+                case "resume": return "RESUME GAME";
+                case "settings": return "SETTINGS";
+                case "diplomacy": return "DIPLOMACY";
+                case "stats": return "STATISTICS";
+                case "save": return "SAVE GAME";
+                case "load": return "LOAD GAME";
+                case "restart": return "RESTART MATCH";
+                case "exit": return "EXIT TO MAIN MENU";
+                case "audio": return "AUDIO";
+                default: return "BACK";
+            }
+        }
+        if (idioma == IdiomaJogo.ZhHans)
+        {
+            switch (chave)
+            {
+                case "resume": return "继续游戏";
+                case "settings": return "设置";
+                case "diplomacy": return "外交";
+                case "stats": return "统计";
+                case "save": return "保存游戏";
+                case "load": return "载入游戏";
+                case "restart": return "重新开始";
+                case "exit": return "返回主菜单";
+                case "audio": return "音频";
+                default: return "返回";
+            }
+        }
+        switch (chave)
+        {
+            case "resume": return "RETOMAR JOGO";
+            case "settings": return "CONFIGURAÇÕES";
+            case "diplomacy": return "DIPLOMACIA";
+            case "stats": return "ESTATÍSTICAS";
+            case "save": return "SALVAR JOGO";
+            case "load": return "CARREGAR JOGO";
+            case "restart": return "REINICIAR PARTIDA";
+            case "exit": return "SAIR PARA O MENU PRINCIPAL";
+            case "audio": return "ÁUDIO";
+            default: return "VOLTAR";
+        }
+    }
+
+    private void CriarBotaoPausaSprite(
+        Transform parent,
+        string nomeObjeto,
+        string caminhoSprite,
+        float altura,
+        UnityEngine.Events.UnityAction acao,
+        ref float posicaoY,
+        string textoBotao,
+        bool desenharTextoSobreSprite)
+    {
+        Sprite sprite = Resources.Load<Sprite>(caminhoSprite);
+        if (sprite == null)
+        {
+            CriarBotao(parent, textoBotao, ">", corBotao, acao, ref posicaoY);
+            return;
+        }
+
+        GameObject botaoObject = new GameObject(nomeObjeto);
+        botaoObject.transform.SetParent(parent, false);
+
+        RectTransform rect = botaoObject.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -posicaoY);
+        rect.sizeDelta = new Vector2(578f, altura);
+
+        Image imagem = botaoObject.AddComponent<Image>();
+        imagem.sprite = sprite;
+        imagem.preserveAspect = true;
+        imagem.color = Color.white;
+        imagem.raycastTarget = true;
+
+        Button botao = botaoObject.AddComponent<Button>();
+        ColorBlock cores = botao.colors;
+        cores.normalColor = Color.white;
+        cores.highlightedColor = new Color(0.88f, 0.98f, 1f, 1f);
+        cores.pressedColor = new Color(0.76f, 0.88f, 0.94f, 1f);
+        cores.selectedColor = new Color(0.92f, 1f, 1f, 1f);
+        cores.disabledColor = new Color(0.55f, 0.6f, 0.65f, 0.65f);
+        cores.fadeDuration = 0.08f;
+        botao.colors = cores;
+        botao.onClick.AddListener(acao);
+
+        if (desenharTextoSobreSprite)
+        {
+            Text label = CriarTexto(
+                "Label",
+                botaoObject.transform,
+                textoBotao,
+                21,
+                FontStyle.Bold,
+                TextAnchor.MiddleLeft,
+                Color.white,
+                new Vector2(0f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(64f, 0f),
+                new Vector2(-210f, 0f));
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 14;
+            label.resizeTextMaxSize = 21;
+        }
+
+        posicaoY += altura + 4f;
     }
 
     private void CriarBotao(Transform parent, string titulo, string icone, Color corBase, UnityEngine.Events.UnityAction acao, ref float posicaoY)
