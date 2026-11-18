@@ -8,6 +8,18 @@ using Hegemonia.RTS;
 public class MenuPausaController : MonoBehaviour
 {
     public static bool EstaPausado { get; private set; }
+    private const string ChaveVSync = "hegemonia.video.vsync";
+    private static bool vSyncAtivo = true;
+    private static bool configuracaoVideoInicializada;
+
+    public static bool VSyncAtivo
+    {
+        get
+        {
+            InicializarConfiguracaoVideo();
+            return vSyncAtivo;
+        }
+    }
 
     private readonly Color corOverlay = new Color(0f, 0f, 0f, 0.56f);
     private readonly Color corPainel = new Color(0.05f, 0.1f, 0.13f, 0.95f);
@@ -66,6 +78,39 @@ public class MenuPausaController : MonoBehaviour
         }
 
         new GameObject("MenuPausaController").AddComponent<MenuPausaController>();
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void InicializarConfiguracaoVideo()
+    {
+        if (configuracaoVideoInicializada) return;
+        vSyncAtivo = PlayerPrefs.GetInt(ChaveVSync, 1) != 0;
+        AplicarConfiguracaoVideo();
+        configuracaoVideoInicializada = true;
+    }
+
+    private static void AlternarConfiguracaoVideo()
+    {
+        InicializarConfiguracaoVideo();
+        vSyncAtivo = !vSyncAtivo;
+        PlayerPrefs.SetInt(ChaveVSync, vSyncAtivo ? 1 : 0);
+        PlayerPrefs.Save();
+        AplicarConfiguracaoVideo();
+    }
+
+    public static void DefinirVSync(bool ativo)
+    {
+        InicializarConfiguracaoVideo();
+        vSyncAtivo = ativo;
+        PlayerPrefs.SetInt(ChaveVSync, vSyncAtivo ? 1 : 0);
+        PlayerPrefs.Save();
+        AplicarConfiguracaoVideo();
+    }
+
+    private static void AplicarConfiguracaoVideo()
+    {
+        QualitySettings.vSyncCount = vSyncAtivo ? 1 : 0;
+        if (!vSyncAtivo) Application.targetFrameRate = -1;
     }
 
     private void Awake()
@@ -502,6 +547,27 @@ public class MenuPausaController : MonoBehaviour
         AudioSettingsPanelUI.Abrir(canvasMenu != null ? canvasMenu.transform : transform);
     }
 
+    private void AlternarVSync()
+    {
+        AlternarConfiguracaoVideo();
+        bool estavaAberto = raizMenu != null && raizMenu.activeSelf;
+        RecriarInterface();
+        if (estavaAberto)
+        {
+            raizMenu.SetActive(true);
+            AbrirSubmenuConfiguracoes();
+        }
+        AtualizarStatus(ObterRotuloVSync(LocalizationManager.IdiomaAtual), false);
+    }
+
+    private static string ObterRotuloVSync(IdiomaJogo idioma)
+    {
+        bool ativo = VSyncAtivo;
+        if (idioma == IdiomaJogo.EnUs) return "VSync: " + (ativo ? "ON" : "OFF");
+        if (idioma == IdiomaJogo.ZhHans) return "垂直同步: " + (ativo ? "开" : "关");
+        return "VSync: " + (ativo ? "ATIVADO" : "DESATIVADO");
+    }
+
     private void SalvarJogo()
     {
         sistemaSave.RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -712,6 +778,7 @@ public class MenuPausaController : MonoBehaviour
         CriarBotao(botoes, LocalizationManager.T("pause.resume", "Retomar Jogo"), "GO", corBotaoDestaque, RetomarJogo, ref posicaoY);
         CriarBotao(botoes, string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), "LG", corBotao, AlternarIdioma, ref posicaoY);
         CriarBotao(botoes, string.Format(LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"), GameDifficultyManager.Instancia.NomeDificuldadeAtual()), "DF", corBotao, AlternarDificuldade, ref posicaoY);
+        CriarBotao(botoes, ObterRotuloVSync(LocalizationManager.IdiomaAtual), "VS", corBotao, AlternarVSync, ref posicaoY);
         CriarBotao(botoes, "Audio", "AU", corBotao, AbrirConfiguracoesAudio, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.load", "Carregar Jogo"), "LD", corBotao, CarregarJogo, ref posicaoY);
         CriarBotao(botoes, LocalizationManager.T("pause.save", "Salvar Jogo"), "SV", corBotao, SalvarJogo, ref posicaoY);
@@ -1026,6 +1093,7 @@ public class MenuPausaController : MonoBehaviour
         float posY = 66f;
         CriarBotao(rect, string.Format(LocalizationManager.T("pause.settings_language", "Idioma: {0}"), LocalizationManager.Instancia.NomeIdiomaAtual()), "LG", corBotao, AlternarIdioma, ref posY);
         CriarBotao(rect, string.Format(LocalizationManager.T("pause.settings_difficulty", "Dificuldade: {0}"), GameDifficultyManager.Instancia.NomeDificuldadeAtual()), "DF", corBotao, AlternarDificuldade, ref posY);
+        CriarBotao(rect, ObterRotuloVSync(idioma), "VS", corBotao, AlternarVSync, ref posY);
         CriarBotao(rect, ObterTextoPausa(idioma, "audio"), "AU", corBotao, AbrirConfiguracoesAudio, ref posY);
         posY += 20f;
         CriarBotao(rect, ObterTextoPausa(idioma, "back"), "<<", corBotaoDestaque, VoltarParaMenuPrincipalPausa, ref posY);

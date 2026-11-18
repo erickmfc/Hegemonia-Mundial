@@ -233,11 +233,36 @@ namespace Hegemonia.AI.Master
 
         private void Awake()
         {
+            AplicarPerfilDesempenhoUsuario();
             EnsureDependencies();
             EnsureBackendBridge();
             RegisterController();
             ResolveActiveProfile(true);
             ConfigureChildren();
+        }
+
+        private void AplicarPerfilDesempenhoUsuario()
+        {
+            switch (ConfiguradorPerformanceGameplay.PerfilSelecionado)
+            {
+                case ConfiguradorPerformanceGameplay.PerfilDesempenhoUsuario.Fraco:
+                    _runtimeProfile = RuntimeProfile.Potato;
+                    _qualityPreset = RuntimeQualityPreset.Eco;
+                    break;
+                case ConfiguradorPerformanceGameplay.PerfilDesempenhoUsuario.Pesado:
+                    _runtimeProfile = RuntimeProfile.Ultra;
+                    _qualityPreset = RuntimeQualityPreset.Aggressive;
+                    break;
+                case ConfiguradorPerformanceGameplay.PerfilDesempenhoUsuario.Adaptavel:
+                    _runtimeProfile = RuntimeProfile.Auto;
+                    _qualityPreset = RuntimeQualityPreset.Balanced;
+                    _autoDegradeUnderStress = true;
+                    break;
+                default:
+                    _runtimeProfile = RuntimeProfile.Medium;
+                    _qualityPreset = RuntimeQualityPreset.Balanced;
+                    break;
+            }
         }
 
         private void OnEnable()
@@ -1323,7 +1348,9 @@ namespace Hegemonia.AI.Master
 
             if (_manageApplicationTargetFrameRate)
             {
-                Application.targetFrameRate = _activeTuning.targetFps;
+                Application.targetFrameRate = MenuPausaController.VSyncAtivo
+                    ? _activeTuning.targetFps
+                    : -1;
             }
         }
 

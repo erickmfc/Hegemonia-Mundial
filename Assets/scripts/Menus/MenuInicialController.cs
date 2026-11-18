@@ -46,6 +46,7 @@ public class MenuInicialController : MonoBehaviour
     private Text statusText;
     private Button botaoCarregar;
     private Canvas canvasMenuPrincipal;
+    private GameObject painelOpcoesDesempenho;
     private GameObject painelSelecaoCampanha;
 
     private Transform plataformaGiratoria;
@@ -382,6 +383,60 @@ public class MenuInicialController : MonoBehaviour
     private void AbrirConfiguracoesAudio()
     {
         AudioSettingsPanelUI.Abrir(canvasMenuPrincipal != null ? canvasMenuPrincipal.transform : transform);
+    }
+
+    private void AbrirOpcoesDesempenho()
+    {
+        if (canvasMenuPrincipal == null || painelOpcoesDesempenho != null) return;
+        IdiomaJogo idioma = LocalizationManager.IdiomaAtual;
+        painelOpcoesDesempenho = new GameObject("PainelOpcoesDesempenho");
+        painelOpcoesDesempenho.transform.SetParent(canvasMenuPrincipal.transform, false);
+        Image fundo = painelOpcoesDesempenho.AddComponent<Image>();
+        fundo.color = new Color(0.01f, 0.025f, 0.04f, 0.84f);
+        RectTransform fundoRect = painelOpcoesDesempenho.GetComponent<RectTransform>();
+        fundoRect.anchorMin = Vector2.zero; fundoRect.anchorMax = Vector2.one; fundoRect.offsetMin = Vector2.zero; fundoRect.offsetMax = Vector2.zero;
+        RectTransform painel = CriarPainel("CartaoOpcoesDesempenho", painelOpcoesDesempenho.transform,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(650f, 710f), new Color(0.025f, 0.075f, 0.095f, 0.98f));
+        CriarTexto("TituloOpcoesDesempenho", painel, idioma == IdiomaJogo.EnUs ? "PERFORMANCE" : idioma == IdiomaJogo.ZhHans ? "性能选项" : "OPÇÕES DE DESEMPENHO",
+            30, FontStyle.Bold, TextAnchor.MiddleCenter, corTexto, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -34f), new Vector2(-40f, 50f));
+        string[] perfis = idioma == IdiomaJogo.EnUs
+            ? new[] { "WEAK PC  // prioritize FPS", "MEDIUM  // balanced (default)", "HEAVY  // higher visual quality", "ADAPTIVE  // CPU + GPU" }
+            : idioma == IdiomaJogo.ZhHans
+                ? new[] { "低配  // 优先帧率", "中等  // 平衡（默认）", "高配  // 更高画质", "自适应  // CPU + GPU" }
+                : new[] { "FRACO  // prioriza FPS", "MÉDIO  // equilibrado (padrão)", "PESADO  // maior qualidade visual", "ADAPTÁVEL  // CPU + GPU" };
+        float y = 86f;
+        for (int i = 0; i < perfis.Length; i++)
+        {
+            int perfil = i;
+            CriarBotao(painel, perfis[i], (i + 1).ToString(), corBotao, true,
+                () => SelecionarPerfilDesempenho((ConfiguradorPerformanceGameplay.PerfilDesempenhoUsuario)perfil), ref y);
+        }
+        string rótuloVsync = idioma == IdiomaJogo.EnUs ? "VSync: " : idioma == IdiomaJogo.ZhHans ? "垂直同步：" : "VSync: ";
+        CriarBotao(painel, rótuloVsync + (MenuPausaController.VSyncAtivo ? "ON" : "OFF"), "VS", corBotao, true, AlternarVSyncMenu, ref y);
+        CriarBotao(painel, idioma == IdiomaJogo.EnUs ? "Measure next game  // warmup 20s + 60s" : idioma == IdiomaJogo.ZhHans ? "测量下一局  // 预热20秒 + 采样60秒" : "Medir próxima partida  // 20s + 60s", "ME", corBotaoDestaque, true, ArmarMedicaoDesempenho, ref y);
+        Text resultado = CriarTexto("ResultadoMedicao", painel, DiagnosticoDesempenhoJogo.ObterUltimoResumoCaptura(), 13, FontStyle.Normal, TextAnchor.MiddleCenter,
+            corTextoSuave, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, 52f), new Vector2(-36f, 50f));
+        resultado.resizeTextForBestFit = true; resultado.resizeTextMinSize = 10; resultado.resizeTextMaxSize = 14;
+        CriarBotao(painel, idioma == IdiomaJogo.EnUs ? "CLOSE" : idioma == IdiomaJogo.ZhHans ? "关闭" : "FECHAR", "X", corBotao, true,
+            () => { Destroy(painelOpcoesDesempenho); painelOpcoesDesempenho = null; }, ref y);
+    }
+
+    private void SelecionarPerfilDesempenho(ConfiguradorPerformanceGameplay.PerfilDesempenhoUsuario perfil)
+    {
+        ConfiguradorPerformanceGameplay.SelecionarPerfil(perfil);
+        if (statusText != null) statusText.text = "Perfil de desempenho: " + perfil;
+    }
+
+    private void AlternarVSyncMenu()
+    {
+        MenuPausaController.DefinirVSync(!MenuPausaController.VSyncAtivo);
+        if (painelOpcoesDesempenho != null) { Destroy(painelOpcoesDesempenho); painelOpcoesDesempenho = null; AbrirOpcoesDesempenho(); }
+    }
+
+    private void ArmarMedicaoDesempenho()
+    {
+        DiagnosticoDesempenhoJogo.ArmarCapturaProximaPartida();
+        if (statusText != null) statusText.text = "Medição armada para a próxima partida (20s + 60s).";
     }
 
     public void Btn_AlternarIdioma()
@@ -1227,6 +1282,8 @@ public class MenuInicialController : MonoBehaviour
         CriarBotaoMenuSprite(grupoBotoes, "EscaramucaButton", ehPtBr ? "UI/MenuPrincipal/btn_escaramuca" : "UI/MenuPrincipal/btn_template_normal", true, Btn_Escaramuca, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 3) : "Escaramuça", "SK", corBotao, !ehPtBr, false);
         CriarBotaoMenuSprite(grupoBotoes, "MultijogadorButton", ehPtBr ? "UI/MenuPrincipal/btn_multijogador" : "UI/MenuPrincipal/btn_template_normal", true, Btn_Multijogador, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 4) : "Multijogador", "MP", corBotao, !ehPtBr, false);
         botaoCarregar = CriarBotaoMenuSprite(grupoBotoes, "CarregarJogoButton", ehPtBr ? "UI/MenuPrincipal/btn_carregar_jogo" : "UI/MenuPrincipal/btn_template_normal", true, Btn_CarregarJogo, ref posicaoY, !ehPtBr ? ObterRotuloBotaoMenu(idioma, 5) : LocalizationManager.T("menu.main.load", "Carregar Jogo"), "LD", corBotao, !ehPtBr, false);
+        CriarBotaoMenuSprite(grupoBotoes, "OpcoesButton", "UI/MenuPrincipal/btn_template_normal", true, AbrirOpcoesDesempenho, ref posicaoY,
+            idioma == IdiomaJogo.EnUs ? "06 // OPTIONS" : idioma == IdiomaJogo.ZhHans ? "06 // 选项" : "06 // OPÇÕES", "OP", corBotao, !ehPtBr, false);
 
         RectTransform barraInferior = new GameObject("BarraInferiorBotoes").AddComponent<RectTransform>();
         barraInferior.SetParent(coluna, false);

@@ -7,6 +7,21 @@ using UnityEngine.SceneManagement;
 [DefaultExecutionOrder(-950)]
 public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 {
+    public enum PerfilDesempenhoUsuario { Fraco = 0, Medio = 1, Pesado = 2, Adaptavel = 3 }
+    private const string ChavePerfilDesempenho = "hegemonia.performance.profile";
+
+    public static PerfilDesempenhoUsuario PerfilSelecionado
+    {
+        get { return (PerfilDesempenhoUsuario)Mathf.Clamp(PlayerPrefs.GetInt(ChavePerfilDesempenho, 1), 0, 3); }
+    }
+
+    public static void SelecionarPerfil(PerfilDesempenhoUsuario perfil)
+    {
+        PlayerPrefs.SetInt(ChavePerfilDesempenho, (int)perfil);
+        PlayerPrefs.Save();
+        ConfiguradorPerformanceGameplay configurador = Object.FindFirstObjectByType<ConfiguradorPerformanceGameplay>();
+        if (configurador != null) configurador.AplicarPerfilUsuario(perfil);
+    }
     public enum PerfilQualidade
     {
         Gameplay,
@@ -77,18 +92,29 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
     [SerializeField] private float terrainBasemapDistanceGameplay = 5000f;
     [SerializeField] private float terrainPixelErrorGameplay = 4f;
 
+    [Header("Perfil Pesado - GPU")]
+    [SerializeField, Range(1f, 1.5f)] private float renderScalePesado = 1.2f;
+    [SerializeField, Range(30f, 120f)] private float shadowDistancePesado = 60f;
+
     private readonly Dictionary<int, EstadoTerrain> _terrainsOriginais = new Dictionary<int, EstadoTerrain>();
     private readonly Dictionary<int, EstadoVolume> _volumesOriginais = new Dictionary<int, EstadoVolume>();
     private readonly Dictionary<int, EstadoBloom> _bloomsOriginais = new Dictionary<int, EstadoBloom>();
     private readonly Dictionary<int, EstadoRendererAgua> _renderersAguaOriginais = new Dictionary<int, EstadoRendererAgua>();
     private PerfilQualidade _perfilAtual;
+    private PerfilDesempenhoUsuario _perfilUsuario = PerfilDesempenhoUsuario.Medio;
     private float _shadowDistanceOriginal = -1f;
     private float _lodBiasOriginal = -1f;
     private int _shadowCascadesOriginal = -1;
+    private UniversalRenderPipelineAsset _pipelineOriginal;
+    private float _renderScaleOriginal = -1f;
     private float _mediaFrameMs;
+    private float _mediaGpuFrameMs;
     private float _tempoSobPressao;
     private float _tempoRecuperacao;
     private int _nivelAdaptativo;
+    private readonly FrameTiming[] _frameTimingAdaptativo = new FrameTiming[1];
+    private int _proximoFrameTimingAdaptativo;
+    private int _amostrasGpuAdaptativo;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -105,9 +131,10 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     private void Awake()
     {
-        _perfilAtual = iniciarEmGameplay
-            ? (usarPerfilAdaptativo ? PerfilQualidade.Adaptativo : PerfilQualidade.Gameplay)
-            : PerfilQualidade.Visual;
+        _perfilUsuario = !PlayerPrefs.HasKey(ChavePerfilDesempenho) && !iniciarEmGameplay
+            ? PerfilDesempenhoUsuario.Pesado
+            : PerfilSelecionado;
+        _perfilAtual = MapearPerfil(_perfilUsuario);
         CapturarQualidadeOriginalSeNecessario();
         SceneManager.sceneLoaded += OnSceneLoaded;
         AplicarPerfil(_perfilAtual);
@@ -128,10 +155,32 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
         if (Input.GetKeyDown(teclaAlternarPerfil))
         {
             _perfilAtual = _perfilAtual == PerfilQualidade.Visual
-                ? (usarPerfilAdaptativo ? PerfilQualidade.Adaptativo : PerfilQualidade.Gameplay)
+                ? (_perfilUsuario == PerfilDesempenhoUsuario.Pesado
+                    ? PerfilQualidade.Gameplay
+                    : (usarPerfilAdaptativo && _perfilUsuario == PerfilDesempenhoUsuario.Medio
+                        ? PerfilQualidade.Adaptativo
+                        : MapearPerfil(_perfilUsuario)))
                 : PerfilQualidade.Visual;
 
             AplicarPerfil(_perfilAtual);
+        }
+    }
+
+    public void AplicarPerfilUsuario(PerfilDesempenhoUsuario perfil)
+    {
+        _perfilUsuario = perfil;
+        _perfilAtual = MapearPerfil(perfil);
+        AplicarPerfil(_perfilAtual);
+    }
+
+    private static PerfilQualidade MapearPerfil(PerfilDesempenhoUsuario perfil)
+    {
+        switch (perfil)
+        {
+            case PerfilDesempenhoUsuario.Fraco: return PerfilQualidade.Gameplay;
+            case PerfilDesempenhoUsuario.Pesado: return PerfilQualidade.Visual;
+            case PerfilDesempenhoUsuario.Adaptavel: return PerfilQualidade.Adaptativo;
+            default: return PerfilQualidade.Gameplay;
         }
     }
 
@@ -289,9 +338,11 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
         if (perfil == PerfilQualidade.Gameplay)
         {
-            QualitySettings.shadowDistance = Mathf.Min(QualitySettings.shadowDistance, shadowDistanceGameplay);
-            QualitySettings.shadowCascades = Mathf.Min(QualitySettings.shadowCascades, shadowCascadesGameplay);
-            QualitySettings.lodBias = Mathf.Min(QualitySettings.lodBias, lodBiasGameplay);
+            RestaurarQualidadeVisual();
+            bool fraco = _perfilUsuario == PerfilDesempenhoUsuario.Fraco;
+            QualitySettings.shadowDistance = Mathf.Min(QualitySettings.shadowDistance, fraco ? 20f : shadowDistanceGameplay);
+            QualitySettings.shadowCascades = Mathf.Min(QualitySettings.shadowCascades, fraco ? 1 : shadowCascadesGameplay);
+            QualitySettings.lodBias = Mathf.Min(QualitySettings.lodBias, fraco ? 0.9f : lodBiasGameplay);
 
             if (simplificarTerrenos)
             {
@@ -321,15 +372,31 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
         else
         {
             RestaurarQualidadeVisual();
+            if (_perfilUsuario == PerfilDesempenhoUsuario.Pesado)
+            {
+                if (_pipelineOriginal != null) _pipelineOriginal.renderScale = Mathf.Max(_renderScaleOriginal, renderScalePesado);
+                QualitySettings.shadowDistance = Mathf.Max(QualitySettings.shadowDistance, shadowDistancePesado);
+            }
         }
     }
 
     private void AtualizarPerfilAdaptativo()
     {
-        float frameMs = Mathf.Clamp(Time.unscaledDeltaTime * 1000f, 0f, 200f);
-        _mediaFrameMs = _mediaFrameMs <= 0f ? frameMs : Mathf.Lerp(_mediaFrameMs, frameMs, 0.08f);
-        bool pressaoSevera = _mediaFrameMs >= limitePressaoSeveraFrameMs;
-        bool sobPressao = pressaoSevera || _mediaFrameMs >= limitePressaoFrameMs;
+        if (Time.frameCount >= _proximoFrameTimingAdaptativo)
+        {
+            _proximoFrameTimingAdaptativo = Time.frameCount + 12;
+            FrameTimingManager.CaptureFrameTimings();
+            if (FrameTimingManager.GetLatestTimings(1, _frameTimingAdaptativo) > 0 && _frameTimingAdaptativo[0].gpuFrameTime > 0d)
+            {
+                float gpuMs = (float)_frameTimingAdaptativo[0].gpuFrameTime;
+                _mediaGpuFrameMs = _mediaGpuFrameMs <= 0f ? gpuMs : Mathf.Lerp(_mediaGpuFrameMs, gpuMs, 0.12f);
+                _amostrasGpuAdaptativo++;
+            }
+        }
+        // Sem GPU timing válido, não se presume que baixa taxa de quadros seja gargalo gráfico.
+        if (_amostrasGpuAdaptativo < 3) return;
+        bool pressaoSevera = _mediaGpuFrameMs >= limitePressaoSeveraFrameMs;
+        bool sobPressao = pressaoSevera || _mediaGpuFrameMs >= limitePressaoFrameMs;
 
         if (sobPressao)
         {
@@ -397,6 +464,11 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
             _shadowCascadesOriginal = QualitySettings.shadowCascades;
             _lodBiasOriginal = QualitySettings.lodBias;
         }
+        if (_pipelineOriginal == null)
+        {
+            _pipelineOriginal = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            if (_pipelineOriginal != null) _renderScaleOriginal = _pipelineOriginal.renderScale;
+        }
     }
 
     private void AplicarTerrenosGameplay()
@@ -424,9 +496,10 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
                 };
             }
 
-            terreno.detailObjectDistance = Mathf.Min(terreno.detailObjectDistance, terrainDetailDistanceGameplay);
-            terreno.treeDistance = Mathf.Min(terreno.treeDistance, terrainTreeDistanceGameplay);
-            terreno.treeBillboardDistance = Mathf.Min(terreno.treeBillboardDistance, terrainBillboardStartGameplay);
+            bool fraco = _perfilUsuario == PerfilDesempenhoUsuario.Fraco;
+            terreno.detailObjectDistance = Mathf.Min(terreno.detailObjectDistance, fraco ? 45f : terrainDetailDistanceGameplay);
+            terreno.treeDistance = Mathf.Min(terreno.treeDistance, fraco ? 3000f : terrainTreeDistanceGameplay);
+            terreno.treeBillboardDistance = Mathf.Min(terreno.treeBillboardDistance, fraco ? 3000f : terrainBillboardStartGameplay);
             terreno.basemapDistance = Mathf.Min(terreno.basemapDistance, terrainBasemapDistanceGameplay);
             terreno.heightmapPixelError = Mathf.Max(terreno.heightmapPixelError, terrainPixelErrorGameplay);
             // O shader de Terrain usado nesta cena não fornece todos os
@@ -613,6 +686,10 @@ public sealed class ConfiguradorPerformanceGameplay : MonoBehaviour
 
     private void RestaurarQualidadeVisual()
     {
+        if (_pipelineOriginal != null && _renderScaleOriginal >= 0f)
+        {
+            _pipelineOriginal.renderScale = _renderScaleOriginal;
+        }
         if (_shadowDistanceOriginal >= 0f)
         {
             QualitySettings.shadowDistance = _shadowDistanceOriginal;

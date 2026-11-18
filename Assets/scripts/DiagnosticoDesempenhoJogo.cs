@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -13,6 +14,34 @@ using Hegemonia.AI.IA03;
 [DefaultExecutionOrder(-1000)]
 public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 {
+    private const string ChaveCapturaProximaPartida = "hegemonia.performance.capture_next_game";
+    private const string ChaveUltimoResumoCaptura = "hegemonia.performance.last_capture_summary";
+    private const float DuracaoCapturaPerfil = 80f;
+    private bool _capturaPerfilAtiva;
+    private bool _csvEraAtivoAntesPerfil;
+    private float _inicioCapturaPerfil;
+    private double _somaFpsPerfil;
+    private double _somaCpuPerfil;
+    private double _somaGpuPerfil;
+    private double _somaGpu3dPerfil;
+    private int _segundosPerfil;
+    private int _segundosGpuPerfil;
+    private int _segundosGpu3dPerfil;
+
+    public static void ArmarCapturaProximaPartida()
+    {
+        PlayerPrefs.SetInt(ChaveCapturaProximaPartida, 1);
+        PlayerPrefs.Save();
+        if (_instancia == null)
+        {
+            new GameObject("[DiagnosticoDesempenhoJogo]").AddComponent<DiagnosticoDesempenhoJogo>();
+        }
+    }
+
+    public static string ObterUltimoResumoCaptura()
+    {
+        return PlayerPrefs.GetString(ChaveUltimoResumoCaptura, "Ainda não há medição registrada.");
+    }
     private struct EventoRuntime
     {
         public float Tempo;
@@ -43,7 +72,18 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         public int Travadas;
         public float CpuMainMs;
         public float CpuRenderMs;
+        public float CpuTotalMs;
+        public float CpuPresentWaitMs;
         public float GpuMs;
+        public int GpuSamples;
+        public float Gpu3dEngineMaxPercent;
+        public float GpuComputeEngineMaxPercent;
+        public int Gpu3dEngineSamples;
+        public int GpuComputeEngineSamples;
+        public string GraphicsDeviceName;
+        public string GraphicsDeviceVendor;
+        public string GraphicsApi;
+        public int GraphicsMemoryMb;
         public float CameraUpdateMs;
         public float CameraAreaNotifyMs;
         public int CameraAreaNotifications;
@@ -181,9 +221,16 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private int _framesAcima250Ms;
     private double _somaCpuMainMs;
     private double _somaCpuRenderMs;
+    private double _somaCpuTotalMs;
+    private double _somaCpuPresentWaitMs;
     private double _somaGpuMs;
+    private double _somaGpu3dEnginePercent;
+    private double _somaGpuComputeEnginePercent;
     private int _amostrasCpu;
     private int _amostrasGpu;
+    private int _amostrasGpu3dEngine;
+    private int _amostrasGpuComputeEngine;
+    private readonly WindowsGpuEngineSampler _gpuEngineSampler = new WindowsGpuEngineSampler();
     private long _memoriaGerenciadaInicial;
     private int _gcGen0Inicial;
     private int _gcGen1Inicial;
@@ -403,10 +450,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (_capturaAtiva)
         {
+            _gpuEngineSampler.Begin();
             _tempoInicioCaptura = Time.unscaledTime;
             PrepararCsv();
             RegistrarEventoInterno(Time.unscaledTime, "Sistema", "Diagnostico de desempenho iniciado.");
         }
+        VerificarCapturaArmada(SceneManager.GetActiveScene().name);
     }
 
     private void OnDisable()
@@ -425,6 +474,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         Application.lowMemory -= OnLowMemory;
         Application.logMessageReceived -= AoLogUnity;
         FecharCsv();
+        _gpuEngineSampler.Dispose();
     }
 
     private void AoLogUnity(string condition, string stackTrace, LogType type)
@@ -475,6 +525,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (!_capturaAtiva)
         {
+            return;
+        }
+
+        if (_capturaPerfilAtiva && Time.unscaledTime - _inicioCapturaPerfil >= DuracaoCapturaPerfil)
+        {
+            FinalizarCapturaPerfil();
             return;
         }
 
@@ -615,11 +671,16 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         _overlayLine2 = string.Format(
             CultureInfo.InvariantCulture,
-            "CPU main: {0:0.00} ms | Render: {1:0.00} ms | GPU: {2:0.00} ms | Folga GPU: {3:0}%",
+            "CPU main {0:0.0} ms | Render {1:0.0} ms | Total {2:0.0} ms | espera Present {3:0.0} ms | GPU frame {4} ms | engine 3D {5} | Compute {6} | {7} / {8}",
             _ultimoResumo.CpuMainMs,
             _ultimoResumo.CpuRenderMs,
-            _ultimoResumo.GpuMs,
-            _ultimoResumo.FolgaGpuPercentual);
+            _ultimoResumo.CpuTotalMs,
+            _ultimoResumo.CpuPresentWaitMs,
+            _ultimoResumo.GpuSamples > 0 ? _ultimoResumo.GpuMs.ToString("0.0", CultureInfo.InvariantCulture) : "n/d",
+            _ultimoResumo.Gpu3dEngineMaxPercent >= 0f ? _ultimoResumo.Gpu3dEngineMaxPercent.ToString("0", CultureInfo.InvariantCulture) + "%" : "n/d",
+            _ultimoResumo.GpuComputeEngineMaxPercent >= 0f ? _ultimoResumo.GpuComputeEngineMaxPercent.ToString("0", CultureInfo.InvariantCulture) + "%" : "n/d",
+            _ultimoResumo.GraphicsApi,
+            _ultimoResumo.GraphicsDeviceName);
 
         _overlayLine3 = string.Format(
             CultureInfo.InvariantCulture,
@@ -909,10 +970,56 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (_capturaPerfilAtiva && ConfiguracaoCenasJogo.EhCenaDeMenu(scene.name))
+        {
+            FinalizarCapturaPerfil();
+        }
+        VerificarCapturaArmada(scene.name);
         if (_capturaAtiva && registrarCarregamentoDeCena)
         {
             RegistrarEventoInterno(Time.unscaledTime, "Cena", string.Format("Cena carregada: {0} ({1})", scene.name, mode));
         }
+    }
+
+    private void VerificarCapturaArmada(string nomeCena)
+    {
+        if (_capturaPerfilAtiva || PlayerPrefs.GetInt(ChaveCapturaProximaPartida, 0) == 0
+            || ConfiguracaoCenasJogo.EhCenaDeMenu(nomeCena)) return;
+        PlayerPrefs.DeleteKey(ChaveCapturaProximaPartida);
+        PlayerPrefs.Save();
+        IniciarCapturaPerfil();
+    }
+
+    private void IniciarCapturaPerfil()
+    {
+        _capturaPerfilAtiva = true;
+        _csvEraAtivoAntesPerfil = gravarCsv;
+        gravarCsv = true;
+        _inicioCapturaPerfil = Time.unscaledTime;
+        _somaFpsPerfil = _somaCpuPerfil = _somaGpuPerfil = 0d;
+        _somaGpu3dPerfil = 0d;
+        _segundosPerfil = _segundosGpuPerfil = _segundosGpu3dPerfil = 0;
+        warmupInicialSegundos = 20f;
+        SetCaptureMode(true, false);
+        RegistrarEventoInterno(Time.unscaledTime, "Sistema", "Medição solicitada pelo menu; aquecimento 20s e amostragem 60s.");
+    }
+
+    private void FinalizarCapturaPerfil()
+    {
+        if (!_capturaPerfilAtiva) return;
+        _capturaPerfilAtiva = false;
+        string resumo = _segundosPerfil > 0
+            ? string.Format(CultureInfo.InvariantCulture,
+                "Medição concluída: {0:0.0} FPS; CPU principal {1:0.0} ms; GPU frame {2} ms; engine 3D {3}; API {4}; placa {5}. CSV em Diagnostico fps.",
+                _somaFpsPerfil / _segundosPerfil, _somaCpuPerfil / _segundosPerfil,
+                _segundosGpuPerfil > 0 ? (_somaGpuPerfil / _segundosGpuPerfil).ToString("0.0", CultureInfo.InvariantCulture) : "n/d",
+                _segundosGpu3dPerfil > 0 ? (_somaGpu3dPerfil / _segundosGpu3dPerfil).ToString("0", CultureInfo.InvariantCulture) + "%" : "n/d",
+                SystemInfo.graphicsDeviceType, SystemInfo.graphicsDeviceName)
+            : "Medição interrompida antes de completar a amostragem de 60 segundos.";
+        PlayerPrefs.SetString(ChaveUltimoResumoCaptura, resumo);
+        PlayerPrefs.Save();
+        gravarCsv = _csvEraAtivoAntesPerfil;
+        SetCaptureMode(false, false);
     }
 
     private void OnLowMemory()
@@ -932,6 +1039,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
 
         if (_capturaAtiva)
         {
+            _gpuEngineSampler.Begin();
             _tempoInicioCaptura = Time.unscaledTime;
             ReiniciarAcumuladores(Time.unscaledTime);
             _proximoFrameTiming = Time.frameCount;
@@ -940,6 +1048,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         }
         else
         {
+            _gpuEngineSampler.Dispose();
             FecharCsv();
             _eventos.Clear();
             _ultimoBlocoEventos = "Captura desativada.";
@@ -955,7 +1064,12 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         float p95FrameMs = CalcularPercentilFrame(0.95f);
         float cpuMainMs = _amostrasCpu > 0 ? (float)(_somaCpuMainMs / _amostrasCpu) : 0f;
         float cpuRenderMs = _amostrasCpu > 0 ? (float)(_somaCpuRenderMs / _amostrasCpu) : 0f;
+        float cpuTotalMs = _amostrasCpu > 0 ? (float)(_somaCpuTotalMs / _amostrasCpu) : 0f;
+        float cpuPresentWaitMs = _amostrasCpu > 0 ? (float)(_somaCpuPresentWaitMs / _amostrasCpu) : 0f;
         float gpuMs = _amostrasGpu > 0 ? (float)(_somaGpuMs / _amostrasGpu) : 0f;
+        _gpuEngineSampler.TrySample(out float gpu3dPercent, out float gpuComputePercent);
+        if (gpu3dPercent >= 0f) { _somaGpu3dEnginePercent += gpu3dPercent; _amostrasGpu3dEngine++; }
+        if (gpuComputePercent >= 0f) { _somaGpuComputeEnginePercent += gpuComputePercent; _amostrasGpuComputeEngine++; }
         float orcamentoMs = ObterOrcamentoFrameMs();
         int gcGen0 = Mathf.Max(0, GC.CollectionCount(0) - _gcGen0Inicial);
         int gcGen1 = Mathf.Max(0, GC.CollectionCount(1) - _gcGen1Inicial);
@@ -1042,7 +1156,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             Fim = tempoFim,
             EmWarmup = emWarmup,
             TimeScale = Time.timeScale,
-            RtsSimulationSpeed = simulationClock != null ? simulationClock.SimulationSpeed : 0f,
+            RtsSimulationSpeed = simulationClock != null ? simulationClock.EffectiveSimulationSpeed : 0f,
             RtsSimulationSeconds = simulationClock != null ? simulationClock.SimulationTime : 0f,
             FpsMedio = fpsMedio,
             FpsEquivalente = frameMsMedio > 0.01f ? 1000f / frameMsMedio : 0f,
@@ -1057,7 +1171,18 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             Travadas = _travadasNoSegundo,
             CpuMainMs = cpuMainMs,
             CpuRenderMs = cpuRenderMs,
+            CpuTotalMs = cpuTotalMs,
+            CpuPresentWaitMs = cpuPresentWaitMs,
             GpuMs = gpuMs,
+            GpuSamples = _amostrasGpu,
+            Gpu3dEngineMaxPercent = _amostrasGpu3dEngine > 0 ? (float)(_somaGpu3dEnginePercent / _amostrasGpu3dEngine) : -1f,
+            GpuComputeEngineMaxPercent = _amostrasGpuComputeEngine > 0 ? (float)(_somaGpuComputeEnginePercent / _amostrasGpuComputeEngine) : -1f,
+            Gpu3dEngineSamples = _amostrasGpu3dEngine,
+            GpuComputeEngineSamples = _amostrasGpuComputeEngine,
+            GraphicsDeviceName = SystemInfo.graphicsDeviceName,
+            GraphicsDeviceVendor = SystemInfo.graphicsDeviceVendor,
+            GraphicsApi = SystemInfo.graphicsDeviceType.ToString(),
+            GraphicsMemoryMb = SystemInfo.graphicsMemorySize,
             CameraUpdateMs = cameraUpdateMs,
             CameraAreaNotifyMs = cameraAreaNotifyMs,
             CameraAreaNotifications = cameraAreaNotifications,
@@ -1136,6 +1261,23 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         resumo.CausaProvavel = DiagnosticarCausa(ref resumo);
         AtualizarSinalSobrecargaRuntime(resumo);
         _ultimoResumo = resumo;
+
+        if (_capturaPerfilAtiva && !resumo.EmWarmup)
+        {
+            _somaFpsPerfil += resumo.FpsMedio;
+            _somaCpuPerfil += resumo.CpuMainMs;
+            _segundosPerfil++;
+            if (resumo.GpuMs > 0f)
+            {
+                _somaGpuPerfil += resumo.GpuMs;
+                _segundosGpuPerfil++;
+            }
+            if (resumo.Gpu3dEngineMaxPercent >= 0f)
+            {
+                _somaGpu3dPerfil += resumo.Gpu3dEngineMaxPercent;
+                _segundosGpu3dPerfil++;
+            }
+        }
         _ultimoBlocoEventos = LimitarTexto(eventosDoSegundo, maxEventosNoOverlay);
 
         if (gravarCsv)
@@ -1161,9 +1303,15 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         _framesAcima250Ms = 0;
         _somaCpuMainMs = 0d;
         _somaCpuRenderMs = 0d;
+        _somaCpuTotalMs = 0d;
+        _somaCpuPresentWaitMs = 0d;
         _somaGpuMs = 0d;
+        _somaGpu3dEnginePercent = 0d;
+        _somaGpuComputeEnginePercent = 0d;
         _amostrasCpu = 0;
         _amostrasGpu = 0;
+        _amostrasGpu3dEngine = 0;
+        _amostrasGpuComputeEngine = 0;
         _memoriaGerenciadaInicial = GC.GetTotalMemory(false);
         _gcGen0Inicial = GC.CollectionCount(0);
         _gcGen1Inicial = GC.CollectionCount(1);
@@ -1188,6 +1336,8 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         {
             _somaCpuMainMs += timing.cpuMainThreadFrameTime;
             _somaCpuRenderMs += timing.cpuRenderThreadFrameTime;
+            _somaCpuTotalMs += timing.cpuFrameTime;
+            _somaCpuPresentWaitMs += timing.cpuMainThreadPresentWaitTime;
             _amostrasCpu++;
         }
 
@@ -1231,9 +1381,13 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
         bool houveGcLeve = resumo.GcGen0 > 0 && resumo.GcGen1 == 0 && resumo.GcGen2 == 0 && resumo.DeltaMemoriaGerenciadaMb < 8f;
         bool houveGcGrave = resumo.GcGen1 > 0 || resumo.GcGen2 > 0;
         bool houvePressaoMemoria = resumo.DeltaMemoriaGerenciadaMb >= 8f;
-        bool gargaloGpu = resumo.GpuMs > 0f
-                          && resumo.GpuMs > Mathf.Max(resumo.CpuMainMs, resumo.CpuRenderMs) * 1.15f
-                          && resumo.GpuMs >= orcamentoMs * 0.92f;
+        bool gpu3dOcupada = resumo.Gpu3dEngineMaxPercent >= 90f;
+        bool gargaloGpu = (resumo.GpuMs > 0f
+                           && resumo.GpuMs > Mathf.Max(resumo.CpuMainMs, resumo.CpuRenderMs) * 1.15f
+                           && resumo.GpuMs >= orcamentoMs * 0.92f)
+                          || (gpu3dOcupada
+                              && resumo.CpuMainMs < orcamentoMs * 0.92f
+                              && resumo.CpuRenderMs < orcamentoMs * 0.92f);
         bool gargaloCpuMain = resumo.CpuMainMs > Mathf.Max(1f, resumo.GpuMs) * 1.15f
                               && resumo.CpuMainMs >= orcamentoMs * 0.92f;
         bool gargaloRender = resumo.CpuRenderMs >= orcamentoMs * 0.92f
@@ -1689,7 +1843,7 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
                 pasta,
                 "desempenho_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture) + ".csv");
             _csvWriter = new StreamWriter(_csvPath, false, new UTF8Encoding(true));
-            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes;fps_equivalente;cartel_decision_ms;cartel_naval_steering_ms;cartel_bases;cartel_tankers_cached;cartel_orders_reissued;cartel_order_failures;cartel_spawn_ms;time_scale;rts_simulation_speed;rts_simulation_seconds");
+            _csvWriter.WriteLine("timestamp_iso;segundo_inicio;segundo_fim;cena;dificuldade;warmup;fps_medio;fps_minimo;fps_maximo;frame_ms_medio;p95_frame_ms;pior_frame_ms;frames_lentos;frames_acima_100ms;frames_acima_250ms;travadas;cpu_main_ms;cpu_render_ms;gpu_ms;camera_update_ms;camera_area_notify_ms;camera_area_notifications;ia_build_territory_blocked;pressao_cpu_pct;pressao_gpu_pct;folga_gpu_pct;gc_gen0;gc_gen1;gc_gen2;mem_gerenciada_mb;delta_mem_gerenciada_mb;mem_alocada_mb;mem_reservada_mb;ui_rebuild_ms;zone_planner_ms;coast_scan_ms;naval_candidate_ms;world_refresh_ms;visible_enemy_ms;production_ms;build_execute_ms;produce_execute_ms;spawn_structure_ms;spawn_land_ms;spawn_naval_ms;spawn_air_ms;navmesh_spawn_ms;prefab_init_ms;air_unit_update_ms;naval_unit_update_ms;land_unit_update_ms;sensor_update_ms;targeting_ms;pathfinding_ms;weapon_update_ms;formation_update_ms;tactical_index_ms;weapon_target_candidates;road_probes;land_units_near;land_units_medium;land_units_far;orders_emitted;pool_hits;pool_misses;spawn_registrations;engaged_units;support_units;reserve_units;transport_capacity_ready;active_air_wings;active_naval_taskforces;active_land_fronts;governor_band;spawn_prefab_name;naval_auto_disabled_reason;top_offenders;causa;detalhes;fps_equivalente;cartel_decision_ms;cartel_naval_steering_ms;cartel_bases;cartel_tankers_cached;cartel_orders_reissued;cartel_order_failures;cartel_spawn_ms;time_scale;rts_simulation_speed;rts_simulation_seconds;gpu_samples;cpu_frame_ms;cpu_present_wait_ms;gpu_3d_engine_max_pct;gpu_compute_engine_max_pct;gpu_3d_engine_samples;gpu_compute_engine_samples;graphics_device_name;graphics_device_vendor;graphics_api;graphics_memory_mb");
             _csvWriter.Flush();
         }
         catch (Exception excecao)
@@ -1797,7 +1951,18 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
             .Append(resumo.CartelSpawnMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.TimeScale.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
             .Append(resumo.RtsSimulationSpeed.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
-            .Append(resumo.RtsSimulationSeconds.ToString("0.00", CultureInfo.InvariantCulture));
+            .Append(resumo.RtsSimulationSeconds.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GpuSamples.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CpuTotalMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.CpuPresentWaitMs.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.Gpu3dEngineMaxPercent.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GpuComputeEngineMaxPercent.ToString("0.00", CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.Gpu3dEngineSamples.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(resumo.GpuComputeEngineSamples.ToString(CultureInfo.InvariantCulture)).Append(';')
+            .Append(SanearCsv(resumo.GraphicsDeviceName)).Append(';')
+            .Append(SanearCsv(resumo.GraphicsDeviceVendor)).Append(';')
+            .Append(SanearCsv(resumo.GraphicsApi)).Append(';')
+            .Append(resumo.GraphicsMemoryMb.ToString(CultureInfo.InvariantCulture));
 
         _csvWriter.WriteLine(_csvBuilder.ToString());
         _csvWriter.Flush();
@@ -1841,6 +2006,116 @@ public sealed class DiagnosticoDesempenhoJogo : MonoBehaviour
     private float ObterOrcamentoFrameMs()
     {
         return 1000f / Mathf.Max(15, fpsAlvo);
+    }
+
+    private sealed class WindowsGpuEngineSampler : IDisposable
+    {
+        private const uint PdhSuccess = 0;
+        private const uint PdhFormatDouble = 0x00000200;
+        private const uint PdhMoreData = 0x800007D2;
+        private IntPtr _query;
+        private IntPtr _counter;
+        private int _processId;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct CounterValueItem
+        {
+            public IntPtr Name;
+            public CounterValue Value;
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 16)]
+        private struct CounterValue
+        {
+            [FieldOffset(0)] public uint Status;
+            [FieldOffset(8)] public double DoubleValue;
+        }
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        [DllImport("pdh.dll", EntryPoint = "PdhOpenQueryW", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern uint PdhOpenQuery(string dataSource, UIntPtr userData, out IntPtr query);
+        [DllImport("pdh.dll", EntryPoint = "PdhAddEnglishCounterW", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern uint PdhAddEnglishCounter(IntPtr query, string counterPath, UIntPtr userData, out IntPtr counter);
+        [DllImport("pdh.dll", EntryPoint = "PdhCollectQueryData")]
+        private static extern uint PdhCollectQueryData(IntPtr query);
+        [DllImport("pdh.dll", EntryPoint = "PdhGetFormattedCounterArrayW", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        private static extern uint PdhGetFormattedCounterArray(IntPtr counter, uint format, ref uint bufferSize, ref uint itemCount, IntPtr items);
+        [DllImport("pdh.dll", EntryPoint = "PdhCloseQuery")]
+        private static extern uint PdhCloseQuery(IntPtr query);
+        [DllImport("kernel32.dll", EntryPoint = "GetCurrentProcessId")]
+        private static extern uint GetCurrentProcessId();
+#endif
+
+        public void Begin()
+        {
+            Dispose();
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            _processId = (int)GetCurrentProcessId();
+            if (PdhOpenQuery(null, UIntPtr.Zero, out _query) != PdhSuccess) { _query = IntPtr.Zero; return; }
+            if (PdhAddEnglishCounter(_query, "\\GPU Engine(*)\\Utilization Percentage", UIntPtr.Zero, out _counter) != PdhSuccess)
+            {
+                Dispose();
+                return;
+            }
+            PdhCollectQueryData(_query); // Primeira coleta estabelece a base para o próximo intervalo.
+#endif
+        }
+
+        public bool TrySample(out float busiest3dEnginePercent, out float busiestComputeEnginePercent)
+        {
+            busiest3dEnginePercent = -1f;
+            busiestComputeEnginePercent = -1f;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (_query == IntPtr.Zero || _counter == IntPtr.Zero || PdhCollectQueryData(_query) != PdhSuccess) return false;
+            uint bufferSize = 0;
+            uint itemCount = 0;
+            uint status = PdhGetFormattedCounterArray(_counter, PdhFormatDouble, ref bufferSize, ref itemCount, IntPtr.Zero);
+            if (status != PdhMoreData || bufferSize == 0 || itemCount == 0) return false;
+            IntPtr buffer = Marshal.AllocHGlobal((int)bufferSize);
+            try
+            {
+                status = PdhGetFormattedCounterArray(_counter, PdhFormatDouble, ref bufferSize, ref itemCount, buffer);
+                if (status != PdhSuccess) return false;
+                int stride = Marshal.SizeOf(typeof(CounterValueItem));
+                string pidMarker = "pid_" + _processId.ToString(CultureInfo.InvariantCulture) + "_";
+                bool found = false;
+                for (int i = 0; i < itemCount; i++)
+                {
+                    CounterValueItem item = (CounterValueItem)Marshal.PtrToStructure(IntPtr.Add(buffer, i * stride), typeof(CounterValueItem));
+                    if ((item.Value.Status != PdhSuccess && item.Value.Status != 1u) || item.Name == IntPtr.Zero) continue;
+                    string instance = Marshal.PtrToStringUni(item.Name);
+                    if (string.IsNullOrEmpty(instance) || instance.IndexOf(pidMarker, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    float utilization = Mathf.Clamp((float)item.Value.DoubleValue, 0f, 100f);
+                    if (instance.IndexOf("_engtype_3D", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        busiest3dEnginePercent = Mathf.Max(busiest3dEnginePercent, utilization);
+                        found = true;
+                    }
+                    else if (instance.IndexOf("_engtype_Compute", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        busiestComputeEnginePercent = Mathf.Max(busiestComputeEnginePercent, utilization);
+                        found = true;
+                    }
+                }
+                return found;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+#else
+            return false;
+#endif
+        }
+
+        public void Dispose()
+        {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (_query != IntPtr.Zero) PdhCloseQuery(_query);
+#endif
+            _query = IntPtr.Zero;
+            _counter = IntPtr.Zero;
+        }
     }
 
     private static float CalcularPressaoPercentual(float tempoMs, float orcamentoMs)
