@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 30;
+    public int saveVersion = 31;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -43,6 +43,8 @@ public class DadosDoJogo
     public List<SaveDeusaStateData> estadosDeusa = new List<SaveDeusaStateData>();
     // Nulo em saves legados: evita sobrescrever a cena com listas vazias.
     public SaveGovernoMundialData governoMundial;
+    public SaveRebeldeData organizacaoRebelde = new SaveRebeldeData();
+    public SaveMissaoSinalPerdidoData missaoSinalPerdido = new SaveMissaoSinalPerdidoData();
     public List<SaveProprietarioTerritorio> territoriosCapturados = new List<SaveProprietarioTerritorio>();
     public List<SaveOcupacaoTerritorial> territoriosOcupados = new List<SaveOcupacaoTerritorial>();
     public List<SaveIA01NationState> estadosIA01 = new List<SaveIA01NationState>();
@@ -414,6 +416,29 @@ public sealed class SaveGovernoMundialData
     public List<RelacaoPaisGoverno> relacoes = new List<RelacaoPaisGoverno>();
     public List<PropostaInternacional> propostas = new List<PropostaInternacional>();
     public List<string> noticias = new List<string>();
+    public List<FacaoNaoEstatalGoverno> facoesNaoEstatais = new List<FacaoNaoEstatalGoverno>();
+}
+
+[Serializable]
+public sealed class SaveRebeldeData
+{
+    public int identificacaoFacao;
+    public int estado;
+    public int nivelAtividade;
+    public int reservasDeSoldados = 12;
+    public int reforcosSolicitados;
+    public float combateAtivoAcumulado;
+    public List<bool> aeronavesIndisponiveis = new List<bool>();
+    public List<bool> helicopterosIndisponiveis = new List<bool>();
+    public List<bool> naviosIndisponiveis = new List<bool>();
+}
+
+[Serializable]
+public sealed class SaveMissaoSinalPerdidoData
+{
+    public int estado;
+    public bool eventoExecutado;
+    public float tempoDecorrido;
 }
 
 [Serializable]
@@ -648,7 +673,7 @@ public class SistemaSaveGame : MonoBehaviour
         GarantirColecoesIA01();
         GarantirColecoesIA02();
         GarantirColecoesCidadesAbstratas();
-        dadosAtuais.saveVersion = 30;
+        dadosAtuais.saveVersion = 31;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -658,6 +683,7 @@ public class SistemaSaveGame : MonoBehaviour
         CapturarDificuldade();
         CapturarFilaProducao();
         CapturarEstadoGovernoMundial();
+        CapturarEstadoRebelde();
         CapturarEstadoTerritorial();
         CapturarCidadesAbstratas();
         CapturarEstadoIA01();
@@ -1109,6 +1135,7 @@ public class SistemaSaveGame : MonoBehaviour
 
         RestaurarFilaProducao();
         AplicarEstadoGovernoMundial();
+        AplicarEstadoRebelde();
         if (dadosAtuais.saveVersion >= 19) RestaurarCidadesAbstratas(criarGerenciadorSeAusente: true);
         RestaurarDadosCidadesSalvas();
         AplicarEstadoTerritorial();
@@ -1576,8 +1603,40 @@ public class SistemaSaveGame : MonoBehaviour
                 : new List<PropostaInternacional>(),
             noticias = governo.noticias != null
                 ? governo.noticias.Where(n => !string.IsNullOrWhiteSpace(n)).ToList()
-                : new List<string>()
+                : new List<string>(),
+            facoesNaoEstatais = governo.FacoesNaoEstatais != null
+                ? governo.FacoesNaoEstatais.Where(f => f != null).ToList()
+                : new List<FacaoNaoEstatalGoverno>()
         };
+    }
+
+    private void CapturarEstadoRebelde()
+    {
+        RebeldeControlador controlador = FindFirstObjectByType<RebeldeControlador>();
+        MissaoOperacaoSinalPerdido missao = FindFirstObjectByType<MissaoOperacaoSinalPerdido>();
+        dadosAtuais.organizacaoRebelde = controlador != null ? controlador.CapturarEstadoSalvavel() : new SaveRebeldeData();
+        dadosAtuais.missaoSinalPerdido = missao != null ? missao.CapturarEstadoSalvavel() : new SaveMissaoSinalPerdidoData();
+    }
+
+    private void AplicarEstadoRebelde()
+    {
+        if (dadosAtuais == null) return;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo != null && dadosAtuais.saveVersion >= 31 && dadosAtuais.governoMundial != null
+            && dadosAtuais.governoMundial.facoesNaoEstatais != null)
+            governo.RestaurarFacoesNaoEstatais(dadosAtuais.governoMundial.facoesNaoEstatais);
+        RebeldeControlador controlador = FindFirstObjectByType<RebeldeControlador>();
+        if (dadosAtuais.saveVersion >= 31 && controlador != null && dadosAtuais.organizacaoRebelde != null)
+        {
+            SaveRebeldeData salvo = dadosAtuais.organizacaoRebelde;
+            controlador.RestaurarEstadoSalvo(salvo);
+        }
+        MissaoOperacaoSinalPerdido missao = FindFirstObjectByType<MissaoOperacaoSinalPerdido>();
+        if (dadosAtuais.saveVersion >= 31 && missao != null && dadosAtuais.missaoSinalPerdido != null)
+        {
+            SaveMissaoSinalPerdidoData salvo = dadosAtuais.missaoSinalPerdido;
+            missao.RestaurarEstadoSalvo(salvo.estado, salvo.eventoExecutado, salvo.tempoDecorrido);
+        }
     }
 
     private void CapturarEstadoTerritorial()

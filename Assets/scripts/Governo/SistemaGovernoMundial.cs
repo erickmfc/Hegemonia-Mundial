@@ -25,6 +25,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     [Header("Estado")]
     public List<DadosPaisGoverno> paises = new List<DadosPaisGoverno>();
     public List<RelacaoPaisGoverno> relacoes = new List<RelacaoPaisGoverno>();
+    [SerializeField] private List<FacaoNaoEstatalGoverno> facoesNaoEstatais = new List<FacaoNaoEstatalGoverno>();
     public List<string> noticias = new List<string>();
     public List<PropostaInternacional> propostas = new List<PropostaInternacional>();
 
@@ -44,6 +45,7 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public IReadOnlyList<DadosPaisGoverno> Paises => paises;
     public IReadOnlyList<RelacaoPaisGoverno> Relacoes => relacoes;
+    public IReadOnlyList<FacaoNaoEstatalGoverno> FacoesNaoEstatais => facoesNaoEstatais;
     public IReadOnlyList<PropostaInternacional> Propostas => propostas;
 
     public void NotificarGovernoAtualizado()
@@ -264,6 +266,38 @@ public class SistemaGovernoMundial : MonoBehaviour
         return paises.FirstOrDefault(p => p != null && p.teamId == teamId);
     }
 
+    public bool ParticipanteDiplomaticoExiste(int teamId)
+    {
+        return ObterPais(teamId) != null || facoesNaoEstatais.Any(f => f != null && f.ativa && f.teamId == teamId);
+    }
+
+    public bool RegistrarFacaoNaoEstatal(int teamId, string nome)
+    {
+        if (teamId <= 0 || ObterPais(teamId) != null || string.IsNullOrWhiteSpace(nome)) return false;
+        if (facoesNaoEstatais == null) facoesNaoEstatais = new List<FacaoNaoEstatalGoverno>();
+        FacaoNaoEstatalGoverno existente = facoesNaoEstatais.FirstOrDefault(f => f != null && f.teamId == teamId);
+        if (existente != null)
+        {
+            existente.nome = nome;
+            existente.ativa = true;
+        }
+        else
+        {
+            facoesNaoEstatais.Add(new FacaoNaoEstatalGoverno { teamId = teamId, nome = nome });
+        }
+        return true;
+    }
+
+    public void RestaurarFacoesNaoEstatais(IEnumerable<FacaoNaoEstatalGoverno> facoes)
+    {
+        if (facoesNaoEstatais == null) facoesNaoEstatais = new List<FacaoNaoEstatalGoverno>();
+        facoesNaoEstatais.Clear();
+        if (facoes == null) return;
+        foreach (FacaoNaoEstatalGoverno facao in facoes)
+            if (facao != null && facao.teamId > 0 && ObterPais(facao.teamId) == null)
+                facoesNaoEstatais.Add(facao);
+    }
+
     public RelacaoPaisGoverno ObterRelacao(int a, int b)
     {
         RelacaoPaisGoverno rel = relacoes.FirstOrDefault(r => r != null && r.Envolve(a, b));
@@ -279,7 +313,7 @@ public class SistemaGovernoMundial : MonoBehaviour
             valor = 0,
             valorBaseHistorico = 0,
             baseHistoricaInicializada = true,
-            tratadoComercial = true
+            tratadoComercial = facoesNaoEstatais == null || !facoesNaoEstatais.Any(f => f != null && f.ativa && (f.teamId == a || f.teamId == b))
         };
         relacoes.Add(rel);
         return rel;
@@ -311,14 +345,14 @@ public class SistemaGovernoMundial : MonoBehaviour
         mensagem = string.Empty;
         DadosPaisGoverno origem = ObterPais(origemTeamId);
         DadosPaisGoverno alvo = ObterPais(alvoTeamId);
-        if (origem == null || alvo == null || origemTeamId == alvoTeamId)
+        if (!ParticipanteDiplomaticoExiste(origemTeamId) || !ParticipanteDiplomaticoExiste(alvoTeamId) || origemTeamId == alvoTeamId)
         {
             mensagem = "Nacao invalida para relacionamento.";
             return false;
         }
 
         RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, alvoTeamId);
-        if (postura == PosturaRelacaoPais.Inimigo && origem.federacaoGlobal == alvo.federacaoGlobal
+        if (postura == PosturaRelacaoPais.Inimigo && origem != null && alvo != null && origem.federacaoGlobal == alvo.federacaoGlobal
             && !string.IsNullOrWhiteSpace(origem.federacaoGlobal))
         {
             mensagem = "Membros da mesma federacao nao podem declarar Inimigo sem romper o tratado.";
@@ -326,7 +360,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
 
         rel.DefinirPostura(origemTeamId, postura);
-        RegistrarNoticia(origem.nomePais + " declarou " + postura + " em relacao a " + alvo.nomePais + ".");
+        RegistrarNoticia(NomePais(origemTeamId) + " declarou " + postura + " em relacao a " + NomePais(alvoTeamId) + ".");
         mensagem = "Postura definida: " + postura + ".";
         NotificarGovernoAtualizadoSeguro();
         return true;
@@ -2750,7 +2784,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     {
         DadosPaisGoverno origem = ObterPais(origemTeamId);
         DadosPaisGoverno alvo = ObterPais(alvoTeamId);
-        if (origem == null || alvo == null || origemTeamId == alvoTeamId) return false;
+        if (!ParticipanteDiplomaticoExiste(origemTeamId) || !ParticipanteDiplomaticoExiste(alvoTeamId) || origemTeamId == alvoTeamId) return false;
 
         RelacaoPaisGoverno rel = ObterRelacao(origemTeamId, alvoTeamId);
         bool novaGuerra = !rel.guerraDeclarada;
@@ -2762,12 +2796,9 @@ public class SistemaGovernoMundial : MonoBehaviour
         rel.valor = Mathf.Clamp(rel.valor - 35, -100, 100);
         rel.posturaAParaB = PosturaRelacaoPais.Inimigo;
         rel.posturaBParaA = PosturaRelacaoPais.Inimigo;
-        origem.emGuerra = true;
-        alvo.emGuerra = true;
-        origem.rivalTeamId = alvoTeamId;
-        alvo.rivalTeamId = origemTeamId;
-        alvo.estabilidade = Mathf.Clamp(alvo.estabilidade - 14f, 0f, 100f);
-        RegistrarNoticia("Guerra declarada entre " + origem.nomePais + " e " + alvo.nomePais + ".");
+        if (origem != null) { origem.emGuerra = true; origem.rivalTeamId = alvoTeamId; }
+        if (alvo != null) { alvo.emGuerra = true; alvo.rivalTeamId = origemTeamId; alvo.estabilidade = Mathf.Clamp(alvo.estabilidade - 14f, 0f, 100f); }
+        RegistrarNoticia("Guerra declarada entre " + NomePais(origemTeamId) + " e " + NomePais(alvoTeamId) + ".");
         SistemaMercadoGlobal.Instancia?.SimularMercado();
         if (isActiveAndEnabled) ProcessarEconomia();
         NotificarGovernoAtualizadoSeguro();
@@ -3101,7 +3132,9 @@ public class SistemaGovernoMundial : MonoBehaviour
     public string NomePais(int teamId)
     {
         DadosPaisGoverno pais = ObterPais(teamId);
-        return pais != null ? pais.nomePais : "Pais " + teamId;
+        if (pais != null) return pais.nomePais;
+        FacaoNaoEstatalGoverno facao = facoesNaoEstatais != null ? facoesNaoEstatais.FirstOrDefault(f => f != null && f.teamId == teamId) : null;
+        return facao != null ? facao.nome : "País " + teamId;
     }
 
     public void RegistrarNoticia(string mensagem)

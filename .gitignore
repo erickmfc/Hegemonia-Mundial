@@ -74,3 +74,32 @@ Assets/Industrial_Zone_Modular_Pack/Pipelines/Industral_Zone_HDRP.unitypackage
 # Unity Lighting Data
 *[Ll]ighting[Dd]ata.asset
 *[Ll]ighting[Dd]ata.asset.meta
+
+# Reentrada pontual dos arquivos de código e do prefab F-5 utilizados pela missão
+!Assets/
+!Assets/Library/
+!Assets/Library/Prefabs/
+Assets/Library/Prefabs/*
+!Assets/Library/Prefabs/Menu/
+Assets/Library/Prefabs/Menu/*
+!Assets/Library/Prefabs/Menu/menu governo/
+Assets/Library/Prefabs/Menu/menu governo/*
+!Assets/Library/Prefabs/Menu/menu governo/MenuGovernoNovoController.cs
+!Assets/Library/Prefabs/Menu/menu governo/MenuGovernoNovoController.cs.meta
+!Assets/Library/Prefabs/Aeroporto/
+Assets/Library/Prefabs/Aeroporto/*
+!Assets/Library/Prefabs/Aeroporto/f5/
+Assets/Library/Prefabs/Aeroporto/f5/*
+!Assets/Library/Prefabs/Aeroporto/f5/F5_Unidade.prefab
+!Assets/Library/Prefabs/Aeroporto/f5/F5_Unidade.prefab.meta
+!Assets/Library/Prefabs/Aeroporto/f5/F5.asset
+!Assets/Library/Prefabs/Aeroporto/f5/F5.asset.meta
+!Assets/Library/Prefabs/Aeroporto/f5/F5.prefab
+!Assets/Library/Prefabs/Aeroporto/f5/F5.prefab.meta
+!Assets/Library/Prefabs/Aeroporto/f5/northrop_f-5e_tiger_ii (1).glb
+!Assets/Library/Prefabs/Aeroporto/f5/northrop_f-5e_tiger_ii (1).glb.meta
+!Assets/Library/Prefabs.meta
+!Assets/Library/Prefabs/Menu.meta
+!Assets/Library/Prefabs/Menu/menu governo.meta
+!Assets/Library/Prefabs/Aeroporto.meta
+!Assets/Library/Prefabs/Aeroporto/f5.meta

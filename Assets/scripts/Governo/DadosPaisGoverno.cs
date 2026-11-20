@@ -508,3 +508,13 @@ public class RelacaoPaisGoverno
         else if (teamB == teamId) posturaBParaA = postura;
     }
 }
+
+/// <summary>Identidade política enxuta de uma facção não estatal; não possui economia nacional.</summary>
+[Serializable]
+public sealed class FacaoNaoEstatalGoverno
+{
+    public int teamId;
+    public string nome = string.Empty;
+    public string tipo = "Organização militar não estatal";
+    public bool ativa = true;
+}
