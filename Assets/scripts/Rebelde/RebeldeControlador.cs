@@ -27,6 +27,8 @@ public sealed class RebeldeControlador : MonoBehaviour
     [SerializeField] private GameObject prefabCacaF5;
     [SerializeField] private GameObject prefabHelicopteroRebelde;
     [SerializeField] private GameObject prefabNavioArmado;
+    [SerializeField, Min(0)] private int reservasAereasSegundaBase = 1;
+    [SerializeField] private GameObject prefabReforcoAereoSegundaBase;
     [SerializeField, Range(0, 2)] private int quantidadeInicialNavios = 2;
     [Header("Reservas limitadas")]
     [SerializeField] private List<GameObject> pontosCriacaoSoldado = new List<GameObject>();
@@ -44,6 +46,7 @@ public sealed class RebeldeControlador : MonoBehaviour
     [SerializeField] private List<GameObject> instalacoesRebeldes = new List<GameObject>();
     [SerializeField] private GameObject basePrincipal;
     [SerializeField] private GameObject baseAliada;
+    [SerializeField] private GerenciadorAeroporto aeroportoClandestino;
 
     [NonSerialized] private float proximaDecisao;
     [NonSerialized] private float combateAtivoAcumulado;
@@ -54,15 +57,45 @@ public sealed class RebeldeControlador : MonoBehaviour
     [NonSerialized] private readonly List<bool> aeronavesIndisponiveis = new List<bool>();
     [NonSerialized] private readonly List<bool> helicopterosIndisponiveis = new List<bool>();
     [NonSerialized] private readonly List<bool> naviosIndisponiveis = new List<bool>();
+    [NonSerialized] private readonly List<GameObject> soldadosReforcados = new List<GameObject>();
+    [NonSerialized] private readonly HashSet<int> soldadosContados = new HashSet<int>();
 
     public string NomeOrganizacao => nomeOrganizacao;
     public int IdentificacaoFacao => identificacaoFacao;
     public EstadoOrganizacaoRebelde Estado => estado;
     public int NivelAtividade => nivelAtividade;
     public int ReservasDeSoldados => reservasDeSoldados;
+    public int ReservasAereasSegundaBase => reservasAereasSegundaBase;
     public bool Ativo => estado != EstadoOrganizacaoRebelde.INATIVA && estado != EstadoOrganizacaoRebelde.DERROTADA;
     public float CombateAtivoAcumulado => combateAtivoAcumulado;
     public int ReforcosSolicitados => reforcosSolicitados;
+
+    public bool TentarObterDestinoOperacao(out Vector3 destino)
+    {
+        for (int i = 0; i < areasOperacionais.Count; i++)
+        {
+            AreaOperacionalRebelde area = areasOperacionais[i];
+            if (area == null) continue;
+            if (area.PontoRetornoBase != null)
+            {
+                destino = area.PontoRetornoBase.position;
+                return true;
+            }
+            if (area.BaseResponsavel != null)
+            {
+                destino = area.BaseResponsavel.transform.position;
+                return true;
+            }
+        }
+
+        if (basePrincipal != null)
+        {
+            destino = basePrincipal.transform.position;
+            return true;
+        }
+        destino = Vector3.zero;
+        return false;
+    }
 
     public SaveRebeldeData CapturarEstadoSalvavel()
     {
@@ -72,6 +105,7 @@ public sealed class RebeldeControlador : MonoBehaviour
             estado = (int)estado,
             nivelAtividade = nivelAtividade,
             reservasDeSoldados = reservasDeSoldados,
+            reservasAereasSegundaBase = reservasAereasSegundaBase,
             reforcosSolicitados = reforcosSolicitados,
             combateAtivoAcumulado = combateAtivoAcumulado,
             aeronavesIndisponiveis = new List<bool>(aeronavesIndisponiveis),
@@ -187,6 +221,7 @@ public sealed class RebeldeControlador : MonoBehaviour
         CriarUnidadesIniciaisDisponiveis();
         ReconstruirUnidadesDaFacao();
         VincularIdentidadesConfiguradas();
+        CriarInfantariaInicialDisponivel();
         if (rotinaAtivacao != null) StopCoroutine(rotinaAtivacao);
         rotinaAtivacao = StartCoroutine(AtivarPatrulhasAposIntervalo());
         SistemaGovernoMundial.Instancia?.RegistrarNoticia(nomeOrganizacao + " iniciou patrulhas na ilha neutra.");
@@ -200,6 +235,16 @@ public sealed class RebeldeControlador : MonoBehaviour
             CriarHelicopteroInicial(prefabHelicopteroRebelde);
         if (naviosRebeldes.Count == 0 && prefabNavioArmado != null && quantidadeInicialNavios > 0)
             CriarNaviosIniciais(prefabNavioArmado, Mathf.Clamp(quantidadeInicialNavios, 0, 2));
+    }
+
+    private void CriarInfantariaInicialDisponivel()
+    {
+        // A facção precisa ter presença terrestre assim que a operação a ativa.
+        // O caminho existente de reforços valida base, área e ponto de criação.
+        for (int i = 0; i < soldadosReforcados.Count; i++)
+            if (soldadosReforcados[i] != null) return;
+
+        EnviarGrupoTerrestreDeBaseDisponivel();
     }
 
     private void CriarAeronaveInicial(GameObject prefab, TipoAreaOperacionalRebelde tipoArea, bool registrarNoAeroporto)
@@ -279,6 +324,8 @@ public sealed class RebeldeControlador : MonoBehaviour
             ControleAviao aviao = identidade.GetComponent<ControleAviao>();
             Helicoptero heli = identidade.GetComponent<Helicoptero>();
             ControleNavioRealista navio = identidade.GetComponent<ControleNavioRealista>();
+            if (identidade.tipoUnidade == TipoUnidade.Infantaria && !soldadosReforcados.Contains(identidade.gameObject))
+                soldadosReforcados.Add(identidade.gameObject);
             if (aviao != null && !aeronavesRebeldes.Contains(aviao)) aeronavesRebeldes.Add(aviao);
             if (heli != null && !helicopterosRebeldes.Contains(heli)) helicopterosRebeldes.Add(heli);
             if (navio != null && !naviosRebeldes.Contains(navio)) naviosRebeldes.Add(navio);
@@ -355,7 +402,7 @@ public sealed class RebeldeControlador : MonoBehaviour
     {
         if (!Ativo || area == null || contato == null || contato.teamID <= 0 || contato.teamID == identificacaoFacao) return;
         contatosAtivos[contato.GetInstanceID()] = contato;
-        AvaliarContato(contato);
+        AvaliarContato(area, contato);
     }
 
     public void RemoverContato(IdentidadeUnidade contato)
@@ -372,13 +419,55 @@ public sealed class RebeldeControlador : MonoBehaviour
         return false;
     }
 
-    private void AvaliarContato(IdentidadeUnidade contato)
+    private void AvaliarContato(AreaOperacionalRebelde area, IdentidadeUnidade contato)
     {
-        if (contato == null) return;
+        if (!RelacaoHostil(contato)) return;
+
+        nivelAtividade = Mathf.Max(nivelAtividade, 2);
+        AcionarDefesasDaArea(area, contato);
+    }
+
+    private bool RelacaoHostil(IdentidadeUnidade contato)
+    {
+        if (contato == null || contato.teamID <= 0 || contato.teamID == identificacaoFacao) return false;
         SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
         RelacaoPaisGoverno relacao = governo != null ? governo.ObterRelacao(identificacaoFacao, contato.teamID) : null;
-        if (relacao != null && (relacao.guerraDeclarada || relacao.PosturaDe(identificacaoFacao) == PosturaRelacaoPais.Inimigo))
-            nivelAtividade = Mathf.Max(nivelAtividade, 2);
+        return relacao != null && (relacao.guerraDeclarada
+            || relacao.PosturaDe(identificacaoFacao) == PosturaRelacaoPais.Inimigo);
+    }
+
+    private void AcionarDefesasDaArea(AreaOperacionalRebelde area, IdentidadeUnidade contato)
+    {
+        if (area == null || contato == null) return;
+
+        if (area.Tipo == TipoAreaOperacionalRebelde.Aerea)
+        {
+            for (int i = 0; i < aeronavesRebeldes.Count; i++)
+                AcionarUnidadeArmadaNaArea(aeronavesRebeldes[i] != null ? aeronavesRebeldes[i].gameObject : null, area, contato);
+            for (int i = 0; i < helicopterosRebeldes.Count; i++)
+                AcionarUnidadeArmadaNaArea(helicopterosRebeldes[i] != null ? helicopterosRebeldes[i].gameObject : null, area, contato);
+        }
+        else if (area.Tipo == TipoAreaOperacionalRebelde.Naval)
+        {
+            for (int i = 0; i < naviosRebeldes.Count; i++)
+                AcionarUnidadeArmadaNaArea(naviosRebeldes[i] != null ? naviosRebeldes[i].gameObject : null, area, contato);
+        }
+        else if (area.Tipo == TipoAreaOperacionalRebelde.Terrestre)
+        {
+            for (int i = 0; i < soldadosReforcados.Count; i++)
+                AcionarUnidadeArmadaNaArea(soldadosReforcados[i], area, contato);
+        }
+    }
+
+    private static void AcionarUnidadeArmadaNaArea(GameObject unidade, AreaOperacionalRebelde area, IdentidadeUnidade contato)
+    {
+        if (unidade == null || area == null || contato == null || !area.Contem(unidade.transform.position)) return;
+        ControleUnidade controle = unidade.GetComponent<ControleUnidade>()
+            ?? unidade.GetComponentInChildren<ControleUnidade>(true);
+        if (controle == null) return;
+
+        controle.DefinirModoCombate(true);
+        controle.DefinirAlvoPrioritario(contato.transform);
     }
 
     private bool PossuiContatoHostil()
@@ -386,9 +475,7 @@ public sealed class RebeldeControlador : MonoBehaviour
         foreach (KeyValuePair<int, IdentidadeUnidade> contato in contatosAtivos)
         {
             if (contato.Value == null) continue;
-            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
-            RelacaoPaisGoverno relacao = governo != null ? governo.ObterRelacao(identificacaoFacao, contato.Value.teamID) : null;
-            if (relacao != null && (relacao.guerraDeclarada || relacao.PosturaDe(identificacaoFacao) == PosturaRelacaoPais.Inimigo)) return true;
+            if (RelacaoHostil(contato.Value)) return true;
         }
         return false;
     }
@@ -463,41 +550,147 @@ public sealed class RebeldeControlador : MonoBehaviour
 
     private void TentarEnviarReforcos()
     {
-        bool baseDisponivel = (basePrincipal != null && basePrincipal.activeInHierarchy)
-            || (baseAliada != null && baseAliada.activeInHierarchy);
-        if (!baseDisponivel || reservasDeSoldados <= 0 || Time.time < proximoReforco || prefabsSoldado.Count == 0) return;
-        int ativos = 0;
-        for (int i = 0; i < instalacoesRebeldes.Count; i++)
-            if (instalacoesRebeldes[i] != null) ativos += instalacoesRebeldes[i].GetComponentsInChildren<IdentidadeUnidade>(true).Length;
-        int quantidade = Mathf.Min(tamanhoGrupoReforco, reservasDeSoldados, Mathf.Max(0, quantidadeMaximaSoldadosAtivos - ativos));
-        if (quantidade <= 0) return;
-        Transform ponto = null;
-        for (int i = 0; i < pontosCriacaoSoldado.Count; i++)
-            if (pontosCriacaoSoldado[i] != null && ObterArea(TipoAreaOperacionalRebelde.Terrestre, pontosCriacaoSoldado[i].transform.position) != null)
-            { ponto = pontosCriacaoSoldado[i].transform; break; }
-        if (ponto == null) return;
-        GameObject prefab = prefabsSoldado[0];
-        if (prefab == null) return;
+        if (Time.time < proximoReforco || reforcosSolicitados >= quantidadeMaximaReforcos) return;
+        bool enviado = EnviarGrupoTerrestreDeBaseDisponivel();
+        bool apoioAereoEnviado = EnviarApoioAereoDaSegundaBase();
+        if (!enviado && !apoioAereoEnviado) return;
+
         estado = EstadoOrganizacaoRebelde.REFORCANDO;
         nivelAtividade = 4;
-        for (int i = 0; i < quantidade; i++)
-        {
-            GameObject soldado = Instantiate(prefab, ponto.position, ponto.rotation);
-            Vincular(soldado, TipoUnidade.Infantaria);
-            reservasDeSoldados--;
-        }
         reforcosSolicitados++;
         proximoReforco = Time.time + Mathf.Max(1f, intervaloEntreReforcos);
+        SistemaGovernoMundial.Instancia?.RegistrarNoticia(nomeOrganizacao
+            + " enviou reforços limitados; " + reservasDeSoldados + " soldados permanecem na reserva.");
     }
 
-    private bool TemUnidadesVivas() => aeronavesRebeldes.Exists(x => x != null) || helicopterosRebeldes.Exists(x => x != null) || naviosRebeldes.Exists(x => x != null);
+    private bool EnviarGrupoTerrestreDeBaseDisponivel()
+    {
+        if (reservasDeSoldados <= 0 || prefabsSoldado == null || prefabsSoldado.Count == 0 || prefabsSoldado[0] == null)
+            return false;
+        AreaOperacionalRebelde areaEscolhida = null;
+        Transform ponto = null;
+        GameObject baseEscolhida = null;
+        for (int b = 0; b < 2 && ponto == null; b++)
+        {
+            GameObject candidataBase = b == 0 ? basePrincipal : baseAliada;
+            if (candidataBase == null || !candidataBase.activeInHierarchy) continue;
+            for (int i = 0; i < areasOperacionais.Count && ponto == null; i++)
+            {
+                AreaOperacionalRebelde area = areasOperacionais[i];
+                if (area == null || area.Tipo != TipoAreaOperacionalRebelde.Terrestre
+                    || area.BaseResponsavel != candidataBase) continue;
+                for (int p = 0; p < pontosCriacaoSoldado.Count; p++)
+                {
+                    GameObject candidato = pontosCriacaoSoldado[p];
+                    if (candidato == null || !area.Contem(candidato.transform.position)) continue;
+                    bool autorizado = false;
+                    for (int a = 0; a < area.PontosCriacaoAutorizados.Count; a++)
+                        if (area.PontosCriacaoAutorizados[a] == candidato.transform) { autorizado = true; break; }
+                    if (!autorizado) continue;
+                    baseEscolhida = candidataBase;
+                    areaEscolhida = area;
+                    ponto = candidato.transform;
+                    break;
+                }
+            }
+        }
+        if (ponto == null || areaEscolhida == null || baseEscolhida == null) return false;
+
+        soldadosContados.Clear();
+        for (int i = 0; i < soldadosReforcados.Count; i++)
+            if (soldadosReforcados[i] != null) soldadosContados.Add(soldadosReforcados[i].GetInstanceID());
+        for (int i = 0; i < instalacoesRebeldes.Count; i++)
+        {
+            GameObject instalacao = instalacoesRebeldes[i];
+            if (instalacao == null) continue;
+            IdentidadeUnidade[] identidades = instalacao.GetComponentsInChildren<IdentidadeUnidade>(true);
+            for (int u = 0; u < identidades.Length; u++)
+                if (identidades[u] != null && identidades[u].tipoUnidade == TipoUnidade.Infantaria)
+                    soldadosContados.Add(identidades[u].gameObject.GetInstanceID());
+        }
+
+        int quantidade = Mathf.Min(tamanhoGrupoReforco, reservasDeSoldados,
+            Mathf.Max(0, quantidadeMaximaSoldadosAtivos - soldadosContados.Count));
+        if (quantidade <= 0) return false;
+        int criados = 0;
+        for (int i = 0; i < quantidade; i++)
+        {
+            GameObject soldado = Instantiate(prefabsSoldado[0], ponto.position, ponto.rotation);
+            if (!areaEscolhida.RegistrarUnidade(soldado))
+            {
+                Destroy(soldado);
+                continue;
+            }
+            Vincular(soldado, TipoUnidade.Infantaria);
+            soldadosReforcados.Add(soldado);
+            reservasDeSoldados--;
+            criados++;
+        }
+        return criados > 0;
+    }
+
+    private bool EnviarApoioAereoDaSegundaBase()
+    {
+        if (reservasAereasSegundaBase <= 0 || baseAliada == null || !baseAliada.activeInHierarchy
+            || prefabReforcoAereoSegundaBase == null) return false;
+        GerenciadorAeroporto aeroporto = aeroportoClandestino != null
+            ? aeroportoClandestino : baseAliada.GetComponent<GerenciadorAeroporto>();
+        if (aeroporto == null || !aeroporto.isActiveAndEnabled || aeroporto.semEnergia) return false;
+
+        int ativos = 0;
+        for (int i = 0; i < aeronavesRebeldes.Count; i++) if (aeronavesRebeldes[i] != null) ativos++;
+        for (int i = 0; i < helicopterosRebeldes.Count; i++) if (helicopterosRebeldes[i] != null) ativos++;
+        if (ativos >= quantidadeMaximaAereaAtiva) return false;
+
+        for (int i = 0; i < areasOperacionais.Count; i++)
+        {
+            AreaOperacionalRebelde area = areasOperacionais[i];
+            if (area == null || area.Tipo != TipoAreaOperacionalRebelde.Aerea
+                || area.BaseResponsavel != baseAliada || !area.RotaValida()) continue;
+            Transform ponto = area.ObterPontoCriacaoValido();
+            if (ponto == null) continue;
+            GameObject objeto = Instantiate(prefabReforcoAereoSegundaBase, ponto.position, ponto.rotation, baseAliada.transform);
+            ControleAviao aviao = objeto.GetComponent<ControleAviao>();
+            if (aviao == null)
+            {
+                Helicoptero heli = objeto.GetComponent<Helicoptero>();
+                if (heli == null || !aeroporto.RegistrarHelicopteroRecebido(heli) || !area.RegistrarUnidade(objeto))
+                { Destroy(objeto); continue; }
+                Vincular(objeto, TipoUnidade.Aereo);
+                helicopterosRebeldes.Add(heli);
+                RegistrarUnidadesComIndice(helicopterosRebeldes, TipoUnidadeRebelde.Helicoptero, helicopterosIndisponiveis);
+                heli.ReceberOrdemPatrulhaAeroporto(ConverterRota(area));
+            }
+            else
+            {
+                if (!aeroporto.RegistrarAeronaveRecebida(aviao) || !area.RegistrarUnidade(objeto))
+                { Destroy(objeto); continue; }
+                Vincular(objeto, TipoUnidade.Aereo);
+                aeronavesRebeldes.Add(aviao);
+                RegistrarUnidadesComIndice(aeronavesRebeldes, TipoUnidadeRebelde.Aeronave, aeronavesIndisponiveis);
+                aviao.ReceberOrdemPatrulha(ConverterRota(area));
+            }
+            reservasAereasSegundaBase--;
+            return true;
+        }
+        return false;
+    }
+
+    private bool TemUnidadesVivas() => aeronavesRebeldes.Exists(x => x != null)
+        || helicopterosRebeldes.Exists(x => x != null)
+        || naviosRebeldes.Exists(x => x != null)
+        || soldadosReforcados.Exists(x => x != null);
     private void RemoverContatosInvalidos()
     {
         if (contatosAtivos.Count == 0) return;
         List<int> remover = null;
         foreach (KeyValuePair<int, IdentidadeUnidade> contato in contatosAtivos)
         {
-            if (contato.Value != null) { AvaliarContato(contato.Value); continue; }
+            if (contato.Value != null)
+            {
+                if (RelacaoHostil(contato.Value)) nivelAtividade = Mathf.Max(nivelAtividade, 2);
+                continue;
+            }
             if (remover == null) remover = new List<int>();
             remover.Add(contato.Key);
         }
@@ -548,6 +741,7 @@ public sealed class RebeldeControlador : MonoBehaviour
         estado = (EstadoOrganizacaoRebelde)Mathf.Clamp(salvo.estado, 0, Enum.GetValues(typeof(EstadoOrganizacaoRebelde)).Length - 1);
         nivelAtividade = Mathf.Clamp(salvo.nivelAtividade, 0, 5);
         reservasDeSoldados = Mathf.Max(0, salvo.reservasDeSoldados);
+        reservasAereasSegundaBase = Mathf.Max(0, salvo.reservasAereasSegundaBase);
         reforcosSolicitados = Mathf.Max(0, salvo.reforcosSolicitados);
         combateAtivoAcumulado = Mathf.Max(0f, salvo.combateAtivoAcumulado);
         CopiarPerdas(salvo.aeronavesIndisponiveis, aeronavesIndisponiveis);
