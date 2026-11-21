@@ -10,8 +10,12 @@ public class PistaComercial
 {
     public string nomePista;
     public Transform pista;       // Grupo de waypoints da pista
+    public Transform pistaPouso;   // Grupo de waypoints de pouso, quando separado da decolagem
     public Transform taxiEntrada; // Saída do hangar → pista
     public Transform taxiSaida;   // Pista → hangar
+    public Transform taxiEntradaPontoFinal; // Ponto de alinhamento criado pelo autor do prefab
+    public bool inverterTaxiEntrada; // Reutiliza uma rota de táxi no sentido pátio → pista
+    public bool inverterTaxiSaida; // Usa a mesma rota de táxi no sentido pista → pátio
 
     [HideInInspector] public List<Transform> waypointsDecolagem  = new List<Transform>();
     [HideInInspector] public List<Transform> waypointsDecida     = new List<Transform>();
@@ -30,14 +34,31 @@ public class PistaComercial
         if (inicializada) return;
         inicializada = true;
 
-        if (pista != null)
+        if (pista != null && (waypointsDecolagem == null || waypointsDecolagem.Count == 0))
         {
             foreach (Transform t in pista) waypointsDecolagem.Add(t);
-            waypointsDecida.AddRange(waypointsDecolagem);
-            waypointsDecida.Reverse();
         }
-        if (taxiEntrada != null) foreach (Transform t in taxiEntrada) waypointsTaxiEntrada.Add(t);
-        if (taxiSaida   != null) foreach (Transform t in taxiSaida)   waypointsTaxiSaida.Add(t);
+
+        if (waypointsDecida == null || waypointsDecida.Count == 0)
+        {
+            Transform grupoPouso = pistaPouso != null ? pistaPouso : pista;
+            if (grupoPouso != null)
+            {
+                foreach (Transform t in grupoPouso) waypointsDecida.Add(t);
+                waypointsDecida.Reverse();
+            }
+        }
+
+        if (taxiEntrada != null && (waypointsTaxiEntrada == null || waypointsTaxiEntrada.Count == 0))
+            foreach (Transform t in taxiEntrada) waypointsTaxiEntrada.Add(t);
+        if (taxiEntradaPontoFinal != null && (waypointsTaxiEntrada == null || !waypointsTaxiEntrada.Contains(taxiEntradaPontoFinal)))
+            waypointsTaxiEntrada.Add(taxiEntradaPontoFinal);
+        if (inverterTaxiEntrada && waypointsTaxiEntrada != null)
+            waypointsTaxiEntrada.Reverse();
+        if (taxiSaida != null && (waypointsTaxiSaida == null || waypointsTaxiSaida.Count == 0))
+            foreach (Transform t in taxiSaida) waypointsTaxiSaida.Add(t);
+        if (inverterTaxiSaida && waypointsTaxiSaida != null)
+            waypointsTaxiSaida.Reverse();
     }
 
     public void Liberar()
@@ -72,6 +93,7 @@ public class VooAgendado
     public string numeroVoo;
     public string nomeCompanhia;
     public string destino;
+    public bool longoAlcance;
     public bool ehChegada;           // true = incoming, false = outgoing
     public int vagaIndex;            // índice na lista waypointsPatio
     public int passagensVendidas;
@@ -120,6 +142,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     public class ContratoAereoAtivo
     {
         public string nomeCompanhia;
+        public bool longoAlcance;
         public int diasDuracao;
         public int diasRestantes;
         public int baiasOcupadas;
@@ -133,6 +156,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     public class ContratoAereoOferecido
     {
         public string nomeCompanhia;
+        public bool longoAlcance;
         public int diasDuracao;
         public int baiasExigidas;
         public int baiasNegociadas;
@@ -150,6 +174,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     // Filas de espera por pista
     private Queue<ControleAviaoComercial> filaDecolagem = new Queue<ControleAviaoComercial>();
     private Queue<ControleAviaoComercial> filaPouso     = new Queue<ControleAviaoComercial>();
+    private readonly Dictionary<PistaComercial, C700TransporteAereo> pistasEmUsoTransporte = new Dictionary<PistaComercial, C700TransporteAereo>();
 
     // ── Contratos e Vagas ──────────────────────────────────────────────
     [Header("=== Sistema de Aviação Comercial ===")]
@@ -176,6 +201,8 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     // ── Spawn ──────────────────────────────────────────────────────────
     [Header("=== Spawn Visual ===")]
     public GameObject prefabAviaoComercial;
+    [Tooltip("Aeronaves de longo curso habilitadas para contratos intercontinentais. Se vazio, o aeroporto mantém a frota comercial padrão.")]
+    public List<GameObject> frotaAvioesLongoAlcance = new List<GameObject>();
     private List<ControleAviaoComercial> frotaComercialAtiva = new List<ControleAviaoComercial>();
 
     // ── Turismo / Imigração ────────────────────────────────────────────
@@ -195,6 +222,40 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     private float _proximoLogSemWaypointsTime = -999f;
     private float _proximoLogCombustivelTime = -999f;
     private float _proximoLogPousoTime = -999f;
+
+    private static readonly string[] destinosLongoAlcance =
+    {
+        "Lisboa", "Tóquio", "Nova York", "Dubai", "Singapura", "Paris", "Cidade do Cabo", "Santiago"
+    };
+
+    private GameObject SelecionarAeronaveComercial(bool longoAlcance)
+    {
+        if (longoAlcance && frotaAvioesLongoAlcance != null)
+        {
+            int validos = 0;
+            for (int i = 0; i < frotaAvioesLongoAlcance.Count; i++)
+                if (frotaAvioesLongoAlcance[i] != null) validos++;
+            if (validos > 0)
+            {
+                int indice = Random.Range(0, validos);
+                for (int i = 0; i < frotaAvioesLongoAlcance.Count; i++)
+                {
+                    GameObject prefab = frotaAvioesLongoAlcance[i];
+                    if (prefab == null) continue;
+                    if (indice-- == 0) return prefab;
+                }
+            }
+        }
+        return prefabAviaoComercial;
+    }
+
+    private bool PossuiAeronavesLongoAlcance()
+    {
+        if (frotaAvioesLongoAlcance == null) return false;
+        for (int i = 0; i < frotaAvioesLongoAlcance.Count; i++)
+            if (frotaAvioesLongoAlcance[i] != null) return true;
+        return false;
+    }
 
     // ── Inicialização ─────────────────────────────────────────────────
     protected override void Awake()
@@ -261,6 +322,143 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             }
         }
         return false;
+    }
+
+    public override Transform ObterParadaRecebimentoTransporteAereo()
+    {
+        Transform paradaGrande = ObterParadaGrandePreferencial(false);
+        if (paradaGrande != null) return paradaGrande;
+
+        Transform baiaLivre = ObterBaiaLivreParaTransporte();
+        if (baiaLivre != null) return baiaLivre;
+
+        return base.ObterParadaRecebimentoTransporteAereo();
+    }
+
+    public Transform ObterBaiaLivreParaTransporte()
+    {
+        if (waypointsPatio == null || waypointsPatio.Count == 0) return null;
+
+        RemoveNulls(frotaComercialAtiva);
+
+        for (int pass = 0; pass < 2; pass++)
+        {
+            bool ignorarReservaContratual = pass == 1;
+            for (int i = 0; i < waypointsPatio.Count; i++)
+            {
+                Transform wp = waypointsPatio[i];
+                if (wp == null) continue;
+                if (!ignorarReservaContratual && vagasReservadas.ContainsKey(i)) continue;
+                if (BaiaOcupadaNoAeroportoComercial(wp)) continue;
+
+                return wp;
+            }
+        }
+
+        return null;
+    }
+
+    private bool BaiaOcupadaNoAeroportoComercial(Transform baia)
+    {
+        if (baia == null) return true;
+        Vector3 pos = baia.position;
+
+        for (int i = 0; i < frotaComercialAtiva.Count; i++)
+        {
+            ControleAviaoComercial comercial = frotaComercialAtiva[i];
+            if (comercial == null) continue;
+            if (comercial.vagaRetorno == baia || (comercial.transform.position - pos).sqrMagnitude <= 100f)
+                return true;
+        }
+
+        for (int i = transportesC700NoPatio.Count - 1; i >= 0; i--)
+        {
+            C700TransporteAereo transporte = transportesC700NoPatio[i];
+            if (transporte == null) { transportesC700NoPatio.RemoveAt(i); continue; }
+            if (transporte.pontoEstacionamentoPreferencial == baia || (transporte.transform.position - pos).sqrMagnitude <= 100f)
+                return true;
+        }
+
+        for (int i = avioesNoPatio.Count - 1; i >= 0; i--)
+        {
+            ControleAviao av = avioesNoPatio[i];
+            if (av == null) { avioesNoPatio.RemoveAt(i); continue; }
+            if (av.vagaRetorno == baia || (av.transform.position - pos).sqrMagnitude <= 100f)
+                return true;
+        }
+
+        return false;
+    }
+
+    public bool PossuiPistaDecolagemComTaxi()
+    {
+        for (int i = 0; i < todasPistas.Count; i++)
+        {
+            PistaComercial p = todasPistas[i];
+            if (p == null) continue;
+            p.Inicializar();
+            if (p.waypointsDecolagem != null && p.waypointsDecolagem.Count >= 2
+                && p.waypointsTaxiEntrada != null && p.waypointsTaxiEntrada.Count > 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public PistaComercial SolicitarPistaParaDecolagemTransporte(C700TransporteAereo transporte)
+    {
+        LimparPistasTransporteMortos();
+        for (int pass = 0; pass < 2; pass++)
+        {
+            bool exigirTaxi = pass == 0;
+            for (int i = 0; i < todasPistas.Count; i++)
+            {
+                PistaComercial p = todasPistas[i];
+                if (p == null) continue;
+                p.Inicializar();
+                if (p.estado != PistaComercial.EstadoPista.Livre) continue;
+                if (p.waypointsDecolagem == null || p.waypointsDecolagem.Count < 2) continue;
+                if (exigirTaxi && (p.waypointsTaxiEntrada == null || p.waypointsTaxiEntrada.Count == 0)) continue;
+
+                p.estado = PistaComercial.EstadoPista.EmDecolagem;
+                p.aviaoNaPista = null;
+                pistasEmUsoTransporte[p] = transporte;
+                return p;
+            }
+        }
+        return null;
+    }
+
+    public void LiberarPistaTransporte(PistaComercial pista, C700TransporteAereo transporte)
+    {
+        if (pista == null) return;
+        if (pistasEmUsoTransporte.TryGetValue(pista, out C700TransporteAereo dono)
+            && (dono == null || dono == transporte))
+        {
+            pistasEmUsoTransporte.Remove(pista);
+            pista.Liberar();
+            ProcessarFilasRunway();
+        }
+    }
+
+    private void LimparPistasTransporteMortos()
+    {
+        if (pistasEmUsoTransporte.Count == 0) return;
+        List<PistaComercial> liberar = null;
+        foreach (KeyValuePair<PistaComercial, C700TransporteAereo> par in pistasEmUsoTransporte)
+        {
+            if (par.Value != null) continue;
+            if (liberar == null) liberar = new List<PistaComercial>();
+            liberar.Add(par.Key);
+        }
+        if (liberar == null) return;
+        for (int i = 0; i < liberar.Count; i++)
+        {
+            PistaComercial p = liberar[i];
+            pistasEmUsoTransporte.Remove(p);
+            if (p != null && p.aviaoNaPista == null) p.Liberar();
+        }
     }
 
     public PistaComercial SolicitarPistaParaDecolagem(ControleAviaoComercial aviao)
@@ -333,6 +531,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     // ── Processa filas de decolagem/pouso ─────────────────────────────
     private void ProcessarFilasRunway()
     {
+        LimparPistasTransporteMortos();
         // Tenta despachar aviões esperando para decolar
         while (filaDecolagem.Count > 0)
         {
@@ -377,7 +576,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     /// </summary>
     private void AlocarVagasParaContrato(ContratoAereoAtivo contrato)
     {
-        if (prefabAviaoComercial == null)
+        if (SelecionarAeronaveComercial(contrato != null && contrato.longoAlcance) == null)
         {
             Debug.LogError($"[Comercial] Falha ao alocar vagas para {contrato.nomeCompanhia}: prefabAviaoComercial é NULL.");
             return;
@@ -413,7 +612,9 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         float altEstac = 0.5f; // altura padrão até o avião se auto-ajustar no Start
         posSpawn.y += altEstac;
 
-        GameObject obj = Instantiate(prefabAviaoComercial, posSpawn, vaga.rotation);
+        GameObject prefabAviao = SelecionarAeronaveComercial(contrato != null && contrato.longoAlcance);
+        if (prefabAviao == null) return;
+        GameObject obj = Instantiate(prefabAviao, posSpawn, vaga.rotation);
         
         Rigidbody rb = obj.GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true;
@@ -472,7 +673,11 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         voo.status       = StatusVoo.VendasAbertas;
         // Horário de partida: entre 5 e 60 minutos de jogo
         voo.horarioAgendado = Time.time + Random.Range(5f * 60f, 45f * 60f);
-        voo.destino      = "Exterior";
+        voo.destino      = contrato.longoAlcance
+            ? destinosLongoAlcance[Random.Range(0, destinosLongoAlcance.Length)]
+            : "Exterior";
+        voo.longoAlcance = contrato.longoAlcance;
+        if (voo.longoAlcance) aviao.nomeDestinoIA = voo.destino;
 
         // Chance de atraso ou cancelamento
         float roll = Random.value;
@@ -493,7 +698,11 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         voo.passagensVendidas = passageiros;
         voo.status       = StatusVoo.Chegando;
         voo.horarioAgendado = Time.time + Random.Range(2f * 60f, 20f * 60f);
-        voo.destino      = "Local";
+        ContratoAereoAtivo contrato = contratosAtivos.Find(c => c != null && c.nomeCompanhia == companhia);
+        voo.longoAlcance = contrato != null && contrato.longoAlcance;
+        voo.destino = voo.longoAlcance
+            ? destinosLongoAlcance[Random.Range(0, destinosLongoAlcance.Length)] + " → Nova Aurora"
+            : "Local";
         voo.passageirosTuristas   = Mathf.RoundToInt(passageiros * Random.Range(0.6f, 0.85f));
         voo.passageirosImigrantes = passageiros - voo.passageirosTuristas;
         voo.timerTuristas = Random.Range(60f, 300f); // 1-5 min de jogo
@@ -664,17 +873,21 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
     private void TentarSpawnarVooDeChegada()
     {
         if (contratosAtivos.Count == 0) return;
-        if (Random.value > 0.02f) return; // ~2% por tick de 4s → voo de chegada a cada ~3 min
+        if (Random.value > 0.03f) return; // Fluxo moderadamente maior, sem varredura ou spawn por frame.
 
         // Escolhe um contrato ativo aleatório para simular um voo de chegada
         var contrato = contratosAtivos[Random.Range(0, contratosAtivos.Count)];
-        int passageiros = Random.Range(50, Mathf.Max(51, contrato.passagensVendidasHoje / 4));
+        int passageiros = contrato.longoAlcance
+            ? Random.Range(100, Mathf.Max(101, contrato.passagensVendidasHoje / 3))
+            : Random.Range(50, Mathf.Max(51, contrato.passagensVendidasHoje / 4));
         CriarVooChegada(contrato.nomeCompanhia, passageiros);
     }
 
     private void SpawnarAviaoDeChegada(VooAgendado voo)
     {
-        if (prefabAviaoComercial == null || voo == null) return;
+        if (voo == null) return;
+        GameObject prefabAviao = SelecionarAeronaveComercial(voo.longoAlcance);
+        if (prefabAviao == null) return;
 
         // ── Calcula ponto de spawn longe do aeroporto ──
         // O avião deve aparecer NO AR, a ~2000m, na direção oposta à pista
@@ -730,7 +943,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         rotSpawn = Quaternion.LookRotation(direcaoAproximacao);
 
         // Instancia o avião
-        GameObject obj = Instantiate(prefabAviaoComercial, posSpawn, rotSpawn);
+        GameObject obj = Instantiate(prefabAviao, posSpawn, rotSpawn);
         
         Rigidbody rb = obj.GetComponent<Rigidbody>();
         if (rb != null) rb.isKinematic = true;
@@ -744,6 +957,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         ca.aeroportoOrigemComercial = this;
         ca.aeroportoOrigem = this;
         ca.nomeCompanhia = voo.nomeCompanhia;
+        ca.nomeDestinoIA = voo.destino;
         ca.passagensVendidas = voo.passagensVendidas;
         ca.vooAssociado = voo;
         voo.aviao = ca;
@@ -835,23 +1049,29 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
 
                 if (saldoLocalSuficiente && saldoPaisSuficiente)
                 {
-                    if (combustivelDisponivel > 0)
+                    SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+                    bool tesouroCentralDisponivel = governo != null && pais != null;
+                    bool pagamentoAprovado = tesouroCentralDisponivel
+                        ? governo.TentarPagar(pais.teamId, custoFaltante)
+                        : true;
+                    if (pagamentoAprovado)
                     {
-                        GerenciadorRecursos.Instancia.petroleo = 0;
-                        combustivelNecessario -= combustivelDisponivel;
-                    }
-
-                    GerenciadorRecursos.Instancia.dinheiro -= custoFaltante;
-                    if (pais != null)
-                    {
-                        pais.saldo -= custoFaltante;
-                        pais.petroleo = GerenciadorRecursos.Instancia.petroleo; // 0
-                    }
-
-                    if (Time.unscaledTime >= _proximoLogCombustivelTime)
-                    {
-                        _proximoLogCombustivelTime = Time.unscaledTime + 25f;
-                        Debug.Log($"[Comercial] Faltou combustível para o aeroporto! Compra automática consumiu {custoFaltante} de dinheiro.");
+                        if (combustivelDisponivel > 0)
+                        {
+                            GerenciadorRecursos.Instancia.petroleo = 0;
+                            combustivelNecessario -= combustivelDisponivel;
+                        }
+                        if (!tesouroCentralDisponivel)
+                        {
+                            GerenciadorRecursos.Instancia.dinheiro -= custoFaltante;
+                            if (pais != null) pais.saldo -= custoFaltante;
+                        }
+                        if (pais != null) pais.petroleo = GerenciadorRecursos.Instancia.petroleo;
+                        if (Time.unscaledTime >= _proximoLogCombustivelTime)
+                        {
+                            _proximoLogCombustivelTime = Time.unscaledTime + 25f;
+                            Debug.Log($"[Comercial] Faltou combustível para o aeroporto! Compra automática consumiu {custoFaltante} de dinheiro.");
+                        }
                     }
                 }
                 else if (Time.unscaledTime >= _proximoLogCombustivelTime)
@@ -866,8 +1086,15 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
                 GerenciadorRecursos.Instancia.GetType().GetMethod("NotificarAtualizacao", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(GerenciadorRecursos.Instancia, null);
         }
 
-        if (GerenciadorRecursos.Instancia != null)
-            GerenciadorRecursos.Instancia.dinheiro += receitaDia;
+        if (receitaDia > 0)
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            int teamId = _identidadeCacheada != null ? _identidadeCacheada.teamID : 1;
+            if (governo != null)
+                governo.AdicionarSaldo(teamId, receitaDia, "Passageiros e contratos", "Aeroporto comercial", TipoLancamentoFinanceiro.ReceitaDiaria);
+            else if (GerenciadorRecursos.Instancia != null)
+                GerenciadorRecursos.Instancia.AdicionarRecursos(addDinheiro: receitaDia);
+        }
 
         paisesConectados = 0;
         if (GerenciadorDivisaoTerritorial.Instancia != null)
@@ -901,6 +1128,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         var ativo = new ContratoAereoAtivo
         {
             nomeCompanhia   = oferta.nomeCompanhia,
+            longoAlcance    = oferta.longoAlcance,
             diasDuracao     = oferta.diasDuracao,
             diasRestantes   = oferta.diasDuracao,
             baiasOcupadas   = oferta.baiasNegociadas,
@@ -920,20 +1148,25 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
         int qtd = Random.Range(2, 5);
         for (int i = 0; i < qtd; i++)
         {
+            bool longoAlcance = PossuiAeronavesLongoAlcance() && (i == 0 || Random.value < 0.28f);
             int tier = Random.Range(0, 100);
             int duracao;
-            if (tier < 60) duracao = Random.Range(3, 15); // Fim de dias
+            if (longoAlcance) duracao = Random.Range(240, 541); // contrato de longo curso: 8 a 18 meses do calendário do jogo
+            else if (tier < 60) duracao = Random.Range(3, 15); // Fim de dias
             else if (tier < 90) duracao = Random.Range(160, 200); // ~6 meses
             else duracao = Random.Range(350, 380); // ~1 ano
 
             contratosDisponiveis.Add(new ContratoAereoOferecido
             {
-                nomeCompanhia   = nomes[Random.Range(0, nomes.Length)],
+                nomeCompanhia   = longoAlcance
+                    ? new[] { "Atlas Intercontinental", "Oceanic Longo Curso", "SkyBridge Global" }[Random.Range(0, 3)]
+                    : nomes[Random.Range(0, nomes.Length)],
+                longoAlcance    = longoAlcance,
                 baiasExigidas   = Random.Range(1, 4),
                 baiasNegociadas = Random.Range(1, 4),
                 diasDuracao     = duracao,
-                valorPorPassagem= Random.Range(5, 40),
-                demandaTurismoBase = Random.Range(0.5f, 2f)
+                valorPorPassagem= longoAlcance ? Random.Range(55, 96) : Random.Range(5, 40),
+                demandaTurismoBase = longoAlcance ? Random.Range(1.4f, 2.5f) : Random.Range(0.5f, 2f)
             });
         }
     }
@@ -1120,7 +1353,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
             if (GUILayout.Button("–", GUILayout.Width(22))) cia.baiasNegociadas = Mathf.Max(1, cia.baiasNegociadas - 1);
             GUILayout.Label($"<b>{cia.baiasNegociadas}</b>", GUILayout.Width(22));
             if (GUILayout.Button("+", GUILayout.Width(22))) cia.baiasNegociadas = Mathf.Min(cia.baiasNegociadas + 1, totalBaiasComerciais - baiasOcupadas + cia.baiasNegociadas);
-            GUILayout.Label($"  {cia.diasDuracao}d  |  ${cia.valorPorPassagem}/pax", GUILayout.Width(140));
+            GUILayout.Label($"  {(cia.longoAlcance ? "LONGO CURSO · " : string.Empty)}{cia.diasDuracao}d  |  ${cia.valorPorPassagem}/pax", GUILayout.Width(190));
             GUILayout.FlexibleSpace();
 
             bool temVagas = (baiasOcupadas + cia.baiasNegociadas <= totalBaiasComerciais);
@@ -1166,6 +1399,7 @@ public class GerenciadorAeroportoComercial : GerenciadorAeroporto
                 GUILayout.Label($"Restam: {ativo.diasRestantes}d", GUILayout.Width(80));
                 GUILayout.Label($"Vagas: {string.Join(",", ativo.indicasVagas.ConvertAll(v => $"V{v + 1}"))}", GUILayout.Width(130));
                 GUILayout.Label($"Hoje: {ativo.passagensVendidasHoje:N0} pax  |  ${ativo.valorPorPassagem}/pax", GUILayout.Width(200));
+                if (ativo.longoAlcance) GUILayout.Label("✈ LONGO CURSO", GUILayout.Width(110));
                 GUILayout.EndHorizontal();
             }
         }

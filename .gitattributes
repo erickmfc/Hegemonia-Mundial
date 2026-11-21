@@ -1,5 +1,4 @@
 * text=auto
-
 # Unity YAML: texto estável e merge semântico quando configurado pelo Unity.
 *.meta text eol=lf
 *.unity text eol=lf merge=unityyamlmerge
@@ -26,3 +25,4 @@
 *.mov binary
 *.pdf binary
 ValidationResults/codex-win64-20260923_163738/** filter=lfs diff=lfs merge=lfs -text
+Assets/Prefabs/IA[[:space:]]Rebelde/my_childhood_neighborhood_-_1965.glb filter=lfs diff=lfs merge=lfs -text

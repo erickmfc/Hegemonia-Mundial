@@ -54,8 +54,6 @@ public class MenuFixadoController : MonoBehaviour
     private IVisualElementScheduledItem statusPulseSchedule;
     private const string TutorialInicialFechadoKey = "hegemonia.tutorial.menus.v2.fechado";
     private const string BarraAcoesFechadaKey = "hegemonia.barra-acoes.v1.fechada";
-    // Desligamento temporario da barra rapida; altere para false para reexibi-la.
-    private const bool BarraAcoesDesativadaTemporariamente = true;
     private const string NotificacaoFechadaPrefix = "hegemonia.notificacao.fechada.";
 
     private bool _activeInScene = true;
@@ -907,9 +905,7 @@ public class MenuFixadoController : MonoBehaviour
     private void AplicarEstadoBarraAcoes()
     {
         if (quickActions == null) return;
-
-        bool fechada = BarraAcoesDesativadaTemporariamente || PlayerPrefs.GetInt(BarraAcoesFechadaKey, 0) == 1;
-        quickActions.EnableInClassList("is-hidden", fechada);
+        quickActions.style.display = DisplayStyle.None;
     }
 
     private void AbrirPrefeituraRapida()
@@ -993,7 +989,6 @@ public class MenuFixadoController : MonoBehaviour
                 : new StyleEnum<DisplayStyle>(StyleKeyword.Null);
             if (decisionBanner != null) decisionBanner.style.display = displayValor;
             if (tutorialBanner != null) tutorialBanner.style.display = displayValor;
-            if (quickActions != null) quickActions.style.display = displayValor;
             if (notificationPanel != null) notificationPanel.style.display = displayValor;
         }
 

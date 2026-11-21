@@ -467,7 +467,7 @@ public class Helicoptero : MonoBehaviour
             float rotacaoTraseira = inverterSentidoHeliceTraseira ? -rotacao : rotacao;
             if (usarRotacaoHorizontalNaHeliceTraseira)
             {
-                heliceTraseira.Rotate(Vector3.up * rotacaoTraseira, Space.World);
+                heliceTraseira.Rotate(0f, rotacaoTraseira, 0f, Space.Self);
             }
             else
             {
@@ -1275,12 +1275,18 @@ public class Helicoptero : MonoBehaviour
         float alturaPousoFinal = Mathf.Max(destino.y, ObterAlturaFinalDePouso(destino));
         float alturaDesejada = alturaCruzeiroAtual;
 
+        float fatorHorizontalDecolagem = 1f;
         if (!estaPousando && subidaInicialDecolagem)
         {
-            float alturaSubidaMeta = Mathf.Max(alturaCruzeiroAtual, ancoraSubidaDecolagem.y + Mathf.Max(2f, alturaSubidaInicial));
+            float alturaSubidaMeta = Mathf.Max(alturaCruzeiroAtual, ancoraSubidaDecolagem.y + Mathf.Max(4f, alturaSubidaInicial));
             alturaDesejada = alturaSubidaMeta;
 
-            if (posAtual.y >= alturaSubidaMeta - 0.15f || distanciaHorizontal > 5f)
+            float amplitudeSubida = Mathf.Max(1f, alturaSubidaMeta - ancoraSubidaDecolagem.y);
+            float progressoSubida = Mathf.Clamp01((posAtual.y - ancoraSubidaDecolagem.y) / amplitudeSubida);
+            // Sobe primeiro ganhando sustentação vertical e libera o avanço horizontal progressivamente.
+            fatorHorizontalDecolagem = Mathf.SmoothStep(0.06f, 1f, Mathf.InverseLerp(0.18f, 0.92f, progressoSubida));
+
+            if (posAtual.y >= alturaSubidaMeta - 0.25f)
             {
                 subidaInicialDecolagem = false;
             }
@@ -1296,7 +1302,7 @@ public class Helicoptero : MonoBehaviour
             ? controleVelocidade.MultiplicadorVelocidadeComandoHud
             : 1f;
         float velocidadeHorizontal = Mathf.Max(0.1f,
-            (estaPousando ? velocidadePouso : velocidadeNavegacao) * multiplicadorComando);
+            (estaPousando ? velocidadePouso : velocidadeNavegacao * fatorHorizontalDecolagem) * multiplicadorComando);
 
         Vector3 posHorizontalAtual = new Vector3(posAtual.x, 0f, posAtual.z);
         Vector3 posHorizontalMeta = new Vector3(destino.x, 0f, destino.z);
@@ -2280,10 +2286,12 @@ public class Helicoptero : MonoBehaviour
                 var c = candidatos[i];
                 float maxXZ = Mathf.Max(c.sizeLocal.x, c.sizeLocal.z);
                 float minXZ = Mathf.Min(c.sizeLocal.x, c.sizeLocal.z);
-                bool planoHorizontal = c.sizeLocal.y < Mathf.Max(0.25f, minXZ * 0.35f);
-                bool acimaDoCentro = c.centerLocal.y > totalBounds.center.y + totalBounds.size.y * 0.1f;
-                bool envergaduraRotor = maxXZ > totalBounds.size.z * 0.22f;
-                if (planoHorizontal && acimaDoCentro && envergaduraRotor)
+                bool planoHorizontal = c.sizeLocal.y < Mathf.Max(0.35f, Mathf.Max(minXZ * 0.42f, maxXZ * 0.25f));
+                bool acimaDoCentro = c.centerLocal.y > totalBounds.min.y + totalBounds.size.y * 0.18f;
+                bool envergaduraRotor = maxXZ > totalBounds.size.z * 0.20f && minXZ > totalBounds.size.x * 0.18f;
+                // Evita confundir a própria fuselagem principal com uma hélice
+                bool naoEhFuselagemInteira = c.sizeLocal.y < totalBounds.size.y * 0.45f;
+                if (planoHorizontal && acimaDoCentro && envergaduraRotor && naoEhFuselagemInteira)
                 {
                     laminasPrincipais.Add((c.renderer, c.centerLocal));
                     somaCentro += c.centerLocal;
@@ -2296,7 +2304,7 @@ public class Helicoptero : MonoBehaviour
 
                 GameObject pivotSup = new GameObject("HelicePrincipal_AutoPivot");
                 pivotSup.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
-                pivotSup.transform.position = transform.TransformPoint(laminasPrincipais[0].centerLocal);
+                pivotSup.transform.position = ObterPosicaoMastroRotor(laminasPrincipais[0].renderer, laminasPrincipais[0].centerLocal);
                 pivotSup.transform.rotation = transform.rotation;
                 laminasPrincipais[0].renderer.transform.SetParent(pivotSup.transform, true);
                 helicePrincipal = pivotSup.transform;
@@ -2308,7 +2316,7 @@ public class Helicoptero : MonoBehaviour
                 }
                 GameObject pivotInf = new GameObject("HeliceTraseira_AutoPivot");
                 pivotInf.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
-                pivotInf.transform.position = transform.TransformPoint(somaInf / (laminasPrincipais.Count - 1));
+                pivotInf.transform.position = ObterPosicaoMastroRotor(laminasPrincipais[1].renderer, somaInf / (laminasPrincipais.Count - 1));
                 pivotInf.transform.rotation = transform.rotation;
                 for (int i = 1; i < laminasPrincipais.Count; i++)
                 {
@@ -2318,7 +2326,9 @@ public class Helicoptero : MonoBehaviour
             }
             else if (laminasPrincipais.Count > 0)
             {
-                Vector3 centroPivot = transform.TransformPoint(somaCentro / laminasPrincipais.Count);
+                Vector3 centroPivot = laminasPrincipais.Count == 1
+                    ? ObterPosicaoMastroRotor(laminasPrincipais[0].renderer, laminasPrincipais[0].centerLocal)
+                    : transform.TransformPoint(somaCentro / laminasPrincipais.Count);
                 GameObject pivot = new GameObject("HelicePrincipal_AutoPivot");
                 pivot.transform.SetParent(modeloVisual != null ? modeloVisual : transform, true);
                 pivot.transform.position = centroPivot;
@@ -2364,5 +2374,29 @@ public class Helicoptero : MonoBehaviour
                 heliceTraseira = pivot.transform;
             }
         }
+    }
+
+    private Vector3 ObterPosicaoMastroRotor(MeshRenderer renderer, Vector3 fallbackCenterLocal)
+    {
+        if (renderer == null)
+        {
+            return transform.TransformPoint(fallbackCenterLocal);
+        }
+
+        Vector3 posTransformLocal = transform.InverseTransformPoint(renderer.transform.position);
+        Bounds b = renderer.bounds;
+        float raioEstimado = Mathf.Max(b.extents.x, b.extents.z) / Mathf.Max(0.001f, Mathf.Max(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.z)));
+        float distHorizontal = Vector2.Distance(
+            new Vector2(posTransformLocal.x, posTransformLocal.z),
+            new Vector2(fallbackCenterLocal.x, fallbackCenterLocal.z));
+
+        // Em rotores de 3 pás (como o Ka-52), o centro da bounding box desloca do eixo,
+        // mas a origem local do Transform da malha está cravada no mastro.
+        if (distHorizontal <= Mathf.Max(0.5f, raioEstimado * 0.35f))
+        {
+            return transform.TransformPoint(new Vector3(posTransformLocal.x, fallbackCenterLocal.y, posTransformLocal.z));
+        }
+
+        return transform.TransformPoint(fallbackCenterLocal);
     }
 }

@@ -1337,7 +1337,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
 
         // Calcula e credita o dinheiro real
         dinheiroRecebido = quantidade * item.precoAtual;
-        gr.AdicionarRecurso("Dinheiro", dinheiroRecebido);
+        SistemaGovernoMundial governoCentral = SistemaGovernoMundial.Instancia;
+        int teamJogador = governoCentral != null ? governoCentral.teamJogador : 1;
+        if (governoCentral != null)
+            governoCentral.AdicionarSaldo(teamJogador, dinheiroRecebido, "Venda direta de energia", "Mercado global", TipoLancamentoFinanceiro.Mercado);
+        else
+            gr.AdicionarRecurso("Dinheiro", dinheiroRecebido);
 
         GerenciadorArmazens armazens = GerenciadorArmazens.Instancia;
         if (armazens != null && armazens.armazemRecursos != null)
@@ -1389,31 +1394,12 @@ public class SistemaMercadoGlobal : MonoBehaviour
     /// </summary>
     public void ProcessarAutoVenda()
     {
-        if (autoVenderPetroleo && autoVendaQuantidadePetroleo > 0)
-        {
-            string msg; int ganho;
-            VenderRecursoReal("petroleo", autoVendaQuantidadePetroleo, out msg, out ganho);
-            if (ganho > 0) Debug.Log("[AutoVenda] " + msg);
-        }
-
-        if (autoVenderAco && autoVendaQuantidadeAco > 0)
-        {
-            string msg; int ganho;
-            VenderRecursoReal("aco", autoVendaQuantidadeAco, out msg, out ganho);
-            if (ganho > 0) Debug.Log("[AutoVenda] " + msg);
-        }
-
+        // Petróleo, aço e comida continuam usando as rotas de transporte do
+        // mercado; apenas energia mantém venda direta sem logística.
         if (autoVenderEnergia && autoVendaQuantidadeEnergia > 0)
         {
             string msg; int ganho;
             VenderRecursoReal("energia", autoVendaQuantidadeEnergia, out msg, out ganho);
-            if (ganho > 0) Debug.Log("[AutoVenda] " + msg);
-        }
-
-        if (autoVenderComida && autoVendaQuantidadeComida > 0)
-        {
-            string msg; int ganho;
-            VenderRecursoReal("comida", autoVendaQuantidadeComida, out msg, out ganho);
             if (ganho > 0) Debug.Log("[AutoVenda] " + msg);
         }
     }

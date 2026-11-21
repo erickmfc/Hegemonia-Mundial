@@ -701,6 +701,7 @@ public class LancadorNaval : MonoBehaviour
     /// </summary>
     public bool TentarLancarCoordenado(Vector3 destino, Transform alvo, bool modoAutomatico, out string motivo)
     {
+        SincronizarTipoMissilComMunicaoDisponivel();
         if (!PodeLancarCoordenado(destino, alvo, modoAutomatico, out motivo)) return false;
 
         int municaoAntes = MunicaoTridenteAtual + MunicaoCruzeiroAtual;
@@ -717,6 +718,21 @@ public class LancadorNaval : MonoBehaviour
 
         motivo = string.Empty;
         return true;
+    }
+
+    /// <summary>
+    /// Ordem explícita (menu O / Quartel): se o míssil selecionado estiver
+    /// sem munição ou sem prefab, mas o outro tipo estiver pronto, usa o outro
+    /// em vez de recusar o disparo. Torpedo selecionado no HUD é preservado.
+    /// </summary>
+    private void SincronizarTipoMissilComMunicaoDisponivel()
+    {
+        if (armamentoSelecionadoHud == ArmamentoHud.Torpedo) return;
+        if (PrefabMissilSelecionado != null && MunicaoMissilSelecionadoAtual > 0) return;
+        if (prefabMissel != null && municaoTotal > 0)
+            tipoMissilNaval = TipoMissilNaval.Tridente;
+        else if (prefabMisselCruzeiro != null && MunicaoCruzeiroAtual > 0)
+            tipoMissilNaval = TipoMissilNaval.Kh23Cruzeiro;
     }
 
     public bool TentarLancarContraAtaqueIA(Vector3 destino, Transform alvo, float alcanceMaximoContraAtaque, out string motivo)

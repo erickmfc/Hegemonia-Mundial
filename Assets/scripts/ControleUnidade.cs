@@ -1644,6 +1644,11 @@ public class ControleUnidade : MonoBehaviour
                 lancadorMisselCaca.DefinirAlvoIA(alvoTransform, pontoAlvo, alvoTransform != null ? 15f : 20f);
             }
 
+            // Limpa o alvo transform anterior antes de registrar o ataque.
+            // Uma missão por coordenada também precisa manter a aeronave em
+            // estado de alvo prioritário, mesmo sem um Transform associado.
+            DefinirAlvoPrioritario(alvoTransform);
+
             if (aviaoBombardeiro != null)
             {
                 aviaoBombardeiro.alvoAreaSolo = pontoAlvo;
@@ -1663,7 +1668,6 @@ public class ControleUnidade : MonoBehaviour
                     controleAviao.alvoPrioritarioIA = true;
                 }
             }
-            DefinirAlvoPrioritario(alvoTransform);
         }
         return ordemEmitida;
     }

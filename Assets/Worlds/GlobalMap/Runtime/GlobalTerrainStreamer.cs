@@ -57,8 +57,14 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     [Range(1, 16)] public int vegetationRowsPerFrame = 1;
     public bool showDiagnostics = true;
 
-    // Orçamento máximo de tempo por frame para manter o streaming de terreno dentro de 3ms a 4ms
+    // A tela de carregamento pode dedicar um pouco mais de CPU para preparar
+    // o terreno inicial; depois da prontidão, o streaming volta ao limite normal.
     private const double MaxBudgetMsPerFrame = 3.5;
+    private const double InitialLoadMaxBudgetMsPerFrame = 8.0;
+
+    private double CurrentWorkBudgetMsPerFrame => initialStartupTimingActive
+        ? InitialLoadMaxBudgetMsPerFrame
+        : MaxBudgetMsPerFrame;
 
     private readonly Dictionary<Vector2Int, Terrain> loadedTiles = new Dictionary<Vector2Int, Terrain>(16);
     private readonly Dictionary<Vector2Int, int> tileLastUsedOrder = new Dictionary<Vector2Int, int>(16);
@@ -78,6 +84,10 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private int tileUseOrder;
     private int lastGenerationMilliseconds;
     private int lastLocalNavMeshBuildMilliseconds;
+    private bool initialStartupTimingActive;
+    private int initialStartupTilesCreated;
+    private long initialStartupTileElapsedTicks;
+    private long initialStartupTileWorkTicks;
     private PackageNavMeshSurface localNavMeshSurface;
     private TerrainCollider globalTerrainCollider;
     private NavMeshData runtimeLocalNavMeshData;
@@ -85,6 +95,9 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
     private string failedNavMeshTileSet;
     private bool altitudeModeInitialized;
     private bool macroTerrainMode;
+    private bool initialStreamingViewResolved;
+    private bool initialNavigationBuildResolved;
+    private bool initialNavigationBuildSucceeded;
     private bool localTerrainSuspended;
     private GerenteSelecao gerenteSelecaoCache;
     private float proximaBuscaGerenteSelecao;
@@ -104,6 +117,65 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         }
     }
     public int DesiredTileCount => desiredTiles.Count;
+    /// <summary>
+    /// True when either the coarse terrain is visible in macro/fallback view,
+    /// or the initial local tile set around the camera is active.
+    /// This is a visual startup signal; NavMesh and background systems may
+    /// continue their own work afterwards.
+    /// </summary>
+    public bool InitialWorldSurfaceReady
+    {
+        get
+        {
+            if (globalTerrain == null || !initialStreamingViewResolved)
+                return false;
+
+            bool coarseTerrainVisible = globalTerrain.enabled
+                && globalTerrain.gameObject.activeInHierarchy;
+
+            if (macroTerrainMode || desiredTiles.Count == 0)
+                return coarseTerrainVisible;
+
+            bool initialLocalTilesVisible = AllDesiredTilesLoaded()
+                && ActiveTileCount == desiredTiles.Count;
+            if (initialLocalTilesVisible)
+                return true;
+
+            // A failed local NavMesh build hides those tile renderers and
+            // restores the coarse terrain. That visual fallback is sufficient
+            // for the loading screen; gameplay navigation can recover later.
+            return coarseTerrainVisible
+                && !string.IsNullOrEmpty(failedNavMeshTileSet)
+                && failedNavMeshTileSet == BuildDesiredTileSetSignature();
+        }
+    }
+    /// <summary>
+    /// True once the initial local navigation build has completed, or the
+    /// existing coarse-terrain fallback has been selected. This is separate
+    /// from visual readiness so the loading flow does not release units while
+    /// their starting NavMesh is still being generated.
+    /// </summary>
+    public bool InitialNavigationBuildResolved
+    {
+        get
+        {
+            if (!initialStreamingViewResolved)
+                return false;
+
+            return macroTerrainMode || desiredTiles.Count == 0 || initialNavigationBuildResolved;
+        }
+    }
+    public bool InitialNavigationAvailable
+    {
+        get
+        {
+            if (!initialStreamingViewResolved)
+                return false;
+
+            return macroTerrainMode || desiredTiles.Count == 0
+                || (initialNavigationBuildResolved && initialNavigationBuildSucceeded);
+        }
+    }
     public int CachedTileCount
     {
         get
@@ -248,7 +320,12 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         Instance = this;
         altitudeModeInitialized = false;
         macroTerrainMode = false;
+        initialStreamingViewResolved = false;
         localTerrainSuspended = false;
+        initialStartupTimingActive = true;
+        initialStartupTilesCreated = 0;
+        initialStartupTileElapsedTicks = 0;
+        initialStartupTileWorkTicks = 0;
         if (Application.isPlaying)
             EnsureLocalNavMeshSurface();
 
@@ -274,6 +351,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             if (globalTerrain != null)
                 globalTerrain.enabled = true;
         }
+        initialStartupTimingActive = false;
         heightBufferScratch = null;
         fullHeightRowBuffer = null;
         trailingHeightRowBuffer = null;
@@ -413,11 +491,13 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             {
                 globalTerrain.gameObject.SetActive(true);
                 globalTerrain.enabled = true;
+                initialStreamingViewResolved = true;
                 if (!localTerrainSuspended)
                 {
                     SuspendLocalTerrainForMacroView();
                     localTerrainSuspended = true;
                 }
+                RegistrarTempoInicialSePronto();
                 yield return new WaitForSecondsRealtime(refreshInterval);
                 continue;
             }
@@ -427,11 +507,13 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             {
                 globalTerrain.gameObject.SetActive(true);
                 globalTerrain.enabled = true;
+                initialStreamingViewResolved = true;
                 if (!localTerrainSuspended)
                 {
                     SuspendLocalTerrainForMacroView();
                     localTerrainSuspended = true;
                 }
+                RegistrarTempoInicialSePronto();
                 yield return new WaitForSecondsRealtime(refreshInterval);
                 continue;
             }
@@ -445,6 +527,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                 Vector3 streamingAnchor = ResolverAncoraDeStreaming(camera);
                 using (BuildDesiredSetMarker.Auto())
                     BuildDesiredSet(streamingAnchor);
+                initialStreamingViewResolved = true;
                 nextRefresh = Time.unscaledTime + refreshInterval;
             }
 
@@ -456,11 +539,23 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
 
                 Terrain terrain = null;
                 long generationWorkTicks = 0;
+                long tileStartedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
                 yield return CreateLocalTileIncremental(
                     coordinate,
                     createdTerrain => terrain = createdTerrain,
                     workTicks => generationWorkTicks += workTicks);
+                long tileElapsedTicks = System.Diagnostics.Stopwatch.GetTimestamp() - tileStartedTicks;
                 lastGenerationMilliseconds = (int)(generationWorkTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency);
+                if (initialStartupTimingActive)
+                {
+                    initialStartupTilesCreated++;
+                    initialStartupTileElapsedTicks += tileElapsedTicks;
+                    initialStartupTileWorkTicks += generationWorkTicks;
+                    Debug.Log("[GlobalTerrainStreamer][StartupTiming] tile=" + coordinate
+                        + " elapsedMs=" + (tileElapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("F1")
+                        + " workMs=" + lastGenerationMilliseconds
+                        + " success=" + (terrain != null));
+                }
                 if (terrain != null)
                 {
                     loadedTiles.Add(coordinate, terrain);
@@ -476,6 +571,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             {
                 yield return CommitVisibleSet();
                 AtualizarVisibilidadeTerrenoGlobal(camera);
+                RegistrarTempoInicialSePronto();
             }
             else
             {
@@ -487,8 +583,30 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         }
     }
 
+    private void RegistrarTempoInicialSePronto()
+    {
+        if (!initialStartupTimingActive
+            || !InitialWorldSurfaceReady
+            || !InitialNavigationBuildResolved)
+        {
+            return;
+        }
+
+        initialStartupTimingActive = false;
+        double tilesElapsedMs = initialStartupTileElapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        double tilesWorkMs = initialStartupTileWorkTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        Debug.Log("[GlobalTerrainStreamer][StartupTiming] initialReady=true tilesCreated=" + initialStartupTilesCreated
+            + " tilesElapsedMs=" + tilesElapsedMs.ToString("F1")
+            + " tilesWorkMs=" + tilesWorkMs.ToString("F1")
+            + " lastNavMeshMs=" + lastLocalNavMeshBuildMilliseconds
+            + " active=" + ActiveTileCount + "/" + DesiredTileCount
+            + " navMesh=" + (InitialNavigationAvailable ? "available" : "fallback"));
+    }
+
     private void BuildDesiredSet(Vector3 cameraPosition)
     {
+        initialNavigationBuildResolved = false;
+        initialNavigationBuildSucceeded = false;
         desiredTiles.Clear();
         float size = Mathf.Max(100f, world.terrainTileSize);
         int centerX = Mathf.FloorToInt((cameraPosition.x - world.MapMinX) / size);
@@ -535,25 +653,33 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         if (desiredTiles.Count == 0)
         {
             if (tileSet == committedNavMeshTileSet)
+            {
+                initialNavigationBuildResolved = true;
                 yield break;
+            }
 
             ClearLocalNavMesh();
             globalTerrain.enabled = true;
             RemoveStaleTiles();
             committedNavMeshTileSet = tileSet;
             failedNavMeshTileSet = null;
+            initialNavigationBuildResolved = true;
             yield break;
         }
 
         if (tileSet == committedNavMeshTileSet && localNavMeshSurface != null
             && localNavMeshSurface.navMeshData != null)
         {
+            initialNavigationBuildResolved = true;
+            initialNavigationBuildSucceeded = true;
             yield break;
         }
 
         if (tileSet == failedNavMeshTileSet)
         {
             globalTerrain.enabled = true;
+            initialNavigationBuildResolved = true;
+            initialNavigationBuildSucceeded = false;
             yield break;
         }
 
@@ -582,6 +708,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
         {
             committedNavMeshTileSet = tileSet;
             failedNavMeshTileSet = null;
+            initialNavigationBuildResolved = true;
+            initialNavigationBuildSucceeded = true;
             AtualizarVisibilidadeTerrenoGlobal(cameraOverride != null ? cameraOverride : Camera.main);
         }
         else
@@ -590,6 +718,8 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
             HideDesiredTerrainRenderers();
             failedNavMeshTileSet = tileSet;
             globalTerrain.enabled = true;
+            initialNavigationBuildResolved = true;
+            initialNavigationBuildSucceeded = false;
         }
 
         RemoveStaleTiles();
@@ -1079,7 +1209,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                     data.SetHeightsDelayLOD(0, rowStart, heightRows);
                 addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
 
-                if (budgetStopwatch.Elapsed.TotalMilliseconds >= MaxBudgetMsPerFrame)
+                if (budgetStopwatch.Elapsed.TotalMilliseconds >= CurrentWorkBudgetMsPerFrame)
                 {
                     budgetStopwatch.Restart();
                     yield return null;
@@ -1127,7 +1257,7 @@ public sealed class GlobalTerrainStreamer : MonoBehaviour
                     data.SetAlphamaps(0, rowStart, alphaRows);
                 addWorkTicks(System.Diagnostics.Stopwatch.GetTimestamp() - started);
 
-                if (budgetStopwatch.Elapsed.TotalMilliseconds >= MaxBudgetMsPerFrame)
+                if (budgetStopwatch.Elapsed.TotalMilliseconds >= CurrentWorkBudgetMsPerFrame)
                 {
                     budgetStopwatch.Restart();
                     yield return null;

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -91,6 +92,82 @@ public sealed class CounterattackPlayModeTests
 
         args[3] = null;
         Assert.That((bool)counterMethod.Invoke(launcher, args), Is.False, "Segundo disparo imediato deve respeitar recarga.");
+    }
+
+    [UnityTest]
+    public IEnumerator OperationalCommercialAirportCanReceiveReturningAircraft()
+    {
+        Type aircraftType = ResolveType("ControleAviao");
+        Type airportType = ResolveType("GerenciadorAeroportoComercial");
+        MethodInfo validator = aircraftType.GetMethod(
+            "BasePodeReceberRetorno", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.That(validator, Is.Not.Null);
+
+        GameObject airportObject = new GameObject("TestCommercialReturnAirport");
+        try
+        {
+            airportObject.SetActive(false);
+            Component airport = airportObject.AddComponent(airportType);
+            GameObject runwayObject = new GameObject("TestCommercialRunway");
+            runwayObject.transform.SetParent(airportObject.transform, false);
+            GameObject threshold = new GameObject("TestRunwayThreshold");
+            threshold.transform.SetParent(runwayObject.transform, false);
+            GameObject touchdown = new GameObject("TestRunwayTouchdown");
+            touchdown.transform.SetParent(runwayObject.transform, false);
+            touchdown.transform.localPosition = new Vector3(100f, 0f, 0f);
+
+            object runwayData = airportType.GetField("pista1").GetValue(airport);
+            runwayData.GetType().GetField("pista").SetValue(runwayData, runwayObject.transform);
+            LogAssert.Expect(LogType.Error,
+                "[Comercial] ERRO: prefabAviaoComercial NÃO ESTÁ ASSOCIADO no Inspector! Aviões não irão spawnar.");
+            LogAssert.Expect(LogType.Error,
+                "[Comercial] ERRO: Nenhuma vaga encontrada no patio! Associe o objeto com os creates de vagas no campo 'patio'.");
+            airportObject.SetActive(true);
+            yield return null;
+
+            airportType.GetMethod("PossuiRotaPousoValida").Invoke(airport, null);
+
+            Assert.That((bool)validator.Invoke(null, new object[] { airport }), Is.True,
+                "An active, powered commercial airport with a configured runway must accept returning aircraft.");
+            Set(airport, "semEnergia", true);
+            Assert.That((bool)validator.Invoke(null, new object[] { airport }), Is.False,
+                "A commercial airport without power cannot accept returning aircraft.");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(airportObject);
+        }
+
+        yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator RebelCombatAnimationUsesNestedControllerAndUpdatesWalkBlend()
+    {
+        RuntimeAnimatorController controller = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+            "Assets/Library/Prefabs/IA rebelde/Animacoes/1920s_Gangster.controller");
+        Assert.That(controller, Is.Not.Null, "The rebel character controller must be imported.");
+
+        GameObject root = Track(new GameObject("TestRebelCharacterRoot"));
+        root.AddComponent<Animator>(); // Mirrors the empty required root Animator in the character prefab.
+        GameObject visual = Track(new GameObject("TestRebelCharacterVisual"));
+        visual.transform.SetParent(root.transform, false);
+        Animator visualAnimator = visual.AddComponent<Animator>();
+        visualAnimator.runtimeAnimatorController = controller;
+        Assert.That(Array.Exists(visualAnimator.parameters,
+            parameter => parameter.name == "velocidade" && parameter.type == AnimatorControllerParameterType.Float), Is.True);
+        Component driver = Add(root, "AnimacaoCombatenteRebelde");
+
+        yield return null;
+
+        FieldInfo animatorField = driver.GetType().GetField("animator", Members);
+        Assert.That(animatorField.GetValue(driver), Is.SameAs(visualAnimator),
+            "The rebel animation driver must skip the empty root Animator and bind to the child model controller.");
+
+        root.transform.position += Vector3.right;
+        driver.GetType().GetMethod("Update", Members).Invoke(driver, null);
+        Assert.That(visualAnimator.GetFloat("velocidade"), Is.GreaterThan(0.05f),
+            "Movement of the unit must drive the controller's locomotion blend parameter.");
     }
 
     [UnityTest]
@@ -203,7 +280,11 @@ public sealed class CounterattackPlayModeTests
 
         Vector3 targetPoint = new Vector3(950f, 0f, -420f);
         bool accepted = (bool)Invoke(control, "EmitirMissaoAereaOfensiva", targetPoint, null);
-        Assert.That(accepted, Is.True, "EmitirMissaoAereaOfensiva deve aceitar ataque aéreo por coordenada em voo.");
+        Assert.That(
+            accepted,
+            Is.True,
+            "EmitirMissaoAereaOfensiva deve aceitar ataque aéreo por coordenada em voo. Motivo da recusa: "
+            + ReadProperty(control, "UltimoMotivoRecusaOrdem"));
         Assert.That((bool)ReadProperty(control, "ModoCombateAtivo"), Is.True);
         Assert.That((Vector3)Read(flight, "alvoEstrategico"), Is.EqualTo(targetPoint));
         Assert.That((Vector3)Read(flight, "centroDaPatrulha"), Is.EqualTo(targetPoint));
@@ -227,10 +308,10 @@ public sealed class CounterattackPlayModeTests
 
         GameObject brainGo = Track(new GameObject("TestCounterIA03Brain"));
         brainGo.SetActive(false);
-        Component brain = Add(brainGo, "IA_BrainMaster");
+        Component brain = Add(brainGo, "Hegemonia.AI.BrainMaster.IA_BrainMaster");
         Set(brain, "TeamId", 2);
-        Set(brain, "UsaCronogramaIA03", true);
-        Component strategist = Add(brainGo, "IA03EstrategaNacional");
+        Assert.That((bool)ReadProperty(brain, "UsaCronogramaIA03"), Is.True);
+        Component strategist = Add(brainGo, "Hegemonia.AI.IA03.IA03EstrategaNacional");
         brainGo.SetActive(true);
 
         yield return null;
@@ -238,7 +319,7 @@ public sealed class CounterattackPlayModeTests
 
         object context = ReadProperty(brain, "Context");
         Assert.That(context, Is.Not.Null);
-        object worldState = context.GetType().GetProperty("WorldState", Members)?.GetValue(context, null);
+        object worldState = Read(context, "WorldState");
         Assert.That(worldState, Is.Not.Null);
         Invoke(worldState, "Tick", Time.time, Time.deltaTime);
 

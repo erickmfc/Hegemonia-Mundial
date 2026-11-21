@@ -1,94 +1,104 @@
-[IA03TRACE] source=C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\IA_Traces\ia_partida_2026-10-18_19-55-36_team_1.txt
+[IA03TRACE] source=C:/Users/Mathe/AppData/LocalLow/DefaultCompany/Hegemonia Global\IA_Traces\ia_partida_2026-11-17_20-38-23_team_1.txt
 [IA03TRACE][COUNT] module=IA_BuildDirector; events=15
-[IA03TRACE][COUNT] module=IA_TacticalDirector; events=15
-[IA03TRACE][COUNT] module=IA_WorldState; events=25
-[IA03TRACE][COUNT] module=IA_ProductionDirector; events=17
-[IA03TRACE][COUNT] module=IA_NavalDirector; events=16
-2026-10-18T19:55:38.2090623-03:00 | frame=243840 | t=324.744 | team=2006 | IA_WorldState | MODULE | RUN | cost=0.37ms | budget=0.60ms | next=325.544
-2026-10-18T19:55:38.2297050-03:00 | frame=243848 | t=324.767 | team=2002 | IA_WorldState | MODULE | RUN | cost=0.10ms | budget=0.60ms | next=325.567
-2026-10-18T19:55:38.2307050-03:00 | frame=243848 | t=324.767 | team=2013 | IA_WorldState | MODULE | RUN | cost=0.06ms | budget=0.60ms | next=325.567
-2026-10-18T19:55:38.2601195-03:00 | frame=243870 | t=324.797 | team=2009 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=325.597
-2026-10-18T19:55:38.2900782-03:00 | frame=243892 | t=324.827 | team=2005 | IA_WorldState | MODULE | RUN | cost=0.09ms | budget=0.60ms | next=325.627
-2026-10-18T19:55:38.3198784-03:00 | frame=243912 | t=324.857 | team=2001 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=325.657
-2026-10-18T19:55:38.3198784-03:00 | frame=243912 | t=324.857 | team=2012 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=325.657
-2026-10-18T19:55:38.3633827-03:00 | frame=243924 | t=324.876 | team=2006 | IA_BuildDirector | MODULE | RUN | cost=24.02ms | budget=0.45ms | next=326.076
-2026-10-18T19:55:38.3654077-03:00 | frame=243925 | t=324.902 | team=2008 | IA_WorldState | MODULE | RUN | cost=0.09ms | budget=0.60ms | next=325.702
-2026-10-18T19:55:38.3953391-03:00 | frame=243927 | t=324.908 | team=2002 | IA_BuildDirector | MODULE | RUN | cost=24.37ms | budget=0.45ms | next=326.108
-2026-10-18T19:55:38.3982564-03:00 | frame=243928 | t=324.935 | team=2004 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=325.735
-2026-10-18T19:55:38.3982564-03:00 | frame=243928 | t=324.935 | team=2015 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=325.735
-2026-10-18T19:55:39.4431306-03:00 | frame=243932 | t=325.337 | team=2006 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=325.987
-2026-10-18T19:55:39.4547252-03:00 | frame=243934 | t=325.369 | team=2006 | IA_TacticalDirector | MODULE | RUN | cost=0.28ms | budget=0.45ms | next=326.369
-2026-10-18T19:55:39.4603478-03:00 | frame=243935 | t=325.375 | team=2006 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.4659271-03:00 | frame=243936 | t=325.380 | team=2002 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.030
-2026-10-18T19:55:39.4904035-03:00 | frame=243936 | t=325.380 | team=2013 | IA_BuildDirector | MODULE | RUN | cost=24.73ms | budget=0.45ms | next=326.580
-2026-10-18T19:55:39.5204599-03:00 | frame=243937 | t=325.411 | team=2009 | IA_BuildDirector | MODULE | RUN | cost=24.21ms | budget=0.45ms | next=326.611
-2026-10-18T19:55:39.5224672-03:00 | frame=243938 | t=325.439 | team=2002 | IA_TacticalDirector | MODULE | RUN | cost=0.26ms | budget=0.45ms | next=326.439
-2026-10-18T19:55:39.5473716-03:00 | frame=243938 | t=325.439 | team=2003 | IA_BuildDirector | MODULE | RUN | cost=24.66ms | budget=0.45ms | next=326.639
-2026-10-18T19:55:39.5498999-03:00 | frame=243939 | t=325.466 | team=2002 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.5498999-03:00 | frame=243939 | t=325.466 | team=2003 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.116
-2026-10-18T19:55:39.5509140-03:00 | frame=243939 | t=325.466 | team=2009 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=326.116
-2026-10-18T19:55:39.5519124-03:00 | frame=243939 | t=325.466 | team=2013 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=326.116
-2026-10-18T19:55:39.5790878-03:00 | frame=243940 | t=325.470 | team=2001 | IA_BuildDirector | MODULE | RUN | cost=24.65ms | budget=0.45ms | next=326.670
-2026-10-18T19:55:39.5820727-03:00 | frame=243941 | t=325.498 | team=2001 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.148
-2026-10-18T19:55:39.6064434-03:00 | frame=243941 | t=325.498 | team=2005 | IA_BuildDirector | MODULE | RUN | cost=24.26ms | budget=0.45ms | next=326.698
-2026-10-18T19:55:39.6089691-03:00 | frame=243942 | t=325.524 | team=2003 | IA_TacticalDirector | MODULE | RUN | cost=0.25ms | budget=0.45ms | next=326.524
-2026-10-18T19:55:39.6089691-03:00 | frame=243942 | t=325.524 | team=2005 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.174
-2026-10-18T19:55:39.6331802-03:00 | frame=243942 | t=325.524 | team=2007 | IA_BuildDirector | MODULE | RUN | cost=24.30ms | budget=0.45ms | next=326.724
-2026-10-18T19:55:39.6341697-03:00 | frame=243943 | t=325.551 | team=2001 | IA_TacticalDirector | MODULE | RUN | cost=0.27ms | budget=0.45ms | next=326.551
-2026-10-18T19:55:39.6358470-03:00 | frame=243943 | t=325.551 | team=2003 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.6358470-03:00 | frame=243943 | t=325.551 | team=2006 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.351
-2026-10-18T19:55:39.6358470-03:00 | frame=243943 | t=325.551 | team=2007 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.201
-2026-10-18T19:55:39.6383830-03:00 | frame=243944 | t=325.554 | team=2001 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.6643516-03:00 | frame=243944 | t=325.554 | team=2004 | IA_BuildDirector | MODULE | RUN | cost=24.61ms | budget=0.45ms | next=326.754
-2026-10-18T19:55:39.6663873-03:00 | frame=243945 | t=325.582 | team=2002 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.382
-2026-10-18T19:55:39.6663873-03:00 | frame=243945 | t=325.582 | team=2004 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.232
-2026-10-18T19:55:39.6663873-03:00 | frame=243945 | t=325.582 | team=2005 | IA_TacticalDirector | MODULE | RUN | cost=0.27ms | budget=0.45ms | next=326.582
-2026-10-18T19:55:39.6663873-03:00 | frame=243945 | t=325.582 | team=2009 | IA_TacticalDirector | MODULE | RUN | cost=0.26ms | budget=0.45ms | next=326.582
-2026-10-18T19:55:39.6913198-03:00 | frame=243945 | t=325.582 | team=2010 | IA_BuildDirector | MODULE | RUN | cost=24.20ms | budget=0.45ms | next=326.782
-2026-10-18T19:55:39.6923074-03:00 | frame=243946 | t=325.609 | team=2003 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=326.409
-2026-10-18T19:55:39.6923074-03:00 | frame=243946 | t=325.609 | team=2005 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.6943477-03:00 | frame=243946 | t=325.609 | team=2007 | IA_TacticalDirector | MODULE | RUN | cost=0.24ms | budget=0.45ms | next=326.609
-2026-10-18T19:55:39.6943477-03:00 | frame=243946 | t=325.609 | team=2009 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.6943477-03:00 | frame=243946 | t=325.609 | team=2010 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.259
-2026-10-18T19:55:39.6943477-03:00 | frame=243946 | t=325.609 | team=2013 | IA_TacticalDirector | MODULE | RUN | cost=0.25ms | budget=0.45ms | next=326.609
-2026-10-18T19:55:39.6973602-03:00 | frame=243947 | t=325.613 | team=2004 | IA_TacticalDirector | MODULE | RUN | cost=0.29ms | budget=0.45ms | next=326.613
-2026-10-18T19:55:39.6973602-03:00 | frame=243947 | t=325.613 | team=2007 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.7218201-03:00 | frame=243947 | t=325.613 | team=2008 | IA_BuildDirector | MODULE | RUN | cost=24.35ms | budget=0.45ms | next=326.813
-2026-10-18T19:55:39.7243367-03:00 | frame=243948 | t=325.640 | team=2004 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.7248412-03:00 | frame=243948 | t=325.640 | team=2008 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.290
-2026-10-18T19:55:39.7485837-03:00 | frame=243948 | t=325.640 | team=2011 | IA_BuildDirector | MODULE | RUN | cost=24.29ms | budget=0.45ms | next=326.840
-2026-10-18T19:55:39.7511111-03:00 | frame=243949 | t=325.667 | team=2001 | IA_WorldState | MODULE | RUN | cost=0.02ms | budget=0.60ms | next=326.467
-2026-10-18T19:55:39.7511111-03:00 | frame=243949 | t=325.667 | team=2005 | IA_WorldState | MODULE | RUN | cost=0.02ms | budget=0.60ms | next=326.467
-2026-10-18T19:55:39.7521251-03:00 | frame=243949 | t=325.667 | team=2010 | IA_TacticalDirector | MODULE | RUN | cost=0.28ms | budget=0.45ms | next=326.667
-2026-10-18T19:55:39.7521251-03:00 | frame=243949 | t=325.667 | team=2011 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.317
-2026-10-18T19:55:39.7521251-03:00 | frame=243949 | t=325.667 | team=2013 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.7541393-03:00 | frame=243950 | t=325.670 | team=2007 | IA_WorldState | MODULE | RUN | cost=0.09ms | budget=0.60ms | next=326.470
-2026-10-18T19:55:39.7541393-03:00 | frame=243950 | t=325.670 | team=2008 | IA_TacticalDirector | MODULE | RUN | cost=0.31ms | budget=0.45ms | next=326.670
-2026-10-18T19:55:39.7552166-03:00 | frame=243950 | t=325.670 | team=2009 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.470
-2026-10-18T19:55:39.7552166-03:00 | frame=243950 | t=325.670 | team=2010 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.7567279-03:00 | frame=243951 | t=325.673 | team=2008 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.7577376-03:00 | frame=243951 | t=325.673 | team=2011 | IA_TacticalDirector | MODULE | RUN | cost=0.29ms | budget=0.45ms | next=326.673
-2026-10-18T19:55:39.7830360-03:00 | frame=243951 | t=325.673 | team=2012 | IA_BuildDirector | MODULE | RUN | cost=24.60ms | budget=0.45ms | next=326.873
-2026-10-18T19:55:39.7855478-03:00 | frame=243952 | t=325.701 | team=2011 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.7865702-03:00 | frame=243952 | t=325.701 | team=2012 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.351
-2026-10-18T19:55:39.8107639-03:00 | frame=243952 | t=325.701 | team=2014 | IA_BuildDirector | MODULE | RUN | cost=24.45ms | budget=0.45ms | next=326.901
-2026-10-18T19:55:39.8158223-03:00 | frame=243953 | t=325.729 | team=2010 | IA_WorldState | MODULE | RUN | cost=0.09ms | budget=0.60ms | next=326.529
-2026-10-18T19:55:39.8158223-03:00 | frame=243953 | t=325.729 | team=2013 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.529
-2026-10-18T19:55:39.8158223-03:00 | frame=243953 | t=325.729 | team=2014 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.379
-2026-10-18T19:55:39.8178289-03:00 | frame=243954 | t=325.734 | team=2008 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.534
-2026-10-18T19:55:39.8193495-03:00 | frame=243954 | t=325.734 | team=2012 | IA_TacticalDirector | MODULE | RUN | cost=0.28ms | budget=0.45ms | next=326.734
-2026-10-18T19:55:39.8208783-03:00 | frame=243955 | t=325.737 | team=2004 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.537
-2026-10-18T19:55:39.8208783-03:00 | frame=243955 | t=325.737 | team=2011 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=326.537
-2026-10-18T19:55:39.8208783-03:00 | frame=243955 | t=325.737 | team=2012 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.8218926-03:00 | frame=243955 | t=325.737 | team=2014 | IA_TacticalDirector | MODULE | RUN | cost=0.23ms | budget=0.45ms | next=326.737
-2026-10-18T19:55:39.8466409-03:00 | frame=243955 | t=325.737 | team=2015 | IA_BuildDirector | MODULE | RUN | cost=24.38ms | budget=0.45ms | next=326.937
-2026-10-18T19:55:39.8501513-03:00 | frame=243956 | t=325.764 | team=2014 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.8511506-03:00 | frame=243956 | t=325.764 | team=2015 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=326.414
-2026-10-18T19:55:39.8561674-03:00 | frame=243958 | t=325.772 | team=2012 | IA_WorldState | MODULE | RUN | cost=0.01ms | budget=0.60ms | next=326.572
-2026-10-18T19:55:39.8571811-03:00 | frame=243958 | t=325.772 | team=2015 | IA_TacticalDirector | MODULE | RUN | cost=0.29ms | budget=0.45ms | next=326.772
-2026-10-18T19:55:39.8592158-03:00 | frame=243959 | t=325.774 | team=2014 | IA_WorldState | MODULE | RUN | cost=0.09ms | budget=0.60ms | next=326.574
-2026-10-18T19:55:39.8592158-03:00 | frame=243959 | t=325.774 | team=2015 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:39.8698034-03:00 | frame=243962 | t=325.784 | team=2015 | IA_WorldState | MODULE | RUN | cost=0.02ms | budget=0.60ms | next=326.584
-2026-10-18T19:55:40.0709869-03:00 | frame=244077 | t=325.987 | team=2006 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=326.637
-2026-10-18T19:55:40.0853054-03:00 | frame=244085 | t=326.001 | team=2006 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
-2026-10-18T19:55:40.1251160-03:00 | frame=244094 | t=326.041 | team=2002 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=326.691
+[IA03TRACE][COUNT] module=IA_TacticalDirector; events=16
+[IA03TRACE][COUNT] module=IA_WorldState; events=32
+[IA03TRACE][COUNT] module=IA_ProductionDirector; events=15
+[IA03TRACE][COUNT] module=IA_NavalDirector; events=20
+2026-11-17T20:38:23.8043978-03:00 | frame=259261 | t=395.072 | team=1 | IA_WorldState | MODULE | RUN | cost=0.41ms | budget=0.60ms | next=395.872
+2026-11-17T20:38:23.8043978-03:00 | frame=259261 | t=395.072 | team=3 | IA_WorldState | MODULE | RUN | cost=0.04ms | budget=0.60ms | next=395.872
+2026-11-17T20:38:24.6677888-03:00 | frame=259265 | t=395.172 | team=2005 | IA_WorldState | MODULE | RUN | cost=0.42ms | budget=0.60ms | next=395.972
+2026-11-17T20:38:24.6911364-03:00 | frame=259277 | t=395.196 | team=2001 | IA_WorldState | MODULE | RUN | cost=0.11ms | budget=0.60ms | next=395.996
+2026-11-17T20:38:24.6911364-03:00 | frame=259277 | t=395.196 | team=2012 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=395.996
+2026-11-17T20:38:24.7213619-03:00 | frame=259294 | t=395.225 | team=2008 | IA_WorldState | MODULE | RUN | cost=0.11ms | budget=0.60ms | next=396.025
+2026-11-17T20:38:24.7506373-03:00 | frame=259309 | t=395.256 | team=2004 | IA_WorldState | MODULE | RUN | cost=0.12ms | budget=0.60ms | next=396.056
+2026-11-17T20:38:24.7506373-03:00 | frame=259309 | t=395.256 | team=2015 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=396.056
+2026-11-17T20:38:24.7818557-03:00 | frame=259325 | t=395.286 | team=2011 | IA_WorldState | MODULE | RUN | cost=0.12ms | budget=0.60ms | next=396.086
+2026-11-17T20:38:24.8379367-03:00 | frame=259331 | t=395.313 | team=2005 | IA_BuildDirector | MODULE | RUN | cost=29.25ms | budget=0.45ms | next=396.513
+2026-11-17T20:38:24.8411655-03:00 | frame=259332 | t=395.345 | team=2003 | IA_WorldState | MODULE | RUN | cost=0.11ms | budget=0.60ms | next=396.145
+2026-11-17T20:38:24.8411655-03:00 | frame=259332 | t=395.345 | team=2005 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=397.195
+2026-11-17T20:38:24.8411655-03:00 | frame=259332 | t=395.345 | team=2007 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=396.145
+2026-11-17T20:38:24.8421657-03:00 | frame=259332 | t=395.345 | team=2014 | IA_WorldState | MODULE | RUN | cost=0.08ms | budget=0.60ms | next=396.145
+2026-11-17T20:38:24.8829282-03:00 | frame=259339 | t=395.365 | team=2001 | IA_BuildDirector | MODULE | RUN | cost=22.21ms | budget=0.45ms | next=396.565
+2026-11-17T20:38:24.8849359-03:00 | frame=259340 | t=395.390 | team=2001 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.240
+2026-11-17T20:38:24.8859366-03:00 | frame=259340 | t=395.390 | team=2010 | IA_WorldState | MODULE | RUN | cost=0.14ms | budget=0.60ms | next=396.190
+2026-11-17T20:38:24.9221569-03:00 | frame=259343 | t=395.399 | team=2008 | IA_BuildDirector | MODULE | RUN | cost=26.69ms | budget=0.45ms | next=396.599
+2026-11-17T20:38:24.9251603-03:00 | frame=259344 | t=395.430 | team=2005 | IA_TacticalDirector | MODULE | RUN | cost=0.55ms | budget=0.45ms | next=396.430
+2026-11-17T20:38:24.9266755-03:00 | frame=259344 | t=395.430 | team=2006 | IA_WorldState | MODULE | RUN | cost=0.12ms | budget=0.60ms | next=396.230
+2026-11-17T20:38:24.9266755-03:00 | frame=259344 | t=395.430 | team=2008 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.280
+2026-11-17T20:38:24.9296879-03:00 | frame=259345 | t=395.433 | team=2001 | IA_TacticalDirector | MODULE | RUN | cost=0.58ms | budget=0.45ms | next=396.433
+2026-11-17T20:38:24.9296879-03:00 | frame=259345 | t=395.433 | team=2005 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:24.9565405-03:00 | frame=259345 | t=395.433 | team=2012 | IA_BuildDirector | MODULE | RUN | cost=25.10ms | budget=0.45ms | next=396.633
+2026-11-17T20:38:24.9585487-03:00 | frame=259346 | t=395.463 | team=2001 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:24.9585487-03:00 | frame=259346 | t=395.463 | team=2002 | IA_WorldState | MODULE | RUN | cost=0.11ms | budget=0.60ms | next=396.263
+2026-11-17T20:38:24.9600646-03:00 | frame=259346 | t=395.463 | team=2008 | IA_TacticalDirector | MODULE | RUN | cost=0.43ms | budget=0.45ms | next=396.463
+2026-11-17T20:38:24.9600646-03:00 | frame=259346 | t=395.463 | team=2012 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.313
+2026-11-17T20:38:24.9600646-03:00 | frame=259346 | t=395.463 | team=2013 | IA_WorldState | MODULE | RUN | cost=0.09ms | budget=0.60ms | next=396.263
+2026-11-17T20:38:24.9624118-03:00 | frame=259347 | t=395.466 | team=2009 | IA_WorldState | MODULE | RUN | cost=0.11ms | budget=0.60ms | next=396.266
+2026-11-17T20:38:24.9669515-03:00 | frame=259348 | t=395.470 | team=2012 | IA_TacticalDirector | MODULE | RUN | cost=0.47ms | budget=0.45ms | next=396.470
+2026-11-17T20:38:24.9689427-03:00 | frame=259349 | t=395.473 | team=2012 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:24.9932951-03:00 | frame=259350 | t=395.475 | team=2004 | IA_BuildDirector | MODULE | RUN | cost=22.11ms | budget=0.45ms | next=396.675
+2026-11-17T20:38:24.9958133-03:00 | frame=259351 | t=395.500 | team=2004 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.350
+2026-11-17T20:38:24.9968524-03:00 | frame=259351 | t=395.500 | team=2008 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:25.0028791-03:00 | frame=259353 | t=395.507 | team=2004 | IA_TacticalDirector | MODULE | RUN | cost=0.43ms | budget=0.45ms | next=396.507
+2026-11-17T20:38:25.0254433-03:00 | frame=259353 | t=395.507 | team=2015 | IA_BuildDirector | MODULE | RUN | cost=22.35ms | budget=0.45ms | next=396.707
+2026-11-17T20:38:25.0279472-03:00 | frame=259354 | t=395.532 | team=2004 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:25.0521360-03:00 | frame=259354 | t=395.532 | team=2011 | IA_BuildDirector | MODULE | RUN | cost=22.66ms | budget=0.45ms | next=396.732
+2026-11-17T20:38:25.0561710-03:00 | frame=259355 | t=395.559 | team=2011 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.409
+2026-11-17T20:38:25.0576871-03:00 | frame=259355 | t=395.559 | team=2015 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=397.409
+2026-11-17T20:38:26.1020168-03:00 | frame=259356 | t=395.892 | team=2007 | IA_BuildDirector | MODULE | RUN | cost=22.82ms | budget=0.45ms | next=397.092
+2026-11-17T20:38:26.1075690-03:00 | frame=259357 | t=395.965 | team=2007 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=397.815
+2026-11-17T20:38:26.1131343-03:00 | frame=259358 | t=395.969 | team=2011 | IA_TacticalDirector | MODULE | RUN | cost=0.45ms | budget=0.45ms | next=396.969
+2026-11-17T20:38:26.1141250-03:00 | frame=259358 | t=395.969 | team=2015 | IA_TacticalDirector | MODULE | RUN | cost=0.41ms | budget=0.45ms | next=396.969
+2026-11-17T20:38:26.1380634-03:00 | frame=259359 | t=395.974 | team=2003 | IA_BuildDirector | MODULE | RUN | cost=22.31ms | budget=0.45ms | next=397.174
+2026-11-17T20:38:26.1395683-03:00 | frame=259360 | t=395.999 | team=2001 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=396.799
+2026-11-17T20:38:26.1410889-03:00 | frame=259360 | t=395.999 | team=2003 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.849
+2026-11-17T20:38:26.1410889-03:00 | frame=259360 | t=395.999 | team=2005 | IA_WorldState | MODULE | RUN | cost=0.04ms | budget=0.60ms | next=396.799
+2026-11-17T20:38:26.1421017-03:00 | frame=259360 | t=395.999 | team=2007 | IA_TacticalDirector | MODULE | RUN | cost=0.43ms | budget=0.45ms | next=396.999
+2026-11-17T20:38:26.1426065-03:00 | frame=259360 | t=395.999 | team=2011 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.1426065-03:00 | frame=259360 | t=395.999 | team=2012 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=396.799
+2026-11-17T20:38:26.1426065-03:00 | frame=259360 | t=395.999 | team=2015 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.1471376-03:00 | frame=259361 | t=396.005 | team=2007 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.1714616-03:00 | frame=259361 | t=396.005 | team=2014 | IA_BuildDirector | MODULE | RUN | cost=22.29ms | budget=0.45ms | next=397.205
+2026-11-17T20:38:26.1744968-03:00 | frame=259362 | t=396.033 | team=2003 | IA_TacticalDirector | MODULE | RUN | cost=0.44ms | budget=0.45ms | next=397.033
+2026-11-17T20:38:26.1744968-03:00 | frame=259362 | t=396.033 | team=2008 | IA_WorldState | MODULE | RUN | cost=0.04ms | budget=0.60ms | next=396.833
+2026-11-17T20:38:26.1760110-03:00 | frame=259362 | t=396.033 | team=2014 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=397.883
+2026-11-17T20:38:26.1785278-03:00 | frame=259363 | t=396.037 | team=2003 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2045346-03:00 | frame=259364 | t=396.040 | team=2010 | IA_BuildDirector | MODULE | RUN | cost=22.66ms | budget=0.45ms | next=397.240
+2026-11-17T20:38:26.2287554-03:00 | frame=259365 | t=396.065 | team=2002 | IA_BuildDirector | MODULE | RUN | cost=21.94ms | budget=0.45ms | next=397.265
+2026-11-17T20:38:26.2307459-03:00 | frame=259366 | t=396.090 | team=2001 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2307459-03:00 | frame=259366 | t=396.090 | team=2002 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.940
+2026-11-17T20:38:26.2307459-03:00 | frame=259366 | t=396.090 | team=2004 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=396.890
+2026-11-17T20:38:26.2307459-03:00 | frame=259366 | t=396.090 | team=2005 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2307459-03:00 | frame=259366 | t=396.090 | team=2010 | IA_ProductionDirector | MODULE | RUN | cost=0.00ms | budget=1.50ms | next=397.940
+2026-11-17T20:38:26.2327740-03:00 | frame=259366 | t=396.090 | team=2014 | IA_TacticalDirector | MODULE | RUN | cost=0.46ms | budget=0.45ms | next=397.090
+2026-11-17T20:38:26.2327740-03:00 | frame=259366 | t=396.090 | team=2015 | IA_WorldState | MODULE | RUN | cost=0.04ms | budget=0.60ms | next=396.890
+2026-11-17T20:38:26.2585358-03:00 | frame=259367 | t=396.093 | team=2006 | IA_BuildDirector | MODULE | RUN | cost=22.44ms | budget=0.45ms | next=397.293
+2026-11-17T20:38:26.2620411-03:00 | frame=259368 | t=396.120 | team=2002 | IA_TacticalDirector | MODULE | RUN | cost=0.44ms | budget=0.45ms | next=397.120
+2026-11-17T20:38:26.2625527-03:00 | frame=259368 | t=396.120 | team=2006 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=397.970
+2026-11-17T20:38:26.2625527-03:00 | frame=259368 | t=396.120 | team=2012 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2635711-03:00 | frame=259368 | t=396.120 | team=2014 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2675988-03:00 | frame=259369 | t=396.125 | team=2002 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2675988-03:00 | frame=259369 | t=396.125 | team=2008 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2686013-03:00 | frame=259369 | t=396.125 | team=2010 | IA_TacticalDirector | MODULE | RUN | cost=0.45ms | budget=0.45ms | next=397.125
+2026-11-17T20:38:26.2731293-03:00 | frame=259370 | t=396.131 | team=2006 | IA_TacticalDirector | MODULE | RUN | cost=0.49ms | budget=0.45ms | next=397.131
+2026-11-17T20:38:26.2731293-03:00 | frame=259370 | t=396.131 | team=2010 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2731293-03:00 | frame=259370 | t=396.131 | team=2011 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=396.931
+2026-11-17T20:38:26.2756495-03:00 | frame=259371 | t=396.134 | team=2006 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.2989306-03:00 | frame=259371 | t=396.134 | team=2009 | IA_BuildDirector | MODULE | RUN | cost=23.01ms | budget=0.45ms | next=397.334
+2026-11-17T20:38:26.3019541-03:00 | frame=259372 | t=396.160 | team=2003 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=396.960
+2026-11-17T20:38:26.3019541-03:00 | frame=259372 | t=396.160 | team=2004 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.3019541-03:00 | frame=259372 | t=396.160 | team=2007 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=396.960
+2026-11-17T20:38:26.3024777-03:00 | frame=259372 | t=396.160 | team=2009 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=398.010
+2026-11-17T20:38:26.3247170-03:00 | frame=259372 | t=396.160 | team=2013 | IA_BuildDirector | MODULE | RUN | cost=22.22ms | budget=0.45ms | next=397.360
+2026-11-17T20:38:26.3268686-03:00 | frame=259373 | t=396.185 | team=2013 | IA_ProductionDirector | MODULE | RUN | cost=0.01ms | budget=1.50ms | next=398.035
+2026-11-17T20:38:26.3268686-03:00 | frame=259373 | t=396.185 | team=2014 | IA_WorldState | MODULE | RUN | cost=0.06ms | budget=0.60ms | next=396.985
+2026-11-17T20:38:26.3294076-03:00 | frame=259374 | t=396.188 | team=2009 | IA_TacticalDirector | MODULE | RUN | cost=0.46ms | budget=0.45ms | next=397.188
+2026-11-17T20:38:26.3314191-03:00 | frame=259375 | t=396.190 | team=2009 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.3329257-03:00 | frame=259375 | t=396.190 | team=2010 | IA_WorldState | MODULE | RUN | cost=0.07ms | budget=0.60ms | next=396.990
+2026-11-17T20:38:26.3344386-03:00 | frame=259375 | t=396.190 | team=2013 | IA_TacticalDirector | MODULE | RUN | cost=0.43ms | budget=0.45ms | next=397.190
+2026-11-17T20:38:26.3364640-03:00 | frame=259376 | t=396.195 | team=2013 | IA_NavalDirector | MODULE | SKIP_HEAVY | cost=0.00ms | budget=0.35ms | heavy token indisponivel
+2026-11-17T20:38:26.3719854-03:00 | frame=259394 | t=396.231 | team=2006 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=397.031
+2026-11-17T20:38:26.4052105-03:00 | frame=259412 | t=396.264 | team=2002 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=397.064
+2026-11-17T20:38:26.4052105-03:00 | frame=259412 | t=396.264 | team=2013 | IA_WorldState | MODULE | RUN | cost=0.04ms | budget=0.60ms | next=397.064
+2026-11-17T20:38:26.4087307-03:00 | frame=259414 | t=396.267 | team=2009 | IA_WorldState | MODULE | RUN | cost=0.05ms | budget=0.60ms | next=397.067
+2026-11-17T20:38:26.6050540-03:00 | frame=259518 | t=396.464 | team=2008 | IA_TacticalDirector | MODULE | RUN | cost=0.44ms | budget=0.45ms | next=397.464

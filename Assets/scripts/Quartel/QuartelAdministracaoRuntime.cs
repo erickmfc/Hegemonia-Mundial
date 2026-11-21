@@ -112,7 +112,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
     [Min(1)] public int recrutamentoPorDia = 40;
     [Min(1f)] public float tempoFormacaoPadraoSegundos = 10f;
     [Min(0)] public int custoFolhaPorMilitarDia = 1;
-    [Min(1)] public int periodoFolhaDias = 15;
+    [Min(1)] public int periodoFolhaDias = 7;
     public bool cobrarFolhaDoCaixa = true;
     public bool retornoAutomaticoAposAtividade = true;
     [Min(1f)] public float tempoOciosoParaRetornoSegundos = 8f;
@@ -697,7 +697,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
     {
         if (ultimoDiaFolha == dia && ultimoDiaFolha >= 0) return;
         ultimoDiaFolha = dia;
-        periodoFolhaDias = Mathf.Max(1, periodoFolhaDias);
+        periodoFolhaDias = Mathf.Clamp(periodoFolhaDias, 1, 7);
         proximoDiaFolha = dia + periodoFolhaDias;
 
         int pessoal = Mathf.Max(0, pessoalAdministrado + ContarRecrutasEmFormacao());
@@ -722,7 +722,11 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
         }
         else if (GerenciadorRecursos.Instancia != null)
         {
-            ultimoPagamentoRealizado = GerenciadorRecursos.Instancia.TentarGastarDinheiro(custoFolhaCalculado);
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            DadosPaisGoverno pais = ObterPais();
+            ultimoPagamentoRealizado = governo != null && pais != null
+                ? governo.TentarPagar(pais.teamId, custoFolhaCalculado)
+                : GerenciadorRecursos.Instancia.TentarGastarDinheiro(custoFolhaCalculado);
         }
         else
         {
@@ -1273,7 +1277,7 @@ public sealed class QuartelAdministracaoRuntime : MonoBehaviour
             folhaPagaTotal = folhaPagaTotal,
             folhaPendente = folhaPendente,
             ultimoPagamentoRealizado = ultimoPagamentoRealizado,
-            periodoFolhaDias = Mathf.Max(1, periodoFolhaDias),
+            periodoFolhaDias = Mathf.Clamp(periodoFolhaDias, 1, 7),
             proximoDiaFolha = proximoDiaFolha,
             diasFolhaPendentes = diasFolhaPendentes,
             unidadesNoRaio = unidadesNoRaio,

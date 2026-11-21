@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -140,6 +141,25 @@ public class GestorDeConsumo : MonoBehaviour
         float multiplicador = perfil != null ? perfil.MultiplicadorManutencao : 1f;
         totalConsumoDinheiro = (long)System.Math.Round(total * multiplicador, System.MidpointRounding.AwayFromZero);
         if (totalConsumoDinheiro > 0L)
-            banco.RemoverRecurso("Dinheiro", totalConsumoDinheiro);
+        {
+            SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+            if (governo != null)
+            {
+                DadosPaisGoverno pais = governo.ObterPais(teamJogador);
+                long disponivel = pais != null ? governo.ObterSaldoDisponivelParaOperacao(teamJogador) : 0L;
+                long pago = Math.Min(Math.Max(0L, disponivel), totalConsumoDinheiro);
+                if (pago > 0L)
+                    governo.TentarPagar(teamJogador, pago, "Manutenção de unidades", "Gestor de Consumo", TipoLancamentoFinanceiro.DespesaDiaria);
+                if (pago < totalConsumoDinheiro && pais != null)
+                {
+                    pais.divida = (float)Math.Min(float.MaxValue, Math.Max(0f, pais.divida) + (totalConsumoDinheiro - pago));
+                    EconomiaFinanceiraNacional.Registrar(pais, totalConsumoDinheiro - pago,
+                        "Manutenção militar vencida", "Gestor de Consumo", TipoLancamentoFinanceiro.Ajuste,
+                        GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.totalDias : 1);
+                }
+            }
+            else
+                banco.RemoverRecurso("Dinheiro", totalConsumoDinheiro);
+        }
     }
 }

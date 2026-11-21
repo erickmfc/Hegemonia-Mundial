@@ -13,12 +13,13 @@ MonoBehaviour:
   m_Name: GrummanD
   m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
   nomeItem: Grumman D
-  descricao: "Aeronave bimotor turboelice AWACS embarcada em porta-avioes para patrulha e reconhecimento com 55% do alcance do Boeing E-3."
+  descricao: Aeronave bimotor turboelice AWACS embarcada em porta-avioes para patrulha
+    e reconhecimento com 55% do alcance do Boeing E-3.
   icone: {fileID: 21300000, guid: c3d1fe0aff584bf883b310e6f1af7928, type: 3}
   itemId: grumman_d_e2d
-  aliases: "Grumman D, Grumman, E-2D, E2D, Hawkeye, AWACS"
+  aliases: Grumman D, Grumman, E-2D, E2D, Hawkeye, AWACS
   capacidades: 34603154
-  prefabDaUnidade: {fileID: -6689036041284674117, guid: 5a63687027b0d354c9f8f1339c63e148, type: 3}
+  prefabDaUnidade: {fileID: 2391507780642321600, guid: daacae7f27213ea42b9e97f87e83a1e2, type: 3}
   preco: 7500
   precoDefinitivo: 0
   categoria: 2
@@ -28,5 +29,12 @@ MonoBehaviour:
   producaoComidaPorDia: 0
   manutencaoPorDia: 0
   empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
+  receitaProducao:
+    configurada: 0
+    materiaisNecessarios: []
+    energiaNecessaria: 0
+    diasNecessarios: 0
   balanceamento: {fileID: 0}
   scriptsDeComando: []

@@ -1275,7 +1275,7 @@ public class ControleAviao : MonoBehaviour
         }
         if (TryObterAlturaSolo(posicao, out float alturaSolo))
         {
-            return Mathf.Max(altitudeCruzeiro, alturaSolo + altitudeMinima);
+            return Mathf.Max(altitudeCruzeiro, alturaSolo + altitudeCruzeiro);
         }
 
         return altitudeCruzeiro;
@@ -1302,7 +1302,23 @@ public class ControleAviao : MonoBehaviour
         }
 
         // Compartilha a busca de terrenos globalmente entre todas as aeronaves
-        if (s_terrenosAtivosCompartilhados == null || agora >= s_proximaBuscaTerrenosGlobal)
+        bool cacheTerrenosObsoleto = false;
+        if (s_terrenosAtivosCompartilhados != null)
+        {
+            for (int i = 0; i < s_terrenosAtivosCompartilhados.Length; i++)
+            {
+                Terrain terrenoEmCache = s_terrenosAtivosCompartilhados[i];
+                if (terrenoEmCache == null || !terrenoEmCache.isActiveAndEnabled)
+                {
+                    cacheTerrenosObsoleto = true;
+                    break;
+                }
+            }
+        }
+
+        if (s_terrenosAtivosCompartilhados == null
+            || agora >= s_proximaBuscaTerrenosGlobal
+            || cacheTerrenosObsoleto)
         {
             s_terrenosAtivosCompartilhados = Terrain.activeTerrains;
             s_proximaBuscaTerrenosGlobal = agora + 2.0f;
@@ -3551,9 +3567,19 @@ public class ControleAviao : MonoBehaviour
 
     private static bool BasePodeReceberRetorno(GerenciadorAeroporto baseCandidata)
     {
-        if (baseCandidata == null || baseCandidata is GerenciadorAeroportoComercial)
+        if (baseCandidata == null)
         {
             return false;
+        }
+
+        // Aeroportos comerciais usam suas próprias pistas e waypoints; a rota
+        // genérica do GerenciadorAeroporto não é preenchida para esse subtipo.
+        GerenciadorAeroportoComercial comercial = baseCandidata as GerenciadorAeroportoComercial;
+        if (comercial != null)
+        {
+            return comercial.isActiveAndEnabled
+                && !comercial.semEnergia
+                && comercial.PossuiRotaPousoValida();
         }
 
         GerenciadorPortaAvioes portaAvioes = baseCandidata as GerenciadorPortaAvioes;

@@ -28,6 +28,26 @@ public sealed class MenuCombateNaval : MonoBehaviour
     private static Vector2 listaContatosScroll;
     private static string feedback = string.Empty;
     private static float feedbackAte;
+    // Área da janela desenhada no último OnGUI: cliques dentro dela não
+    // atravessam para a seleção/ordens do mundo (evita desmarcar o navio).
+    private static Rect areaJanelaAtual;
+    private static int frameAreaJanela = -1;
+    // Evita que a tecla O feche e reabra o menu no mesmo frame
+    // (Update do menu + Update do ControleUnidade).
+    private static int frameUltimoFechamento = -1;
+    private static bool ultimaOcultacaoPorOutroMenu;
+
+    /// <summary>
+    /// Verdadeiro quando o mouse está sobre a janela de Combate Naval aberta.
+    /// Usado por GestorMenusExclusivos.CliqueBloqueadoPelaUI().
+    /// </summary>
+    public static bool CliqueSobreJanela()
+    {
+        if (host == null || unidade == null || frameAreaJanela < 0) return false;
+        if (frameAreaJanela != Time.frameCount && frameAreaJanela != Time.frameCount - 1) return false;
+        Vector3 mouse = Input.mousePosition;
+        return areaJanelaAtual.Contains(new Vector2(mouse.x, Screen.height - mouse.y));
+    }
 
     private Camera cameraPrincipal;
 
@@ -43,6 +63,8 @@ public sealed class MenuCombateNaval : MonoBehaviour
             Fechar();
             return;
         }
+        // A mesma tecla O acabou de fechar o menu neste frame: não reabrir.
+        if (frameUltimoFechamento == Time.frameCount) return;
 
         Fechar();
         unidade = controle;
@@ -133,8 +155,10 @@ public sealed class MenuCombateNaval : MonoBehaviour
     private static void Fechar()
     {
         aguardandoPonto = false;
+        frameAreaJanela = -1;
         if (host != null)
         {
+            frameUltimoFechamento = Time.frameCount;
             MenuCombateNaval antigo = host;
             host = null;
             unidade = null;
@@ -145,7 +169,18 @@ public sealed class MenuCombateNaval : MonoBehaviour
 
     private void Update()
     {
-        if (host != this || unidade == null || !unidade.selecionado)
+        // Instância antiga (o menu já foi reaberto em outro navio): some sem
+        // mexer no menu ativo.
+        if (host != this)
+        {
+            if (host == null) frameAreaJanela = -1;
+            Destroy(this);
+            return;
+        }
+
+        // O menu só fecha pelo botão "Fechar (O)", pela tecla O/Esc ou se o
+        // navio deixar de existir. Clicar fora ou desmarcar o navio não fecha.
+        if (unidade == null || !unidade.gameObject.activeInHierarchy)
         {
             Fechar();
             return;
@@ -166,8 +201,23 @@ public sealed class MenuCombateNaval : MonoBehaviour
     private void OnGUI()
     {
         if (host != this || unidade == null) return;
-        if (IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto) return;
+        if (JanelaOcultadaPorOutraInterface()) return;
         DesenharControles(unidade, true);
+    }
+
+    // A caixa de seleção do mapa (arrastar com o botão esquerdo) não deve
+    // fazer a janela piscar; demais menus/modos continuam ocultando-a.
+    private static bool JanelaOcultadaPorOutraInterface()
+    {
+        if (!IndicadorUnidadeVisibilidade.ExisteMenuOuModoDeInterfaceAberto)
+        {
+            ultimaOcultacaoPorOutroMenu = false;
+            return false;
+        }
+        InteractionModeSnapshot snapshot = InteractionModeService.CurrentSnapshot();
+        if (snapshot.Owner == InteractionOwner.SelectionBox) return ultimaOcultacaoPorOutroMenu;
+        ultimaOcultacaoPorOutroMenu = true;
+        return true;
     }
 
     private static void DesenharControles(ControleUnidade controle, bool janela)
@@ -178,7 +228,13 @@ public sealed class MenuCombateNaval : MonoBehaviour
         int id = controle.GetInstanceID();
         if (!modos.TryGetValue(id, out Modo modo)) modo = Modo.Automatico;
 
-        if (janela) GUILayout.BeginArea(new Rect(20f, 90f, 360f, Mathf.Min(Screen.height - 110f, 570f)), GUI.skin.window);
+        if (janela)
+        {
+            Rect areaJanela = new Rect(20f, 90f, 360f, Mathf.Min(Screen.height - 110f, 570f));
+            areaJanelaAtual = areaJanela;
+            frameAreaJanela = Time.frameCount;
+            GUILayout.BeginArea(areaJanela, GUI.skin.window);
+        }
         GUILayout.BeginVertical("box");
         GUILayout.BeginHorizontal();
         GUILayout.Label((janela ? "COMBATE NAVAL — " : "COMBATE — ") + controle.name, GUILayout.ExpandWidth(true));
@@ -245,11 +301,7 @@ public sealed class MenuCombateNaval : MonoBehaviour
                 bool podeAtirar = modo == Modo.Manual || valido;
                 GUI.enabled = podeAtirar;
                 if (GUILayout.Button(modo == Modo.Manual ? "Atirar" : "Atirar auto", GUILayout.Width(78f)))
-                {
-                    if (quartel.TentarLancamentoRemoto(controle, contato.id, modo == Modo.Automatico, out string motivo))
-                        SetFeedback("Disparo remoto autorizado contra " + contato.nome + ".");
-                    else SetFeedback(motivo);
-                }
+                    AtirarNoContato(controle, contato, alvo, modo);
                 GUI.enabled = true;
                 if (modo == Modo.Automatico)
                 {
@@ -325,6 +377,64 @@ public sealed class MenuCombateNaval : MonoBehaviour
             GUILayout.EndHorizontal();
         }
         if (!encontrou) GUILayout.Label("Nenhum helicóptero ativo desta equipe foi encontrado.");
+    }
+
+    /// <summary>
+    /// Botão "Atirar"/"Atirar auto" de um contato E-3. Usa primeiro o
+    /// lançamento remoto do Quartel; se o Quartel recusar (navio não
+    /// registrado, contato fora da lista etc.), dispara direto pelos
+    /// lançadores do próprio navio para que a ordem do jogador não se perca.
+    /// </summary>
+    private static void AtirarNoContato(ControleUnidade controle, GerenciadorQuartel.ContatoMilitarQuartelV2 contato, Transform alvo, Modo modo)
+    {
+        if (controle == null || contato == null) return;
+        bool automatico = modo == Modo.Automatico;
+        string motivoQuartel = string.Empty;
+        if (quartel != null && quartel.TentarLancamentoRemoto(controle, contato.id, automatico, out motivoQuartel))
+        {
+            SetFeedback("Disparo remoto autorizado contra " + contato.nome + ".");
+            return;
+        }
+
+        if (!automatico && alvo != null)
+        {
+            // Mesmo caminho do clique em alvo no modo manual (lançador,
+            // submarino, torpedos do casco e torretas).
+            PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(alvo.position, 14f, 4f);
+            EngajarAlvo(controle, alvo);
+            return;
+        }
+
+        Vector3 destino = alvo != null ? alvo.position : contato.posicao;
+        bool disparou = false;
+        string motivoDireto = string.Empty;
+        LancadorNaval lancador = Obter<LancadorNaval>(controle);
+        if (lancador != null)
+            disparou = lancador.TentarLancarCoordenado(destino, alvo, automatico, out motivoDireto);
+        ControleSubmarino sub = Obter<ControleSubmarino>(controle);
+        if (!disparou && sub != null)
+        {
+            disparou = sub.TentarLancarCoordenado(destino, alvo, automatico, out string motivoSub);
+            if (!disparou && string.IsNullOrEmpty(motivoDireto)) motivoDireto = motivoSub;
+        }
+
+        if (disparou)
+        {
+            PoolDeObjetosCombate.SpawnarMarcadorOrdemAerea(destino, 14f, 4f);
+            SetFeedback("Míssil disparado contra " + contato.nome + ".");
+            return;
+        }
+
+        if (automatico && alvo != null && !autorizados.Contains(alvo))
+        {
+            AlternarAlvoAutorizado(controle, alvo);
+            SetFeedback(contato.nome + " autorizado: o navio engaja assim que o lançador permitir"
+                + (string.IsNullOrEmpty(motivoDireto) ? "." : " (" + motivoDireto + ")."));
+            return;
+        }
+
+        string motivo = !string.IsNullOrEmpty(motivoDireto) ? motivoDireto : motivoQuartel;
+        SetFeedback("Disparo não executado: " + (string.IsNullOrEmpty(motivo) ? "nenhum lançador disponível" : motivo) + ".");
     }
 
     private static void DesenharBotaoModo(ControleUnidade controle, Modo modo, string rotulo, Modo atual)
@@ -531,6 +641,7 @@ public sealed class MenuCombateNaval : MonoBehaviour
     private static void ProcessarCliqueDeAlvo()
     {
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+        if (CliqueSobreJanela()) return; // clique foi em um botão do próprio menu
         Camera cameraInteracao = MapaGeralController.ObterCameraDeInteracao();
         if (cameraInteracao == null) cameraInteracao = Camera.main;
         if (cameraInteracao == null) return;

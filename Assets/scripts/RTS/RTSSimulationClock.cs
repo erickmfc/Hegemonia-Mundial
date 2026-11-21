@@ -15,12 +15,14 @@ namespace Hegemonia.RTS
         [SerializeField, Min(0.02f)] private float tickInterval = 0.10f;
         [SerializeField, Range(1f, 32f)] private float simulationSpeed = 1f;
         [SerializeField, Min(1)] private int maxTicksPerFrame = 4;
+        private float multiplicadorVelocidadeTemporario = 1f;
 
         public event Action<int, float> OnTick;
         public float SimulationTime { get; private set; }
         public int Tick { get; private set; }
         public bool Paused { get; private set; }
         public float SimulationSpeed => simulationSpeed;
+        public float EffectiveSimulationSpeed => simulationSpeed * multiplicadorVelocidadeTemporario;
         public float TickInterval => tickInterval;
 
         public static bool SimulacaoPausada
@@ -76,7 +78,7 @@ namespace Hegemonia.RTS
                 return;
             }
 
-            accumulator += Time.unscaledDeltaTime * Mathf.Max(0.1f, simulationSpeed);
+            accumulator += Time.unscaledDeltaTime * Mathf.Max(0.05f, EffectiveSimulationSpeed);
             int ticks = 0;
             while (accumulator >= tickInterval && ticks < Mathf.Max(1, maxTicksPerFrame))
             {
@@ -133,6 +135,18 @@ namespace Hegemonia.RTS
             }
 
             simulationSpeed = velocidadeSolicitada;
+            AplicarEstadoTempo();
+        }
+
+        /// <summary>
+        /// Aplica um multiplicador temporário ao ritmo da partida sem alterar
+        /// a velocidade-base escolhida pelo jogador.
+        /// </summary>
+        public void SetTemporarySimulationSpeedMultiplier(float multiplier)
+        {
+            multiplicadorVelocidadeTemporario = float.IsNaN(multiplier) || float.IsInfinity(multiplier)
+                ? 1f
+                : Mathf.Clamp(multiplier, 0.05f, 1f);
             AplicarEstadoTempo();
         }
 
@@ -243,7 +257,7 @@ namespace Hegemonia.RTS
             }
             else if (fase == RTSSessionPhase.Playing)
             {
-                Time.timeScale = simulationSpeed;
+                Time.timeScale = EffectiveSimulationSpeed;
             }
             else
             {

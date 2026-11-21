@@ -202,7 +202,11 @@ public class GerenciadorAeroporto : MonoBehaviour
         if (semEnergia)
         {
             Debug.Log($"[ENERGIA] Aeroporto {name} está sem energia! Operações e compras bloqueadas.");
-            HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativá-lo."), 4.5f);
+            int teamJogador = SistemaGovernoMundial.Instancia != null ? SistemaGovernoMundial.Instancia.teamJogador : 1;
+            if (ObterTeamIdSeguro() == teamJogador)
+            {
+                HUDAjudaRTS.MostrarMensagemTemporaria(LocalizationManager.T("airport.no_power_purchase", "AEROPORTO SEM ENERGIA\nConstrua uma usina para reativá-lo."), 4.5f);
+            }
         }
     }
 
@@ -2268,9 +2272,15 @@ public class GerenciadorAeroporto : MonoBehaviour
         {
             ControleAviao av = avioesNoPatio[i];
             if (av == null) { avioesNoPatio.RemoveAt(i); continue; }
+            bool reservandoVagaAntesDeConcluirRecebimento =
+                av.estadoAtual == ControleAviao.EstadoAviao.ReservaHangar
+                && av.vagaRetorno != null
+                && av.vagaRetorno.IsChildOf(transform)
+                && !avioesNoHangar.Contains(av);
             bool ocupandoVaga = av.estadoAtual == ControleAviao.EstadoAviao.ProntoNoPatio
                 || av.estadoAtual == ControleAviao.EstadoAviao.Taxiando
-                || av.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga;
+                || av.estadoAtual == ControleAviao.EstadoAviao.RetornandoPraVaga
+                || reservandoVagaAntesDeConcluirRecebimento;
             if (ocupandoVaga && av.vagaRetorno != null)
             {
                 _vagasOcupadas.Add(av.vagaRetorno);

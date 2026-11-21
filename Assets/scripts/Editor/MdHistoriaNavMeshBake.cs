@@ -117,6 +117,132 @@ public static class MdHistoriaNavMeshBake
         ConfigurarEAssarMdHistoria();
     }
 
+    [MenuItem("Hegemonia/Mapa/Md Historia/Recuperar NavMeshes ausentes", priority = 41)]
+    public static void RecuperarNavMeshesAusentes()
+    {
+        Scene cena = SceneManager.GetActiveScene();
+        if (!cena.IsValid() || !cena.path.Equals(CenaAlvo, StringComparison.OrdinalIgnoreCase))
+            cena = EditorSceneManager.OpenScene(CenaAlvo, OpenSceneMode.Single);
+
+        if (!cena.IsValid())
+            throw new InvalidOperationException("[Md Historia NavMesh] Não foi possível abrir " + CenaAlvo + ".");
+
+        int camadaChao = LayerMask.NameToLayer("Chao");
+        if (camadaChao < 0)
+            throw new InvalidOperationException("[Md Historia NavMesh] A camada Chao não existe no TagManager.");
+
+        Directory.CreateDirectory(PastaDados);
+        AssetDatabase.Refresh();
+
+        Terrain[] terrenos = UnityEngine.Object.FindObjectsByType<Terrain>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+        List<PackageNavMeshSurface> superficiesReparadas = new List<PackageNavMeshSurface>();
+        List<string> assetsCriados = new List<string>();
+        List<string> falhas = new List<string>();
+        int superficiesValidas = 0;
+        int superficiesSemComponente = 0;
+
+        foreach (Terrain terreno in terrenos)
+        {
+            if (terreno == null || !EhTerrenoDePais(terreno.name))
+                continue;
+
+            PackageNavMeshSurface superficie = terreno.GetComponent<PackageNavMeshSurface>();
+            if (superficie == null)
+            {
+                superficiesSemComponente++;
+                continue;
+            }
+
+            if (superficie.navMeshData != null)
+            {
+                superficiesValidas++;
+                continue;
+            }
+
+            terreno.gameObject.layer = camadaChao;
+            superficie.agentTypeID = 0;
+            superficie.collectObjects = PackageCollectObjects.Children;
+            superficie.layerMask = 1 << camadaChao;
+            superficie.useGeometry = NavMeshCollectGeometry.RenderMeshes;
+            superficie.defaultArea = 0;
+            superficie.ignoreNavMeshAgent = true;
+            superficie.ignoreNavMeshObstacle = true;
+            superficie.overrideTileSize = false;
+            superficie.overrideVoxelSize = false;
+            superficie.minRegionArea = 2f;
+
+            string nomeAsset = PrefixoAsset + "Recovered-" + NomeSeguro(terreno.name);
+            string caminhoAsset = PastaDados + "/" + nomeAsset + ".asset";
+            int sufixo = 2;
+            string caminhoCompleto = Path.GetFullPath(Path.Combine(Application.dataPath, "..", caminhoAsset));
+            while (File.Exists(caminhoCompleto)
+                || AssetDatabase.LoadMainAssetAtPath(caminhoAsset) != null)
+            {
+                caminhoAsset = PastaDados + "/" + nomeAsset + "-" + sufixo + ".asset";
+                caminhoCompleto = Path.GetFullPath(Path.Combine(Application.dataPath, "..", caminhoAsset));
+                sufixo++;
+            }
+
+            superficiesReparadas.Add(superficie);
+            assetsCriados.Add(caminhoAsset);
+            try
+            {
+                superficie.BuildNavMesh();
+                NavMeshData dados = superficie.navMeshData;
+                if (dados == null)
+                {
+                    falhas.Add(terreno.name + " (BuildNavMesh não produziu dados)");
+                    continue;
+                }
+
+                dados.name = Path.GetFileNameWithoutExtension(caminhoAsset);
+                AssetDatabase.CreateAsset(dados, caminhoAsset);
+                EditorUtility.SetDirty(superficie);
+            }
+            catch (Exception ex)
+            {
+                falhas.Add(terreno.name + " (" + ex.GetType().Name + ": " + ex.Message + ")");
+            }
+        }
+
+        if (falhas.Count > 0)
+        {
+            foreach (PackageNavMeshSurface superficie in superficiesReparadas)
+            {
+                superficie.RemoveData();
+                superficie.navMeshData = null;
+                EditorUtility.SetDirty(superficie);
+            }
+
+            foreach (string caminhoAsset in assetsCriados)
+                AssetDatabase.DeleteAsset(caminhoAsset);
+
+            AssetDatabase.Refresh();
+            throw new InvalidOperationException(
+                "[Md Historia NavMesh] Recuperação cancelada; falhas: " + string.Join("; ", falhas));
+        }
+
+        if (superficiesReparadas.Count == 0)
+        {
+            Debug.Log("[Md Historia NavMesh] Nenhuma superfície elegível estava sem NavMeshData."
+                + " Válidas=" + superficiesValidas
+                + ", sem componente=" + superficiesSemComponente + ".");
+            return;
+        }
+
+        EditorSceneManager.MarkSceneDirty(cena);
+        AssetDatabase.SaveAssets();
+        EditorSceneManager.SaveScene(cena);
+        AssetDatabase.Refresh();
+
+        Debug.Log("[Md Historia NavMesh] Recuperação concluída: reparadas=" + superficiesReparadas.Count
+            + ", já válidas=" + superficiesValidas
+            + ", sem componente=" + superficiesSemComponente
+            + ", assets=" + string.Join(";", assetsCriados) + ".");
+    }
+
     private static bool EhTerrenoDePais(string nome)
     {
         string normalizado = (nome ?? string.Empty).Trim().ToLowerInvariant();

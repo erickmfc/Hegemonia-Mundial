@@ -1,0 +1,18 @@
+Built from '6000.2/staging' branch; Version is '6000.2.15f1 (0707b6d1e918) revision 460726'; Using compiler version '194234433'; Build Type 'Release'
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-Mathe" at "2026-11-20T16:22:22.7742594Z"
+OS: 'Windows 11  (10.0.22621) 64bit Professional' Language: 'pt' Physical Memory: 16315 MB
+BatchMode: 1, IsHumanControllingUs: 0, StartBugReporterOnCrash: 0, Is64bit: 1
+Date: 2026-11-20T16:22:22Z
+
+COMMAND LINE ARGUMENTS:
+C:\Program Files\Unity\Hub\Editor\6000.2.15f1\Editor\Unity.exe
+-projectPath
+D:\Hegemonia-Mundial
+-batchmode
+-quit
+-logFile
+D:\Hegemonia-Mundial\gangster-import.log
+Successfully changed project path to: D:\Hegemonia-Mundial
+D:/Hegemonia-Mundial
+Exiting without the bug reporter. Application will terminate with return code 1

@@ -191,6 +191,18 @@ public class MenuGoverno : MonoBehaviour
     private Coroutine menuAnimation;
     private CategoriaGoverno categoriaAtual = CategoriaGoverno.RelacoesExteriores;
     private int subAbaAtualIndex;
+    private int diasProjecaoEconomica = 7;
+    private int impostoMoradiaProposto = -1;
+    private int impostoIndustriaProposto = -1;
+    private int impostoComercioProposto = -1;
+    private int investimentoPropostoPercentual = 100;
+    private int servicosPropostoPercentual = -1;
+    private int infraestruturaPropostaPercentual = -1;
+    private int segurancaPropostaPercentual = -1;
+    private readonly int[] setoresPropostosPercentuais = new int[6];
+    private int investimentoAgricolaPropostoMilhoes = -1;
+    private bool propostaAtivarOrcamento;
+    private bool simulacaoEconomicaSolicitada;
     private string activePageKey = string.Empty;
     private string cachedSceneName;
     private bool shellBuilt;
@@ -1336,8 +1348,8 @@ public class MenuGoverno : MonoBehaviour
             if (tab == 1)
             {
                 CreateSectionTitle(page.Root.transform, "Orcamento nacional");
-                CreateDescription(page.Root.transform, "Receitas reais por setor, manutencao e saldo operacional.");
-                CreateEconomyBudgetRows(page.Root.transform, p);
+                CreateDescription(page.Root.transform, "Ciclos diarios e semanais. Projecoes limitadas a sete dias e sem alterar a partida.");
+                CreateEconomyBudgetSimulator(page.Root.transform, p);
             }
             else if (tab == 2)
             {
@@ -1357,9 +1369,9 @@ public class MenuGoverno : MonoBehaviour
                 CreateDescription(page.Root.transform, "Saldo, poder de compra, comercio exterior e pulso economico do pais.");
                 Text stats = CreateInfoBlock(page.Root.transform, string.Empty);
                 stats.text = "Saldo: $" + FormatNumber(p.saldo)
-                    + "\nRenda bruta: +" + Mathf.RoundToInt(p.rendaPorSegundo) + "/s"
-                    + "\nGastos: -$" + FormatNumber(p.gastosPorSegundo) + "/s"
-                    + "\nSaldo operacional: " + SignedRate(p.saldoOperacional)
+                    + "\nRenda bruta: +$" + FormatNumber(p.receitaDiariaTesouro) + "/dia"
+                    + "\nGastos: -$" + FormatNumber(p.despesaDiariaTesouro) + "/dia"
+                    + "\nSaldo operacional: " + SignedFinanceDaily(p.receitaDiariaTesouro - p.despesaDiariaTesouro)
                     + "\nPoder de compra: " + p.PoderDeCompra.ToString("0.00")
                     + "\nMoeda: 1 " + p.nomeMoeda + " = " + p.cambioComLider.ToString("0.00") + " " + p.moedaLiderReferencia
                     + "\nOuro/reserva: " + p.reservaOuro.ToString("0")
@@ -1899,7 +1911,7 @@ public class MenuGoverno : MonoBehaviour
             ClearChildren(page.Root.transform);
             CreateSectionTitle(page.Root.transform, "Economia");
             DadosPaisGoverno p = GetPlayerGov();
-            Text info = CreateInfoBlock(page.Root.transform, p == null ? "Tesouro indisponivel." : "Poder de compra: " + p.PoderDeCompra.ToString("0.00") + "\nEstabilidade: " + p.estabilidade.ToString("0") + "%\nSaldo operacional: " + SignedRate(p.saldoOperacional));
+            Text info = CreateInfoBlock(page.Root.transform, p == null ? "Tesouro indisponivel." : "Poder de compra: " + p.PoderDeCompra.ToString("0.00") + "\nEstabilidade: " + p.estabilidade.ToString("0") + "%\nSaldo operacional: " + SignedFinanceDaily(p.receitaDiariaTesouro - p.despesaDiariaTesouro));
             if (tab == 3)
             {
                 CreateActionButton(page.Root.transform, "MORADIA -5%", corPainel2, () => AjustarImpostoUI("moradia", -1));
@@ -2392,15 +2404,293 @@ public class MenuGoverno : MonoBehaviour
     private void CreateEconomyBudgetRows(Transform parent, DadosPaisGoverno p)
     {
         CreateInfoBlock(parent,
-            "Moradia: +" + Mathf.RoundToInt(p.receitaMoradia) + "/s\n"
-            + "Industria: +" + Mathf.RoundToInt(p.receitaIndustria) + "/s\n"
-            + "Comercio: +" + Mathf.RoundToInt(p.receitaComercio) + "/s\n"
-            + "Energia: +" + Mathf.RoundToInt(p.receitaEnergia) + "/s");
+            "Imposto sobre renda/moradia: +$" + FormatNumber((long)Math.Max(0f, p.receitaMoradia * (GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.duracaoDiaSegundos : 30f))) + "/semana\n"
+            + "Imposto empresarial: +$" + FormatNumber((long)Math.Max(0f, p.receitaIndustria * (GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.duracaoDiaSegundos : 30f))) + "/semana\n"
+            + "Comércio e consumo: +$" + FormatNumber((long)Math.Max(0f, p.receitaOperacionalDiariaTesouro)) + "/dia\n"
+            + "Venda de energia: creditada por transação");
         CreateInfoBlock(parent,
-            "Manutencao: -" + Mathf.RoundToInt(p.custoManutencao) + "/s\n"
+            "Manutenção: -$" + FormatNumber(p.despesaDiariaTesouro) + "/dia\n"
             + "Manutencao militar cobrada no ultimo dia: -$" + FormatNumber(GestorDeConsumo.Instancia != null ? GestorDeConsumo.Instancia.totalConsumoDinheiro : 0L) + "/dia\n"
-            + "Saldo operacional: " + SignedRate(p.saldoOperacional) + "\n"
+            + "Saldo operacional: " + SignedFinanceDaily(p.receitaDiariaTesouro - p.despesaDiariaTesouro) + "\n"
             + "Divida: $" + FormatNumber(Mathf.RoundToInt(p.divida)));
+    }
+
+    private void CreateEconomyBudgetSimulator(Transform parent, DadosPaisGoverno p)
+    {
+        if (impostoMoradiaProposto < 0)
+        {
+            impostoMoradiaProposto = p.impostoMoradia;
+            impostoIndustriaProposto = p.impostoIndustria;
+            impostoComercioProposto = p.impostoComercio;
+            for (int i = 0; i < setoresPropostosPercentuais.Length; i++)
+                setoresPropostosPercentuais[i] = OrcamentoInvestimentoNacional.ObterPercentualSetor(p, i);
+            servicosPropostoPercentual = OrcamentoInvestimentoNacional.ObterPercentualServico(p, 0);
+            infraestruturaPropostaPercentual = OrcamentoInvestimentoNacional.ObterPercentualServico(p, 1);
+            segurancaPropostaPercentual = OrcamentoInvestimentoNacional.ObterPercentualServico(p, 2);
+            investimentoAgricolaPropostoMilhoes = p.investimentoAgricolaSemanal;
+        }
+
+        long receitaDia = p.receitaDiariaTesouro;
+        long despesaDia = p.despesaDiariaTesouro;
+        ProjecaoEconomicaNacional atual = EconomiaFinanceiraNacional.Projetar(p, diasProjecaoEconomica);
+        ProjecaoEconomicaNacional proposta = CalcularProjecaoFiscal(p, diasProjecaoEconomica,
+            impostoMoradiaProposto, impostoIndustriaProposto, impostoComercioProposto, investimentoPropostoPercentual);
+
+        CreateSectionTitle(parent, "A — RESUMO FINANCEIRO");
+        CreateInfoBlock(parent,
+            "TESOURO  $" + EconomiaFinanceiraNacional.FormatarCompacto(p.saldo)
+            + "    RECEITA  +$" + EconomiaFinanceiraNacional.FormatarCompacto(receitaDia) + "/dia"
+            + "    DESPESA  -$" + EconomiaFinanceiraNacional.FormatarCompacto(despesaDia) + "/dia"
+            + "\nSALDO  " + (atual.saldoDiario >= 0 ? "+$" : "-$") + EconomiaFinanceiraNacional.FormatarCompacto(Math.Abs(atual.saldoDiario)) + "/dia"
+            + "    DÍVIDA  $" + EconomiaFinanceiraNacional.FormatarCompacto((long)Math.Max(0d, p.divida) + (p.emprestimos != null ? (long)p.emprestimos.Sum(e => e != null ? Math.Max(0f, e.saldoDevedor) : 0f) : 0L))
+            + "\nFELICIDADE  " + p.felicidade.ToString("0") + "%    ESTABILIDADE  " + p.estabilidade.ToString("0")
+            + "%    DESEMPREGO  " + Mathf.Clamp(100f - p.emprego, 0f, 100f).ToString("0") + "%");
+
+        CreateSectionTitle(parent, "B — AJUSTES PROPOSTOS");
+        CreateDescription(parent, "As propostas ficam locais até pressionar APLICAR.");
+        CreateActionButton(parent, "MORADIA −5%  (" + impostoMoradiaProposto + "%)", corPainel2,
+            () => { impostoMoradiaProposto = Mathf.Max(0, impostoMoradiaProposto - 5); RefreshDynamicData(true); });
+        CreateActionButton(parent, "MORADIA +5%  (" + impostoMoradiaProposto + "%)", corAzulBotao,
+            () => { impostoMoradiaProposto = Mathf.Min(35, impostoMoradiaProposto + 5); RefreshDynamicData(true); });
+        CreateActionButton(parent, "INDUSTRIA −5%  (" + impostoIndustriaProposto + "%)", corPainel2,
+            () => { impostoIndustriaProposto = Mathf.Max(0, impostoIndustriaProposto - 5); RefreshDynamicData(true); });
+        CreateActionButton(parent, "INDUSTRIA +5%  (" + impostoIndustriaProposto + "%)", corAzulBotao,
+            () => { impostoIndustriaProposto = Mathf.Min(35, impostoIndustriaProposto + 5); RefreshDynamicData(true); });
+        CreateActionButton(parent, "COMÉRCIO −5%  (" + impostoComercioProposto + "%)", corPainel2,
+            () => { impostoComercioProposto = Mathf.Max(0, impostoComercioProposto - 5); RefreshDynamicData(true); });
+        CreateActionButton(parent, "COMÉRCIO +5%  (" + impostoComercioProposto + "%)", corAzulBotao,
+            () => { impostoComercioProposto = Mathf.Min(35, impostoComercioProposto + 5); RefreshDynamicData(true); });
+        CreateActionButton(parent, "INVESTIMENTO −10%  (" + investimentoPropostoPercentual + "%)", corPainel2,
+            () => { investimentoPropostoPercentual = Mathf.Max(0, investimentoPropostoPercentual - 10); RefreshDynamicData(true); });
+        CreateActionButton(parent, "INVESTIMENTO +10%  (" + investimentoPropostoPercentual + "%)", corAzulBotao,
+            () => { investimentoPropostoPercentual = Mathf.Min(200, investimentoPropostoPercentual + 10); RefreshDynamicData(true); });
+        CreateDescription(parent, "Verba diária total: $" + FormatNumber(p.orcamentoInvestimentoDiario)
+            + (p.orcamentoInvestimentoAtivo ? " (ativa)" : " (inativa; APLICAR ativa)")
+            + " | Agricultura extra: $" + FormatNumber(Math.Max(0, p.investimentoAgricolaSemanal)) + "/semana");
+        CriarControlePercentualOrcamento(parent, p, "AGRICULTURA", 0, p.orcamentoPctAgricultura);
+        CriarControlePercentualOrcamento(parent, p, "ENERGIA", 1, p.orcamentoPctEnergia);
+        CriarControlePercentualOrcamento(parent, p, "PETRÓLEO", 2, p.orcamentoPctPetroleo);
+        CriarControlePercentualOrcamento(parent, p, "INDÚSTRIA", 3, p.orcamentoPctIndustria);
+        CriarControlePercentualOrcamento(parent, p, "PESQUISA", 4, p.orcamentoPctCiencia);
+        CriarControlePercentualOrcamento(parent, p, "DEFESA", 5, p.orcamentoPctMilitar);
+        CriarControlePercentualOrcamento(parent, p, "SAÚDE + EDUCAÇÃO + ASSISTÊNCIA", 6, p.orcamentoPctServicos);
+        CriarControlePercentualOrcamento(parent, p, "INFRAESTRUTURA", 7, p.orcamentoPctInfraestrutura);
+        CriarControlePercentualOrcamento(parent, p, "SEGURANÇA", 8, p.orcamentoPctSeguranca);
+        CreateActionButton(parent, "AGRICULTURA SEMANAL −10M", corPainel2,
+            () => { investimentoAgricolaPropostoMilhoes = Math.Max(0, investimentoAgricolaPropostoMilhoes - 10); RefreshDynamicData(true); });
+        CreateActionButton(parent, "AGRICULTURA SEMANAL +10M", corAzulBotao,
+            () => { investimentoAgricolaPropostoMilhoes = Math.Min(10000, investimentoAgricolaPropostoMilhoes + 10); RefreshDynamicData(true); });
+        CreateDescription(parent, "Verba Serviços cobre saúde, educação e assistência; o jogo não possui políticas fiscais separadas para moradia, renda, comércio, indústria e consumo. Os impostos existentes são mostrados acima.");
+
+        CreateSectionTitle(parent, "C — PROJEÇÃO E COMPARAÇÃO");
+        CreateActionButton(parent, "1 DIA", diasProjecaoEconomica == 1 ? corVerde : corPainel2,
+            () => { diasProjecaoEconomica = 1; RefreshDynamicData(true); });
+        CreateActionButton(parent, "3 DIAS", diasProjecaoEconomica == 3 ? corVerde : corPainel2,
+            () => { diasProjecaoEconomica = 3; RefreshDynamicData(true); });
+        CreateActionButton(parent, "7 DIAS", diasProjecaoEconomica == 7 ? corVerde : corPainel2,
+            () => { diasProjecaoEconomica = 7; RefreshDynamicData(true); });
+        CreateActionButton(parent, "SIMULAR", corAzulBotao, () => { simulacaoEconomicaSolicitada = true; RefreshDynamicData(true); });
+        CreateActionButton(parent, "COMPARAR", corAmarelo, () => { simulacaoEconomicaSolicitada = true; RefreshDynamicData(true); });
+        if (simulacaoEconomicaSolicitada)
+        {
+            CreateInfoBlock(parent,
+                "INDICADOR             ATUAL                  PROPOSTO"
+                + "\nReceita/dia       $" + EconomiaFinanceiraNacional.FormatarCompacto(atual.receitaDiaria)
+                + "             $" + EconomiaFinanceiraNacional.FormatarCompacto(proposta.receitaDiaria)
+                + "\nDespesa/dia      -$" + EconomiaFinanceiraNacional.FormatarCompacto(atual.despesaDiaria)
+                + "             -$" + EconomiaFinanceiraNacional.FormatarCompacto(proposta.despesaDiaria)
+                + "\nSaldo/dia          " + (atual.saldoDiario >= 0 ? "+$" : "-$") + EconomiaFinanceiraNacional.FormatarCompacto(Math.Abs(atual.saldoDiario))
+                + "             " + (proposta.saldoDiario >= 0 ? "+$" : "-$") + EconomiaFinanceiraNacional.FormatarCompacto(Math.Abs(proposta.saldoDiario))
+                + "\nTesouro em " + diasProjecaoEconomica + "d   $" + EconomiaFinanceiraNacional.FormatarCompacto(atual.tesouroProjetado)
+                + "             $" + EconomiaFinanceiraNacional.FormatarCompacto(proposta.tesouroProjetado)
+                + "\nFelicidade         " + atual.felicidade.ToString("0") + "%                 " + proposta.felicidade.ToString("0") + "%"
+                + "\nEstabilidade     " + atual.estabilidade.ToString("0") + "%                 " + proposta.estabilidade.ToString("0") + "%");
+        }
+        CreateSectionTitle(parent, "D — IMPACTOS E APLICAÇÃO");
+        CreateInfoBlock(parent, "Produção econômica estimada no período é um indicador de atividade; não representa saldo disponível. Compras militares reduzem o tesouro pelo preço de aquisição e pela manutenção registrada.");
+        CreateActionButton(parent, "ATIVAR ORÇAMENTO DIÁRIO", p.orcamentoInvestimentoAtivo ? corVerde : corPainel2,
+            () => { propostaAtivarOrcamento = true; RefreshDynamicData(true); });
+        CreateActionButton(parent, "APLICAR", corVerde, () => AplicarPropostaEconomica(p));
+        CreateActionButton(parent, "RESTAURAR", corPainel2, () =>
+        {
+            impostoMoradiaProposto = p.impostoMoradia;
+            impostoIndustriaProposto = p.impostoIndustria;
+            impostoComercioProposto = p.impostoComercio;
+            investimentoPropostoPercentual = 100;
+            OrcamentoInvestimentoNacional.NormalizarPercentuais(p);
+            for (int i = 0; i < setoresPropostosPercentuais.Length; i++) setoresPropostosPercentuais[i] = OrcamentoInvestimentoNacional.ObterPercentualSetor(p, i);
+            servicosPropostoPercentual = OrcamentoInvestimentoNacional.ObterPercentualServico(p, 0);
+            infraestruturaPropostaPercentual = OrcamentoInvestimentoNacional.ObterPercentualServico(p, 1);
+            segurancaPropostaPercentual = OrcamentoInvestimentoNacional.ObterPercentualServico(p, 2);
+            investimentoAgricolaPropostoMilhoes = p.investimentoAgricolaSemanal;
+            propostaAtivarOrcamento = false;
+            simulacaoEconomicaSolicitada = false;
+            RefreshDynamicData(true);
+        });
+    }
+
+    private ProjecaoEconomicaNacional CalcularProjecaoFiscal(DadosPaisGoverno p, int dias,
+        int impostoMoradia, int impostoIndustria, int impostoComercio, int investimentoPct)
+    {
+        float baseMoradia = p.impostoMoradia > 0 ? p.receitaMoradia / (p.impostoMoradia / 100f) : 0f;
+        float baseIndustria = p.impostoIndustria > 0 ? p.receitaIndustria / (p.impostoIndustria / 100f) : 0f;
+        float baseComercio = p.impostoComercio > 0 ? p.receitaComercio / (p.impostoComercio / 100f) : 0f;
+        long diasSegundos = (long)(GerenciadorTempo.Instancia != null ? GerenciadorTempo.Instancia.duracaoDiaSegundos : 30f);
+        double ajusteReceitaDia = (baseComercio * (impostoComercio - p.impostoComercio) / 100d) * diasSegundos
+            + ((baseMoradia * (impostoMoradia - p.impostoMoradia) / 100d)
+            + (baseIndustria * (impostoIndustria - p.impostoIndustria) / 100d)) * diasSegundos / 7d;
+        long ajusteReceita = SaturarLong(ajusteReceitaDia);
+        long ajusteDespesa = (p.orcamentoInvestimentoAtivo || propostaAtivarOrcamento)
+            ? SaturarLong(p.orcamentoInvestimentoDiario * (investimentoPct / 100d - 1d)) : 0L;
+        if (!p.orcamentoInvestimentoAtivo && propostaAtivarOrcamento)
+            ajusteDespesa = SaturarLong(p.orcamentoInvestimentoDiario * (investimentoPct / 100d));
+        double propostaImposto = (impostoMoradia + impostoIndustria + impostoComercio)
+            / (double)Math.Max(1, p.impostoMoradia + p.impostoIndustria + p.impostoComercio);
+        long atualAgricolaSemanal = AgriculturaNacional.CalcularCobrancaFixaSemanal(p.investimentoAgricolaSemanal);
+        long propostaAgricolaSemanal = AgriculturaNacional.CalcularCobrancaFixaSemanal(investimentoAgricolaPropostoMilhoes);
+        long ajusteAgricolaDia = p.investimentoAgricolaPercentualAtivo ? 0L
+            : SaturarLong((propostaAgricolaSemanal - (double)atualAgricolaSemanal) / 7d);
+        ajusteDespesa = SaturarSomar(ajusteDespesa, ajusteAgricolaDia);
+        ProjecaoEconomicaNacional resultado = EconomiaFinanceiraNacional.Projetar(p, dias, ajusteReceita, ajusteDespesa);
+        float aumentoImposto = ((impostoMoradia - p.impostoMoradia) + (impostoIndustria - p.impostoIndustria)
+            + (impostoComercio - p.impostoComercio)) / 3f;
+        float deltaServico = (OrcamentoInvestimentoNacional.ObterPercentualServico(p, 0) - servicosPropostoPercentual) * -1f;
+        resultado.felicidade = Mathf.Clamp(p.felicidade - aumentoImposto * 0.04f * dias
+            + deltaServico * 0.015f * dias, 0f, 100f);
+        resultado.estabilidade = Mathf.Clamp(p.estabilidade - aumentoImposto * 0.025f * dias
+            + deltaServico * 0.01f * dias, 0f, 100f);
+        resultado.desemprego = Mathf.Clamp(resultado.desemprego + (float)(Math.Max(0d, -propostaImposto + 1d) * 0.2d), 0f, 100f);
+        return resultado;
+    }
+
+    private static long SaturarSomar(long a, long b)
+    {
+        if (b > 0 && a > long.MaxValue - b) return long.MaxValue;
+        if (b < 0 && a < long.MinValue - b) return long.MinValue;
+        return a + b;
+    }
+
+    private void CriarControlePercentualOrcamento(Transform parent, DadosPaisGoverno pais, string rotulo, int indice, int atual)
+    {
+        int proposta = indice < 6 ? setoresPropostosPercentuais[indice]
+            : indice == 6 ? servicosPropostoPercentual : indice == 7 ? infraestruturaPropostaPercentual : segurancaPropostaPercentual;
+        long gastoProposto = indice < 6
+            ? (long)Math.Floor(pais.orcamentoInvestimentoDiario * (double)proposta / 100d)
+            : (long)Math.Floor(pais.orcamentoInvestimentoDiario * (double)proposta / 100d);
+        CreateActionButton(parent, rotulo + "  " + proposta + "%  (−5)", corPainel2, () =>
+        {
+            int novo = Mathf.Max(0, proposta - 5);
+            if (indice < 6) setoresPropostosPercentuais[indice] = novo;
+            else if (indice == 6) servicosPropostoPercentual = novo;
+            else if (indice == 7) infraestruturaPropostaPercentual = novo;
+            else segurancaPropostaPercentual = novo;
+            NormalizarPropostaOrcamento(indice, novo);
+            RefreshDynamicData(true);
+        });
+        CreateActionButton(parent, "+5%", corAzulBotao, () =>
+        {
+            int novo = Mathf.Min(100, proposta + 5);
+            if (indice < 6) setoresPropostosPercentuais[indice] = novo;
+            else if (indice == 6) servicosPropostoPercentual = novo;
+            else if (indice == 7) infraestruturaPropostaPercentual = novo;
+            else segurancaPropostaPercentual = novo;
+            NormalizarPropostaOrcamento(indice, novo);
+            RefreshDynamicData(true);
+        });
+        CreateDescription(parent, rotulo + " atual " + atual + "% | proposta " + proposta + "% | verba atual $"
+            + EconomiaFinanceiraNacional.FormatarCompacto(gastoProposto) + "/dia");
+    }
+
+    private void NormalizarPropostaOrcamento(int indiceAlterado, int valor)
+    {
+        int[] valores = new int[9];
+        Array.Copy(setoresPropostosPercentuais, valores, 6);
+        valores[6] = servicosPropostoPercentual;
+        valores[7] = infraestruturaPropostaPercentual;
+        valores[8] = segurancaPropostaPercentual;
+        int somaRestante = 100 - Mathf.Clamp(valor, 0, 100);
+        int soma = 0;
+        for (int i = 0; i < valores.Length; i++) if (i != indiceAlterado) soma += Mathf.Max(0, valores[i]);
+        int atribuido = 0;
+        int ultimoRestante = indiceAlterado == valores.Length - 1 ? valores.Length - 2 : valores.Length - 1;
+        for (int i = 0; i < valores.Length; i++)
+        {
+            if (i == indiceAlterado) { valores[i] = Mathf.Clamp(valor, 0, 100); continue; }
+            valores[i] = i == ultimoRestante ? somaRestante - atribuido
+                : soma > 0 ? Mathf.FloorToInt(Mathf.Max(0, valores[i]) * somaRestante / (float)soma) : somaRestante / 9;
+            atribuido += valores[i];
+        }
+        Array.Copy(valores, setoresPropostosPercentuais, 6);
+        servicosPropostoPercentual = valores[6];
+        infraestruturaPropostaPercentual = valores[7];
+        segurancaPropostaPercentual = valores[8];
+    }
+
+    private void AplicarPropostaRateio(DadosPaisGoverno pais)
+    {
+        if (pais == null) return;
+        int[] propostos = new int[9];
+        Array.Copy(setoresPropostosPercentuais, propostos, 6);
+        propostos[6] = servicosPropostoPercentual;
+        propostos[7] = infraestruturaPropostaPercentual;
+        propostos[8] = segurancaPropostaPercentual;
+        NormalizarPropostaOrcamento(8, propostos[8]);
+        pais.orcamentoPctAgricultura = propostos[0];
+        pais.orcamentoPctEnergia = propostos[1];
+        pais.orcamentoPctPetroleo = propostos[2];
+        pais.orcamentoPctIndustria = propostos[3];
+        pais.orcamentoPctCiencia = propostos[4];
+        pais.orcamentoPctMilitar = propostos[5];
+        pais.orcamentoPctServicos = propostos[6];
+        pais.orcamentoPctInfraestrutura = propostos[7];
+        pais.orcamentoPctSeguranca = propostos[8];
+        pais.orcamentoInvestimentoAtivo = propostaAtivarOrcamento || pais.orcamentoInvestimentoAtivo;
+        pais.investimentoAgricolaSemanal = Mathf.Clamp(investimentoAgricolaPropostoMilhoes, AgriculturaNacional.InvestimentoMinimoSemanal, 10000);
+        if (pais.investimentoAgricolaPercentualAtivo)
+        {
+            AgriculturaNacional[] agriculturas = FindObjectsByType<AgriculturaNacional>(FindObjectsSortMode.None);
+            if (agriculturas.Length > 0) agriculturas[0].DefinirInvestimentoSemanal(pais.teamId, pais.investimentoAgricolaSemanal);
+        }
+        pais.ultimoDiaOrcamentoProcessado = -1;
+    }
+
+    private static long SaturarLong(double valor)
+    {
+        if (double.IsNaN(valor)) return 0L;
+        if (valor >= long.MaxValue) return long.MaxValue;
+        if (valor <= long.MinValue) return long.MinValue;
+        return (long)Math.Round(valor, MidpointRounding.AwayFromZero);
+    }
+
+    private void AplicarPropostaEconomica(DadosPaisGoverno p)
+    {
+        if (p == null || Government() == null) return;
+        long novoInvestimentoDiario = p.orcamentoInvestimentoDiario;
+        if (p.orcamentoInvestimentoAtivo)
+        {
+            novoInvestimentoDiario = Math.Max(0L,
+                (long)Math.Round(p.orcamentoInvestimentoDiario * (investimentoPropostoPercentual / 100d)));
+        }
+        AplicarImpostoProposto(p.teamId, "moradia", impostoMoradiaProposto, p.impostoMoradia);
+        AplicarImpostoProposto(p.teamId, "industria", impostoIndustriaProposto, p.impostoIndustria);
+        AplicarImpostoProposto(p.teamId, "comercio", impostoComercioProposto, p.impostoComercio);
+        AplicarPropostaRateio(p);
+        p.orcamentoInvestimentoDiario = novoInvestimentoDiario;
+        impostoMoradiaProposto = p.impostoMoradia;
+        impostoIndustriaProposto = p.impostoIndustria;
+        impostoComercioProposto = p.impostoComercio;
+        investimentoPropostoPercentual = 100;
+        propostaAtivarOrcamento = false;
+        Government().ProcessarEconomia();
+        simulacaoEconomicaSolicitada = false;
+        Notificar("Orçamento", "Políticas econômicas aplicadas; os efeitos financeiros serão liquidados nos próximos ciclos.");
+        RefreshDynamicData(true);
+    }
+
+    private void AplicarImpostoProposto(int teamId, string setor, int alvo, int atual)
+    {
+        int faixas = (alvo - atual) / 5;
+        if (faixas != 0) Government().AjustarImposto(teamId, setor, faixas);
     }
 
     private void CreateEconomyProductionRows(Transform parent, DadosPaisGoverno p, DadosEconomiaPais economia)
@@ -2916,7 +3206,7 @@ public class MenuGoverno : MonoBehaviour
             taxaEnergia = playerEcon.energiaProduzida - playerEcon.energiaConsumida;
         }
 
-        SetResource("DINHEIRO", p != null ? "$" + FormatNumber(p.saldo) : gr != null ? "$" + FormatNumber(gr.dinheiro) : "n/d", p != null ? SignedRate(p.rendaPorSegundo) : string.Empty, corVerde);
+        SetResource("DINHEIRO", p != null ? "$" + FormatNumber(p.saldo) : gr != null ? "$" + FormatNumber(gr.dinheiro) : "n/d", p != null ? SignedFinanceDaily(p.receitaDiariaTesouro - p.despesaDiariaTesouro) : string.Empty, corVerde);
         SetResource("PETROLEO", p != null ? FormatNumber(p.petroleo) : gr != null ? FormatNumber(gr.petroleo) : "0", gr != null ? SignedRate(gr.petroleoPorSegundo) : string.Empty, gr == null || gr.petroleoPorSegundo >= 0f ? corVerde : corVermelho);
         SetResource("ACO", p != null ? FormatNumber(p.aco) : gr != null ? FormatNumber(gr.aco) : "0", gr != null ? SignedRate(gr.acoPorSegundo) : string.Empty, gr == null || gr.acoPorSegundo >= 0f ? corVerde : corVermelho);
         SetResource("ENERGIA", p != null ? FormatNumber(p.energia) : gr != null ? FormatNumber(gr.energia) : "0", p != null && playerEcon != null ? SignedRate(taxaEnergia) : string.Empty, p == null || taxaEnergia >= 0f ? corVerde : corVermelho);
@@ -4254,12 +4544,12 @@ public class MenuGoverno : MonoBehaviour
 
     private string FormatNumber(int number)
     {
-        return ValoresDefinitivosHegemonia.FormatarDinheiro(number).TrimStart('$');
+        return EconomiaFinanceiraNacional.FormatarCompacto(number);
     }
 
     private string FormatNumber(long number)
     {
-        return ValoresDefinitivosHegemonia.FormatarDinheiro(number).TrimStart('$');
+        return EconomiaFinanceiraNacional.FormatarCompacto(number);
     }
 
     private string FormatNumber(float number)
@@ -4270,6 +4560,12 @@ public class MenuGoverno : MonoBehaviour
     private string SignedRate(float value)
     {
         return (value >= 0f ? "+" : "") + Mathf.RoundToInt(value) + "/s";
+    }
+
+    private string SignedFinanceDaily(long value)
+    {
+        return (value >= 0 ? "+$" : "-$")
+            + EconomiaFinanceiraNacional.FormatarCompacto(Math.Abs(value)) + "/dia";
     }
 
     private string SignedPercent(float value)

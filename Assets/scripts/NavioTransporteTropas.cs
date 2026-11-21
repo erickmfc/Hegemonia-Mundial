@@ -850,7 +850,10 @@ public class NavioTransporteTropas : MonoBehaviour
         }
 
         ServicoAbastecimento.AbastecerUnidadeProduzida(novoObjeto);
-        recursos.dinheiro -= preco;
+        if (governo != null)
+            governo.AdicionarSaldo(teamId, -preco, "Compra de helicóptero naval", "Navio de transporte", TipoLancamentoFinanceiro.DespesaTransacao);
+        else
+            recursos.dinheiro -= preco;
         return true;
     }
 

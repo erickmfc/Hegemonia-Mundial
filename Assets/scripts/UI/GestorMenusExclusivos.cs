@@ -65,6 +65,13 @@ public static class GestorMenusExclusivos
             return true;
         }
 
+        // Janela IMGUI de Combate Naval (tecla O): não é um menu exclusivo,
+        // mas cliques sobre ela não podem desmarcar o navio nem dar ordens.
+        if (MenuCombateNaval.CliqueSobreJanela())
+        {
+            return true;
+        }
+
         if (donoMenuAtivo == null || donoAreaBloqueio == null || ultimoFrameArea < 0)
         {
             return false;

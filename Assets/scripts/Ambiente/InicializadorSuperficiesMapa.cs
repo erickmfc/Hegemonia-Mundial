@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 /// <summary>
@@ -19,6 +20,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
     private static readonly Dictionary<int, Material> MateriaisTerrainRuntime = new Dictionary<int, Material>();
     private static Texture2D TexturaTerrainFallback;
     private static Texture2D ControleTerrainFallback;
+    private static bool diagnosticoMapaGlobalRegistrado;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -52,6 +54,7 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
     private void CorrigirCenaAtual()
     {
         Terrain[] terrains = FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        RegistrarDiagnosticoMapaGlobal(terrains);
         int terrenosJogaveis = 0;
         int terrenosReativados = 0;
         int marcadoresCriados = 0;
@@ -178,6 +181,78 @@ public sealed class InicializadorSuperficiesMapa : MonoBehaviour
         if (terrenosReativados > 0 || escalasNormalizadas > 0 || marcadoresCriados > 0 || materiaisCorrigidos > 0 || instancingDesativado > 0)
         {
             Debug.Log($"[Mapa] superfícies corrigidas: terrenos={terrenosJogaveis}, reativados={terrenosReativados}, marcadores={marcadoresCriados}");
+        }
+    }
+
+    private static void RegistrarDiagnosticoMapaGlobal(Terrain[] terrains)
+    {
+        if (diagnosticoMapaGlobalRegistrado
+            || !SceneManager.GetActiveScene().name.Equals(CenaMapaGlobal, System.StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        diagnosticoMapaGlobalRegistrado = true;
+        Terrain terrenoPrincipal = null;
+        if (terrains != null)
+        {
+            for (int i = 0; i < terrains.Length; i++)
+            {
+                Terrain candidato = terrains[i];
+                if (candidato != null && candidato.gameObject.scene.name.Equals(
+                        CenaMapaGlobal, System.StringComparison.OrdinalIgnoreCase)
+                    && candidato.name.Equals("GlobalMap_BaseTerrain", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    terrenoPrincipal = candidato;
+                    break;
+                }
+            }
+        }
+
+        RenderPipelineAsset pipeline = GraphicsSettings.currentRenderPipeline;
+        TerrainData dados = terrenoPrincipal != null ? terrenoPrincipal.terrainData : null;
+        Material material = terrenoPrincipal != null ? terrenoPrincipal.materialTemplate : null;
+        Shader shader = material != null ? material.shader : null;
+        TerrainLayer[] camadas = dados != null ? dados.terrainLayers : null;
+        int texturasDifusasAusentes = 0;
+        if (camadas != null)
+        {
+            for (int i = 0; i < camadas.Length; i++)
+            {
+                if (camadas[i] == null || camadas[i].diffuseTexture == null)
+                {
+                    texturasDifusasAusentes++;
+                }
+            }
+        }
+
+        Debug.Log(
+            "[GlobalMap Graphics Diagnostics] "
+            + "unity=" + Application.unityVersion
+            + "; platform=" + Application.platform
+            + "; graphicsApi=" + SystemInfo.graphicsDeviceType
+            + "; gpu=" + (string.IsNullOrWhiteSpace(SystemInfo.graphicsDeviceName) ? "unknown" : SystemInfo.graphicsDeviceName)
+            + "; driver=" + (string.IsNullOrWhiteSpace(SystemInfo.graphicsDeviceVersion) ? "unknown" : SystemInfo.graphicsDeviceVersion)
+            + "; gpuMemoryMB=" + SystemInfo.graphicsMemorySize
+            + "; renderPipeline=" + (pipeline != null ? pipeline.GetType().FullName : "Built-in")
+            + "; terrainFound=" + (terrenoPrincipal != null)
+            + "; terrainEnabled=" + (terrenoPrincipal != null && terrenoPrincipal.enabled && terrenoPrincipal.gameObject.activeInHierarchy)
+            + "; terrainData=" + (dados != null ? dados.name : "missing")
+            + "; heightmapResolution=" + (dados != null ? dados.heightmapResolution : 0)
+            + "; terrainLayers=" + (camadas != null ? camadas.Length : 0)
+            + "; missingDiffuseTextures=" + texturasDifusasAusentes
+            + "; material=" + (material != null ? material.name : "missing")
+            + "; shader=" + (shader != null ? shader.name : "missing")
+            + "; shaderSupported=" + (shader != null && shader.isSupported)
+            + "; instancing=" + SystemInfo.supportsInstancing);
+
+        if (terrenoPrincipal == null || dados == null || material == null || shader == null
+            || !shader.isSupported || texturasDifusasAusentes > 0)
+        {
+            Debug.LogError(
+                "[GlobalMap Graphics Diagnostics] Configuração incompleta do terreno principal. "
+                + "Envie esta linha e as mensagens seguintes do Player.log para o diagnóstico da máquina afetada.",
+                terrenoPrincipal);
         }
     }
 

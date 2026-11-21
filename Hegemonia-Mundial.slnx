@@ -1,5 +1,7 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="MCPForUnity.Runtime.csproj" />
+  <Project Path="MCPForUnity.Editor.csproj" />
   <Project Path="Hegemonia.PlayMode.Tests.csproj" />
   <Project Path="Hegemonia.EditMode.Tests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />

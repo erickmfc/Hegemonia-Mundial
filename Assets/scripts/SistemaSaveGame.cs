@@ -17,7 +17,7 @@ using UnityEngine.SceneManagement;
 [Serializable]
 public class DadosDoJogo
 {
-    public int saveVersion = 31;
+    public int saveVersion = 33;
     public string nomeSave = "Partida";
     public string salvoEmUtc = string.Empty;
     public long creditosJogador = 5000L;
@@ -426,6 +426,7 @@ public sealed class SaveRebeldeData
     public int estado;
     public int nivelAtividade;
     public int reservasDeSoldados = 12;
+    public int reservasAereasSegundaBase = 1;
     public int reforcosSolicitados;
     public float combateAtivoAcumulado;
     public List<bool> aeronavesIndisponiveis = new List<bool>();
@@ -439,6 +440,9 @@ public sealed class SaveMissaoSinalPerdidoData
     public int estado;
     public bool eventoExecutado;
     public float tempoDecorrido;
+    public int quantidadePesquisadores = 8;
+    public List<string> nomesPesquisadores = new List<string>();
+    public string aeronaveExpedicaoUniqueId = string.Empty;
 }
 
 [Serializable]
@@ -673,7 +677,7 @@ public class SistemaSaveGame : MonoBehaviour
         GarantirColecoesIA01();
         GarantirColecoesIA02();
         GarantirColecoesCidadesAbstratas();
-        dadosAtuais.saveVersion = 31;
+        dadosAtuais.saveVersion = 33;
         dadosAtuais.nomeSave = NormalizarNomeSave(dadosAtuais.nomeSave);
         dadosAtuais.salvoEmUtc = DateTime.UtcNow.ToString("O");
         RegistrarCenaAtual(SceneManager.GetActiveScene().name);
@@ -750,6 +754,8 @@ public class SistemaSaveGame : MonoBehaviour
             dadosAtuais.totalDias = 1;
         }
 
+        MigrarTesouroDiarioLegado();
+
         // Remove filas da sessão que está sendo substituída. O estado salvo
         // volta a entrar só depois da restauração de Governo e armazéns.
         SistemaLogisticaMercado.Instancia?.RestaurarSaveData(null);
@@ -777,6 +783,30 @@ public class SistemaSaveGame : MonoBehaviour
             LogInfo("Save legado carregado e preparado para migracao monetaria para long (versao " + dadosAtuais.saveVersion + ").");
         }
         LogInfo("Jogo carregado com sucesso.");
+    }
+
+    private void MigrarTesouroDiarioLegado()
+    {
+        if (dadosAtuais == null || dadosAtuais.saveVersion >= 33
+            || dadosAtuais.governoMundial == null || dadosAtuais.governoMundial.paises == null) return;
+
+        int diaAtual = Mathf.Max(1, dadosAtuais.totalDias);
+        foreach (DadosPaisGoverno pais in dadosAtuais.governoMundial.paises)
+        {
+            if (pais == null) continue;
+            // Evita um crédito retroativo no mesmo dia em que o save legado abre.
+            pais.ultimoDiaLiquidacaoFinanceira = diaAtual;
+            pais.ultimoDiaLiquidacaoSemanal = ((diaAtual - 1) / 7) * 7 + 1;
+            pais.ultimoDiaSnapshotEconomico = diaAtual;
+            if (pais.historicoFinanceiro == null)
+                pais.historicoFinanceiro = new List<LancamentoFinanceiroNacional>();
+            // Emprestimos antigos guardavam ticks de três segundos; o runtime
+            // converte o prazo restante para semanas na primeira liquidação semanal.
+            if (pais.emprestimos != null)
+                foreach (EmprestimoFederativoEstado emprestimo in pais.emprestimos)
+                    if (emprestimo != null) emprestimo.periodicidadeSemanalMigrada = false;
+        }
+        LogInfo("Save econômico legado migrado para liquidação diária e juros semanais.");
     }
 
     private static bool PossuiEstadoRestauravel(DadosDoJogo dados)
@@ -1635,7 +1665,7 @@ public class SistemaSaveGame : MonoBehaviour
         if (dadosAtuais.saveVersion >= 31 && missao != null && dadosAtuais.missaoSinalPerdido != null)
         {
             SaveMissaoSinalPerdidoData salvo = dadosAtuais.missaoSinalPerdido;
-            missao.RestaurarEstadoSalvo(salvo.estado, salvo.eventoExecutado, salvo.tempoDecorrido);
+            missao.RestaurarEstadoSalvo(salvo);
         }
     }
 

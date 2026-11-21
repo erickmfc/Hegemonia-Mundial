@@ -921,7 +921,7 @@ namespace Hegemonia.AI.BrainMaster
                 ? Mathf.Max(100f, country.populacaoCivil > 0 ? country.populacaoCivil : country.populacao)
                 : 3200f;
             float operationalCash = country != null
-                ? Mathf.Max(0f, country.saldo + Mathf.Max(0f, country.rendaPorSegundo - country.gastosPorSegundo) * 180f)
+                ? Mathf.Max(0f, country.saldo + Mathf.Max(0L, country.receitaDiariaTesouro - country.despesaDiariaTesouro) * 7f)
                 : 12000f;
             float budgetFactor = Mathf.Clamp01(operationalCash / 60000f);
             float militarismFactor = country != null

@@ -17,6 +17,7 @@ public sealed class EmprestimoFederativoEstado
     public bool creditoMilitar;
     public bool inadimplente;
     public int ticksRestantes = 30;
+    public bool periodicidadeSemanalMigrada;
 }
 
 /// <summary>Federações globais, legitimidade e crédito. O estado é por país e não usa singleton para a IA.</summary>
@@ -28,7 +29,7 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
     public static SistemaFederacoesGlobais Instancia { get; private set; }
     public float intervaloTick = 3f;
     public float multaTrocaFederacao = 12f;
-    private float proximoTick;
+    private int ultimaSemanaProcessada = -1;
 
     public static void GarantirInstancia()
     {
@@ -51,8 +52,12 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
     private void Update()
     {
         if (Hegemonia.RTS.RTSSimulationClock.SimulacaoPausada) return;
-        if (Time.unscaledTime < proximoTick) return;
-        proximoTick = Time.unscaledTime + Mathf.Max(1f, intervaloTick);
+        GerenciadorTempo tempo = GerenciadorTempo.Instancia;
+        int dia = tempo != null ? Mathf.Max(1, tempo.totalDias) : 1;
+        int semana = (dia - 1) / 7;
+        if (ultimaSemanaProcessada < 0) ultimaSemanaProcessada = semana;
+        if (semana <= ultimaSemanaProcessada) return;
+        ultimaSemanaProcessada = semana;
         GarantirFiliacoes();
         ProcessarEmprestimos();
     }
@@ -149,7 +154,8 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
         }
 
         long capacidadePagamento = CalcularCapacidadePagamento(devedor);
-        double saldoPrevisto = valorArredondado * Math.Pow(1d + JurosEmprestimoPadraoPorTick, PrazoEmprestimoPadraoTicks);
+        int prazoSemanas = Mathf.Max(1, Mathf.CeilToInt(PrazoEmprestimoPadraoTicks / 7f));
+        double saldoPrevisto = valorArredondado * Math.Pow(1d + JurosEmprestimoPadraoPorTick, prazoSemanas);
         double dividasExistentes = (devedor.divida > 0f ? devedor.divida : 0f)
             + (devedor.emprestimos != null
                 ? devedor.emprestimos.Where(loan => loan != null && !loan.inadimplente)
@@ -166,8 +172,12 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
         string federacao = devedor.federacaoGlobal;
         // Todas as verificacoes acima sao somente leitura. A transferencia so
         // ocorre depois de aprovar o credor, a necessidade e a capacidade.
-        credor.saldo -= valorArredondado;
-        devedor.saldo += valorArredondado;
+        if (!governo.TentarPagar(credorTeamId, valorArredondado))
+        {
+            mensagem = "o credor não conseguiu liquidar a transferência";
+            return false;
+        }
+        governo.AdicionarSaldo(devedorTeamId, valorArredondado, "Empréstimo federativo", "Tesouro de " + credor.nomePais, TipoLancamentoFinanceiro.Emprestimo);
         if (devedor.emprestimos == null) devedor.emprestimos = new List<EmprestimoFederativoEstado>();
         devedor.emprestimos.Add(new EmprestimoFederativoEstado
         {
@@ -180,7 +190,8 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
             jurosPorTick = jurosPorTick,
             creditoMilitar = creditoMilitar,
             ajusteEstrutural = !creditoMilitar,
-            ticksRestantes = ticks
+            ticksRestantes = ticks,
+            periodicidadeSemanalMigrada = true
         });
         governo.NotificarGovernoAtualizado();
         mensagem = "emprestimo aprovado";
@@ -196,9 +207,8 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
         DadosPaisGoverno credor = governo != null ? governo.ObterPais(loan.credorTeamId) : null;
         if (credor == null) { mensagem = "o credor deste emprestimo nao esta mais registrado"; return false; }
         long valorQuitacao = (long)Math.Ceiling(Math.Max(0f, loan.saldoDevedor));
-        if (pais.saldo < valorQuitacao) { mensagem = "saldo insuficiente"; return false; }
-        pais.saldo -= valorQuitacao;
-        credor.saldo += valorQuitacao;
+        if (!governo.TentarPagar(teamId, valorQuitacao)) { mensagem = "saldo insuficiente"; return false; }
+        governo.AdicionarSaldo(credor.teamId, valorQuitacao, "Quitação de empréstimo", "Tesouro de " + pais.nomePais, TipoLancamentoFinanceiro.Emprestimo);
         pais.emprestimos.Remove(loan);
         governo?.NotificarGovernoAtualizado();
         mensagem = "emprestimo quitado";
@@ -215,6 +225,14 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
             foreach (EmprestimoFederativoEstado loan in pais.emprestimos.ToList())
             {
                 if (loan == null || loan.inadimplente) continue;
+                if (!loan.periodicidadeSemanalMigrada)
+                {
+                    GerenciadorTempo calendario = GerenciadorTempo.Instancia;
+                    float segundosDia = calendario != null ? Mathf.Max(1f, calendario.duracaoDiaSegundos) : 30f;
+                    float diasRestantesLegado = Mathf.Max(0, loan.ticksRestantes) * Mathf.Max(1f, intervaloTick) / segundosDia;
+                    loan.ticksRestantes = Mathf.Max(1, Mathf.CeilToInt(diasRestantesLegado / 7f));
+                    loan.periodicidadeSemanalMigrada = true;
+                }
                 if (loan.ticksRestantes > 0)
                 {
                     loan.saldoDevedor += loan.saldoDevedor * Mathf.Max(0f, loan.jurosPorTick);
@@ -225,10 +243,9 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
 
                 long valorVencido = (long)Math.Ceiling(Math.Max(0f, loan.saldoDevedor));
                 DadosPaisGoverno credor = governo.ObterPais(loan.credorTeamId);
-                if (credor != null && pais.saldo >= valorVencido)
+                if (credor != null && governo.TentarPagar(pais.teamId, valorVencido))
                 {
-                    pais.saldo -= valorVencido;
-                    credor.saldo += valorVencido;
+                    governo.AdicionarSaldo(credor.teamId, valorVencido, "Vencimento de empréstimo", "Tesouro de " + pais.nomePais, TipoLancamentoFinanceiro.Emprestimo);
                     pais.emprestimos.Remove(loan);
                     governo.RegistrarNoticia(pais.nomePais + " quitou automaticamente um emprestimo federativo.");
                     continue;
@@ -255,9 +272,10 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
         long saldoOperacionalDisponivel = governo != null
             ? governo.ObterSaldoDisponivelParaOperacao(pais.teamId)
             : pais.saldo;
+        bool fluxoDiarioNegativo = pais.receitaDiariaTesouro < pais.despesaDiariaTesouro;
         return pais.saldo <= reserva
             || saldoOperacionalDisponivel <= reserva
-            || pais.rendaPorSegundo < pais.gastosPorSegundo
+            || fluxoDiarioNegativo
             || pais.deficitComida > 0f || pais.deficitEnergia > 0f || pais.deficitPetroleo > 0f
             || pais.estabilidade < 45f || pais.sancionado;
     }
@@ -267,9 +285,12 @@ public sealed class SistemaFederacoesGlobais : MonoBehaviour
         if (pais == null) return 0L;
         double reserva = CalcularReservaFinanceira(pais);
         double saldoDisponivel = Math.Max(0d, pais.saldo - reserva);
-        double rendaLiquida = Math.Max(0d, pais.rendaPorSegundo - pais.gastosPorSegundo);
-        double duracaoSegundos = PrazoEmprestimoPadraoTicks * Math.Max(1f, intervaloTick);
-        double capacidade = saldoDisponivel + rendaLiquida * duracaoSegundos;
+        double rendaLiquidaDiaria = Math.Max(0L, pais.receitaDiariaTesouro - pais.despesaDiariaTesouro);
+        if (rendaLiquidaDiaria <= 0d)
+        {
+            rendaLiquidaDiaria = 0d;
+        }
+        double capacidade = saldoDisponivel + rendaLiquidaDiaria * PrazoEmprestimoPadraoTicks;
         return capacidade >= long.MaxValue ? long.MaxValue : (long)Math.Floor(capacidade);
     }
 

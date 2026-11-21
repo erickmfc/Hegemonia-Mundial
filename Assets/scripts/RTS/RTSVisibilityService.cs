@@ -318,6 +318,26 @@ namespace Hegemonia.RTS
                     destino.Add(contato);
         }
 
+        /// <summary>
+        /// Copia os contatos de unidade já detectados pelos sensores da equipe,
+        /// inclusive contatos neutros. Não faz varredura nem consulta física.
+        /// </summary>
+        public void CopiarContatosDeUnidades(int equipeObservadora, List<RTSVisibilityContact> destino, float idadeMaximaSegundos)
+        {
+            if (destino == null) return;
+            destino.Clear();
+            if (equipeObservadora <= 0
+                || !contactsByTeam.TryGetValue(equipeObservadora, out Dictionary<int, RTSVisibilityContact> contatos)
+                || contatos == null) return;
+
+            float agora = Time.unscaledTime;
+            float idadeMaxima = Mathf.Max(0f, idadeMaximaSegundos);
+            foreach (RTSVisibilityContact contato in contatos.Values)
+                if (contato != null && contato.targetTeamId > 0 && contato.targetTeamId != equipeObservadora
+                    && contato.lastKnownExpiresAt >= agora && agora - contato.lastSeenAt <= idadeMaxima)
+                    destino.Add(contato);
+        }
+
         private void RefreshMissileContacts()
         {
             missileTrackersBuffer.Clear();

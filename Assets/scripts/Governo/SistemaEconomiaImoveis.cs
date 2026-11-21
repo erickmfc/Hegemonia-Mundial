@@ -333,6 +333,20 @@ public class SistemaEconomiaImoveis : MonoBehaviour
         }
     }
 
+    private static bool EhAeroportoNaoEstatal(GerenciadorAeroporto aeroporto, int teamId)
+    {
+        if (aeroporto == null) return false;
+        if (aeroporto.GetComponentInParent<RebeldeControlador>() != null) return true;
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        if (governo == null || teamId <= 0 || governo.ObterPais(teamId) != null) return false;
+        IReadOnlyList<FacaoNaoEstatalGoverno> facoes = governo.FacoesNaoEstatais;
+        for (int i = 0; i < facoes.Count; i++)
+        {
+            if (facoes[i] != null && facoes[i].teamId == teamId) return true;
+        }
+        return false;
+    }
+
     private void LerAeroportos()
     {
         RegistroEntidadesJogo.FillAeroportos(aeroportosBuffer);
@@ -342,6 +356,12 @@ public class SistemaEconomiaImoveis : MonoBehaviour
             if (aeroporto == null || objetosContados.Contains(aeroporto.gameObject.GetInstanceID())) continue;
             if (aeroporto.GetComponent<EstruturaEconomica>() != null) continue;
             if (aeroporto is GerenciadorPortaAvioes) continue;
+            int teamId = ResolverTeamId(aeroporto.gameObject);
+            if (EhAeroportoNaoEstatal(aeroporto, teamId))
+            {
+                aeroporto.SetarSemEnergia(false);
+                continue;
+            }
             ContabilizarAeroporto(aeroporto);
         }
     }

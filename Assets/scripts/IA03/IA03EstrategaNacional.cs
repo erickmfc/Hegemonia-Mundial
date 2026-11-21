@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Hegemonia.AI.BrainMaster;
 using Hegemonia.AI.Shared;
+using Hegemonia.RTS;
 using UnityEngine;
 
 namespace Hegemonia.AI.IA03
@@ -64,6 +65,8 @@ namespace Hegemonia.AI.IA03
         private readonly List<GameObject> unidadesAtivasNaMissao = new List<GameObject>(32);
         private readonly List<IA_EnemyObservation> observacoesInimigasParaRelatorio = new List<IA_EnemyObservation>(128);
         private readonly List<IA_EnemyObservation> memoriaInimigosBuffer = new List<IA_EnemyObservation>(64);
+        private readonly List<RTSVisibilityContact> contatosDiplomaticosBuffer = new List<RTSVisibilityContact>(32);
+        private readonly HashSet<int> facoesNaoEstataisConhecidas = new HashSet<int>();
         private readonly List<IA_StrategicTargetData> alvosEstrategicosBuffer = new List<IA_StrategicTargetData>(8);
         private readonly List<CandidatoGrupo> candidatosGrupo = new List<CandidatoGrupo>(128);
         private readonly List<MissaoEstrategicaSO> filaMissoes = new List<MissaoEstrategicaSO>(32);
@@ -604,6 +607,7 @@ namespace Hegemonia.AI.IA03
 
             SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
             VincularEventosGoverno(governo);
+            ObservarFacoesNaoEstatais(governo);
             AvaliarVotosConselho(governo, now);
             DadosPaisGoverno pais = governo != null ? governo.ObterPais(brain.TeamId) : null;
             if (paisAlvoTeamId <= 0 && pais != null && pais.rivalTeamId > 0)
@@ -652,6 +656,37 @@ namespace Hegemonia.AI.IA03
 
             AtualizarRelatorio(governo, now);
             RegistrarLogDebugSeNecessario();
+        }
+
+        private void ObservarFacoesNaoEstatais(SistemaGovernoMundial governo)
+        {
+            if (governo == null || brain == null || governo.FacoesNaoEstatais == null
+                || governo.FacoesNaoEstatais.Count == 0) return;
+            RTSVisibilityService visibilidade = RTSVisibilityService.Instancia;
+            if (visibilidade == null) return;
+
+            visibilidade.CopiarContatosDeUnidades(brain.TeamId, contatosDiplomaticosBuffer, 120f);
+            for (int i = 0; i < contatosDiplomaticosBuffer.Count; i++)
+            {
+                RTSVisibilityContact contato = contatosDiplomaticosBuffer[i];
+                if (contato == null) continue;
+                FacaoNaoEstatalGoverno facao = null;
+                IReadOnlyList<FacaoNaoEstatalGoverno> facoes = governo.FacoesNaoEstatais;
+                for (int f = 0; f < facoes.Count; f++)
+                    if (facoes[f] != null && facoes[f].ativa && facoes[f].teamId == contato.targetTeamId)
+                    { facao = facoes[f]; break; }
+                if (facao == null) continue;
+
+                if (facoesNaoEstataisConhecidas.Add(facao.teamId))
+                    governo.RegistrarNoticia("IA03 de " + governo.NomePais(brain.TeamId)
+                        + " identificou a organização não estatal " + facao.nome + " por sensores.");
+
+                RelacaoPaisGoverno relacao = governo.ObterRelacao(brain.TeamId, facao.teamId);
+                bool hostil = relacao != null && (relacao.guerraDeclarada
+                    || relacao.PosturaDe(brain.TeamId) == PosturaRelacaoPais.Inimigo);
+                if (hostil && (paisAlvoTeamId <= 0 || relacao.guerraDeclarada))
+                    DefinirPaisAlvo(facao.teamId, "contato de facção não estatal em relação hostil detectado pelos sensores");
+            }
         }
 
         public bool GarantirReservasEstrategicas()

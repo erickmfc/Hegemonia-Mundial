@@ -2607,6 +2607,10 @@ public class MapaGeralController : MonoBehaviour
         if (cameraPrincipal == null) cameraPrincipal = Camera.main;
         if (cameraPrincipal == null) return;
 
+        // Trocar de pin deve mudar somente a posição da câmera. Guarde a
+        // orientação atual para manter o mesmo lado e ângulo de visão no destino.
+        Quaternion rotacaoAntesDoTeleporte = cameraPrincipal.transform.rotation;
+
         if (_controladorCameraPrincipal == null)
         {
             _controladorCameraPrincipal = cameraPrincipal.GetComponent<CameraController>();
@@ -2623,6 +2627,8 @@ public class MapaGeralController : MonoBehaviour
             posicaoPrincipal.z = destino.z;
             cameraPrincipal.transform.position = posicaoPrincipal;
         }
+
+        cameraPrincipal.transform.rotation = rotacaoAntesDoTeleporte;
 
         if (mapaAtivo)
         {

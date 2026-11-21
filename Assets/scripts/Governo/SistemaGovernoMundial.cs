@@ -42,6 +42,7 @@ public class SistemaGovernoMundial : MonoBehaviour
     private readonly HashSet<string> listenersAtualizacaoComAviso = new HashSet<string>();
     private float proximaAtualizacaoSedes;
     private bool reconciliandoEstoqueComidaCulturas;
+    private int ultimoDiaLiquidacaoEconomica = -1;
 
     public IReadOnlyList<DadosPaisGoverno> Paises => paises;
     public IReadOnlyList<RelacaoPaisGoverno> Relacoes => relacoes;
@@ -121,6 +122,7 @@ public class SistemaGovernoMundial : MonoBehaviour
         ProcessarVotacoesTerritoriais();
         if (SistemaEconomiaImoveis.Instancia != null) SistemaEconomiaImoveis.Instancia.Recalcular();
         SincronizarJogador();
+        ProcessarLiquidacaoEconomicaDiaria();
         DescobrirIAsDaCena();
         ProcessarEconomia();
         ProcessarDiplomaciaIA();
@@ -606,7 +608,6 @@ public class SistemaGovernoMundial : MonoBehaviour
 
             if (pais.teamId != teamJogador)
             {
-                pais.saldo += Mathf.RoundToInt(pais.rendaPorSegundo - pais.gastosPorSegundo);
                 if (economia != null)
                 {
                     int variacaoPetroleo = Mathf.RoundToInt(economia.petroleoProduzido - economia.industriaProduzida * 0.10f);
@@ -657,6 +658,102 @@ public class SistemaGovernoMundial : MonoBehaviour
         NotificarGovernoAtualizadoSeguro();
     }
 
+    private void ProcessarLiquidacaoEconomicaDiaria()
+    {
+        GerenciadorTempo tempo = GerenciadorTempo.Instancia;
+        int dia = tempo != null ? Mathf.Max(1, tempo.totalDias) : 1;
+        if (ultimoDiaLiquidacaoEconomica < 0) ultimoDiaLiquidacaoEconomica = dia - 1;
+        if (dia <= ultimoDiaLiquidacaoEconomica) return;
+        int diasDecorridos = Mathf.Min(7, Mathf.Max(1, dia - ultimoDiaLiquidacaoEconomica));
+        ultimoDiaLiquidacaoEconomica = dia;
+        foreach (DadosPaisGoverno pais in paises)
+        {
+            if (pais == null) continue;
+            if (pais.ultimoDiaLiquidacaoFinanceira < 0)
+            {
+                pais.ultimoDiaLiquidacaoFinanceira = dia - 1;
+                pais.impostoSemanalAcumulado = 0L;
+            }
+            if (pais.ultimoDiaLiquidacaoFinanceira >= dia) continue;
+            pais.ultimoDiaLiquidacaoFinanceira = dia;
+            bool fechamentoSemanal = dia % 7 == 0 && pais.ultimoDiaLiquidacaoSemanal != dia;
+            SincronizarJogadorSeNecessario(pais);
+            long receitaBruta = pais.receitaOperacionalDiariaTesouro;
+            // Investimentos e agricultura já têm liquidadores próprios que
+            // debitam uma vez por dia/semana e chamam TentarPagar.
+            long despesas = 0L;
+            long despesasPrevistasDiarias = pais.despesaDiariaTesouro;
+            if (pais.orcamentoInvestimentoAtivo)
+                despesasPrevistasDiarias = SaturarSomarFinanceiro(despesasPrevistasDiarias, pais.orcamentoInvestimentoDiario);
+            pais.despesaDiariaTesouro = despesasPrevistasDiarias;
+            if (receitaBruta > 0L)
+                AdicionarSaldo(pais.teamId, SaturarMultiplicacao(receitaBruta, diasDecorridos), "Receita operacional", "Economia nacional", TipoLancamentoFinanceiro.ReceitaDiaria);
+
+            pais.impostoSemanalAcumulado = SaturarSomarFinanceiro(pais.impostoSemanalAcumulado,
+                SaturarMultiplicacao(Math.Max(0L, pais.receitaDiariaTesouro - receitaBruta), diasDecorridos));
+
+            long despesasVencidas = SaturarMultiplicacao(despesas, diasDecorridos);
+            if (despesasVencidas > 0L && !TentarPagar(pais.teamId, despesasVencidas, "Despesas operacionais", "Economia nacional", TipoLancamentoFinanceiro.DespesaDiaria))
+            {
+                long disponivel = ObterSaldoDisponivelParaOperacao(pais.teamId);
+                long pagoParcialmente = Math.Min(despesasVencidas, Math.Max(0L, disponivel));
+                if (pagoParcialmente > 0L)
+                    TentarPagar(pais.teamId, pagoParcialmente, "Pagamento parcial de despesas", "Economia nacional", TipoLancamentoFinanceiro.DespesaDiaria);
+                long naoPago = despesasVencidas - pagoParcialmente;
+                if (naoPago > 0L)
+                {
+                    pais.divida = (float)Math.Min(float.MaxValue, Math.Max(0f, pais.divida) + naoPago);
+                    EconomiaFinanceiraNacional.Registrar(pais, naoPago, "Dívida operacional acumulada", "Despesas sem cobertura", TipoLancamentoFinanceiro.Ajuste, dia);
+                }
+            }
+
+            if (fechamentoSemanal)
+            {
+                long tributoSemanal = pais.impostoSemanalAcumulado;
+                if (tributoSemanal > 0L)
+                    AdicionarSaldo(pais.teamId, tributoSemanal, "Impostos sobre renda e lucros", "Liquidação semanal", TipoLancamentoFinanceiro.ReceitaSemanal);
+                pais.receitaSemanalTesouro = tributoSemanal;
+                pais.despesaSemanalTesouro = SaturarMultiplicacao(pais.despesaDiariaTesouro, 7);
+                pais.impostoSemanalAcumulado = 0L;
+                pais.ultimoDiaLiquidacaoSemanal = dia;
+            }
+        }
+        ultimoDiaLiquidacaoEconomica = dia;
+    }
+
+    private void SincronizarJogadorSeNecessario(DadosPaisGoverno pais)
+    {
+        if (pais == null || pais.teamId != teamJogador) return;
+        SincronizarJogador();
+    }
+
+    private static long ArredondarFinanceiro(float valor)
+    {
+        if (float.IsNaN(valor) || float.IsInfinity(valor)) return 0L;
+        return (long)Math.Min(long.MaxValue, Math.Max(0d, Math.Round(valor, MidpointRounding.AwayFromZero)));
+    }
+
+    private static long SaturarMultiplicacao(long valor, int multiplicador)
+    {
+        if (valor > 0 && valor > long.MaxValue / multiplicador) return long.MaxValue;
+        return valor * multiplicador;
+    }
+
+    private static long SaturarSomarFinanceiro(long a, long b)
+    {
+        if (b > 0L && a > long.MaxValue - b) return long.MaxValue;
+        return a + b;
+    }
+
+    private bool AtualizarSnapshotFinanceiroDiario(DadosPaisGoverno pais)
+    {
+        if (pais == null) return false;
+        int dia = DiaAtual();
+        if (pais.ultimoDiaSnapshotEconomico == dia) return false;
+        pais.ultimoDiaSnapshotEconomico = dia;
+        return true;
+    }
+
     public void SincronizarJogador()
     {
         DadosPaisGoverno jogador = ObterPais(teamJogador);
@@ -686,11 +783,14 @@ public class SistemaGovernoMundial : MonoBehaviour
             economia = new DadosEconomiaPais { teamId = teamJogador };
         }
 
-        AplicarEconomiaImoveis(jogador, economia);
+        DadosComercioNacional comercioAtual = SistemaComercioNacional.ObterResumo(teamJogador);
+        AplicarEconomiaImoveis(jogador, economia, comercioAtual);
 
         // O HUD e o caixa usam o fluxo calculado pelas estruturas reais.
         // A renda passiva antiga nao pode sustentar um pais sem economia.
-        gr.dinheiroPorSegundo = jogador.saldoOperacional;
+        // Mantido como campo legado para HUDs antigos; o dinheiro é liquidado
+        // uma vez por dia do jogo pelo ciclo financeiro central.
+        gr.dinheiroPorSegundo = 0f;
         gr.energiaPorSegundo = Mathf.RoundToInt(economia.energiaProduzida - economia.energiaConsumida);
         gr.populacaoAtual = jogador.populacao;
         gr.populacaoMaxima = jogador.populacaoMaxima;
@@ -1201,13 +1301,15 @@ public class SistemaGovernoMundial : MonoBehaviour
         bool taxaCobrada = false;
         if (!isentoPorPacto && ObterSaldoDisponivelParaOperacao(teamJogador) >= TaxaLogisticaAliada)
         {
-            taxaCobrada = TentarPagar(teamJogador, TaxaLogisticaAliada);
+            taxaCobrada = TentarPagar(teamJogador, TaxaLogisticaAliada,
+                "Taxa logística aliada", "Apoio aéreo", TipoLancamentoFinanceiro.DespesaTransacao);
             if (taxaCobrada)
             {
                 DadosPaisGoverno paisAliado = ObterPais(alvoTeamId);
                 if (paisAliado != null)
                 {
-                    paisAliado.saldo += TaxaLogisticaAliada;
+                    AdicionarSaldo(paisAliado.teamId, TaxaLogisticaAliada,
+                        "Taxa logística recebida", "Apoio aéreo aliado", TipoLancamentoFinanceiro.ReceitaTransacao);
                 }
             }
         }
@@ -1248,6 +1350,11 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public bool TentarPagar(int teamId, long valor)
     {
+        return TentarPagar(teamId, valor, "Despesa", "Operação de jogo", TipoLancamentoFinanceiro.DespesaTransacao);
+    }
+
+    public bool TentarPagar(int teamId, long valor, string categoria, string origem, TipoLancamentoFinanceiro tipo)
+    {
         if (valor <= 0) return true;
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null) return false;
@@ -1261,12 +1368,14 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             if (!GerenciadorRecursos.Instancia.TentarGastar(custoDinheiro: valor)) return false;
             SincronizarJogador();
+            EconomiaFinanceiraNacional.Registrar(pais, -valor, categoria, origem, tipo, DiaAtual());
             return true;
         }
 
         if (pais.saldo < valor) return false;
 
         pais.saldo -= valor;
+        EconomiaFinanceiraNacional.Registrar(pais, -valor, categoria, origem, tipo, DiaAtual());
         NotificarGovernoAtualizadoSeguro();
         return true;
     }
@@ -1674,8 +1783,20 @@ public class SistemaGovernoMundial : MonoBehaviour
 
     public void AdicionarSaldo(int teamId, long valor)
     {
+        AdicionarSaldo(teamId, valor, "Ajuste", "Sistema de jogo", valor >= 0 ? TipoLancamentoFinanceiro.Mercado : TipoLancamentoFinanceiro.DespesaDiaria);
+    }
+
+    public void AdicionarSaldo(int teamId, long valor, string categoria, string origem, TipoLancamentoFinanceiro tipo)
+    {
         DadosPaisGoverno pais = ObterPais(teamId);
         if (pais == null || valor == 0) return;
+
+        if (valor < 0)
+        {
+            if (valor == long.MinValue) return;
+            TentarPagar(teamId, -valor, categoria, origem, tipo);
+            return;
+        }
 
         if (teamId == teamJogador && GerenciadorRecursos.Instancia != null)
         {
@@ -1686,6 +1807,8 @@ public class SistemaGovernoMundial : MonoBehaviour
         {
             pais.saldo += valor;
         }
+
+        EconomiaFinanceiraNacional.Registrar(pais, valor, categoria, origem, tipo, DiaAtual());
 
         NotificarGovernoAtualizadoSeguro();
     }
@@ -3188,8 +3311,12 @@ public class SistemaGovernoMundial : MonoBehaviour
                 return false;
             }
 
-            pagador.saldo -= valor;
-            credor.saldo += valor;
+            if (!TentarPagar(pagador.teamId, valor, "Indenização internacional", "Acordo diplomático", TipoLancamentoFinanceiro.DespesaTransacao))
+            {
+                mensagem = "Indenização não executada: saldo disponível insuficiente.";
+                return false;
+            }
+            AdicionarSaldo(credor.teamId, valor, "Indenização recebida", "Acordo diplomático", TipoLancamentoFinanceiro.ReceitaTransacao);
             mensagem = NomePais(proposta.alvoTeamId) + " pagou indenização de " + valor + " a " + NomePais(proposta.origemTeamId) + ".";
             RegistrarNoticia(mensagem);
             return true;
@@ -4145,14 +4272,16 @@ public class SistemaGovernoMundial : MonoBehaviour
         float multiplicadorEconomico = 1f + pais.nivelEconomico * 0.0020f;
         float multiplicadorIndustrial = 1f + pais.nivelIndustrial * 0.0025f;
         float multiplicadorDiplomatico = 1f + pais.nivelDiplomatico * 0.0018f;
-        pais.receitaMoradia = economia.receitaMoradia * FatorImposto(pais.impostoMoradia) * multiplicadorEconomico;
-        pais.receitaIndustria = economia.receitaIndustria * FatorImposto(pais.impostoIndustria) * multiplicadorIndustrial;
-        pais.receitaComercio = economia.receitaComercio * FatorImposto(pais.impostoComercio) * multiplicadorDiplomatico
+        // O resumo de economia contém faturamento privado. O Tesouro recebe somente a alíquota tributária.
+        pais.receitaMoradia = economia.receitaMoradia * (pais.impostoMoradia / 100f) * multiplicadorEconomico;
+        pais.receitaIndustria = economia.receitaIndustria * (pais.impostoIndustria / 100f) * multiplicadorIndustrial;
+        pais.receitaComercio = economia.receitaComercio * (pais.impostoComercio / 100f) * multiplicadorDiplomatico
             + comercio.impostosArrecadados;
         // Salarios pagos pelo comercio elevam o poder de compra dos moradores.
         // O teto impede que um unico shopping distorca a moeda nacional.
         pais.bonusPoderCompraComercio = Mathf.Clamp(comercio.salariosPagos / Mathf.Max(1f, pais.populacaoCivil) * 0.08f, 0f, 0.50f);
-        pais.receitaEnergia = economia.receitaEnergia * (1f + (pais.nivelEconomico + pais.nivelIndustrial) * 0.0010f);
+        // Geração não é receita fiscal. Vendas de energia são creditadas uma vez na transação do mercado.
+        pais.receitaEnergia = 0f;
 
         // Partida nova: sem estruturas, tropas ou compromissos ativos não há
         // fluxo econômico que justifique retirar dinheiro do governo. Assim
@@ -4169,6 +4298,11 @@ public class SistemaGovernoMundial : MonoBehaviour
             pais.rendaPorSegundo = 0f;
             pais.gastosPorSegundo = 0f;
             pais.energiaProduzida = economia.energiaProduzida;
+            pais.receitaDiariaTesouro = 0L;
+            pais.receitaOperacionalDiariaTesouro = 0L;
+            pais.impostoSemanalAcumulado = 0L;
+            pais.ultimoDiaSnapshotEconomico = DiaAtual();
+            pais.despesaDiariaTesouro = 0L;
             pais.energiaConsumida = economia.energiaConsumida;
             pais.deficitComida = economia.deficitComida;
             pais.deficitEnergia = economia.deficitEnergia;
@@ -4203,8 +4337,23 @@ public class SistemaGovernoMundial : MonoBehaviour
         }
         pais.custoManutencao = custoNacional;
         pais.saldoOperacional = (pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia) - pais.custoManutencao;
-        pais.rendaPorSegundo = Mathf.Max(0f, pais.receitaMoradia + pais.receitaIndustria + pais.receitaComercio + pais.receitaEnergia);
+        float duracaoDiaEconomico = GerenciadorTempo.Instancia != null
+            ? Mathf.Max(1f, GerenciadorTempo.Instancia.duracaoDiaSegundos) : 30f;
+        float baseImpostosDiarios = pais.receitaMoradia + pais.receitaIndustria;
+        float impostosSemana = baseImpostosDiarios * duracaoDiaEconomico;
+        float impostosDiaMedio = impostosSemana / 7f;
+        float comercioDia = pais.receitaComercio * duracaoDiaEconomico;
+        pais.rendaPorSegundo = Mathf.Max(0f, pais.receitaComercio + baseImpostosDiarios / 7f);
         pais.gastosPorSegundo = Mathf.Max(0f, pais.custoManutencao);
+        pais.receitaOperacionalDiariaTesouro = ArredondarFinanceiro(comercioDia);
+        pais.receitaDiariaTesouro = ArredondarFinanceiro(comercioDia + impostosDiaMedio);
+        if (AtualizarSnapshotFinanceiroDiario(pais))
+            pais.impostoSemanalAcumulado = SaturarSomarFinanceiro(pais.impostoSemanalAcumulado,
+                ArredondarFinanceiro(impostosSemana));
+        // Despesas de manutenção continuam liquidadas pelos subsistemas que
+        // possuem contrato próprio (unidades, aeroporto, estruturas). O painel
+        // guarda a previsão operacional, mas o ciclo diário não cobra de novo.
+        pais.despesaDiariaTesouro = ArredondarFinanceiro(pais.gastosPorSegundo * duracaoDiaEconomico);
         pais.qualidadeVida = economia.qualidadeVida;
         pais.energiaProduzida = economia.energiaProduzida;
         pais.energiaConsumida = economia.energiaConsumida;
@@ -4246,11 +4395,6 @@ public class SistemaGovernoMundial : MonoBehaviour
             if (identidade == null && teamId == teamJogador && sede.ehDoJogador) return true;
         }
         return false;
-    }
-
-    private static float FatorImposto(int impostoPercentual)
-    {
-        return 1f + Mathf.Clamp(impostoPercentual, 0, 35) / 100f;
     }
 
     private static int NormalizarImposto(int valor)

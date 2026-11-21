@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Hegemonia.AI.BrainMaster;
 using UnityEngine;
+using UnityEngine.AI;
 
 public enum EstadoOrganizacaoRebelde
 {
@@ -206,12 +207,20 @@ public sealed class RebeldeControlador : MonoBehaviour
     private void Vincular(GameObject objeto, TipoUnidade tipo)
     {
         if (objeto == null) return;
-        IdentidadeUnidade identidade = objeto.GetComponent<IdentidadeUnidade>();
-        if (identidade == null) identidade = objeto.AddComponent<IdentidadeUnidade>();
-        identidade.teamID = identificacaoFacao;
-        identidade.nomeDoPais = nomeOrganizacao;
-        identidade.tipoUnidade = tipo;
-        IA_WorldState.NotifyEntityChanged(identidade);
+        IdentidadeUnidade[] identidades = objeto.GetComponentsInChildren<IdentidadeUnidade>(true);
+        if (identidades.Length == 0)
+        {
+            identidades = new[] { objeto.AddComponent<IdentidadeUnidade>() };
+        }
+        for (int i = 0; i < identidades.Length; i++)
+        {
+            IdentidadeUnidade identidade = identidades[i];
+            if (identidade == null) continue;
+            identidade.teamID = identificacaoFacao;
+            identidade.nomeDoPais = nomeOrganizacao;
+            identidade.tipoUnidade = tipo;
+            IA_WorldState.NotifyEntityChanged(identidade);
+        }
     }
 
     public void Ativar()
@@ -298,11 +307,16 @@ public sealed class RebeldeControlador : MonoBehaviour
             {
                 Transform ponto = area.PontosCriacaoAutorizados[p];
                 if (ponto == null || !area.Contem(ponto.position)) continue;
+                Vector3 posicaoNaval = ponto.position;
+                if (RegistroSuperficieMapa.TryGetAltura(posicaoNaval, TipoSuperficieMapa.Agua, out float alturaAgua))
+                    posicaoNaval.y = alturaAgua;
+                else
+                    posicaoNaval.y = 0f;
                 bool ocupado = false;
                 for (int n = 0; n < naviosRebeldes.Count; n++)
-                    if (naviosRebeldes[n] != null && Vector3.SqrMagnitude(naviosRebeldes[n].transform.position - ponto.position) < 100f * 100f) { ocupado = true; break; }
+                    if (naviosRebeldes[n] != null && Vector3.SqrMagnitude(naviosRebeldes[n].transform.position - posicaoNaval) < 100f * 100f) { ocupado = true; break; }
                 if (ocupado) continue;
-                GameObject objeto = Instantiate(prefab, ponto.position, ponto.rotation);
+                GameObject objeto = Instantiate(prefab, posicaoNaval, ponto.rotation);
                 ControleNavioRealista navio = objeto.GetComponent<ControleNavioRealista>();
                 if (navio == null) { Destroy(objeto); continue; }
                 Vincular(objeto, TipoUnidade.Naval);
@@ -362,11 +376,21 @@ public sealed class RebeldeControlador : MonoBehaviour
                 StartCoroutine(PatrulharNavio(navio, area));
             yield return new WaitForSeconds(0.25f);
         }
+        for (int i = 0; i < soldadosReforcados.Count; i++)
+        {
+            GameObject soldado = soldadosReforcados[i];
+            if (soldado == null) continue;
+            AreaOperacionalRebelde area = ObterAreaParaUnidade(TipoAreaOperacionalRebelde.Terrestre, soldado.transform);
+            if (area != null && area.RotaValida() && RotaDentroDaArea(area, area.RotaPatrulha))
+                StartCoroutine(PatrulharTerrestre(soldado, area));
+            yield return new WaitForSeconds(0.15f);
+        }
         rotinaAtivacao = null;
     }
 
     private void ProcessarDecisaoLocal()
     {
+        soldadosReforcados.RemoveAll(x => x == null);
         RemoverContatosInvalidos();
         VerificarLimitesDasUnidades();
         bool baseOperacional = (basePrincipal != null && basePrincipal.activeInHierarchy) || (baseAliada != null && baseAliada.activeInHierarchy);
@@ -468,6 +492,15 @@ public sealed class RebeldeControlador : MonoBehaviour
 
         controle.DefinirModoCombate(true);
         controle.DefinirAlvoPrioritario(contato.transform);
+        if (area.Tipo == TipoAreaOperacionalRebelde.Terrestre)
+        {
+            NavMeshAgent agente = unidade.GetComponent<NavMeshAgent>() ?? unidade.GetComponentInChildren<NavMeshAgent>(true);
+            if (agente != null && agente.isActiveAndEnabled && agente.isOnNavMesh
+                && (unidade.transform.position - contato.transform.position).sqrMagnitude > 70f * 70f)
+            {
+                controle.MoverParaPonto(contato.transform.position, false);
+            }
+        }
     }
 
     private bool PossuiContatoHostil()
@@ -533,6 +566,57 @@ public sealed class RebeldeControlador : MonoBehaviour
                 AreaOperacionalRebelde areaNaval = ObterAreaDeUnidade(TipoAreaOperacionalRebelde.Naval, navio);
                 if (areaNaval != null && areaNaval.PontoRetornoBase != null) navio.DefinirDestino(areaNaval.PontoRetornoBase.position);
             }
+        }
+        for (int i = 0; i < soldadosReforcados.Count; i++)
+        {
+            GameObject soldado = soldadosReforcados[i];
+            if (soldado == null) continue;
+            if (ObterArea(TipoAreaOperacionalRebelde.Terrestre, soldado.transform.position) != null) continue;
+            AreaOperacionalRebelde areaTerrestre = ObterAreaDeUnidade(TipoAreaOperacionalRebelde.Terrestre, soldado.transform);
+            if (areaTerrestre == null || areaTerrestre.PontoRetornoBase == null) continue;
+            NavMeshAgent agente = soldado.GetComponent<NavMeshAgent>();
+            ControleUnidade controle = soldado.GetComponent<ControleUnidade>();
+            if (agente != null && agente.isActiveAndEnabled && agente.isOnNavMesh && controle != null)
+                controle.MoverParaPonto(areaTerrestre.PontoRetornoBase.position, false);
+        }
+    }
+
+    private IEnumerator PatrulharTerrestre(GameObject soldado, AreaOperacionalRebelde area)
+    {
+        if (soldado == null || area == null) yield break;
+        ControleUnidade controle = soldado.GetComponent<ControleUnidade>();
+        NavMeshAgent agente = soldado.GetComponent<NavMeshAgent>();
+        SistemaDeTiro tiro = soldado.GetComponent<SistemaDeTiro>();
+        if (controle == null || agente == null) yield break;
+
+        while (Ativo && soldado != null && area != null)
+        {
+            if (!agente.isActiveAndEnabled || !agente.isOnNavMesh)
+            {
+                yield return new WaitForSeconds(2f);
+                continue;
+            }
+            if (tiro != null && (tiro.alvoAtual != null || tiro.alvoPrioritario != null))
+            {
+                yield return new WaitForSeconds(1.5f);
+                continue;
+            }
+            for (int i = 0; i < area.RotaPatrulha.Count; i++)
+            {
+                if (!Ativo || soldado == null || area == null) yield break;
+                if (!agente.isActiveAndEnabled || !agente.isOnNavMesh) break;
+                if (tiro != null && (tiro.alvoAtual != null || tiro.alvoPrioritario != null)) break;
+                Transform ponto = area.RotaPatrulha[i];
+                if (ponto == null || !area.Contem(ponto.position)) continue;
+                controle.MoverParaPonto(ponto.position, false);
+                float limiteEspera = Time.time + 90f;
+                while (Ativo && soldado != null && agente.isActiveAndEnabled && agente.isOnNavMesh
+                    && (tiro == null || (tiro.alvoAtual == null && tiro.alvoPrioritario == null))
+                    && Vector3.SqrMagnitude(soldado.transform.position - ponto.position) > 4.5f * 4.5f
+                    && Time.time < limiteEspera)
+                    yield return new WaitForSeconds(0.5f);
+            }
+            yield return new WaitForSeconds(Mathf.Max(2f, area.TempoEntrePatrulhas));
         }
     }
 
@@ -615,7 +699,22 @@ public sealed class RebeldeControlador : MonoBehaviour
         int criados = 0;
         for (int i = 0; i < quantidade; i++)
         {
-            GameObject soldado = Instantiate(prefabsSoldado[0], ponto.position, ponto.rotation);
+            Vector3 posicaoSpawn = ResolverPosicaoTerrestreSegura(ponto.position, i, areaEscolhida);
+            GameObject soldado = Instantiate(prefabsSoldado[0], posicaoSpawn, ponto.rotation);
+            NavMeshAgent agente = soldado.GetComponent<NavMeshAgent>() ?? soldado.GetComponentInChildren<NavMeshAgent>(true);
+            if (agente != null)
+            {
+                if (NavMesh.SamplePosition(posicaoSpawn, out NavMeshHit hitNav, 16f, NavMesh.AllAreas))
+                {
+                    soldado.transform.position = hitNav.position;
+                    agente.enabled = true;
+                    if (!agente.isOnNavMesh) agente.Warp(hitNav.position);
+                }
+                else
+                {
+                    agente.enabled = false;
+                }
+            }
             if (!areaEscolhida.RegistrarUnidade(soldado))
             {
                 Destroy(soldado);
@@ -627,6 +726,28 @@ public sealed class RebeldeControlador : MonoBehaviour
             criados++;
         }
         return criados > 0;
+    }
+
+    private static Vector3 ResolverPosicaoTerrestreSegura(Vector3 basePos, int indice, AreaOperacionalRebelde area)
+    {
+        float angulo = indice * 2.094395f;
+        float raio = indice == 0 ? 0f : 2.6f;
+        Vector3 candidata = basePos + new Vector3(Mathf.Cos(angulo) * raio, 0f, Mathf.Sin(angulo) * raio);
+        if (RegistroSuperficieMapa.TryGetAltura(candidata, TipoSuperficieMapa.Chao, out float alturaTerreno))
+        {
+            candidata.y = alturaTerreno;
+        }
+        else if (Physics.Raycast(candidata + Vector3.up * 200f, Vector3.down, out RaycastHit hit, 400f,
+            Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            candidata.y = hit.point.y;
+        }
+
+        if (area != null && area.LimiteDaArea != null && !area.Contem(candidata))
+        {
+            candidata = basePos;
+        }
+        return candidata;
     }
 
     private bool EnviarApoioAereoDaSegundaBase()

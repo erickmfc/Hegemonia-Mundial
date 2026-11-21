@@ -11,28 +11,30 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
     [Header("Limites do Mapa Jogavel")]
     [SerializeField] private Vector2 playableWorldSize = new Vector2(512000f, 512000f);
     [SerializeField] private float seaLevel = 0f;
-    [SerializeField] private float horizonExtension = 1200000f;
-    [SerializeField] private float seamOverlap = 250f;
-    [SerializeField] private float verticalOffset = -0.2f;
+    [SerializeField] private float horizonExtension = 900000f;
+    [SerializeField] private float seamOverlap = 600f;
+    [SerializeField] private float verticalOffset = -0.15f;
 
     [Header("Material do Mar Distante")]
     [SerializeField] private Material horizonSeaMaterial;
     [SerializeField] private Color fallbackSeaColor = new Color(0.026275955f, 0.13437988f, 0.19852942f, 1f);
+    [SerializeField] private Color reflectionSeaColor = new Color(0.48264486f, 0.5361673f, 0.5808823f, 1f);
 
     [Header("Skybox e Nevoa Atmosferica")]
     [SerializeField] private bool applyMaritimeProceduralSkybox = true;
-    [SerializeField] private Color skyTint = new Color(0.46f, 0.64f, 0.80f, 1f);
-    [SerializeField] private Color skyGroundColor = new Color(0.11f, 0.22f, 0.31f, 1f);
+    [SerializeField] private Color skyTint = new Color(0.24f, 0.45f, 0.68f, 1f);
+    [SerializeField] private Color skyGroundColor = new Color(0.03f, 0.14f, 0.21f, 1f);
     [SerializeField] private Color horizonFogColor = new Color(0.62f, 0.75f, 0.85f, 1f);
-    [SerializeField] private float baseFogStart = 45000f;
-    [SerializeField] private float baseFogEnd = 280000f;
-    [SerializeField] private float altitudeFogStartMultiplier = 2.2f;
-    [SerializeField] private float altitudeFogEndMultiplier = 4.5f;
+    [SerializeField] private float baseFogStart = 18000f;
+    [SerializeField] private float baseFogEnd = 160000f;
+    [SerializeField] private float altitudeFogStartMultiplier = 2.0f;
+    [SerializeField] private float altitudeFogEndMultiplier = 4.2f;
 
     private Camera _cachedCamera;
     private float _lastCameraY = float.NaN;
     private Material _runtimeSkyMaterial;
-    private Material _runtimeSeaMaterial;
+    private Material _activeSeaMaterial;
+    private bool _ownsSeaMaterial;
     private bool _builtStrips;
 
     private void Start()
@@ -50,7 +52,7 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
     private void OnDestroy()
     {
         if (_runtimeSkyMaterial != null) Destroy(_runtimeSkyMaterial);
-        if (_runtimeSeaMaterial != null) Destroy(_runtimeSeaMaterial);
+        if (_ownsSeaMaterial && _activeSeaMaterial != null) Destroy(_activeSeaMaterial);
     }
 
     private void BuildHorizonSeaStrips()
@@ -64,7 +66,6 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
         float y = seaLevel + verticalOffset;
         float totalSpanX = playableWorldSize.x + horizonExtension * 2f;
 
-        // 4 faixas externas ao redor do mapa jogavel (8 triangulos no total, zero overdraw interno)
         CreateStrip("HorizonteOceano_Norte", new Vector3(0f, y, halfZ - seamOverlap + horizonExtension * 0.5f), new Vector3(totalSpanX, horizonExtension + seamOverlap, 1f), mat);
         CreateStrip("HorizonteOceano_Sul", new Vector3(0f, y, -halfZ + seamOverlap - horizonExtension * 0.5f), new Vector3(totalSpanX, horizonExtension + seamOverlap, 1f), mat);
         CreateStrip("HorizonteOceano_Leste", new Vector3(halfX - seamOverlap + horizonExtension * 0.5f, y, 0f), new Vector3(horizonExtension + seamOverlap, playableWorldSize.y, 1f), mat);
@@ -97,32 +98,49 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
 
     private Material GetOrCreateSeaMaterial()
     {
-        if (horizonSeaMaterial != null) return horizonSeaMaterial;
+        Shader customSeaShader = Shader.Find("GlobalMap/SeaPowerHorizonSea");
+        if (horizonSeaMaterial != null && (customSeaShader == null || horizonSeaMaterial.shader == customSeaShader))
+        {
+            _activeSeaMaterial = horizonSeaMaterial;
+            _ownsSeaMaterial = false;
+        }
+        else
+        {
+            Shader shader = customSeaShader ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            _activeSeaMaterial = new Material(shader);
+            _activeSeaMaterial.name = "GlobalMap_HorizonSea_Runtime";
+            _ownsSeaMaterial = true;
+        }
 
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Standard");
-        _runtimeSeaMaterial = new Material(shader);
-        _runtimeSeaMaterial.name = "GlobalMap_HorizonSea_Runtime";
-        _runtimeSeaMaterial.SetColor("_BaseColor", fallbackSeaColor);
-        _runtimeSeaMaterial.SetColor("_Color", fallbackSeaColor);
-        if (_runtimeSeaMaterial.HasProperty("_Smoothness")) _runtimeSeaMaterial.SetFloat("_Smoothness", 0.72f);
-        if (_runtimeSeaMaterial.HasProperty("_ReceiveShadows")) _runtimeSeaMaterial.SetFloat("_ReceiveShadows", 0f);
-        return _runtimeSeaMaterial;
+        SyncSeaMaterialProperties(baseFogStart, baseFogEnd);
+        return _activeSeaMaterial;
+    }
+
+    private void SyncSeaMaterialProperties(float fogStart, float fogEnd)
+    {
+        if (_activeSeaMaterial == null) return;
+        if (_activeSeaMaterial.HasProperty("_BaseColor")) _activeSeaMaterial.SetColor("_BaseColor", fallbackSeaColor);
+        if (_activeSeaMaterial.HasProperty("_ReflectionColor")) _activeSeaMaterial.SetColor("_ReflectionColor", reflectionSeaColor);
+        if (_activeSeaMaterial.HasProperty("_HorizonColor")) _activeSeaMaterial.SetColor("_HorizonColor", horizonFogColor);
+        if (_activeSeaMaterial.HasProperty("_FogStart")) _activeSeaMaterial.SetFloat("_FogStart", fogStart);
+        if (_activeSeaMaterial.HasProperty("_FogEnd")) _activeSeaMaterial.SetFloat("_FogEnd", fogEnd);
     }
 
     private void ConfigureSkybox()
     {
         if (!applyMaritimeProceduralSkybox) return;
 
-        Shader skyShader = Shader.Find("Skybox/Procedural");
+        Shader skyShader = Shader.Find("GlobalMap/SeaPowerHorizonSkybox") ?? Shader.Find("Skybox/Procedural");
         if (skyShader == null) return;
 
         _runtimeSkyMaterial = new Material(skyShader);
         _runtimeSkyMaterial.name = "GlobalMap_HorizonSkybox_Runtime";
         _runtimeSkyMaterial.SetColor("_SkyTint", skyTint);
+        if (_runtimeSkyMaterial.HasProperty("_HorizonColor")) _runtimeSkyMaterial.SetColor("_HorizonColor", horizonFogColor);
         _runtimeSkyMaterial.SetColor("_GroundColor", skyGroundColor);
-        _runtimeSkyMaterial.SetFloat("_AtmosphereThickness", 0.85f);
-        _runtimeSkyMaterial.SetFloat("_Exposure", 1.15f);
-        _runtimeSkyMaterial.SetFloat("_SunSize", 0.03f);
+        if (_runtimeSkyMaterial.HasProperty("_AtmosphereThickness")) _runtimeSkyMaterial.SetFloat("_AtmosphereThickness", 0.65f);
+        _runtimeSkyMaterial.SetFloat("_Exposure", 1.0f);
+        _runtimeSkyMaterial.SetFloat("_SunSize", 0.025f);
         RenderSettings.skybox = _runtimeSkyMaterial;
     }
 
@@ -139,6 +157,7 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
         if (_runtimeSkyMaterial != null)
         {
             _runtimeSkyMaterial.SetColor("_SkyTint", novoSkyTint);
+            if (_runtimeSkyMaterial.HasProperty("_HorizonColor")) _runtimeSkyMaterial.SetColor("_HorizonColor", novoFogColor);
             _runtimeSkyMaterial.SetColor("_GroundColor", novoGroundColor);
             _runtimeSkyMaterial.SetFloat("_Exposure", exposure);
         }
@@ -147,6 +166,8 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
         {
             RenderSettings.fogColor = novoFogColor;
         }
+
+        SyncSeaMaterialProperties(RenderSettings.fogStartDistance, RenderSettings.fogEndDistance);
     }
 
     private void ApplyAdaptiveFog(bool force)
@@ -159,10 +180,15 @@ public class GlobalHorizonAtmosphere : MonoBehaviour
         _lastCameraY = camY;
 
         float altitude = Mathf.Max(1f, camY - seaLevel);
+        float fogStart = Mathf.Max(baseFogStart, altitude * altitudeFogStartMultiplier);
+        float fogEnd = Mathf.Max(baseFogEnd, altitude * altitudeFogEndMultiplier);
+
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Linear;
         RenderSettings.fogColor = horizonFogColor;
-        RenderSettings.fogStartDistance = Mathf.Max(baseFogStart, altitude * altitudeFogStartMultiplier);
-        RenderSettings.fogEndDistance = Mathf.Max(baseFogEnd, altitude * altitudeFogEndMultiplier);
+        RenderSettings.fogStartDistance = fogStart;
+        RenderSettings.fogEndDistance = fogEnd;
+
+        SyncSeaMaterialProperties(fogStart, fogEnd);
     }
 }

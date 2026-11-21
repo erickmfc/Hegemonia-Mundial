@@ -19,7 +19,7 @@ MonoBehaviour:
   itemId: urbana.cidade_moderna
   aliases: "cidade moderna; Nova Aurora; Nova Metr\xF3pole; megacidade; residencial"
   capacidades: 16777317
-  prefabDaUnidade: {fileID: 3755262905238795703, guid: 5e855f09b1c2c8844830ea25248f53a7, type: 3}
+  prefabDaUnidade: {fileID: 4626779330009425995, guid: 0e560bb75f766054ba8dfa4a39a873b1, type: 3}
   preco: 100
   precoDefinitivo: 6000000000
   categoria: 6

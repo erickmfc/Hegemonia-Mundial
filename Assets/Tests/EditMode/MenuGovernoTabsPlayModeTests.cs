@@ -38,6 +38,7 @@ public sealed class MenuGovernoTabsPlayModeTests
     }
 
     [UnityTest]
+    [Timeout(300000)]
     public IEnumerator TodasAsAbasDoGovernoMontamConteudoEComandosEmRuntime()
     {
         if (!EditorApplication.isPlaying)
@@ -122,6 +123,33 @@ public sealed class MenuGovernoTabsPlayModeTests
                 Assert.That(actions.childCount, Is.GreaterThan(1), category + " / " + tab + " precisa exibir ações.");
                 AssertControlsFitWithinCards(content, category + " / " + tab);
                 AssertButtonsFitWithinCards(actions, category + " / " + tab);
+                if (category == "Pesquisa e Desenvolvimento" && tab == "Missões")
+                {
+                    Button financiar = actions.Query<Button>().ToList()
+                        .Find(button => button.text == "FINANCIAR EXPEDIÇÃO CIENTÍFICA");
+                    Assert.That(financiar, Is.Not.Null,
+                        "A Operação Sinal Perdido disponível deve expor o comando de financiamento no menu do Governo.");
+
+                    System.Type missionType = ResolveType("MissaoOperacaoSinalPerdido");
+                    PropertyInfo missionInstance = missionType.GetProperty("Instancia", Members);
+                    PropertyInfo missionState = missionType.GetProperty("Estado", Members);
+                    Assert.That(missionInstance, Is.Not.Null);
+                    Assert.That(missionState, Is.Not.Null);
+                    object mission = missionInstance.GetValue(null);
+                    Assert.That(mission, Is.Not.Null, "A missão real da cena precisa estar registrada.");
+                    Assert.That(missionState.GetValue(mission).ToString(), Is.EqualTo("Disponivel"));
+
+                    // Exercita o gate de existência do aeroporto comercial do jogador
+                    // sem lançar uma aeronave nem cobrar a campanha durante a auditoria.
+                    Click(financiar);
+                    yield return null;
+                    Label footer = controller.GetComponent<UIDocument>().rootVisualElement.Q<Label>("footer-message");
+                    Assert.That(footer, Is.Not.Null);
+                    Assert.That(footer.text, Does.Contain("Construa ou configure um aeroporto comercial operacional do jogador").IgnoreCase,
+                        "O callback precisa mostrar o bloqueio do aeroporto antes de iniciar a expedição.");
+                    Assert.That(missionState.GetValue(mission).ToString(), Is.EqualTo("Disponivel"),
+                        "Uma tentativa recusada pelo gate do aeroporto não pode alterar o estado da missão.");
+                }
                 if (category == "IA03" && tab == "Situacao")
                 {
                     string statusText = string.Join("\n", content.Query<Label>().ToList().Select(label => label.text));
@@ -172,7 +200,9 @@ public sealed class MenuGovernoTabsPlayModeTests
             }
         }
 
-        Assert.That(tabCount, Is.EqualTo(41), "A auditoria precisa visitar todas as subtabs declaradas do Governo.");
+        int tabsDeclaradas = sections.Values.Cast<string[]>().Sum(tabs => tabs.Length);
+        Assert.That(tabCount, Is.EqualTo(tabsDeclaradas),
+            "A auditoria precisa visitar todas as subtabs declaradas do Governo.");
 
         MethodInfo showSection = controllerType.GetMethod("MostrarSecao", Members);
         MethodInfo showPage = controllerType.GetMethod("MostrarPagina", Members);

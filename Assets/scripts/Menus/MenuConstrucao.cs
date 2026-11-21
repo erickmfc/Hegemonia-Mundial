@@ -135,6 +135,14 @@ public class MenuConstrucao : MonoBehaviour
             return;
         }
 
+        UnityEngine.SceneManagement.Scene cenaAtiva = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        if (cenaAtiva.IsValid() && ConfiguracaoCenasJogo.EhCenaDeMenu(cenaAtiva.name))
+        {
+            // O menu principal nao usa a interface de campanha. Criar aqui um
+            // MenuConstrucao oculto carrega o catalogo pesado antes da partida.
+            return;
+        }
+
         // O menu inicial nao possui a interface de campanha e, antes, este
         // bootstrap era marcado como DontDestroyOnLoad. Ao entrar em cena19),
         // ele sobrevivia sem catalogo e o MenuConstrucao serializado da cena

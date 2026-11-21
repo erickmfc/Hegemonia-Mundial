@@ -146,6 +146,9 @@ public class C700TransporteAereo : MonoBehaviour
     private float prazoFase;
     private int tropasArmazenadas;
     private Coroutine rotinaCarga;
+    private Coroutine rotinaDecolagemComercial;
+    private GerenciadorAeroportoComercial aeroportoComercialReservado;
+    private PistaComercial pistaComercialReservada;
     private Quaternion rotacaoModeloBase = Quaternion.identity;
 
     public bool EstaNoSolo => estadoAtual == EstadoC700.Solo
@@ -182,17 +185,21 @@ public class C700TransporteAereo : MonoBehaviour
     private void Start()
     {
         if (aeroportoOrigem == null) aeroportoOrigem = GetComponentInParent<GerenciadorAeroporto>();
-        DefinirEstado(EstadoC700.Solo);
+        // Uma operação pode emitir a primeira ordem no mesmo frame em que
+        // instancia o C700. Não sobrescreva a decolagem aceita antes de Start.
+        if (estadoAtual == EstadoC700.Solo) DefinirEstado(EstadoC700.Solo);
     }
 
     private void OnDisable()
     {
+        CancelarDecolagemComercial();
         landingController?.Release();
         pistaOperacional?.ReleaseParking(this);
     }
 
     private void OnDestroy()
     {
+        CancelarDecolagemComercial();
         for (int i = 0; i < pistasLivresRuntime.Count; i++)
         {
             if (pistasLivresRuntime[i] != null) Destroy(pistasLivresRuntime[i].gameObject);
@@ -207,6 +214,12 @@ public class C700TransporteAereo : MonoBehaviour
         if (combustivel != null && !combustivel.PodeOperar)
         {
             PararPorFaltaDeCombustivel();
+            return;
+        }
+
+        if (rotinaDecolagemComercial != null)
+        {
+            AtualizarVisualVoo();
             return;
         }
 
@@ -273,10 +286,85 @@ public class C700TransporteAereo : MonoBehaviour
 
     public void ReceberOrdemMover(Vector3 destino)
     {
+        if (!TentarReceberOrdemMover(destino, out string mensagem))
+        {
+            MostrarMensagem(mensagem);
+        }
+    }
+
+    public bool PodeAceitarDestino(Vector3 destino, out string mensagem)
+    {
+        mensagem = string.Empty;
         if (EstaNaFaseProtegida())
         {
-            MostrarMensagem("Ordem ignorada: o C700 esta em procedimento de pouso/decolagem protegido.");
-            return;
+            mensagem = "Ordem ignorada: o C700 esta em procedimento de pouso/decolagem protegido.";
+            return false;
+        }
+
+        int teamId = ObterTeamId();
+        MiniPistaLogistica pista = MiniPistaLogistica.LocalizarMaisProxima(destino, 300f, teamId, false);
+        bool destinoPertenceAPista = pista != null
+            && pista.PistaValida
+            && (pista.raioAceitacaoDestino <= 0f
+                || Vector3.Distance(pista.transform.position, destino) <= Mathf.Max(1f, pista.raioAceitacaoDestino));
+
+        if (destinoPertenceAPista)
+        {
+            if (!pista.PodeReceber(this, destino))
+            {
+                mensagem = "Transporte recusou o destino: a Mini Pista Logistica esta ocupada ou inoperante.";
+                return false;
+            }
+            if (!PossuiCombustivelParaPista(pista) || (combustivel != null && !combustivel.PodeOperar))
+            {
+                mensagem = "C700 nao possui combustivel para ida, pouso e reserva de retorno.";
+                return false;
+            }
+            return true;
+        }
+
+        if (!permitirPousoTerrestreSeco || !TryResolverPontoTerrestreSeco(destino, out Vector3 pontoSeguro))
+        {
+            mensagem = "Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.";
+            return false;
+        }
+
+        if (combustivel != null && !combustivel.PodeOperar)
+        {
+            mensagem = "C700 sem combustivel suficiente para decolar.";
+            return false;
+        }
+
+        if (combustivel != null && combustivel.usaCombustivel && !combustivel.combustivelInfinito)
+        {
+            float distIda = Vector3.Distance(transform.position, pontoSeguro);
+            float distVolta = Vector3.Distance(pontoSeguro, ObterDestinoBase());
+            float vel = Mathf.Max(1f, velocidadeCruzeiro);
+            float consumoIda = combustivel.EstimarConsumoParaDistancia(distIda + 700f, vel);
+            float consumoVolta = combustivel.EstimarConsumoParaDistancia(distVolta, vel);
+            float reserva = Mathf.Max(combustivel.Capacidade * reservaRetornoPercentual, consumoVolta);
+            if (combustivel.CombustivelAtual < consumoIda + reserva)
+            {
+                mensagem = "C700 nao possui combustivel para ida, pouso e reserva de retorno.";
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Aceita uma ordem de voo e informa o motivo quando o transporte não
+    /// pode executá-la. Usado por operações que precisam confirmar a saída
+    /// antes de cobrar o custo da missão.
+    /// </summary>
+    public bool TentarReceberOrdemMover(Vector3 destino, out string mensagem)
+    {
+        mensagem = string.Empty;
+        if (EstaNaFaseProtegida())
+        {
+            mensagem = "Ordem ignorada: o C700 esta em procedimento de pouso/decolagem protegido.";
+            return false;
         }
         int teamId = ObterTeamId();
         MiniPistaLogistica pista = MiniPistaLogistica.LocalizarMaisProxima(destino, 300f, teamId, false);
@@ -288,29 +376,29 @@ public class C700TransporteAereo : MonoBehaviour
 
         if (destinoPertenceAPista && !pista.PodeReceber(this, destino))
         {
-            MostrarMensagem("Transporte recusou o destino: a Mini Pista Logistica esta ocupada ou inoperante.");
-            return;
+            mensagem = "Transporte recusou o destino: a Mini Pista Logistica esta ocupada ou inoperante.";
+            return false;
         }
 
         if (!destinoPertenceAPista)
         {
             if (!permitirPousoTerrestreSeco)
             {
-                MostrarMensagem("Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.");
-                return;
+                mensagem = "Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.";
+                return false;
             }
             if (!TryResolverPontoTerrestreSeco(destino, out Vector3 pontoSeguro))
             {
-                MostrarMensagem("Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.");
-                return;
+                mensagem = "Transporte recusou o destino: escolha uma pista operacional ou um ponto de terreno seco.";
+                return false;
             }
             destino = pontoSeguro;
             pista = PrepararPistaTerrestreLivre(destino);
             pousoLivre = pista != null && pista.PistaValida;
             if (!pousoLivre)
             {
-                MostrarMensagem("Transporte recusou o destino: nao foi possivel preparar uma aproximacao segura.");
-                return;
+                mensagem = "Transporte recusou o destino: nao foi possivel preparar uma aproximacao segura.";
+                return false;
             }
         }
 
@@ -330,7 +418,10 @@ public class C700TransporteAereo : MonoBehaviour
             pistaSaidaAtual = null;
             temDestinoVisual = false;
             DefinirEstado(EstadoC700.Solo);
+            mensagem = "Transporte recusou o destino: nao foi possivel iniciar a decolagem.";
+            return false;
         }
+        return true;
     }
 
     public bool IniciarTransportMission(MiniPistaLogistica pickup, MiniPistaLogistica delivery)
@@ -501,6 +592,7 @@ public class C700TransporteAereo : MonoBehaviour
 
     public void PararPorFaltaDeCombustivel()
     {
+        CancelarDecolagemComercial();
         landingController?.Release();
         aguardandoDestinoAereo = false;
         retornoBase = false;
@@ -538,6 +630,14 @@ public class C700TransporteAereo : MonoBehaviour
         aguardandoDestinoAereo = false;
         arremetida = false;
         landingController.ResetAttempts();
+        if (aeroportoOrigem is GerenciadorAeroportoComercial aeroportoComercial && aeroportoComercial.PossuiPistaDecolagemComTaxi())
+        {
+            CancelarDecolagemComercial();
+            emRotaSaida = false;
+            pistaSaidaAtual = null;
+            rotinaDecolagemComercial = StartCoroutine(ExecutarDecolagemPistaComercial(aeroportoComercial, pista));
+            return true;
+        }
         if (pistaSaidaAtual != null && !pistaSaidaAtual.PistaValida)
         {
             pistaSaidaAtual = null;
@@ -549,6 +649,141 @@ public class C700TransporteAereo : MonoBehaviour
         MarcarFase(alvoDecolagem, velocidadeDecolagem);
         DefinirEstado(EstadoC700.Decolando);
         return true;
+    }
+
+    private void CancelarDecolagemComercial()
+    {
+        if (rotinaDecolagemComercial != null)
+        {
+            StopCoroutine(rotinaDecolagemComercial);
+            rotinaDecolagemComercial = null;
+        }
+        taxiExterno = false;
+        LiberarPistaComercialReservada();
+    }
+
+    private void LiberarPistaComercialReservada()
+    {
+        if (aeroportoComercialReservado != null && pistaComercialReservada != null)
+        {
+            aeroportoComercialReservado.LiberarPistaTransporte(pistaComercialReservada, this);
+        }
+        aeroportoComercialReservado = null;
+        pistaComercialReservada = null;
+    }
+
+    private IEnumerator ExecutarDecolagemPistaComercial(GerenciadorAeroportoComercial aeroportoComercial, MiniPistaLogistica destinoPista)
+    {
+        taxiExterno = true;
+        DefinirEstado(EstadoC700.Taxiando);
+
+        PistaComercial pistaComercial = null;
+        float prazoEsperaPista = Time.time + 45f;
+        while (pistaComercial == null && aeroportoComercial != null && Time.time < prazoEsperaPista)
+        {
+            pistaComercial = aeroportoComercial.SolicitarPistaParaDecolagemTransporte(this);
+            if (pistaComercial == null) yield return null;
+        }
+
+        if (pistaComercial == null || pistaComercial.waypointsDecolagem == null || pistaComercial.waypointsDecolagem.Count < 2)
+        {
+            taxiExterno = false;
+            rotinaDecolagemComercial = null;
+            alvoDecolagem = transform.position + Vector3.up * Mathf.Max(altitudeCruzeiro, 40f);
+            if (destinoPista != null) MarcarFase(alvoDecolagem, velocidadeDecolagem);
+            DefinirEstado(EstadoC700.Decolando);
+            yield break;
+        }
+
+        aeroportoComercialReservado = aeroportoComercial;
+        pistaComercialReservada = pistaComercial;
+
+        if (pistaComercial.waypointsTaxiEntrada != null)
+        {
+            for (int i = 0; i < pistaComercial.waypointsTaxiEntrada.Count; i++)
+            {
+                Transform wpTaxi = pistaComercial.waypointsTaxiEntrada[i];
+                if (wpTaxi == null) continue;
+                yield return StartCoroutine(MoverAtePontoSolo(wpTaxi.position, velocidadeTaxi));
+            }
+        }
+
+        Transform cabeceira = pistaComercial.waypointsDecolagem[0];
+        if (cabeceira != null)
+        {
+            yield return StartCoroutine(MoverAtePontoSolo(cabeceira.position, velocidadeTaxi));
+        }
+
+        taxiExterno = false;
+        DefinirEstado(EstadoC700.Decolando);
+
+        float alturaCabeceira = cabeceira != null ? cabeceira.position.y : transform.position.y;
+        float velocidadeFimPista = Mathf.Max(velocidadeDecolagem, velocidadeCruzeiro * 0.75f);
+        int totalDecolagem = pistaComercial.waypointsDecolagem.Count;
+        for (int i = 1; i < totalDecolagem; i++)
+        {
+            Transform wpPista = pistaComercial.waypointsDecolagem[i];
+            if (wpPista == null) continue;
+
+            float t = totalDecolagem > 2 ? (float)i / (totalDecolagem - 1) : 1f;
+            float velocidadeSegmento = Mathf.Lerp(velocidadeTaxi, velocidadeFimPista, t);
+            bool noSolo = wpPista.position.y <= alturaCabeceira + 0.5f;
+            if (noSolo)
+            {
+                yield return StartCoroutine(MoverAtePontoSolo(wpPista.position, velocidadeSegmento));
+            }
+            else
+            {
+                yield return StartCoroutine(MoverAtePontoAereo(wpPista.position, velocidadeSegmento));
+            }
+        }
+
+        Vector3 alvoSubida = transform.position + transform.forward * 140f + Vector3.up * Mathf.Max(altitudeCruzeiro * 0.35f, 35f);
+        yield return StartCoroutine(MoverAtePontoAereo(alvoSubida, velocidadeFimPista));
+
+        LiberarPistaComercialReservada();
+        rotinaDecolagemComercial = null;
+
+        if (destinoPista != null && destinoPista.approachPoint != null)
+        {
+            MarcarFase(destinoPista.approachPoint.position, velocidadeCruzeiro);
+        }
+        DefinirEstado(EstadoC700.EmVoo);
+    }
+
+    private IEnumerator MoverAtePontoSolo(Vector3 alvo, float velocidade)
+    {
+        Vector3 destino = new Vector3(alvo.x, alvo.y + offsetAlturaSolo, alvo.z);
+        float prazo = Time.time + 30f;
+        while (Vector3.Distance(transform.position, destino) > Mathf.Max(1.2f, raioChegadaSolo) && Time.time < prazo)
+        {
+            MoverSoloComVelocidade(alvo, velocidade);
+            yield return null;
+        }
+    }
+
+    private IEnumerator MoverAtePontoAereo(Vector3 alvo, float velocidade)
+    {
+        float prazo = Time.time + 30f;
+        while (Vector3.Distance(transform.position, alvo) > 8f && Time.time < prazo)
+        {
+            MoverAereo(alvo, velocidade);
+            yield return null;
+        }
+    }
+
+    private void MoverSoloComVelocidade(Vector3 alvo, float velocidade)
+    {
+        Vector3 destino = new Vector3(alvo.x, alvo.y + offsetAlturaSolo, alvo.z);
+        Vector3 delta = destino - transform.position;
+        float multiplicador = controleUnidade != null ? controleUnidade.MultiplicadorVelocidadeComandoHud : 1f;
+        transform.position = Vector3.MoveTowards(transform.position, destino, Mathf.Max(1f, velocidade * multiplicador) * Time.deltaTime);
+        delta.y = 0f;
+        if (delta.sqrMagnitude > 0.01f)
+        {
+            Quaternion desejada = Quaternion.LookRotation(delta.normalized, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, desejada, giroSolo * Time.deltaTime);
+        }
     }
 
     private void ProcessarVoo()

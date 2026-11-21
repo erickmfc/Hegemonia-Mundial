@@ -4359,7 +4359,9 @@ public sealed class MenuGovernoNovoController : MonoBehaviour
                 descricao = "Financie uma expedição científica com oito pesquisadores. A aeronave decola do aeroporto configurado e pode ser acompanhada pelos sistemas existentes. Custo: " + Moeda(missao.CustoExpedicao) + ".";
                 break;
             case EstadoMissaoSinalPerdido.ExpedicaoEmAndamento:
-                descricao = "Expedição em andamento. Pesquisadores a bordo: " + missao.CientistasTransportados + ". Desaparecimento previsto em " + missao.TempoRestante.ToString("0") + " s.";
+                descricao = !missao.DecolagemIniciada && missao.TempoRestanteAteDecolagem > 0f
+                    ? "Expedição financiada. Pesquisadores a bordo: " + missao.CientistasTransportados + ". Saída da baia para a pista em " + missao.TempoRestanteAteDecolagem.ToString("0.0") + " s."
+                    : "Expedição em voo rumo à área operacional. Pesquisadores a bordo: " + missao.CientistasTransportados + ". Desaparecimento previsto em " + missao.TempoRestante.ToString("0") + " s.";
                 break;
             case EstadoMissaoSinalPerdido.AeronaveDesaparecida:
                 descricao = "A aeronave desapareceu e o rastreamento foi interrompido. A organização rebelde ativou suas patrulhas. Inicie as buscas com unidades aéreas ou navais.";

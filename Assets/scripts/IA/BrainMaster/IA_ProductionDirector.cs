@@ -1999,7 +1999,7 @@ namespace Hegemonia.AI.BrainMaster
                 : null;
 
             float operationalFunds = country != null
-                ? Mathf.Max(0f, (float)country.saldo + Mathf.Max(0f, country.rendaPorSegundo - country.gastosPorSegundo) * 180f)
+                ? Mathf.Max(0f, (float)country.saldo + Mathf.Max(0L, country.receitaDiariaTesouro - country.despesaDiariaTesouro) * 7f)
                 : (_context != null && _context.Brain != null ? Mathf.Max(0f, _context.Brain.Credits) : 0f);
             float economyFactor = Mathf.Clamp01(operationalFunds / 60000f);
             float industrialFactor = country != null

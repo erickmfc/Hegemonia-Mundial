@@ -252,17 +252,19 @@
 		float eye_distance = length(eye_vector);
 		float3 eye = normalize(eye_vector);
 		
+		float distDetailFade = 1.0 - smoothstep(3500.0, 32000.0, eye_distance);
 		half3 detail_normal = get_detailed_normal(i.world_position, 0.01 * pow(length(eye_vector), 0.8));
-		half3 vertex_normal = i.normal;
+		detail_normal = normalize(lerp(half3(0.0, 1.0, 0.0), detail_normal, distDetailFade));
+		half3 vertex_normal = normalize(lerp(half3(0.0, 1.0, 0.0), i.normal, distDetailFade));
 		half3 normal = normalize(detail_normal * 1.0 + vertex_normal * 0.0);
 		
 		float depth = LinearEyeDepth(tex2Dproj(_CameraDepthTexture, UNITY_PROJ_COORD(i.ref)).r);
-		half4 distort = half4(i.normal.xz * 0.5 + detail_normal.xz * 0.6, 0.0, 0.0);
+		half4 distort = half4(i.normal.xz * 0.5 + detail_normal.xz * 0.6, 0.0, 0.0) * distDetailFade;
 		distort *=  pow(saturate((depth - i.ref.z) * 0.3), 2.0);
 		
 		float sceneZ = LinearEyeDepth(tex2Dproj(_CameraDepthTexture, UNITY_PROJ_COORD(i.ref + distort * 0.2)).r);
 		float objectZ = i.ref.z;
-		float depthFactor = 1.0 - saturate(abs(sceneZ - objectZ) / 4.0);
+		float depthFactor = (1.0 - saturate(abs(sceneZ - objectZ) / 4.0)) * distDetailFade;
 		
 		float3 light_direction = normalize(world_light_dir);
 		half4 baseColor;
@@ -304,29 +306,44 @@
 		
 		/* Possible depth color */
 		float atten = max(1.0 - dot(eye, eye) * 0.001, 0.0);
-		baseColor.rgb += _WaterColor * (i.world_position.y + 0.6) * 0.18 * atten;
+		baseColor.rgb += _WaterColor * (i.world_position.y + 0.6) * 0.18 * atten * distDetailFade;
 			
 		#ifdef SPECULAR
 			float spec = specular(vertex_normal * 0.2 + detail_normal * 0.8, l, eye, 60.0);
-			baseColor.rgb += sun_color * spec;
+			baseColor.rgb += sun_color * spec * distDetailFade;
 		#endif
 			
 		
 		#ifdef FOAM
 			half3 foamColor = tex2D(_Foam, i.world_position.xz * 0.1 + _Time.xx * 0.5 + distort).rgb;
 			//baseColor.rgb += foamColor * smoothstep(0.2, 1.5, depthFactor);
-			baseColor.a += foamColor.r * 0.05;
+			baseColor.a += foamColor.r * 0.05 * distDetailFade;
 			
-			float wave_foam = clamp(smoothstep(-0.1, 1.0, 1.0 - detail_normal.y), 0.0, 0.5);
+			float wave_foam = clamp(smoothstep(-0.1, 1.0, 1.0 - detail_normal.y), 0.0, 0.5) * distDetailFade;
 			baseColor.a += wave_foam;
 			baseColor = saturate(baseColor);
-			baseColor.rgb += foamColor * clamp(wave_foam + smoothstep(0.2, 1.5, depthFactor), 0.0, 0.5);
+			baseColor.rgb += foamColor * clamp(wave_foam + smoothstep(0.2, 1.5, depthFactor), 0.0, 0.5) * distDetailFade;
 		#endif
 		
-		UNITY_APPLY_FOG(i.fogCoord, baseColor);
-
 		baseColor = saturate(baseColor);
 		baseColor.rgb = lerp(refraction.rgb, baseColor.rgb, clamp(baseColor.a, 0.0, 0.8));
+
+		// Transicao suave para a cor exata do mar de horizonte na borda e a distancia
+		float fresnelCalm = pow(saturate(1.0 - max(0.0, -eye.y)), 2.4) * 0.52;
+		half3 calmSea = lerp(_BaseColor.rgb, _ReflectionColor.rgb, fresnelCalm) * 0.82;
+		float borderDist = max(abs(i.world_position.x), abs(i.world_position.z));
+		float borderBlend = smoothstep(210000.0, 254000.0, borderDist);
+		float farBlend = 1.0 - distDetailFade;
+		baseColor.rgb = lerp(baseColor.rgb, calmSea, max(borderBlend, farBlend * 0.85));
+
+		#if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
+			float fogStart = unity_FogParams.w / max(0.0001, -unity_FogParams.z) - (1.0 / max(0.0001, -unity_FogParams.z));
+			float pixelFog = saturate(eye_distance * unity_FogParams.z + unity_FogParams.w);
+			baseColor.rgb = lerp(unity_FogColor.rgb, baseColor.rgb, smoothstep(0.0, 1.0, pixelFog));
+		#else
+			UNITY_APPLY_FOG(i.fogCoord, baseColor);
+		#endif
+
 		baseColor.a = 1.0;
 		return saturate(baseColor);
 	}

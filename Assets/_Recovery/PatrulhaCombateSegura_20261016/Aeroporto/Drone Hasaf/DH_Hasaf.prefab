@@ -321,6 +321,7 @@ GameObject:
   - component: {fileID: 4483824721971320940}
   - component: {fileID: 3166093526845905482}
   - component: {fileID: 155220762582987885}
+  - component: {fileID: 2739832486082667516}
   m_Layer: 0
   m_Name: DH_Hasaf
   m_TagString: Aereo
@@ -359,6 +360,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ControleAviao
   estadoAtual: 0
   aeroportoOrigem: {fileID: 0}
+  baseEstacionamentoAtual: {fileID: 0}
   vagaRetorno: {fileID: 0}
   aguardandoCliqueRadar: 0
   ordemParaRetorno: 0
@@ -388,6 +390,7 @@ MonoBehaviour:
   estaEmModoVooFisico: 0
   aceleracaoVoo: 18
   desaceleracaoVoo: 25
+  tempoIgnicaoPartida: 4
 --- !u!114 &5247076231236826617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -463,6 +466,7 @@ MonoBehaviour:
   antygavitiEstabilidade: 5
   tipoUnidade: 3
   militaresConsumidos: 0
+  militaresVinculadosIds: []
   combustivelPorHora: 0
   energiaConsumida: 0
   nomeDeBatismo: 
@@ -482,6 +486,8 @@ MonoBehaviour:
   vidaAtual: 320
   unidadeBiologica: 0
   ehEstrutura: 0
+  prefabEfeitoDano: {fileID: 0}
+  prefabFumacaDano: {fileID: 0}
   prefabDestrocos: {fileID: 0}
   somExplosaoExclusivo: {fileID: 0}
   tamanhoDoEfeito: 2.7
@@ -678,6 +684,43 @@ MonoBehaviour:
   raioPatrulha: 400
   altitudeMinimaVoo: 60
   altitudeCruzeiro: 90
+--- !u!114 &155220762582987885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8368706832941796259}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
+  alcanceRadar: 35000
+  alcanceConfiguradoNoPrefab: 1
+  radarLigado: 0
+  ativacaoAutomaticaHelicopteroEmVoo: 0
+--- !u!65 &2739832486082667516
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8368706832941796259}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.9753809, y: 1.2246885, z: 1.480871}
+  m_Center: {x: 0.059266, y: 0.79447234, z: 0.9729003}
 --- !u!1001 &1796690068342040930
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -852,18 +895,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4465720305584277147, guid: 871df525b56362f4f9cf20fcfa138b2f, type: 3}
   m_PrefabInstance: {fileID: 2949410415032048066}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &155220762582987885
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8368706832941796259}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c6f875798df4f958564d0791ab1c567, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Assembly-CSharp::Hegemonia.RTS.RadarUnidadeTatica
-  alcanceRadar: 35000
-  alcanceConfiguradoNoPrefab: 1
-  radarLigado: 0

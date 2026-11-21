@@ -222,6 +222,17 @@ public class DadosPaisGoverno
 
 
     public long saldo = 5000L;
+    [Header("Tesouro central diário/semanal")]
+    public int ultimoDiaLiquidacaoFinanceira = -1;
+    public int ultimoDiaLiquidacaoSemanal = -1;
+    public int ultimoDiaSnapshotEconomico = -1;
+    public long receitaDiariaTesouro;
+    public long despesaDiariaTesouro;
+    public long receitaOperacionalDiariaTesouro;
+    public long impostoSemanalAcumulado;
+    public long receitaSemanalTesouro;
+    public long despesaSemanalTesouro;
+    public List<LancamentoFinanceiroNacional> historicoFinanceiro = new List<LancamentoFinanceiroNacional>();
     public float rendaPorSegundo = 10f;
     public float gastosPorSegundo = 4f;
     public float divida = 0f;
@@ -242,6 +253,9 @@ public class DadosPaisGoverno
     [Header("Orçamento nacional diário")]
     public bool orcamentoInvestimentoAtivo;
     [Min(0)] public long orcamentoInvestimentoDiario = 100000000L;
+    [Range(0, 100)] public int orcamentoPctServicos = 0;
+    [Range(0, 100)] public int orcamentoPctInfraestrutura = 0;
+    [Range(0, 100)] public int orcamentoPctSeguranca = 0;
     [Range(0, 100)] public int orcamentoPctAgricultura = 20;
     [Range(0, 100)] public int orcamentoPctEnergia = 20;
     [Range(0, 100)] public int orcamentoPctPetroleo = 15;
@@ -259,6 +273,9 @@ public class DadosPaisGoverno
     [Min(0)] public long orcamentoIndustriaHoje;
     [Min(0)] public long orcamentoCienciaHoje;
     [Min(0)] public long orcamentoMilitarHoje;
+    [Min(0)] public long orcamentoSaudeEducacaoHoje;
+    [Min(0)] public long orcamentoInfraestruturaHoje;
+    [Min(0)] public long orcamentoSegurancaHoje;
     [Min(0)] public long orcamentoReservaFolhaMilitar;
     [Min(0)] public long orcamentoRecrutamentoExercitoHoje;
     [Min(0)] public long orcamentoRecrutamentoMarinhaHoje;

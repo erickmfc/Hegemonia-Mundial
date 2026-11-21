@@ -103,3 +103,31 @@ Assets/Library/Prefabs/Aeroporto/f5/*
 !Assets/Library/Prefabs/Menu/menu governo.meta
 !Assets/Library/Prefabs/Aeroporto.meta
 !Assets/Library/Prefabs/Aeroporto/f5.meta
+!Assets/Library/Prefabs/Aeroporto/C400/
+Assets/Library/Prefabs/Aeroporto/C400/*
+!Assets/Library/Prefabs/Aeroporto/C400/Resources/
+Assets/Library/Prefabs/Aeroporto/C400/Resources/*
+!Assets/Library/Prefabs/Aeroporto/C400/Resources/Construcoes/
+Assets/Library/Prefabs/Aeroporto/C400/Resources/Construcoes/*
+!Assets/Library/Prefabs/Aeroporto/C400/Resources/Construcoes/C400.asset
+!Assets/Library/Prefabs/Aeroporto/C400/Resources/Construcoes/C400.asset.meta
+!Assets/Library/Prefabs/Aeroporto/C400/C400.prefab
+!Assets/Library/Prefabs/Aeroporto/C400/C400.prefab.meta
+!Assets/Library/Prefabs/Aeroporto/C400/C400.glb
+!Assets/Library/Prefabs/Aeroporto/C400/C400.glb.meta
+!Assets/Library/Prefabs/Aeroporto/C400/c400_motor_turboprop.wav
+!Assets/Library/Prefabs/Aeroporto/C400/c400_motor_turboprop.wav.meta
+!Assets/Library/Prefabs/Aeroporto/C400.meta
+!Assets/Library/Prefabs/Aeroporto/C400/Resources.meta
+!Assets/Library/Prefabs/Aeroporto/C400/Resources/Construcoes.meta
+
+# Frota de longo curso do aeroporto comercial
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial.meta
+Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/*
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.prefab
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/Aeroporto comercial.prefab.meta
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/Passenger Aircraft V1.prefab
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/Passenger Aircraft V1.prefab.meta
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/Passenger Aircraft V2.prefab
+!Assets/Library/Prefabs/Aeroporto/Aeroporto comercial/Passenger Aircraft V2.prefab.meta

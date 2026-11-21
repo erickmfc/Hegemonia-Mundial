@@ -403,25 +403,12 @@ public class TripulacaoUnidade : MonoBehaviour
         }
 
         pais.gastosIndenizacoesMilitares += indenizacao;
-        if (id.teamID == gov.teamJogador && GerenciadorRecursos.Instancia != null)
-        {
-            long disponivel = Math.Max(0L, GerenciadorRecursos.Instancia.dinheiro);
-            long cobrar = Math.Min(disponivel, indenizacao);
-            if (cobrar > 0L)
-            {
-                GerenciadorRecursos.Instancia.TentarGastar(custoDinheiro: cobrar);
-            }
-            long faltante = indenizacao - cobrar;
-            if (faltante > 0L)
-            {
-                pais.divida += faltante;
-            }
-            pais.saldo = GerenciadorRecursos.Instancia.dinheiro;
-        }
-        else
-        {
-            pais.saldo -= indenizacao;
-        }
+        long disponivel = Math.Max(0L, gov.ObterSaldoDisponivelParaOperacao(id.teamID));
+        long cobrar = Math.Min(disponivel, indenizacao);
+        if (cobrar > 0L)
+            gov.TentarPagar(id.teamID, cobrar, "Indenização militar", "Baixa de tripulação", TipoLancamentoFinanceiro.DespesaTransacao);
+        long faltante = indenizacao - cobrar;
+        if (faltante > 0L) pais.divida += faltante;
     }
 
     private int MobilizarTripulacaoNacional(int desejado)

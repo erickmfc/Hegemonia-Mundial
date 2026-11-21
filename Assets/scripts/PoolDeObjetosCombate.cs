@@ -49,6 +49,9 @@ public static class PoolDeObjetosCombate
         }
 
         GarantirLink(criada, prefab);
+        // Spawn has the same contract for fresh and reused instances: return an
+        // active object so its runtime initializer can start coroutines safely.
+        criada.SetActive(true);
         DiagnosticoDesempenhoJogo.IncrementarContadorMetrica("pool_misses");
         return criada;
     }

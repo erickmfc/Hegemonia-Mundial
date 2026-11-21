@@ -1,6 +1,5 @@
 using UnityEngine;
-
-using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 [RequireComponent(typeof(Camera))]
 public class CameraUnidadeHUD : MonoBehaviour
@@ -25,10 +24,12 @@ public class CameraUnidadeHUD : MonoBehaviour
                     _instancia = go.AddComponent<CameraUnidadeHUD>();
                     
                     Camera cam = go.GetComponent<Camera>();
-                    cam.clearFlags = CameraClearFlags.SolidColor;
-                    cam.backgroundColor = new Color(0.02f, 0.05f, 0.02f, 1f); // Tom FLIR verde-escuro
+                    cam.clearFlags = CameraClearFlags.Skybox;
+                    cam.backgroundColor = new Color(0.44f, 0.68f, 0.88f, 1f); // Fallback caso a cena não tenha skybox.
                     cam.fieldOfView = 30f;
                     cam.farClipPlane = 6000f;
+                    cam.allowHDR = false;
+                    cam.allowMSAA = false;
                     
                     int uiLayer = LayerMask.NameToLayer("UI");
                     if (uiLayer >= 0)
@@ -54,6 +55,9 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private Camera minhaCamera;
     private ControleUnidade targetUnit;
+    private Rigidbody corpoRigidbodyAlvo;
+    private RigidbodyInterpolation interpolacaoOriginalAlvo;
+    private bool restaurarInterpolacaoAlvo;
     private GerenteSelecao gerenteSelecaoCache;
     private int ultimaUnidadeSelecionadaId;
     private RenderTexture currentRT;
@@ -61,9 +65,6 @@ public class CameraUnidadeHUD : MonoBehaviour
     private float proximoProcessamentoMarcacao;
     private readonly RaycastHit[] hitsMarcacao = new RaycastHit[32];
     private int layerMaskMarcacao;
-    private bool neblinaSuprimidaDuranteRender;
-    private bool neblinaOriginalDuranteRender;
-    private float distanciaSombraOriginalRender = -1f;
 
     [Header("Configurações de Foco")]
     [SerializeField] private Vector3 offsetBase = new Vector3(0f, 15f, -25f);
@@ -84,8 +85,24 @@ public class CameraUnidadeHUD : MonoBehaviour
         minhaCamera = GetComponent<Camera>();
         if (minhaCamera != null)
         {
+            minhaCamera.clearFlags = CameraClearFlags.Skybox;
+            minhaCamera.backgroundColor = new Color(0.44f, 0.68f, 0.88f, 1f);
             minhaCamera.farClipPlane = 8000f;
+            minhaCamera.allowHDR = false;
+            minhaCamera.allowMSAA = false;
+
+            // A câmera satélite não precisa renderizar sombras próprias. Isso
+            // economiza uma passada de sombras sem alterar as demais câmeras.
+            UniversalAdditionalCameraData dadosCamera = GetComponent<UniversalAdditionalCameraData>();
+            if (dadosCamera != null)
+            {
+                dadosCamera.renderShadows = false;
+            }
         }
+
+        // Começa com uma aproximação mais útil; o usuário continua podendo
+        // ajustar livremente pelo slider ou pela roda do mouse.
+        zoomFactor = Mathf.Clamp(Mathf.Max(zoomFactor, 2.57f), 0.06f, 18f);
 
         layerMaskMarcacao = ~LayerMask.GetMask("UI");
 
@@ -93,63 +110,9 @@ public class CameraUnidadeHUD : MonoBehaviour
         DesativarDoMenu();
     }
 
-    // A câmera de unidade não altera RenderSettings globalmente. Isso evita
-    // disputa de neblina entre a câmera principal, minimapa e câmera HUD.
-    // A câmera HUD não altera RenderSettings globalmente.
-
-    private void OnEnable()
-    {
-        RenderPipelineManager.beginCameraRendering += AoIniciarRenderCamera;
-        RenderPipelineManager.endCameraRendering += AoFinalizarRenderCamera;
-    }
-
-    private void OnDisable()
-    {
-        RenderPipelineManager.beginCameraRendering -= AoIniciarRenderCamera;
-        RenderPipelineManager.endCameraRendering -= AoFinalizarRenderCamera;
-        RestaurarNeblinaDepoisDoRender();
-    }
-
-    private void AoIniciarRenderCamera(ScriptableRenderContext contexto, Camera camera)
-    {
-        if (camera != minhaCamera || !camera.enabled || camera.targetTexture == null || neblinaSuprimidaDuranteRender)
-        {
-            return;
-        }
-
-        neblinaOriginalDuranteRender = RenderSettings.fog;
-        RenderSettings.fog = false;
-        distanciaSombraOriginalRender = QualitySettings.shadowDistance;
-        QualitySettings.shadowDistance = 0f;
-        neblinaSuprimidaDuranteRender = true;
-    }
-
-    private void AoFinalizarRenderCamera(ScriptableRenderContext contexto, Camera camera)
-    {
-        if (camera == minhaCamera)
-        {
-            RestaurarNeblinaDepoisDoRender();
-        }
-    }
-
-    private void RestaurarNeblinaDepoisDoRender()
-    {
-        if (!neblinaSuprimidaDuranteRender)
-        {
-            return;
-        }
-
-        RenderSettings.fog = neblinaOriginalDuranteRender;
-        if (distanciaSombraOriginalRender >= 0f)
-        {
-            QualitySettings.shadowDistance = distanciaSombraOriginalRender;
-            distanciaSombraOriginalRender = -1f;
-        }
-        neblinaSuprimidaDuranteRender = false;
-    }
-
     private void OnDestroy()
     {
+        RestaurarInterpolacaoAlvo();
         if (_instancia == this)
         {
             _instancia = null;
@@ -174,6 +137,7 @@ public class CameraUnidadeHUD : MonoBehaviour
             minhaCamera.targetTexture = null;
             minhaCamera.enabled = false;
         }
+        RestaurarInterpolacaoAlvo();
     }
 
     public void DefinirTarget(ControleUnidade unidade)
@@ -184,6 +148,10 @@ public class CameraUnidadeHUD : MonoBehaviour
     public void DefinirTarget(ControleUnidade unidade, bool manterModoDrone)
     {
         bool mesmaUnidade = targetUnit == unidade && unidade != null;
+        if (!mesmaUnidade)
+        {
+            RestaurarInterpolacaoAlvo();
+        }
         targetUnit = unidade;
         currentLookedTarget = null;
         if (!mesmaUnidade)
@@ -201,6 +169,10 @@ public class CameraUnidadeHUD : MonoBehaviour
         if (minhaCamera != null)
         {
             minhaCamera.farClipPlane = 8000f;
+            if (minhaCamera.enabled)
+            {
+                AplicarInterpolacaoAlvo();
+            }
         }
         if (targetUnit != null && minhaCamera != null && minhaCamera.enabled)
         {
@@ -278,6 +250,7 @@ public class CameraUnidadeHUD : MonoBehaviour
 
     private void LateUpdate()
     {
+        float deltaTempoCamera = Time.unscaledDeltaTime;
         GerenteSelecao gerenteAtual = ObterGerenteSelecaoCache();
         if (gerenteAtual != null && gerenteAtual.unidadesSelecionadas != null && gerenteAtual.unidadesSelecionadas.Count > 0)
         {
@@ -302,7 +275,7 @@ public class CameraUnidadeHUD : MonoBehaviour
             Vector3 localCameraPosition = new Vector3(0f, -0.2f * scaleFactor, 0.6f * scaleFactor);
             Vector3 worldCameraPos = targetUnit.transform.TransformPoint(localCameraPosition);
             
-            float fatorPosicaoDrone = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeSeguir) * Time.deltaTime);
+            float fatorPosicaoDrone = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeSeguir) * deltaTempoCamera);
             transform.position = Vector3.Lerp(transform.position, worldCameraPos, fatorPosicaoDrone);
             
             // Rotação: gimbal (drone rot + local gimbal yaw/pitch)
@@ -363,14 +336,14 @@ public class CameraUnidadeHUD : MonoBehaviour
                 stabilizedRotation = Quaternion.LookRotation(forward, Vector3.up);
             }
 
-            float fatorRotacaoDrone = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * Time.deltaTime);
+            float fatorRotacaoDrone = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * deltaTempoCamera);
             transform.rotation = Quaternion.Slerp(transform.rotation, stabilizedRotation, fatorRotacaoDrone);
 
             // Zoom FOV poderoso para o drone Hasaf
             float desiredFOV = Mathf.Clamp(30f / zoomFactor, 0.1f, 45f);
             if (minhaCamera != null)
             {
-                minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, desiredFOV, Time.deltaTime * 10f);
+                minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, desiredFOV, deltaTempoCamera * 10f);
             }
             
             if (Time.unscaledTime >= proximoProcessamentoMarcacao)
@@ -388,7 +361,7 @@ public class CameraUnidadeHUD : MonoBehaviour
         {
             if (minhaCamera != null)
             {
-                minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, 30f, Time.deltaTime * 5f);
+                minhaCamera.fieldOfView = Mathf.Lerp(minhaCamera.fieldOfView, 30f, deltaTempoCamera * 5f);
             }
             currentLookedTarget = null;
         }
@@ -414,7 +387,7 @@ public class CameraUnidadeHUD : MonoBehaviour
         }
 
         // Aplica o zoom configurável
-        localOffset *= zoomFactor;
+        localOffset /= Mathf.Max(0.06f, zoomFactor);
 
         Vector3 targetPos = targetUnit.transform.position;
         
@@ -434,12 +407,40 @@ public class CameraUnidadeHUD : MonoBehaviour
             ref velocidadePosicaoCamera,
             Mathf.Max(0.03f, tempoEstabilizacaoCamera),
             Mathf.Infinity,
-            Time.deltaTime);
+            deltaTempoCamera);
         
         Vector3 lookTarget = targetPos + Vector3.up * (factor * 0.4f + 0.5f);
         Quaternion targetRotation = Quaternion.LookRotation(lookTarget - transform.position);
-        float fatorRotacaoNormal = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * Time.deltaTime);
+        float fatorRotacaoNormal = 1f - Mathf.Exp(-Mathf.Max(0.1f, suavidadeRotacao) * deltaTempoCamera);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, fatorRotacaoNormal);
+    }
+
+    private void AplicarInterpolacaoAlvo()
+    {
+        if (corpoRigidbodyAlvo != null || targetUnit == null) return;
+
+        corpoRigidbodyAlvo = targetUnit.GetComponent<Rigidbody>();
+        if (corpoRigidbodyAlvo == null) return;
+
+        interpolacaoOriginalAlvo = corpoRigidbodyAlvo.interpolation;
+        restaurarInterpolacaoAlvo = interpolacaoOriginalAlvo != RigidbodyInterpolation.Interpolate;
+        if (restaurarInterpolacaoAlvo)
+        {
+            corpoRigidbodyAlvo.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+    }
+
+    private void RestaurarInterpolacaoAlvo()
+    {
+        if (corpoRigidbodyAlvo != null
+            && restaurarInterpolacaoAlvo
+            && corpoRigidbodyAlvo.interpolation == RigidbodyInterpolation.Interpolate)
+        {
+            corpoRigidbodyAlvo.interpolation = interpolacaoOriginalAlvo;
+        }
+
+        corpoRigidbodyAlvo = null;
+        restaurarInterpolacaoAlvo = false;
     }
 
     private static Quaternion ObterOrientacaoHorizontal(Transform unidade)

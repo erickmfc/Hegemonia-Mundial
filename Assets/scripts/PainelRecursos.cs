@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -801,7 +802,7 @@ public class PainelRecursos : MonoBehaviour
             long caixaInicial = GameDifficultyManager.Instancia != null
                 ? GameDifficultyManager.PerfilAtual.DinheiroInicial
                 : 0L;
-            AtualizarTextoDinheiro(textoDinheiro, caixaInicial, ganhoTextoDinheiro, 0f, simboloMoeda);
+            AtualizarTextoDinheiro(textoDinheiro, caixaInicial, ganhoTextoDinheiro, 0L, simboloMoeda);
             if (textoEnergia != null) textoEnergia.text = "0% USO";
             if (ganhoTextoEnergia != null) ganhoTextoEnergia.text = "0/0";
             AtualizarTexto(textoPetroleo, 500, ganhoTextoPetroleo, 0, "");
@@ -825,7 +826,9 @@ public class PainelRecursos : MonoBehaviour
 
         var r = GerenciadorRecursos.Instancia;
 
-        AtualizarTextoDinheiro(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, r.dinheiroPorSegundo, simboloMoeda);
+        long saldoDiario = paisIdentidade != null
+            ? paisIdentidade.receitaDiariaTesouro - paisIdentidade.despesaDiariaTesouro : 0L;
+        AtualizarTextoDinheiro(textoDinheiro, r.dinheiro, ganhoTextoDinheiro, saldoDiario, simboloMoeda);
         AtualizarTexto(textoPetroleo, r.petroleo, ganhoTextoPetroleo, r.petroleoPorSegundo, "");
         AtualizarTexto(textoAco, r.aco, ganhoTextoAco, r.acoPorSegundo, "");
         AtualizarTexto(textoComida, r.comida, ganhoTextoComida, r.comidaPorSegundo, "");
@@ -994,15 +997,16 @@ public class PainelRecursos : MonoBehaviour
         }
     }
 
-    private void AtualizarTextoDinheiro(TextMeshProUGUI txtValor, long valor, TextMeshProUGUI txtGanho, float ganho, string prefixo)
+    private void AtualizarTextoDinheiro(TextMeshProUGUI txtValor, long valor, TextMeshProUGUI txtGanho, long ganhoDiario, string prefixo)
     {
         if (txtValor != null)
-            txtValor.text = ValoresDefinitivosHegemonia.FormatarDinheiro(valor);
+            txtValor.text = (string.IsNullOrEmpty(prefixo) ? "$" : prefixo) + EconomiaFinanceiraNacional.FormatarCompacto(valor);
 
         if (txtGanho != null)
         {
-            txtGanho.text = ganho > 0f ? $"+{ganho:N0}/s" : ganho < 0f ? $"{ganho:N0}/s" : "+0/s";
-            txtGanho.color = ganho < 0f ? corVermelho : corVerde;
+            txtGanho.text = (ganhoDiario >= 0 ? "+$" : "-$")
+                + EconomiaFinanceiraNacional.FormatarCompacto(Math.Abs(ganhoDiario)) + "/dia";
+            txtGanho.color = ganhoDiario < 0 ? corVermelho : corVerde;
         }
     }
 }

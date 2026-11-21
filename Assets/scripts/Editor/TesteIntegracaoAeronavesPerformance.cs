@@ -212,7 +212,12 @@ namespace Hegemonia.EditorTools
                 buffer.Add(idLancador2);
                 buffer.Add(idAlvo);
 
-                MethodInfo metodoContraAtaque = typeof(RTS.RTSVisibilityService).GetMethod("TentarLancarMissilEstrategico", BindingFlags.NonPublic | BindingFlags.Instance);
+                MethodInfo metodoContraAtaque = typeof(RTS.RTSVisibilityService).GetMethod(
+                    "TentarLancarMissilEstrategico",
+                    BindingFlags.NonPublic | BindingFlags.Instance,
+                    null,
+                    new[] { typeof(int), typeof(IdentidadeUnidade) },
+                    null);
                 if (metodoContraAtaque == null)
                     throw new MissingMethodException("TentarLancarMissilEstrategico não encontrado em RTSVisibilityService");
 

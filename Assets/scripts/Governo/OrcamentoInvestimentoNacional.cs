@@ -15,9 +15,23 @@ public static class OrcamentoInvestimentoNacional
     public static void NormalizarPercentuais(DadosPaisGoverno pais)
     {
         if (pais == null) return;
-        int[] setores = ObterPercentuaisSetores(pais);
-        NormalizarArray(setores);
-        DefinirPercentuaisSetores(pais, setores);
+        bool rateioNovoConfigurado = pais.orcamentoPctServicos > 0
+            || pais.orcamentoPctInfraestrutura > 0 || pais.orcamentoPctSeguranca > 0;
+        if (!rateioNovoConfigurado)
+        {
+            pais.orcamentoPctServicos = 35;
+            pais.orcamentoPctInfraestrutura = 20;
+            pais.orcamentoPctSeguranca = 10;
+            pais.orcamentoPctAgricultura = 7;
+            pais.orcamentoPctEnergia = 7;
+            pais.orcamentoPctPetroleo = 5;
+            pais.orcamentoPctIndustria = 5;
+            pais.orcamentoPctCiencia = 4;
+            pais.orcamentoPctMilitar = 7;
+        }
+        int[] todosSetores = ObterTodosPercentuaisSetores(pais);
+        NormalizarArray(todosSetores);
+        DefinirTodosPercentuaisSetores(pais, todosSetores);
         int[] forcas = { pais.orcamentoPctExercito, pais.orcamentoPctMarinha, pais.orcamentoPctAerea };
         NormalizarArray(forcas);
         pais.orcamentoPctExercito = forcas[0];
@@ -25,12 +39,39 @@ public static class OrcamentoInvestimentoNacional
         pais.orcamentoPctAerea = forcas[2];
     }
 
+    public static void AjustarPercentualServico(DadosPaisGoverno pais, int indice, int valor)
+    {
+        if (pais == null || indice < 0 || indice >= 3) return;
+        int[] valores = ObterTodosPercentuaisSetores(pais);
+        RedistribuirRestante(valores, indice + 6, valor);
+        DefinirTodosPercentuaisSetores(pais, valores);
+    }
+
+    public static int ObterPercentualServico(DadosPaisGoverno pais, int indice)
+    {
+        if (pais == null) return 0;
+        switch (indice)
+        {
+            case 0: return ObterTodosPercentuaisSetores(pais)[6];
+            case 1: return ObterTodosPercentuaisSetores(pais)[7];
+            case 2: return ObterTodosPercentuaisSetores(pais)[8];
+            default: return 0;
+        }
+    }
+
+    public static long ObterValorServico(DadosPaisGoverno pais, int indice)
+    {
+        if (pais == null) return 0L;
+        return (long)Math.Floor(Math.Max(0L, pais.orcamentoInvestimentoDiario)
+            * (double)ObterTodosPercentuaisSetores(pais)[Mathf.Clamp(indice + 6, 6, 8)] / 100d);
+    }
+
     public static void AjustarPercentualSetor(DadosPaisGoverno pais, int indice, int valor)
     {
         if (pais == null || indice < 0 || indice >= 6) return;
-        int[] valores = ObterPercentuaisSetores(pais);
+        int[] valores = ObterTodosPercentuaisSetores(pais);
         RedistribuirRestante(valores, indice, valor);
-        DefinirPercentuaisSetores(pais, valores);
+        DefinirTodosPercentuaisSetores(pais, valores);
     }
 
     public static void AjustarPercentualForca(DadosPaisGoverno pais, int indice, int valor)
@@ -62,7 +103,9 @@ public static class OrcamentoInvestimentoNacional
     {
         if (pais == null) return 0L;
         long total = Math.Max(0L, pais.orcamentoInvestimentoDiario);
-        return (long)Math.Floor(total * (double)ObterPercentualSetor(pais, indice) / 100d);
+        return indice >= 6 && indice < 9
+            ? (long)Math.Floor(total * (double)ObterTodosPercentuaisSetores(pais)[indice] / 100d)
+            : (long)Math.Floor(total * (double)ObterPercentualSetor(pais, Mathf.Clamp(indice, 0, 5)) / 100d);
     }
 
     public static float FatorProducao(DadosPaisGoverno pais, int indice)
@@ -99,13 +142,18 @@ public static class OrcamentoInvestimentoNacional
         if (gasto > 0L && !governo.TentarPagar(pais.teamId, gasto))
             gasto = 0L;
         pais.orcamentoGastoHoje = gasto;
-        long[] rateio = DistribuirValor(gasto, ObterPercentuaisSetores(pais));
+        long[] rateioCompleto = DistribuirValor(gasto, ObterTodosPercentuaisSetores(pais));
+        long[] rateio = new long[6];
+        Array.Copy(rateioCompleto, 0, rateio, 0, rateio.Length);
         pais.orcamentoAgriculturaHoje = rateio[0];
         pais.orcamentoEnergiaHoje = rateio[1];
         pais.orcamentoPetroleoHoje = rateio[2];
         pais.orcamentoIndustriaHoje = rateio[3];
         pais.orcamentoCienciaHoje = rateio[4];
         pais.orcamentoMilitarHoje = rateio[5];
+        pais.orcamentoSaudeEducacaoHoje = rateioCompleto[6];
+        pais.orcamentoInfraestruturaHoje = rateioCompleto[7];
+        pais.orcamentoSegurancaHoje = rateioCompleto[8];
 
         long aporteFolha = AcumularReservaMilitar(pais, pais.orcamentoMilitarHoje);
         AcumularOrcamentoRecrutamento(pais, Math.Max(0L, pais.orcamentoMilitarHoje - aporteFolha));
@@ -246,8 +294,11 @@ public static class OrcamentoInvestimentoNacional
 
     private static long ObterValorBaseSetor(DadosPaisGoverno pais, int indice)
     {
+        int percentualBase = PercentualBaseSetor(indice);
+        int percentualAtual = indice == 5 ? ObterTodosPercentuaisSetores(pais)[5]
+            : indice == 4 ? ObterTodosPercentuaisSetores(pais)[4] : percentualBase;
         return (long)Math.Floor(Math.Max(0L, pais.orcamentoInvestimentoDiario)
-            * (double)PercentualBaseSetor(indice) / 100d);
+            * (double)Math.Max(1, percentualAtual) / 100d);
     }
 
     private static int PercentualBaseSetor(int indice)
@@ -270,6 +321,21 @@ public static class OrcamentoInvestimentoNacional
             pais.orcamentoPctIndustria, pais.orcamentoPctCiencia, pais.orcamentoPctMilitar };
     }
 
+    private static int[] ObterTodosPercentuaisSetores(DadosPaisGoverno pais)
+    {
+        return new[] { pais.orcamentoPctAgricultura, pais.orcamentoPctEnergia, pais.orcamentoPctPetroleo,
+            pais.orcamentoPctIndustria, pais.orcamentoPctCiencia, pais.orcamentoPctMilitar,
+            pais.orcamentoPctServicos, pais.orcamentoPctInfraestrutura, pais.orcamentoPctSeguranca };
+    }
+
+    private static void DefinirTodosPercentuaisSetores(DadosPaisGoverno pais, int[] valores)
+    {
+        DefinirPercentuaisSetores(pais, new[] { valores[0], valores[1], valores[2], valores[3], valores[4], valores[5] });
+        pais.orcamentoPctServicos = valores[6];
+        pais.orcamentoPctInfraestrutura = valores[7];
+        pais.orcamentoPctSeguranca = valores[8];
+    }
+
     private static void DefinirPercentuaisSetores(DadosPaisGoverno pais, int[] valores)
     {
         pais.orcamentoPctAgricultura = valores[0];
@@ -289,6 +355,9 @@ public static class OrcamentoInvestimentoNacional
         pais.orcamentoIndustriaHoje = 0L;
         pais.orcamentoCienciaHoje = 0L;
         pais.orcamentoMilitarHoje = 0L;
+        pais.orcamentoSaudeEducacaoHoje = 0L;
+        pais.orcamentoInfraestruturaHoje = 0L;
+        pais.orcamentoSegurancaHoje = 0L;
     }
 
     private static long SomarComLimite(long atual, long valor)
@@ -358,5 +427,7 @@ public static class OrcamentoInvestimentoNacional
                 atribuido += valores[i];
             }
         }
+        for (int i = 0; i < valores.Length; i++)
+            valores[i] = Mathf.Clamp(valores[i], 0, 100);
     }
 }

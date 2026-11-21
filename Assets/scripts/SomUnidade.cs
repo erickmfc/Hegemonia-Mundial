@@ -53,9 +53,15 @@ public class SomUnidade : MonoBehaviour
     // Cache de Componentes
     private UnityEngine.AI.NavMeshAgent agenteCached;
     private Rigidbody rbCached;
+    private Helicoptero helicopteroCached;
 
     void Awake()
     {
+        helicopteroCached = GetComponent<Helicoptero>();
+        if (helicopteroCached == null)
+        {
+            helicopteroCached = GetComponentInParent<Helicoptero>();
+        }
         // Pega ou cria AudioSource principal
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
@@ -155,6 +161,9 @@ public class SomUnidade : MonoBehaviour
 
     void AjustarSomMotor()
     {
+        // Helicópteros possuem controle próprio de áudio do rotor em Helicoptero.cs (audioMotor).
+        // Evita que SomUnidade sobrescreva clip/pitch/volume ou dê Stop() no mesmo AudioSource.
+        if (helicopteroCached != null) return;
         if (audioSource == null) return;
 
         if (somMotor == null && somParado == null)

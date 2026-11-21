@@ -53,17 +53,17 @@ public class CicloDiaNoite : MonoBehaviour
     private static readonly Color AmbEqNoite = new Color(0.22f, 0.29f, 0.39f, 1f);
     private static readonly Color AmbChaoNoite = new Color(0.14f, 0.18f, 0.24f, 1f);
 
-    private static readonly Color SkyDia = new Color(0.46f, 0.64f, 0.80f, 1f);
-    private static readonly Color GroundDia = new Color(0.11f, 0.22f, 0.31f, 1f);
-    private static readonly Color FogDia = new Color(0.62f, 0.75f, 0.85f, 1f);
+    private static readonly Color SkyDia = new Color(0.24f, 0.45f, 0.68f, 1f);
+    private static readonly Color GroundDia = new Color(0.03f, 0.14f, 0.21f, 1f);
+    private static readonly Color FogDia = new Color(0.64f, 0.75f, 0.84f, 1f);
 
-    private static readonly Color SkyTarde = new Color(0.62f, 0.50f, 0.54f, 1f);
-    private static readonly Color GroundTarde = new Color(0.16f, 0.18f, 0.24f, 1f);
+    private static readonly Color SkyTarde = new Color(0.46f, 0.40f, 0.52f, 1f);
+    private static readonly Color GroundTarde = new Color(0.10f, 0.14f, 0.20f, 1f);
     private static readonly Color FogTarde = new Color(0.76f, 0.58f, 0.48f, 1f);
 
-    private static readonly Color SkyNoite = new Color(0.18f, 0.26f, 0.40f, 1f);
-    private static readonly Color GroundNoite = new Color(0.08f, 0.14f, 0.22f, 1f);
-    private static readonly Color FogNoite = new Color(0.20f, 0.29f, 0.42f, 1f);
+    private static readonly Color SkyNoite = new Color(0.12f, 0.20f, 0.34f, 1f);
+    private static readonly Color GroundNoite = new Color(0.04f, 0.09f, 0.16f, 1f);
+    private static readonly Color FogNoite = new Color(0.18f, 0.27f, 0.40f, 1f);
 
     public float HoraAtual => horaAtual;
 

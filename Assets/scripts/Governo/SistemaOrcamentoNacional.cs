@@ -9,6 +9,8 @@ public class LinhaOrcamento
     public string nome;
     public string baseCalculo;
     public decimal valorDiario;
+    public decimal valorSemanal;
+    // Campo serializado legado mantido para compatibilidade com saves e UI antigas.
     public decimal valorMensal;
     public string tendencia;
     public string status;
@@ -21,6 +23,10 @@ public class RelatorioOrcamentoNacional
     public decimal receitaTotalDia;
     public decimal despesaTotalDia;
     public decimal saldoLiquidoDia;
+    public decimal receitaTotalSemana;
+    public decimal despesaTotalSemana;
+    public decimal saldoLiquidoSemana;
+    // Campo serializado legado mantido, sem projeções mensais.
     public decimal projecaoMensal;
     public decimal tesouroAtual;
     public float dividaTotal;
@@ -76,11 +82,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
         SistemaEconomiaImoveis sistemaEconomia = SistemaEconomiaImoveis.Instancia;
         DadosEconomiaPais eco = sistemaEconomia != null ? sistemaEconomia.ObterEconomia(teamId) : null;
 
-        // Atualizar Tesouro com sincronização real
-        if (teamId == 1 && GerenciadorRecursos.Instancia != null)
-        {
-            p.saldo = GerenciadorRecursos.Instancia.dinheiro;
-        }
+        // O saldo oficial vem do governo; o relatório apenas o consulta.
         relatorio.tesouroAtual = p.saldo;
         relatorio.inflacao = p.inflacao;
         relatorio.cargaFiscalMedia = (p.impostoMoradia + p.impostoIndustria + p.impostoComercio) / 3f;
@@ -114,7 +116,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
         // Empréstimos e dívidas
         float dividaEmprestimos = p.emprestimos != null ? p.emprestimos.Sum(e => e != null ? e.saldoDevedor : 0f) : 0f;
         relatorio.dividaTotal = p.divida + dividaEmprestimos;
-        float jurosDia = p.emprestimos != null ? p.emprestimos.Sum(e => e != null ? e.saldoDevedor * e.jurosPorTick : 0f) : 0f;
+        float jurosDia = p.emprestimos != null ? p.emprestimos.Sum(e => e != null ? e.saldoDevedor * e.jurosPorTick / 7f : 0f) : 0f;
         int emprestimosAtivos = p.emprestimos != null ? p.emprestimos.Count(e => e != null && e.saldoDevedor > 0f) : 0;
 
         // Pesquisas e Ciência
@@ -131,18 +133,9 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             || relatorio.dividaTotal > 0f || pesquisasAtivas > 0 || labsAtivos > 0 || sateliteAtivo;
         if (!possuiAtividadeOrcamentaria)
         {
-            p.rendaPorSegundo = 0f;
-            p.gastosPorSegundo = 0f;
-            p.saldoOperacional = 0f;
-            if (eco != null)
-            {
-                eco.custoSocial = 0f;
-                eco.custoInfraestrutura = 0f;
-                eco.custoMilitar = 0f;
-                eco.custoProducao = 0f;
-                eco.custoManutencao = 0f;
-                eco.saldoOperacional = 0f;
-            }
+            relatorio.receitaTotalSemana = 0m;
+            relatorio.despesaTotalSemana = 0m;
+            relatorio.saldoLiquidoSemana = 0m;
             return relatorio;
         }
 
@@ -156,7 +149,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Imposto de Renda",
             baseCalculo = $"{p.populacaoCivil} civis ({taxaEmprego * 100f:0}% emp.)",
             valorDiario = (decimal)valorIR,
-            valorMensal = (decimal)(valorIR * 30f),
+            valorMensal = 0m,
             tendencia = p.impostoMoradia >= 15 ? "+ ALTA" : "ESTÁVEL",
             status = "RECEBENDO",
             detalhamento = $"População civil: {p.populacaoCivil} hab. | Emprego: {taxaEmprego * 100f:0}% | Alíquota Moradia/Renda: {p.impostoMoradia}% | Poder de Compra: {p.PoderDeCompra:0.00}"
@@ -169,7 +162,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Imposto sobre Consumo",
             baseCalculo = $"Mercado {p.populacaoCivil} hab. ({p.impostoComercio}%)",
             valorDiario = (decimal)valorConsumo,
-            valorMensal = (decimal)(valorConsumo * 30f),
+            valorMensal = 0m,
             tendencia = p.inflacao > 5f ? "- INFLAÇÃO" : "+ NORMAL",
             status = "RECEBENDO",
             detalhamento = $"Mercado consumidor: {p.populacaoCivil} habitantes | Inflação atual: {p.inflacao:0.0}% | Alíquota de Comércio/Consumo: {p.impostoComercio}% | Poder de Compra: {p.PoderDeCompra:0.00}"
@@ -184,7 +177,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Imposto Corporativo",
             baseCalculo = $"{indProd:0.0}t prod. (Ef: {ef * 100f:0}%)",
             valorDiario = (decimal)valorCorp,
-            valorMensal = (decimal)(valorCorp * 30f),
+            valorMensal = 0m,
             tendencia = ef >= 0.8f ? "+ ALTA" : "- QUEDA",
             status = "RECEBENDO",
             detalhamento = $"Setor produtivo/industrial ({indProd:0.0}t) | Eficiência média: {ef * 100f:0}% | Alíquota de Indústria: {p.impostoIndustria}% | Estruturas ativas"
@@ -199,7 +192,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Tarifas Comerciais",
             baseCalculo = $"Comércio ext. ({exp + imp:0.0}t)",
             valorDiario = (decimal)valorTarifas,
-            valorMensal = (decimal)(valorTarifas * 30f),
+            valorMensal = 0m,
             tendencia = p.sancionado ? "- EMBARGO" : "+ ATIVO",
             status = p.sancionado ? "SANCIONADO" : "RECEBENDO",
             detalhamento = $"Exportações: {exp:0.0}t | Importações: {imp:0.0}t | Nível Diplomático: {p.nivelDiplomatico} | Tarifa alfandegária sobre trocas internacionais"
@@ -214,7 +207,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Receita de Energia",
             baseCalculo = $"Ger: {energProd:0.0}MW / Cons: {energCons:0.0}MW",
             valorDiario = (decimal)valorEnergia,
-            valorMensal = (decimal)(valorEnergia * 30f),
+            valorMensal = 0m,
             tendencia = p.deficitEnergia <= 0f ? "+ SOBRA" : "- DEFICIT",
             status = p.deficitEnergia <= 0f ? "OPERANDO" : "SEM SOBRA",
             detalhamento = $"Energia gerada: {energProd:0.0} MW | Consumo nacional: {energCons:0.0} MW | Venda/Distribuição pública de excedente energético"
@@ -228,7 +221,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Recursos Públicos",
             baseCalculo = $"Petróleo: {petrProd:0.0}t/dia",
             valorDiario = (decimal)valorRecurso,
-            valorMensal = (decimal)(valorRecurso * 30f),
+            valorMensal = 0m,
             tendencia = petrProd > 0f ? "+ ATIVO" : "INATIVO",
             status = petrProd > 0f ? "ARRECADANDO" : "SEM EXTRAÇÃO",
             detalhamento = $"Petróleo produzido: {petrProd:0.0}t/dia | Uranio em estoque: {p.uranio} | Royalties de extração mineral e energéticos estatais"
@@ -241,7 +234,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Outras Receitas",
             baseCalculo = $"Reservas ($ {p.reservaOuro:N0})",
             valorDiario = (decimal)valorOutrasRec,
-            valorMensal = (decimal)(valorOutrasRec * 30f),
+            valorMensal = 0m,
             tendencia = p.reservaOuro > 300f ? "+ ESTÁVEL" : "BAIXA",
             status = "ATIVO",
             detalhamento = $"Reservas de Ouro: {p.reservaOuro:N0} | Câmbio de referência: 1 {p.nomeMoeda} = {p.cambioComLider:0.00} {p.moedaLiderReferencia} | Rendimentos financeiros"
@@ -257,7 +250,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Assistência Social",
             baseCalculo = $"{p.populacaoCivil} civis (Hab: {p.pressaoHabitacional * 100f:0}%)",
             valorDiario = (decimal)valorSoc,
-            valorMensal = (decimal)(valorSoc * 30f),
+            valorMensal = 0m,
             tendencia = p.pressaoHabitacional > 1f ? "- ALTA DEMANDA" : "+ CONTROLADO",
             status = "PAGO",
             detalhamento = $"População civil amparada: {p.populacaoCivil} | Baixas de guerra acumuladas: {p.mortosAcumulados} | Pressão habitacional: {p.pressaoHabitacional * 100f:0}%"
@@ -271,7 +264,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
                 nome = "Pensões e Indenizações Militares",
                 baseCalculo = $"{p.pensionistasMilitares} família(s)",
                 valorDiario = (decimal)valorPensaoMil,
-                valorMensal = (decimal)(valorPensaoMil * 30f),
+                valorMensal = 0m,
                 tendencia = "- ENCARGO",
                 status = "PAGO",
                 detalhamento = $"Famílias amparadas por baixas militares/desabastecimento: {p.pensionistasMilitares} | Indenizações pagas: $ {p.gastosIndenizacoesMilitares:N0}"
@@ -285,7 +278,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Saúde",
             baseCalculo = $"Pop: {p.populacaoCivil} | QV: {p.qualidadeVida:0}%",
             valorDiario = (decimal)valorSaude,
-            valorMensal = (decimal)(valorSaude * 30f),
+            valorMensal = 0m,
             tendencia = p.qualidadeVida >= 70f ? "+ BOM" : "- DEMANDA",
             status = "PAGO",
             detalhamento = $"Rede pública de saúde preventiva e hospitalar | População coberta: {p.populacaoCivil} | Qualidade de vida atual: {p.qualidadeVida:0}%"
@@ -298,7 +291,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Educação",
             baseCalculo = $"Pop: {p.populacaoCivil} | Nível: {p.nivelEconomico}",
             valorDiario = (decimal)valorEdu,
-            valorMensal = (decimal)(valorEdu * 30f),
+            valorMensal = 0m,
             tendencia = "ESTÁVEL",
             status = "PAGO",
             detalhamento = $"Manutenção de escolas e formação básica nacional | População atendida: {p.populacaoCivil} | Nível de desenvolvimento econômico: {p.nivelEconomico}"
@@ -311,7 +304,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Administração Pública",
             baseCalculo = $"{numCidades} cidade(s) registrada(s)",
             valorDiario = (decimal)valorAdmin,
-            valorMensal = (decimal)(valorAdmin * 30f),
+            valorMensal = 0m,
             tendencia = "ESTÁVEL",
             status = "PAGO",
             detalhamento = $"Gestão territorial e administrativa de {numCidades} cidade(s) | Manutenção de sedes governamentais e serviços públicos estatais"
@@ -326,7 +319,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Infraestrutura",
             baseCalculo = $"Malha de suporte ({semEnergia} s/ energ)",
             valorDiario = (decimal)valorInfra,
-            valorMensal = (decimal)(valorInfra * 30f),
+            valorMensal = 0m,
             tendencia = semEnergia > 0 ? "- PENALIDADE" : "+ REGULAR",
             status = "PAGO",
             detalhamento = $"Manutenção de malha elétrica, vias, portos e aeroportos | Estruturas sem abastecimento elétrico: {semEnergia} (Penalidade diária)"
@@ -341,7 +334,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Defesa Nacional",
             baseCalculo = $"{p.populacaoMilitarAtiva} tropas ({infantarias}Inf/{veiculos}Tq/{aereos}Aer/{navais}Nav)",
             valorDiario = (decimal)valorDefesa,
-            valorMensal = (decimal)(valorDefesa * 30f),
+            valorMensal = 0m,
             tendencia = p.emGuerra ? "- MOBILIZAÇÃO" : "+ EM PAZ",
             status = p.emGuerra ? "EM GUERRA" : "PRONTIDÃO",
             detalhamento = $"Manutenção de {p.populacaoMilitarAtiva} militares ativos | Unidades vivas: {infantarias} soldados, {veiculos} veículos/tanques, {aereos} aeronaves, {navais} embarcações | Status: {(p.emGuerra ? "EM GUERRA (Custo logístico elevado)" : "Paz")}"
@@ -355,7 +348,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Produção Pública",
             baseCalculo = $"Parque estatal ({p.nivelIndustrial})",
             valorDiario = (decimal)valorProd,
-            valorMensal = (decimal)(valorProd * 30f),
+            valorMensal = 0m,
             tendencia = "ESTÁVEL",
             status = "PAGO",
             detalhamento = $"Custeio operacional de refinarias, poços e complexos industriais do Estado | Nível industrial nacional: {p.nivelIndustrial}"
@@ -368,7 +361,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Ciência e Tecnologia",
             baseCalculo = $"{pesquisasAtivas} pesq. / {labsAtivos} labs",
             valorDiario = (decimal)valorCiencia,
-            valorMensal = (decimal)(valorCiencia * 30f),
+            valorMensal = 0m,
             tendencia = pesquisasAtivas > 0 ? "- EM PESQUISA" : "+ ESTÁVEL",
             status = "PAGO",
             detalhamento = $"Pesquisas ativas: {pesquisasAtivas} | Laboratórios operacionais: {labsAtivos} | Satélite de Defesa: {(sateliteAtivo ? "Ativo ($300/dia)" : "Inativo")}"
@@ -380,7 +373,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Juros da Dívida",
             baseCalculo = $"Dívida: $ {relatorio.dividaTotal:N0}",
             valorDiario = (decimal)jurosDia,
-            valorMensal = (decimal)(jurosDia * 30f),
+            valorMensal = 0m,
             tendencia = relatorio.dividaTotal > 0f ? "- COBRANÇA" : "+ QUITADO",
             status = relatorio.dividaTotal > 0f ? "ENCARGO" : "QUITADO",
             detalhamento = $"Dívida acumulada total: $ {relatorio.dividaTotal:N0} | Empréstimos federativos ativos: {emprestimosAtivos} | Serviço diário da dívida"
@@ -393,7 +386,7 @@ public class SistemaOrcamentoNacional : MonoBehaviour
             nome = "Outras Despesas",
             baseCalculo = "Encargos diversos",
             valorDiario = (decimal)valorOutrasDesp,
-            valorMensal = (decimal)(valorOutrasDesp * 30f),
+            valorMensal = 0m,
             tendencia = "ESTÁVEL",
             status = "PAGO",
             detalhamento = "Despesas contingentes e encargos administrativos operacionais menores"
@@ -403,17 +396,14 @@ public class SistemaOrcamentoNacional : MonoBehaviour
         relatorio.receitaTotalDia = relatorio.receitas.Sum(r => r.valorDiario);
         relatorio.despesaTotalDia = relatorio.despesas.Sum(d => d.valorDiario);
         relatorio.saldoLiquidoDia = relatorio.receitaTotalDia - relatorio.despesaTotalDia;
-        relatorio.projecaoMensal = relatorio.saldoLiquidoDia * 30m;
-
-        // Atualizar saldo operacional de governo sem sobrescrever o dinheiro principal
-        p.rendaPorSegundo = (float)relatorio.receitaTotalDia;
-        p.gastosPorSegundo = (float)relatorio.despesaTotalDia;
-        p.saldoOperacional = (float)relatorio.saldoLiquidoDia;
-        if (eco != null)
-        {
-            eco.saldoOperacional = p.saldoOperacional;
-            eco.custoManutencao = p.gastosPorSegundo;
-        }
+        relatorio.receitaTotalSemana = relatorio.receitaTotalDia * 7m;
+        relatorio.despesaTotalSemana = relatorio.despesaTotalDia * 7m;
+        relatorio.saldoLiquidoSemana = relatorio.receitaTotalSemana - relatorio.despesaTotalSemana;
+        for (int i = 0; i < relatorio.receitas.Count; i++)
+            relatorio.receitas[i].valorSemanal = relatorio.receitas[i].valorDiario * 7m;
+        for (int i = 0; i < relatorio.despesas.Count; i++)
+            relatorio.despesas[i].valorSemanal = relatorio.despesas[i].valorDiario * 7m;
+        relatorio.projecaoMensal = 0m;
 
         return relatorio;
     }

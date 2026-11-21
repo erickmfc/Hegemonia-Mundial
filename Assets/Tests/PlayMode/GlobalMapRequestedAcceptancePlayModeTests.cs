@@ -2257,6 +2257,47 @@ public sealed class GlobalMapRequestedAcceptancePlayModeTests
     }
 
     [UnityTest]
+    public IEnumerator ConstructionMenuIncludesGrummanE2DInAeronautica()
+    {
+        Type menuType = ResolveType("MenuConstrucao");
+        Component menu = UnityEngine.Object.FindFirstObjectByType(menuType, FindObjectsInactive.Include) as Component;
+        Assert.That(menu, Is.Not.Null, "O menu Construção precisa existir na cena global.");
+
+        FieldInfo catalogField = menuType.GetField("catalogo", Members);
+        FieldInfo categoryField = menuType.GetField("categoriaAtual", Members);
+        Assert.That(catalogField, Is.Not.Null);
+        Assert.That(categoryField, Is.Not.Null);
+        IList catalog = catalogField.GetValue(menu) as IList;
+        Assert.That(catalog, Is.Not.Null);
+
+        object grumman = catalog.Cast<object>().FirstOrDefault(item => item != null
+            && string.Equals(Convert.ToString(Call(item, "GetDisplayName")), "Grumman D", StringComparison.OrdinalIgnoreCase));
+        Assert.That(grumman, Is.Not.Null, "A ficha Grumman E-2D precisa estar no catálogo da cena.");
+        Assert.That(Convert.ToString(Read(grumman, "categoria")), Is.EqualTo("Aeronautica"));
+        GameObject prefab = Read(grumman, "PrefabDaUnidade") as GameObject;
+        Assert.That(prefab, Is.Not.Null);
+        Assert.That(prefab.name, Is.EqualTo("GrummanE2D"));
+
+        object originalCategory = categoryField.GetValue(menu);
+        try
+        {
+            menuType.GetMethod("FiltrarPorCategoria", Members).Invoke(menu, new[] { Read(grumman, "categoria") });
+            yield return null;
+
+            Transform cards = Read(menu, "containerBotoes") as Transform;
+            Assert.That(cards, Is.Not.Null, "A grade de cards do menu precisa existir.");
+            bool cardVisible = cards.Cast<Transform>().Any(card => card.gameObject.activeSelf
+                && card.GetComponentsInChildren<UnityEngine.UI.Text>(true)
+                    .Any(label => label.text.IndexOf("Grumman", StringComparison.OrdinalIgnoreCase) >= 0));
+            Assert.That(cardVisible, Is.True, "O card Grumman precisa aparecer ao selecionar Aeronáutica.");
+        }
+        finally
+        {
+            menuType.GetMethod("FiltrarPorCategoria", Members).Invoke(menu, new[] { originalCategory });
+        }
+    }
+
+    [UnityTest]
     public IEnumerator ConstructionMenuSearchRecordsRuntimeRebuildCost()
     {
         Type menuType = ResolveType("MenuConstrucao");

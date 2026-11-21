@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Stopwatch = System.Diagnostics.Stopwatch;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -26,7 +27,7 @@ public sealed class LoadingScreenService : MonoBehaviour
     [SerializeField] private float segundosPorDica = 4f;
 
     [Header("Transicao")]
-    [SerializeField] private float tempoMinimoTela = 6f;
+    [SerializeField] private float tempoMinimoTela = 1.25f;
 
     private Canvas canvas;
     private Font fontePadrao;
@@ -41,7 +42,13 @@ public sealed class LoadingScreenService : MonoBehaviour
     private AsyncOperation carregamentoAtual;
     private Coroutine rotinaCarregamento;
     private bool aguardandoCena;
+    private bool aguardandoProntidaoInicial;
     private float inicioTela;
+    private long inicioCarregamentoTicks;
+    private long inicioAtivacaoTicks;
+    private string cenaCarregamentoAtual;
+    private LoadingRequestKind tipoCarregamentoAtual;
+    private GlobalTerrainStreamer streamerDaCenaCarregada;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -77,6 +84,49 @@ public sealed class LoadingScreenService : MonoBehaviour
         if (Instancia == this)
         {
             Instancia = null;
+        }
+    }
+
+    private void Update()
+    {
+        if (!aguardandoProntidaoInicial)
+            return;
+
+        // Scenes without the global map (for example, a menu or a lightweight
+        // save destination) have no terrain startup signal to wait for.
+        bool superficiePronta = streamerDaCenaCarregada == null
+            || streamerDaCenaCarregada.InitialWorldSurfaceReady;
+        bool navegacaoResolvida = streamerDaCenaCarregada == null
+            || streamerDaCenaCarregada.InitialNavigationBuildResolved;
+        bool navegacaoDisponivel = streamerDaCenaCarregada == null
+            || streamerDaCenaCarregada.InitialNavigationAvailable;
+        bool registroDeSistemasPronto = ConfiguracaoCenasJogo.EhCenaDeMenu(SceneManager.GetActiveScene().name)
+            || (!FluxoInicialJogo.RegistroControllersCenaEmAndamento
+                && FluxoInicialJogo.RegistroControllersCenaConcluido);
+
+        if (superficiePronta && navegacaoResolvida && registroDeSistemasPronto)
+        {
+            aguardandoProntidaoInicial = false;
+            Debug.Log("[LoadingScreen][Tempo] cena=" + cenaCarregamentoAtual
+                + " etapa=SuperficieInicialPronta segundosTotais=" + SegundosDesde(inicioCarregamentoTicks).ToString("F2")
+                + " tilesAtivos=" + (streamerDaCenaCarregada != null ? streamerDaCenaCarregada.ActiveTileCount : 0)
+                + "/" + (streamerDaCenaCarregada != null ? streamerDaCenaCarregada.DesiredTileCount : 0)
+                + " modoMacro=" + (streamerDaCenaCarregada != null && streamerDaCenaCarregada.IsMacroTerrainMode)
+                + " navMesh=" + (navegacaoDisponivel ? "disponivel" : "fallback")
+                + " registroSistemas=" + registroDeSistemasPronto);
+            AtualizarProgressoFinal();
+            Esconder();
+        }
+        else
+        {
+            MostrarAguardandoCena(tipoCarregamentoAtual);
+            // Keep the reported progress below 100% while the startup surface,
+            // NavMesh decision, or campaign bootstrap is still pending.
+            if (progressoBarra != null)
+            {
+                progressoBarra.fillAmount = 0.99f;
+                progressoTexto.text = "PREPARANDO MAPA 99%";
+            }
         }
     }
 
@@ -140,6 +190,10 @@ public sealed class LoadingScreenService : MonoBehaviour
         }
 
         CarregarCatalogoDeDicas();
+        tipoCarregamentoAtual = tipo;
+        cenaCarregamentoAtual = nomeCena;
+        inicioCarregamentoTicks = Stopwatch.GetTimestamp();
+        inicioAtivacaoTicks = 0;
         Mostrar(tipo);
         inicioTela = Time.unscaledTime;
         rotinaCarregamento = StartCoroutine(RotinaCarregar(nomeCena, tipo));
@@ -173,48 +227,30 @@ public sealed class LoadingScreenService : MonoBehaviour
         carregamentoAtual.allowSceneActivation = false;
         aguardandoCena = true;
 
-        if (quantidade == 0)
+        float tempoMinimo = Mathf.Max(0.1f, tempoMinimoTela);
+        int indiceDicaAtual = 0;
+        float proximaTrocaDica = Time.unscaledTime + intervalo;
+        while (carregamentoAtual.progress < 0.9f || Time.unscaledTime - inicioTela < tempoMinimo)
         {
-            AtualizarProgresso();
-            while (carregamentoAtual.progress < 0.9f)
+            if (selecionadas.Count > 1 && Time.unscaledTime >= proximaTrocaDica)
             {
-                AtualizarProgresso();
-                yield return null;
-            }
-        }
-        else
-        {
-            for (int i = 0; i < selecionadas.Count; i++)
-            {
-                if (i > 0)
-                {
-                    MostrarDica(selecionadas[i], i + 1, selecionadas.Count, tipo);
-                }
-                float terminaEm = Time.unscaledTime + intervalo;
-                while (Time.unscaledTime < terminaEm)
-                {
-                    AtualizarProgresso();
-                    yield return null;
-                }
+                indiceDicaAtual = (indiceDicaAtual + 1) % selecionadas.Count;
+                MostrarDica(selecionadas[indiceDicaAtual], indiceDicaAtual + 1, selecionadas.Count, tipo);
+                proximaTrocaDica = Time.unscaledTime + intervalo;
             }
 
-            while (carregamentoAtual.progress < 0.9f)
+            if (carregamentoAtual.progress >= 0.9f)
             {
                 MostrarAguardandoCena(tipo);
-                AtualizarProgresso();
-                yield return null;
             }
-        }
-
-        float tempoMinimo = Mathf.Max(0.1f, tempoMinimoTela);
-        while (Time.unscaledTime - inicioTela < tempoMinimo)
-        {
-            MostrarAguardandoCena(tipo);
             AtualizarProgresso();
             yield return null;
         }
 
-        AtualizarProgressoFinal();
+        inicioAtivacaoTicks = Stopwatch.GetTimestamp();
+        Debug.Log("[LoadingScreen][Tempo] cena=" + nomeCena
+            + " etapa=DadosDaCenaProntos segundos=" + SegundosDesde(inicioCarregamentoTicks).ToString("F2")
+            + " dicasDisponiveis=" + selecionadas.Count);
         carregamentoAtual.allowSceneActivation = true;
         rotinaCarregamento = null;
     }
@@ -265,7 +301,12 @@ public sealed class LoadingScreenService : MonoBehaviour
 
         aguardandoCena = false;
         carregamentoAtual = null;
-        Esconder();
+        streamerDaCenaCarregada = FindFirstObjectByType<GlobalTerrainStreamer>();
+        aguardandoProntidaoInicial = true;
+        Debug.Log("[LoadingScreen][Tempo] cena=" + cena.name
+            + " etapa=SceneLoadedCallback segundosDesdeAtivacao=" + SegundosDesde(inicioAtivacaoTicks).ToString("F2")
+            + " segundosTotais=" + SegundosDesde(inicioCarregamentoTicks).ToString("F2")
+            + " streamer=" + (streamerDaCenaCarregada != null ? "presente" : "ausente"));
     }
 
     private void Mostrar(LoadingRequestKind tipo)
@@ -319,9 +360,9 @@ public sealed class LoadingScreenService : MonoBehaviour
         float progressoCena = Mathf.Clamp01(carregamentoAtual.progress / 0.9f);
         float minimo = Mathf.Max(0.1f, tempoMinimoTela);
         float progressoTempo = Mathf.Clamp01((Time.unscaledTime - inicioTela) / minimo);
-        // Mantem a barra abaixo de 100% ate a cena poder ser ativada. Se a
-        // leitura terminar em poucos frames, a transicao ainda dura seis
-        // segundos e continua mostrando as dicas sem mascarar o carregamento.
+        // Mantem a barra abaixo de 100% ate a cena poder ser ativada. O tempo
+        // minimo serve apenas para deixar a transicao aparecer por alguns
+        // frames; as dicas alternam enquanto o carregamento real continua.
         float progresso = Mathf.Min(progressoCena, progressoTempo * 0.99f);
         progressoBarra.fillAmount = progresso;
         progressoTexto.text = "CARREGANDO " + Mathf.RoundToInt(progresso * 100f) + "%";
@@ -338,6 +379,13 @@ public sealed class LoadingScreenService : MonoBehaviour
         {
             progressoTexto.text = "CARREGANDO 100%";
         }
+    }
+
+    private static double SegundosDesde(long inicioTicks)
+    {
+        return inicioTicks > 0
+            ? (Stopwatch.GetTimestamp() - inicioTicks) / (double)Stopwatch.Frequency
+            : 0d;
     }
 
     private void Esconder()

@@ -66,7 +66,7 @@ namespace Hegemonia.RTS
                 RTSSimulationClock clock = RTSSimulationClock.Instancia;
                 // Quando a cena nao tem o relogio RTS, os controles do menu
                 // aplicam a velocidade diretamente em Time.timeScale.
-                float speed = clock != null ? clock.SimulationSpeed : Time.timeScale;
+                float speed = clock != null ? clock.EffectiveSimulationSpeed : Time.timeScale;
                 ElapsedSeconds += Time.unscaledDeltaTime * speed;
             }
         }

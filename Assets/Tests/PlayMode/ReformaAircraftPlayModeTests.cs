@@ -82,6 +82,41 @@ public sealed class ReformaAircraftPlayModeTests
         yield return null;
     }
 
+    [UnityTest]
+    public IEnumerator TenAircraftInInitialHangarStateKeepDistinctPatioReservations()
+    {
+        Component airport = Create("GerenciadorAeroporto");
+        IList slots = (IList)Read(airport, "waypointsPatio");
+        var waypoints = new List<Transform>();
+        for (int i = 0; i < 10; i++)
+        {
+            var marker = new GameObject("Regression_AircraftSlot_" + i);
+            objects.Add(marker);
+            marker.transform.SetParent(airport.transform, false);
+            marker.transform.localPosition = new Vector3(i * 40f, 0f, 0f);
+            waypoints.Add(marker.transform);
+            slots.Add(marker.transform);
+        }
+
+        IList patio = (IList)Read(airport, "avioesNoPatio");
+        MethodInfo findSlot = airport.GetType().GetMethod("ObterPrimeiraVagaLivre", Members);
+        Assert.IsNotNull(findSlot);
+
+        for (int i = 0; i < 10; i++)
+        {
+            Transform slot = (Transform)findSlot.Invoke(airport, null);
+            Assert.AreSame(waypoints[i], slot, "Cada reserva pendente deve usar uma vaga ainda livre.");
+
+            Component aircraft = Create("ControleAviao");
+            Set(aircraft, "estadoAtual", Enum.Parse(TypeOf("ControleAviao+EstadoAviao"), "ReservaHangar"));
+            Set(aircraft, "vagaRetorno", slot);
+            patio.Add(aircraft);
+        }
+
+        Assert.IsNull(findSlot.Invoke(airport, null), "O aeroporto não deve criar vagas acima da capacidade configurada.");
+        yield return null;
+    }
+
     [UnityTearDown]
     public IEnumerator Cleanup()
     {
@@ -410,8 +445,14 @@ public sealed class ReformaAircraftPlayModeTests
         objects.Add(aircraftPrefab);
         yield return null;
 
-        bool purchased = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
-            .Invoke(airport, new object[] { aircraftPrefab });
+        MethodInfo purchaseMethod = airport.GetType().GetMethod(
+            "ComprarAviao",
+            Members,
+            null,
+            new[] { typeof(GameObject) },
+            null);
+        Assert.IsNotNull(purchaseMethod);
+        bool purchased = (bool)purchaseMethod.Invoke(airport, new object[] { aircraftPrefab });
         yield return null;
 
         Assert.IsTrue(purchased, "O aeroporto deve confirmar somente um spawn realmente criado.");
@@ -422,6 +463,7 @@ public sealed class ReformaAircraftPlayModeTests
     [UnityTest]
     public IEnumerator AirportPurchaseRejectedOnWaterDoesNotReportSuccessOrSpawn()
     {
+        CreateRaisedLandFixture();
         PrepararEfetivoDoJogador();
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Cube);
         water.name = "Regression_Water_Surface";
@@ -429,12 +471,8 @@ public sealed class ReformaAircraftPlayModeTests
         water.transform.localScale = new Vector3(100f, 2f, 100f);
         objects.Add(water);
 
-        Component airport = Create("GerenciadorAeroporto");
+        Component airport = CreatePlayerAirport(new Vector3(5000f, 0f, 5000f));
         airport.name = "Regression_AirportOnWater";
-        airport.transform.position = new Vector3(5000f, 0f, 5000f);
-        Component identity = airport.gameObject.AddComponent(TypeOf("IdentidadeUnidade"));
-        Set(identity, "teamID", 1);
-        airport.gameObject.SetActive(true);
 
         GameObject aircraftPrefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
         aircraftPrefab.name = "Regression_AircraftWaterPrefab";
@@ -444,8 +482,14 @@ public sealed class ReformaAircraftPlayModeTests
 
         LogAssert.Expect(LogType.Error,
             "[Aeroporto] Spawn aéreo bloqueado em água: Regression_AirportOnWater ((5000.0, 0.0, 5000.0)). Corrija o ponto Preparacao/pista da base.");
-        bool purchased = (bool)airport.GetType().GetMethod("ComprarAviao", Members)
-            .Invoke(airport, new object[] { aircraftPrefab });
+        MethodInfo purchaseMethod = airport.GetType().GetMethod(
+            "ComprarAviao",
+            Members,
+            null,
+            new[] { typeof(GameObject) },
+            null);
+        Assert.IsNotNull(purchaseMethod);
+        bool purchased = (bool)purchaseMethod.Invoke(airport, new object[] { aircraftPrefab });
 
         Assert.IsFalse(purchased, "Um spawn bloqueado não pode ser registrado como compra concluída.");
         Assert.IsNull(GameObject.Find("Regression_AircraftWaterPrefab(Clone)"),
@@ -681,6 +725,11 @@ public sealed class ReformaAircraftPlayModeTests
         Terrain terrain = terrainObject.GetComponent<Terrain>();
 
         Component aircraft = Create("ControleAviao");
+        FieldInfo sharedTerrainCache = TypeOf("ControleAviao").GetField(
+            "s_terrenosAtivosCompartilhados",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.IsNotNull(sharedTerrainCache);
+        sharedTerrainCache.SetValue(null, null);
         Vector3 initialPosition = new Vector3(100000f, 515f, 100000f);
         Vector3 waypoint = new Vector3(100500f, 181f, 100000f);
         aircraft.transform.SetPositionAndRotation(

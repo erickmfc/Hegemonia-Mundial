@@ -26,6 +26,7 @@ public class MenuComandoController : MonoBehaviour
     [Header("Câmera FLIR")]
     [SerializeField] private int flirRenderWidth  = 512;
     [SerializeField] private int flirRenderHeight = 360;
+    private const float MultiplicadorSimulacaoComSatelite = 0.2f;
 
     [Header("Mapa Tático")]
     [Tooltip("Metade do tamanho do mundo em unidades (ex: 5000 = mundo de -5000 a +5000)")]
@@ -414,6 +415,7 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private bool bindUIFeito;
     private bool inicializadoEmGameplay;
+    private bool multiplicadorSateliteAtivo;
 
     private static bool EhCenaDeMenuNome(Scene scene)
     {
@@ -1129,6 +1131,7 @@ public class MenuComandoController : MonoBehaviour
 
     private void OnDestroy()
     {
+        DefinirMultiplicadorSimulacaoComSatelite(false);
         SceneManager.sceneLoaded -= AoCarregarCenaInstancia;
         FecharCardHudExpandido();
         RegistroEntidadesJogo.EntidadesAlteradas -= MarcarCachesEntidadesSujo;
@@ -1172,6 +1175,7 @@ public class MenuComandoController : MonoBehaviour
 
         if (menuAberto) return;
         menuAberto = true;
+        DefinirMultiplicadorSimulacaoComSatelite(true);
 
         ResolverDocumento();
 
@@ -1372,6 +1376,7 @@ public class MenuComandoController : MonoBehaviour
     {
         if (!menuAberto) return;
         menuAberto = false;
+        DefinirMultiplicadorSimulacaoComSatelite(false);
         mouseSobreMapaTatico = false;
         modoLancamentoMissilMapaAtivo = false;
         modoMoverMapaAtivo = false;
@@ -1423,6 +1428,17 @@ public class MenuComandoController : MonoBehaviour
     private void LiberarBloqueioInput()
     {
         InteractionModeService.Release(this, InteractionOwner.MenuComando);
+    }
+
+    private void DefinirMultiplicadorSimulacaoComSatelite(bool ativo)
+    {
+        if (multiplicadorSateliteAtivo == ativo) return;
+
+        Hegemonia.RTS.RTSSimulationClock relogio = Hegemonia.RTS.RTSSimulationClock.Instancia;
+        if (relogio == null) return;
+
+        relogio.SetTemporarySimulationSpeedMultiplier(ativo ? MultiplicadorSimulacaoComSatelite : 1f);
+        multiplicadorSateliteAtivo = ativo;
     }
 
     // -----------------------------------------------------------------------
@@ -4115,7 +4131,9 @@ public class MenuComandoController : MonoBehaviour
     // -----------------------------------------------------------------------
     private void CriarRenderTextureFLIR()
     {
-        flirRT = new RenderTexture(flirRenderWidth, flirRenderHeight, 24, RenderTextureFormat.ARGB32);
+        int larguraRender = Mathf.Max(1, Mathf.RoundToInt(flirRenderWidth * 0.5f));
+        int alturaRender = Mathf.Max(1, Mathf.RoundToInt(flirRenderHeight * 0.5f));
+        flirRT = new RenderTexture(larguraRender, alturaRender, 24, RenderTextureFormat.ARGB32);
         flirRT.name = "MenuComando_FLIR_RT";
         flirRT.Create();
 

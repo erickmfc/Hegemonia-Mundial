@@ -22,6 +22,7 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
 
     [Header("Missão")]
     [SerializeField, Min(0)] private long custoExpedicao = 250000;
+    [SerializeField, Min(0f)] private float atrasoAutorizacaoDecolagem = 5f;
     [SerializeField, Min(10f)] private float tempoAteDesaparecimento = 180f;
     [SerializeField, Min(1)] private int cientistasTransportados = 8;
     [SerializeField, Min(1000f)] private float distanciaDaRotaAteDesaparecimento = 80000f;
@@ -36,11 +37,17 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
 
     private Coroutine temporizadorDesaparecimento;
     private bool eventoExecutado;
+    private bool decolagemIniciada;
+    private float tempoEsperaDecolagem;
     private string aeronaveExpedicaoUniqueId = string.Empty;
     private readonly List<string> nomesPesquisadores = new List<string>(8);
     public EstadoMissaoSinalPerdido Estado => estado;
     public long CustoExpedicao => custoExpedicao;
     public int CientistasTransportados => cientistasTransportados;
+    public float AtrasoAutorizacaoDecolagem => atrasoAutorizacaoDecolagem;
+    public float TempoRestanteAteDecolagem => (estado == EstadoMissaoSinalPerdido.ExpedicaoEmAndamento && !decolagemIniciada)
+        ? Mathf.Max(0f, atrasoAutorizacaoDecolagem - tempoEsperaDecolagem) : 0f;
+    public bool DecolagemIniciada => decolagemIniciada;
     public float TempoRestante => temporizadorDesaparecimento != null ? Mathf.Max(0f, tempoAteDesaparecimento - tempoDecorrido) : 0f;
     private float tempoDecorrido;
     public float TempoDecorrido => tempoDecorrido;
@@ -85,6 +92,11 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
                 || prefabAeronaveCientifica == null)
             { mensagem = "O transporte científico C-400 não está disponível no catálogo de aeronaves."; return false; }
         }
+        if (aeroportoCivil != null && (!aeroportoCivil.isActiveAndEnabled || aeroportoCivil.ObterTeamIdSeguro() != governo.teamJogador))
+        {
+            aeroportoCivil = null;
+            pontoCriacaoAviao = null;
+        }
         if (aeroportoCivil == null)
         {
             GerenciadorAeroportoComercial[] aeroportos = FindObjectsByType<GerenciadorAeroportoComercial>(
@@ -107,9 +119,8 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
         { mensagem = "O aeroporto comercial do jogador precisa estar energizado e ter pista com rota de pouso configurada."; return false; }
         if (aeroportoCivil.ObterTeamIdSeguro() != governo.teamJogador)
         { mensagem = "O aeroporto comercial precisa pertencer ao jogador."; return false; }
-        if (pontoCriacaoAviao == null) pontoCriacaoAviao = aeroportoCivil.transform;
-        if (pontoCriacaoAviao != aeroportoCivil.transform && !pontoCriacaoAviao.IsChildOf(aeroportoCivil.transform))
-        { mensagem = "PontoCriacaoAviao precisa pertencer ao aeroporto civil configurado."; return false; }
+        if (pontoCriacaoAviao == null || (pontoCriacaoAviao != aeroportoCivil.transform && !pontoCriacaoAviao.IsChildOf(aeroportoCivil.transform)))
+            pontoCriacaoAviao = aeroportoCivil.transform;
         return true;
     }
 
@@ -274,30 +285,56 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
             IA_WorldState.NotifyEntityChanged(identidadesAeronave[i]);
         }
         RegistroEntidadesJogo.NotificarAlteracao();
-        bool ordemAceita = c700 != null
-            ? c700.TentarReceberOrdemMover(destinoExpedicao, out mensagem)
-            : aeronaveDaExpedicao.ReceberOrdemManual(destinoExpedicao);
-        if (!ordemAceita)
+        if (atrasoAutorizacaoDecolagem <= 0f)
         {
-            string motivoRecusa = c700 != null ? mensagem : aeronaveDaExpedicao.UltimoMotivoRecusaOrdem;
+            bool ordemAceita = c700 != null
+                ? c700.TentarReceberOrdemMover(destinoExpedicao, out mensagem)
+                : aeronaveDaExpedicao.ReceberOrdemManual(destinoExpedicao);
+            if (!ordemAceita)
+            {
+                string motivoRecusa = c700 != null ? mensagem : aeronaveDaExpedicao.UltimoMotivoRecusaOrdem;
+                if (aeronaveCriadaAgora) DescartarAeronaveDaExpedicao();
+                mensagem = "A aeronave recusou a ordem de decolagem: " + motivoRecusa;
+                return false;
+            }
+            if (!governo.TentarPagar(governo.teamJogador, custoExpedicao))
+            {
+                // O comando só registra a missão; retorne a aeronave à vaga e não
+                // cobre a expedição quando o saldo do jogador for insuficiente.
+                if (c700 != null) c700.OrdenarRetornoAoAeroporto();
+                else aeronaveDaExpedicao.ComandoRetornarBase();
+                if (aeronaveCriadaAgora) DescartarAeronaveDaExpedicao();
+                mensagem = "Saldo insuficiente para financiar a expedição.";
+                return false;
+            }
+            decolagemIniciada = true;
+            tempoEsperaDecolagem = 0f;
+            estado = EstadoMissaoSinalPerdido.ExpedicaoEmAndamento;
+            temporizadorDesaparecimento = StartCoroutine(ExecutarDesaparecimentoUnico(destinoExpedicao));
+            governo.RegistrarNoticia("Operação Sinal Perdido: a expedição científica de oito pesquisadores decolou.");
+            mensagem = "Expedição financiada. A aeronave está a caminho.";
+            return true;
+        }
+
+        if (c700 != null && !c700.PodeAceitarDestino(destinoExpedicao, out mensagem))
+        {
             if (aeronaveCriadaAgora) DescartarAeronaveDaExpedicao();
-            mensagem = "A aeronave recusou a ordem de decolagem: " + motivoRecusa;
+            mensagem = "A aeronave recusou a ordem de decolagem: " + mensagem;
             return false;
         }
         if (!governo.TentarPagar(governo.teamJogador, custoExpedicao))
         {
-            // O comando só registra a missão; retorne a aeronave à vaga e não
-            // cobre a expedição quando o saldo do jogador for insuficiente.
-            if (c700 != null) c700.OrdenarRetornoAoAeroporto();
-            else aeronaveDaExpedicao.ComandoRetornarBase();
             if (aeronaveCriadaAgora) DescartarAeronaveDaExpedicao();
             mensagem = "Saldo insuficiente para financiar a expedição.";
             return false;
         }
+
+        decolagemIniciada = false;
+        tempoEsperaDecolagem = 0f;
         estado = EstadoMissaoSinalPerdido.ExpedicaoEmAndamento;
-        temporizadorDesaparecimento = StartCoroutine(ExecutarDesaparecimentoUnico());
-        governo.RegistrarNoticia("Operação Sinal Perdido: a expedição científica de oito pesquisadores decolou.");
-        mensagem = "Expedição financiada. A aeronave está a caminho.";
+        temporizadorDesaparecimento = StartCoroutine(ExecutarDesaparecimentoUnico(destinoExpedicao));
+        governo.RegistrarNoticia("Operação Sinal Perdido: equipe científica embarcada na baia; autorização de táxi em " + atrasoAutorizacaoDecolagem.ToString("0") + "s.");
+        mensagem = "Expedição financiada. O C-400 sairá da baia para a pista em cerca de " + atrasoAutorizacaoDecolagem.ToString("0") + " segundos.";
         return true;
     }
 
@@ -317,8 +354,35 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
         aeronaveDaExpedicao = null;
     }
 
-    private IEnumerator ExecutarDesaparecimentoUnico()
+    private void IniciarRotaExpedicao(Vector3 destinoExpedicao)
     {
+        if (decolagemIniciada) return;
+        decolagemIniciada = true;
+        if (aeronaveDaExpedicao == null) return;
+
+        C700TransporteAereo c700 = aeronaveDaExpedicao.GetComponent<C700TransporteAereo>();
+        bool aceita = c700 != null
+            ? c700.TentarReceberOrdemMover(destinoExpedicao, out _)
+            : aeronaveDaExpedicao.ReceberOrdemManual(destinoExpedicao);
+        if (aceita)
+        {
+            SistemaGovernoMundial.Instancia?.RegistrarNoticia(
+                "Operação Sinal Perdido: o transporte científico C-400 saiu da baia rumo à pista e iniciou voo.");
+        }
+    }
+
+    private IEnumerator ExecutarDesaparecimentoUnico(Vector3 destinoExpedicao)
+    {
+        while (!decolagemIniciada && tempoEsperaDecolagem < atrasoAutorizacaoDecolagem)
+        {
+            tempoEsperaDecolagem += Time.deltaTime;
+            yield return null;
+        }
+        if (!decolagemIniciada)
+        {
+            IniciarRotaExpedicao(destinoExpedicao);
+        }
+
         while (tempoDecorrido < tempoAteDesaparecimento)
         {
             tempoDecorrido += Time.deltaTime;
@@ -373,7 +437,12 @@ public sealed class MissaoOperacaoSinalPerdido : MonoBehaviour
         }
         if (estado == EstadoMissaoSinalPerdido.ExpedicaoEmAndamento && !eventoExecutado)
         {
-            if (aeronaveDaExpedicao != null) temporizadorDesaparecimento = StartCoroutine(ExecutarDesaparecimentoUnico());
+            if (aeronaveDaExpedicao != null)
+            {
+                C700TransporteAereo c700 = aeronaveDaExpedicao.GetComponent<C700TransporteAereo>();
+                decolagemIniciada = c700 != null ? !c700.EstaNoSolo : aeronaveDaExpedicao.estadoAtual != ControleAviao.EstadoAviao.ProntoNoPatio;
+                temporizadorDesaparecimento = StartCoroutine(ExecutarDesaparecimentoUnico(ObterDestinoExpedicao()));
+            }
             else
             {
                 tempoDecorrido = tempoAteDesaparecimento;
