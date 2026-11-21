@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01adaf1ed705a7f4aa6f385d271a343f, type: 3}
+  m_Name: Cruzeiro
+  m_EditorClassIdentifier: Assembly-CSharp::DadosConstrucao
+  nomeItem: Cruzeiro Turistico
+  descricao: Navio civil que realiza viagens de turismo internacional, gera licencas para o tesouro e entretém a populacao.
+  icone: {fileID: 0}
+  itemId: cruzeiro_turistico
+  aliases: Cruzeiro; Cruise liner; navio de turismo; turismo maritimo
+  capacidades: 0
+  prefabDaUnidade: {fileID: 7786088974659616800, guid: a88405a38571e3843aadf93510f18516, type: 3}
+  preco: 100
+  precoDefinitivo: 0
+  categoria: 1
+  escalaPoder: 0
+  strategicRole: 0
+  nivelIndustriaAlimentos: 0
+  producaoComidaPorDia: 0
+  manutencaoPorDia: 0
+  empregosGeradosPerfil: 0
+  usinaNuclear: 0
+  energiaNuclear: 0
+  balanceamento: {fileID: 0}
+  scriptsDeComando: []

@@ -361,6 +361,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1902672149941606586}
+  - component: {fileID: 7245300017794032011}
   m_Layer: 0
   m_Name: Cruise liner
   m_TagString: Untagged
@@ -387,3 +388,29 @@ Transform:
   - {fileID: 1581386466551724508}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7245300017794032011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7786088974659616800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c412ca9d178945138b08ad26c2448931, type: 3}
+  m_Name: NavioCruzeiroTuristico
+  m_EditorClassIdentifier: Assembly-CSharp::NavioCruzeiroTuristico
+  capacidadePassageiros: 3000
+  duracaoViagemSegundos: 180
+  tempoEmPortoSegundos: 30
+  teamId: 1
+  operacaoAtiva: 1
+  demandaBase: 0.55
+  ganhoFelicidadePercentual: 0.06
+  receitaMinimaPorViagem: 15000000
+  receitaMaximaPorViagem: 55000000
+  emViagem: 0
+  tempoRestante: 0
+  demandaAtual: 0
+  ultimaReceitaLicencas: 0
+  viagensConcluidas: 0

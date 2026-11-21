@@ -390,6 +390,40 @@ public sealed class SistemaCulturaEntretenimento : MonoBehaviour
             if (!ativo && resumo.principalMotivoParada == "Nenhum") resumo.principalMotivoParada = motivo;
         }
 
+        NavioCruzeiroTuristico[] cruzeirosAtivos = FindObjectsByType<NavioCruzeiroTuristico>(FindObjectsSortMode.None);
+        for (int i = 0; i < cruzeirosAtivos.Length; i++)
+        {
+            NavioCruzeiroTuristico navio = cruzeirosAtivos[i];
+            if (navio == null || !navio.isActiveAndEnabled) continue;
+            int team = navio.TeamId;
+            DadosCulturaNacional resumo;
+            if (!relatorios.TryGetValue(team, out resumo))
+            {
+                resumo = new DadosCulturaNacional();
+                relatorios.Add(team, resumo);
+                variedades.Add(team, new HashSet<TipoEstruturaCultura>());
+            }
+
+            int passageiros = navio.EmViagem ? navio.PassageirosAtuais : 0;
+            int turistas = Mathf.RoundToInt(passageiros * 0.8f);
+            resumo.totalEstruturas++;
+            resumo.capacidadeTotalVisitantes += navio.CapacidadePassageiros;
+            resumo.visitantesAtuais += passageiros;
+            resumo.turistasInternacionais += turistas;
+            resumo.turistasNacionais += Mathf.Max(0, passageiros - turistas);
+            resumo.empregosPermanentes += Mathf.Max(30, navio.CapacidadePassageiros / 20);
+            resumo.receitaTuristicaIndireta += navio.EmViagem
+                ? navio.PassageirosAtuais * 250f / Mathf.Max(1f, navio.duracaoViagemSegundos + navio.tempoEmPortoSegundos)
+                : 0f;
+            resumo.impostosGerados += navio.EmViagem
+                ? navio.PassageirosAtuais * 250f / Mathf.Max(1f, navio.duracaoViagemSegundos + navio.tempoEmPortoSegundos)
+                    * (gov != null && gov.ObterPais(team) != null ? gov.ObterPais(team).impostoComercio / 100f : 0.12f)
+                : 0f;
+            resumo.prestigioNacional += navio.EmViagem ? 4f * navio.DemandaAtual : 0f;
+            if (navio.EmViagem) resumo.estruturasAtivas++;
+            else resumo.estruturasFechadas++;
+        }
+
         foreach (KeyValuePair<int, DadosCulturaNacional> par in relatorios)
         {
             DadosCulturaNacional r = par.Value;

@@ -771,6 +771,7 @@ public class MenuConstrucao : MonoBehaviour
             "Construcoes/AeroportoTemporarioC400",
             "Construcoes/UH60GuardaCosteira",
             "Construcoes/NavioGuardaCosteira",
+            "Construcoes/Cruzeiro",
             "Construcoes/FragataOliverHazardPerryFFG7",
             "Construcoes/DestroyerHangzhou136",
             "Construcoes/DestroyerNagoya"
