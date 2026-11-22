@@ -81,6 +81,14 @@ public class GerenciadorAeroporto : MonoBehaviour
     [Tooltip("Grupo de waypoints de pouso OBRIGATÓRIOS (Decida)")]
     public Transform decida;
 
+    [Header("Pontos específicos da Base Naval Ilha")]
+    [Tooltip("Ponto autorizado de criação no hangar de manutenção da ilha.")]
+    public Transform pontoCriacaoAeronave;
+    [Tooltip("Saída do hangar usada para taxiamento até as vagas e a pista.")]
+    public Transform pontoSaidaHangar;
+    [Tooltip("Vagas de helicóptero configuradas na ilha, inclusive nomes importados como h (1).")]
+    public List<Transform> vagasHelicopteroConfiguradas = new List<Transform>();
+
     [Header("Gestão de Frota e Status")]
     public List<ControleAviao> avioesNoPatio = new List<ControleAviao>();
     public List<ControleAviao> avioesNoHangar = new List<ControleAviao>();
@@ -151,6 +159,167 @@ public class GerenciadorAeroporto : MonoBehaviour
     private float _proximaManutencaoListas = -999f;
     private Transform _vagaHelicopteroReserva;
     private bool _taxiAutomaticoBaseMilitar;
+    private bool _sequenciarPistaBaseNavalIlha;
+    private readonly List<ControleAviao> _filaDecolagemBaseNavalIlha = new List<ControleAviao>(8);
+    private readonly HashSet<ControleAviao> _avioesChegaramFilaBaseNavalIlha = new HashSet<ControleAviao>();
+    private readonly List<Transform> _waypointsFilaBaseNavalIlha = new List<Transform>(5);
+    private readonly List<Transform> _waypointsAceleracaoBaseNavalIlha = new List<Transform>(6);
+    private Transform _pontoInicioPistaBaseNavalIlha;
+    private Transform _pontoAlinharPistaBaseNavalIlha;
+    private Transform _pontoVooPistaBaseNavalIlha;
+
+    public bool UsaSequenciamentoPistaBaseNavalIlha => _sequenciarPistaBaseNavalIlha;
+    public bool SequenciaPistaBaseNavalIlhaCompleta =>
+        _sequenciarPistaBaseNavalIlha
+        && _waypointsFilaBaseNavalIlha.Count >= 5
+        && _pontoInicioPistaBaseNavalIlha != null
+        && _pontoAlinharPistaBaseNavalIlha != null
+        && _waypointsAceleracaoBaseNavalIlha.Count >= 4
+        && _pontoVooPistaBaseNavalIlha != null;
+
+    public int ObterIndiceFinalAproximacaoBaseNavalIlha()
+    {
+        for (int i = 0; i < waypointsDecida.Count; i++)
+        {
+            Transform ponto = waypointsDecida[i];
+            if (ponto != null && ponto.name.StartsWith("desaceleracao", System.StringComparison.OrdinalIgnoreCase))
+                return i - 1;
+        }
+        return -1;
+    }
+
+    public void ConfigurarPistaBaseNavalIlha(Transform pista)
+    {
+        _sequenciarPistaBaseNavalIlha = pista != null;
+        decolagem = pista != null ? EncontrarFilhoDireto(pista, "decolagem") : null;
+        decida = pista != null ? EncontrarFilhoDireto(pista, "pouso") : null;
+        AtualizarWaypointsSequenciaPistaBaseNavalIlha();
+    }
+
+    public Transform ObterPontoFilaBaseNavalIlha(int indice)
+    {
+        return indice >= 0 && indice < _waypointsFilaBaseNavalIlha.Count
+            ? _waypointsFilaBaseNavalIlha[indice]
+            : null;
+    }
+
+    public Transform ObterInicioPistaBaseNavalIlha() => _pontoInicioPistaBaseNavalIlha;
+    public Transform ObterAlinharPistaBaseNavalIlha() => _pontoAlinharPistaBaseNavalIlha;
+    public Transform ObterVooPistaBaseNavalIlha() => _pontoVooPistaBaseNavalIlha;
+    public int QuantidadePontosAceleracaoBaseNavalIlha => _waypointsAceleracaoBaseNavalIlha.Count;
+
+    public Transform ObterPontoAceleracaoBaseNavalIlha(int indice)
+    {
+        return indice >= 0 && indice < _waypointsAceleracaoBaseNavalIlha.Count
+            ? _waypointsAceleracaoBaseNavalIlha[indice]
+            : null;
+    }
+
+    public int RegistrarNaFilaDecolagemBaseNavalIlha(ControleAviao aviao)
+    {
+        if (aviao == null || !_sequenciarPistaBaseNavalIlha) return -1;
+        RemoverAeronavesNulasDaFilaBaseNavalIlha();
+        int indice = _filaDecolagemBaseNavalIlha.IndexOf(aviao);
+        if (indice < 0)
+        {
+            _filaDecolagemBaseNavalIlha.Add(aviao);
+            indice = _filaDecolagemBaseNavalIlha.Count - 1;
+        }
+        return indice;
+    }
+
+    public int ObterPosicaoNaFilaDecolagemBaseNavalIlha(ControleAviao aviao)
+    {
+        RemoverAeronavesNulasDaFilaBaseNavalIlha();
+        return aviao != null ? _filaDecolagemBaseNavalIlha.IndexOf(aviao) : -1;
+    }
+
+    public bool PredecessorChegouNaFilaBaseNavalIlha(ControleAviao aviao)
+    {
+        int indice = ObterPosicaoNaFilaDecolagemBaseNavalIlha(aviao);
+        return indice <= 0 || _avioesChegaramFilaBaseNavalIlha.Contains(_filaDecolagemBaseNavalIlha[indice - 1]);
+    }
+
+    public void MarcarChegadaFilaBaseNavalIlha(ControleAviao aviao)
+    {
+        if (aviao != null) _avioesChegaramFilaBaseNavalIlha.Add(aviao);
+    }
+
+    public void LiberarFilaDecolagemBaseNavalIlha(ControleAviao aviao)
+    {
+        if (aviao == null) return;
+        _filaDecolagemBaseNavalIlha.Remove(aviao);
+        _avioesChegaramFilaBaseNavalIlha.Remove(aviao);
+    }
+
+    private void RemoverAeronavesNulasDaFilaBaseNavalIlha()
+    {
+        for (int i = _filaDecolagemBaseNavalIlha.Count - 1; i >= 0; i--)
+        {
+            ControleAviao aviao = _filaDecolagemBaseNavalIlha[i];
+            if (aviao != null) continue;
+            _filaDecolagemBaseNavalIlha.RemoveAt(i);
+            _avioesChegaramFilaBaseNavalIlha.Remove(aviao);
+        }
+    }
+
+    private void AtualizarWaypointsSequenciaPistaBaseNavalIlha()
+    {
+        _waypointsFilaBaseNavalIlha.Clear();
+        _waypointsAceleracaoBaseNavalIlha.Clear();
+        _pontoInicioPistaBaseNavalIlha = null;
+        _pontoAlinharPistaBaseNavalIlha = null;
+        _pontoVooPistaBaseNavalIlha = null;
+        if (!_sequenciarPistaBaseNavalIlha || decolagem == null) return;
+
+        foreach (Transform ponto in decolagem)
+        {
+            if (ponto == null) continue;
+            string nome = ponto.name.Trim().ToLowerInvariant();
+            if (nome == "iniciar") _pontoInicioPistaBaseNavalIlha = ponto;
+            else if (nome == "alinhar") _pontoAlinharPistaBaseNavalIlha = ponto;
+            else if (nome == "voo") _pontoVooPistaBaseNavalIlha = ponto;
+            else if (nome.StartsWith("fila")) _waypointsFilaBaseNavalIlha.Add(ponto);
+            else if (nome.StartsWith("aceleracao")) _waypointsAceleracaoBaseNavalIlha.Add(ponto);
+        }
+
+        if (_pontoInicioPistaBaseNavalIlha != null)
+        {
+            _waypointsFilaBaseNavalIlha.Sort((a, b) =>
+            {
+                float distanciaA = (a.position - _pontoInicioPistaBaseNavalIlha.position).sqrMagnitude;
+                float distanciaB = (b.position - _pontoInicioPistaBaseNavalIlha.position).sqrMagnitude;
+                return distanciaA.CompareTo(distanciaB);
+            });
+        }
+        if (_waypointsFilaBaseNavalIlha.Count > 5)
+            _waypointsFilaBaseNavalIlha.RemoveRange(5, _waypointsFilaBaseNavalIlha.Count - 5);
+        _waypointsAceleracaoBaseNavalIlha.Sort((a, b) =>
+            ObterIndicePontoAceleracao(a.name).CompareTo(ObterIndicePontoAceleracao(b.name)));
+    }
+
+    private static int ObterIndicePontoAceleracao(string nome)
+    {
+        if (string.IsNullOrEmpty(nome)) return int.MaxValue;
+        int abre = nome.IndexOf('(');
+        if (abre < 0) return 0;
+        int fecha = nome.IndexOf(')', abre + 1);
+        return fecha > abre && int.TryParse(nome.Substring(abre + 1, fecha - abre - 1), out int indice)
+            ? indice
+            : int.MaxValue;
+    }
+
+    private static Transform EncontrarFilhoDireto(Transform pai, string nome)
+    {
+        if (pai == null) return null;
+        for (int i = 0; i < pai.childCount; i++)
+        {
+            Transform filho = pai.GetChild(i);
+            if (filho != null && string.Equals(filho.name, nome, System.StringComparison.OrdinalIgnoreCase))
+                return filho;
+        }
+        return null;
+    }
 
     [Header("⚡ Energia")]
     public bool semEnergia = false;
@@ -452,11 +621,80 @@ public class GerenciadorAeroporto : MonoBehaviour
         _uiAeroportoSkinCache = null;
     }
 
+    /// <summary>
+    /// Reconstrói caches de pontos uma vez após a Base Naval Ilha informar
+    /// seus transforms, sem varreduras por frame.
+    /// </summary>
+    public void RecarregarConfiguracaoDeVoo()
+    {
+        waypointsPatio.Clear();
+        waypointsDecolagem.Clear();
+        waypointsTaxi.Clear();
+        waypointsDecida.Clear();
+
+        if (patio != null) RegistrarWaypointsPatio(patio);
+        if (patioMilitar != null && patioMilitar != patio) RegistrarWaypointsPatio(patioMilitar);
+        if (pontoCriacaoAeronave != null) wpPreparacao = pontoCriacaoAeronave;
+        if (pontoSaidaHangar != null) wpPronto = pontoSaidaHangar;
+
+        if (decolagem != null)
+            foreach (Transform filho in decolagem)
+                if (filho != null) waypointsDecolagem.Add(filho);
+
+        if (decida != null)
+        {
+            foreach (Transform filho in decida)
+                if (filho != null) waypointsDecida.Add(filho);
+            if (!_sequenciarPistaBaseNavalIlha)
+                waypointsDecida.Reverse();
+        }
+
+        if (waypointsDecida.Count == 0 && waypointsDecolagem.Count > 0)
+        {
+            waypointsDecida.AddRange(waypointsDecolagem);
+            waypointsDecida.Reverse();
+        }
+
+        CarregarTaxiAutomaticoBaseMilitar();
+        AtualizarWaypointsSequenciaPistaBaseNavalIlha();
+    }
+
     protected virtual void Start()
     {
+        ConfigurarPistaBaseNavalIlhaPeloPrefab();
         DiagnosticarConfiguracaoOperacional();
         // Inicia o serviço de reparação automática
         StartCoroutine(ManutencaoDeFrota());
+    }
+
+    /// <summary>
+    /// Ativa a sequência somente quando a hierarquia completa da pista da Base
+    /// Naval Ilha está presente. Isso mantém os aeroportos e porta-aviões atuais
+    /// no fluxo de waypoints que já usam.
+    /// </summary>
+    private void ConfigurarPistaBaseNavalIlhaPeloPrefab()
+    {
+        if (_sequenciarPistaBaseNavalIlha) return;
+
+        Transform pista = EncontrarFilhoPorNome(transform, "Pista_Pouso_3D");
+        if (pista == null
+            || EncontrarFilhoDireto(pista, "decolagem") == null
+            || EncontrarFilhoDireto(pista, "pouso") == null)
+        {
+            return;
+        }
+
+        Transform decolagemAnterior = decolagem;
+        Transform decidaAnterior = decida;
+        ConfigurarPistaBaseNavalIlha(pista);
+        if (!SequenciaPistaBaseNavalIlhaCompleta)
+        {
+            _sequenciarPistaBaseNavalIlha = false;
+            decolagem = decolagemAnterior;
+            decida = decidaAnterior;
+        }
+
+        RecarregarConfiguracaoDeVoo();
     }
 
     /// <summary>

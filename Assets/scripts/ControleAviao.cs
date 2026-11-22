@@ -3805,6 +3805,131 @@ public class ControleAviao : MonoBehaviour
         return new List<Transform>();
     }
 
+    private IEnumerator ExecutarSequenciaPistaBaseNavalIlha()
+    {
+        GerenciadorAeroporto aeroporto = aeroportoOrigem;
+        if (aeroporto == null || !aeroporto.SequenciaPistaBaseNavalIlhaCompleta)
+        {
+            ultimoMovimentoWaypointConcluido = false;
+            yield break;
+        }
+
+        aeroporto.RegistrarNaFilaDecolagemBaseNavalIlha(this);
+        bool chegouNaFila = false;
+        bool liberouProximaAeronave = false;
+        try
+        {
+            while (!chegouNaFila)
+            {
+                if (aeroporto == null || this == null || !gameObject.activeInHierarchy
+                    || estadoAtual != EstadoAviao.Decolando || ordemParaRetorno)
+                {
+                    ultimoMovimentoWaypointConcluido = false;
+                    yield break;
+                }
+
+                int posicaoFila = aeroporto.ObterPosicaoNaFilaDecolagemBaseNavalIlha(this);
+                if (posicaoFila < 0)
+                {
+                    ultimoMovimentoWaypointConcluido = false;
+                    yield break;
+                }
+
+                if (posicaoFila < 5 && aeroporto.PredecessorChegouNaFilaBaseNavalIlha(this))
+                {
+                    List<Transform> caminhoFila = ObterWaypointsTaxiEntrada() ?? new List<Transform>();
+                    Transform pontoFila = aeroporto.ObterPontoFilaBaseNavalIlha(posicaoFila);
+                    if (pontoFila == null)
+                    {
+                        ultimoMovimentoWaypointConcluido = false;
+                        yield break;
+                    }
+                    caminhoFila.Add(pontoFila);
+                    yield return StartCoroutine(SeguirCaminhoDeWaypoints(
+                        caminhoFila, velocidadeSolo, velocidadeSolo, false, true));
+                    if (!ultimoMovimentoWaypointConcluido)
+                    {
+                        yield break;
+                    }
+
+                    aeroporto.MarcarChegadaFilaBaseNavalIlha(this);
+                    chegouNaFila = true;
+                }
+                else
+                {
+                    yield return null;
+                }
+            }
+
+            while (aeroporto != null
+                && aeroporto.ObterPosicaoNaFilaDecolagemBaseNavalIlha(this) != 0)
+            {
+                if (estadoAtual != EstadoAviao.Decolando || ordemParaRetorno)
+                {
+                    ultimoMovimentoWaypointConcluido = false;
+                    yield break;
+                }
+                yield return null;
+            }
+
+            if (aeroporto == null)
+            {
+                ultimoMovimentoWaypointConcluido = false;
+                yield break;
+            }
+
+            Transform filaFrontal = aeroporto.ObterPontoFilaBaseNavalIlha(0);
+            if (filaFrontal != null && (transform.position - filaFrontal.position).sqrMagnitude > 16f)
+            {
+                yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, false, filaFrontal));
+                if (!ultimoMovimentoWaypointConcluido) yield break;
+            }
+
+            Transform inicio = aeroporto.ObterInicioPistaBaseNavalIlha();
+            Transform alinhar = aeroporto.ObterAlinharPistaBaseNavalIlha();
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, false, inicio));
+            if (!ultimoMovimentoWaypointConcluido) yield break;
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeSolo, false, alinhar));
+            if (!ultimoMovimentoWaypointConcluido) yield break;
+
+            // A aeronave permanece alinhada por três segundos antes de iniciar
+            // a corrida de aceleração pela pista.
+            yield return new WaitForSeconds(3f);
+            int quantidadeAceleracao = aeroporto.QuantidadePontosAceleracaoBaseNavalIlha;
+            float velocidadeMaxima = Mathf.Max(velocidadeSolo, velocidadeMaximaVoo);
+            for (int i = 0; i < quantidadeAceleracao; i++)
+            {
+                if (ordemParaRetorno || estadoAtual != EstadoAviao.Decolando)
+                {
+                    ultimoMovimentoWaypointConcluido = false;
+                    yield break;
+                }
+
+                Transform ponto = aeroporto.ObterPontoAceleracaoBaseNavalIlha(i);
+                if (ponto == null) continue;
+                float progresso = (i + 1f) / (quantidadeAceleracao + 1f);
+                float velocidadeEtapa = Mathf.Lerp(velocidadeSolo, velocidadeMaxima, progresso);
+                yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeEtapa, false, ponto, true));
+                if (!ultimoMovimentoWaypointConcluido) yield break;
+
+                if (string.Equals(ponto.name.Trim(), "aceleracao (3)", StringComparison.OrdinalIgnoreCase))
+                {
+                    aeroporto.LiberarFilaDecolagemBaseNavalIlha(this);
+                    liberouProximaAeronave = true;
+                }
+            }
+
+            Transform pontoVoo = aeroporto.ObterVooPistaBaseNavalIlha();
+            yield return StartCoroutine(MoverInterpolado(Vector3.zero, velocidadeMaxima, true, pontoVoo, true, true));
+            if (!ultimoMovimentoWaypointConcluido) yield break;
+        }
+        finally
+        {
+            if (!liberouProximaAeronave && aeroporto != null)
+                aeroporto.LiberarFilaDecolagemBaseNavalIlha(this);
+        }
+    }
+
     protected virtual IEnumerator SequenciaDeVooEPouso()
     {
         if (aeroportoOrigem == null) 
@@ -3866,7 +3991,19 @@ public class ControleAviao : MonoBehaviour
             }
         }
 
-        if (caminhoDecolagem.Count > 0)
+        if (aeroportoOrigem.SequenciaPistaBaseNavalIlhaCompleta)
+        {
+            yield return StartCoroutine(ExecutarSequenciaPistaBaseNavalIlha());
+            if (!ultimoMovimentoWaypointConcluido)
+            {
+                estaEmModoVooFisico = false;
+                ordemParaRetorno = false;
+                DefinirEstado(EstadoAviao.ProntoNoPatio);
+                yield break;
+            }
+            velocidadeVooAtual = velocidadeMaximaVoo;
+        }
+        else if (caminhoDecolagem.Count > 0)
             {
                 // Giro realista: aponta suavemente para o início da pista antes de começar a andar
                 Vector3 dirParaPista = caminhoDecolagem[0].position - transform.position;
@@ -4093,9 +4230,22 @@ public class ControleAviao : MonoBehaviour
         if (vagaRetorno != null && !aeroportoOrigem.avioesNoPatio.Contains(this))
             aeroportoOrigem.avioesNoPatio.Add(this);
 
-        // 2. Fase de aproximação no ar: o índice [0] é o ponto sintético 600m atrás do navio
+        bool aproximacaoBaseNavalIlha = aeroportoOrigem.SequenciaPistaBaseNavalIlhaCompleta;
+        int indiceFinalAproximacaoBaseNavalIlha = aproximacaoBaseNavalIlha
+            ? aeroportoOrigem.ObterIndiceFinalAproximacaoBaseNavalIlha()
+            : 1;
+        if (indiceFinalAproximacaoBaseNavalIlha < 1
+            || indiceFinalAproximacaoBaseNavalIlha >= aeroportoOrigem.waypointsDecida.Count)
+        {
+            aproximacaoBaseNavalIlha = false;
+            indiceFinalAproximacaoBaseNavalIlha = 1;
+        }
+
+        int indiceWaypointAproximacao = 0;
+        // A Base Naval Ilha possui vários marcadores de descida na pista;
+        // os outros aeroportos mantêm a aproximação tradicional em dois pontos.
         Vector3 pontoAproximacao = aeroportoOrigem.waypointsDecida[0].position;
-        Vector3 pontoTouchdown   = aeroportoOrigem.waypointsDecida[1].position;
+        Vector3 pontoTouchdown = aeroportoOrigem.waypointsDecida[indiceFinalAproximacaoBaseNavalIlha].position;
 
         alvoGPSVoo = pontoAproximacao;
         if (alvoGPSVoo.y < 50f) alvoGPSVoo.y = 50f;
@@ -4115,15 +4265,33 @@ public class ControleAviao : MonoBehaviour
             }
             // A carrier can move after the return started. Follow its current
             // landing markers instead of circling the old world coordinates.
-            pontoAproximacao = aeroportoOrigem.waypointsDecida[0].position;
-            pontoTouchdown = aeroportoOrigem.waypointsDecida[1].position;
-            Vector3 alvoReal = indoParaTouchdown ? pontoTouchdown : pontoAproximacao;
+            if (aproximacaoBaseNavalIlha)
+            {
+                indiceWaypointAproximacao = Mathf.Clamp(indiceWaypointAproximacao, 0, indiceFinalAproximacaoBaseNavalIlha);
+                pontoAproximacao = aeroportoOrigem.waypointsDecida[indiceWaypointAproximacao].position;
+                pontoTouchdown = aeroportoOrigem.waypointsDecida[indiceFinalAproximacaoBaseNavalIlha].position;
+            }
+            else
+            {
+                pontoAproximacao = aeroportoOrigem.waypointsDecida[0].position;
+                pontoTouchdown = aeroportoOrigem.waypointsDecida[1].position;
+            }
+            Vector3 alvoReal = aproximacaoBaseNavalIlha
+                ? (indiceWaypointAproximacao < indiceFinalAproximacaoBaseNavalIlha ? pontoAproximacao : pontoTouchdown)
+                : (indoParaTouchdown ? pontoTouchdown : pontoAproximacao);
             alvoGPSVoo = Vector3.Lerp(alvoGPSVoo, alvoReal, Time.deltaTime * 1.5f);
 
             Vector3 diffAprox = new Vector3(transform.position.x - pontoAproximacao.x, 0, transform.position.z - pontoAproximacao.z);
             Vector3 diffTD    = new Vector3(transform.position.x - pontoTouchdown.x,   0, transform.position.z - pontoTouchdown.z);
 
-            if (!indoParaTouchdown)
+            if (aproximacaoBaseNavalIlha && indiceWaypointAproximacao < indiceFinalAproximacaoBaseNavalIlha)
+            {
+                Vector3 pontoAtual = aeroportoOrigem.waypointsDecida[indiceWaypointAproximacao].position;
+                Vector3 diferencaPontoAtual = pontoAtual - transform.position;
+                if (diferencaPontoAtual.sqrMagnitude <= 8100f)
+                    indiceWaypointAproximacao++;
+            }
+            else if (!indoParaTouchdown && !aproximacaoBaseNavalIlha)
             {
                 if (diffAprox.sqrMagnitude <= 90000f) indoParaTouchdown = true; // 300 m
             }
@@ -4136,7 +4304,10 @@ public class ControleAviao : MonoBehaviour
                 }
 
                 float distanciaTransicaoSolo = carrier != null ? 100f : 30f;
-                if (diffTD.sqrMagnitude <= distanciaTransicaoSolo * distanciaTransicaoSolo) break;
+                bool chegouAoPontoTouchdown = diffTD.sqrMagnitude <= distanciaTransicaoSolo * distanciaTransicaoSolo;
+                if (aproximacaoBaseNavalIlha)
+                    chegouAoPontoTouchdown &= Mathf.Abs(transform.position.y - pontoTouchdown.y) <= 35f;
+                if (chegouAoPontoTouchdown) break;
             }
 
             if (diffTD.sqrMagnitude < 250000f) AbaixarRodas();
@@ -4150,7 +4321,10 @@ public class ControleAviao : MonoBehaviour
         estaEmModoVooFisico = false;
 
         List<Transform> caminhoPouso = new List<Transform>();
-        for (int i = 1; i < aeroportoOrigem.waypointsDecida.Count; i++)
+        int inicioTaxiPouso = aproximacaoBaseNavalIlha
+            ? indiceFinalAproximacaoBaseNavalIlha + 1
+            : 1;
+        for (int i = inicioTaxiPouso; i < aeroportoOrigem.waypointsDecida.Count; i++)
         {
             if (aeroportoOrigem.waypointsDecida[i] != null)
                 caminhoPouso.Add(aeroportoOrigem.waypointsDecida[i]);
