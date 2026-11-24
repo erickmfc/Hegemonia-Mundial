@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 28ad6e1634dd4fd6b2b423d123538fb7
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 122175
+  packageName: Simple InterceptMissile&TurretBehaviour
+  packageVersion: 1.0.1
+  assetPath: Assets/Simple InterceptMissile&TurretBehaviour/Animations/Soldier_1.controller
+  uploadId: 267706
