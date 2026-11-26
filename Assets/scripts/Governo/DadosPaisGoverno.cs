@@ -46,7 +46,8 @@ public enum TipoPropostaInternacional
     Desmilitarizacao,
     // Acrescentado ao final para preservar os valores já salvos do enum.
     ReivindicacaoTerritorial,
-    PedidoApoioMilitar
+    PedidoApoioMilitar,
+    TransferenciaControlePosPacificacao
 }
 
 public enum TipoRespostaApoioInternacional
