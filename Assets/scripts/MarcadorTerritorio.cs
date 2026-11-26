@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(IdentidadeUnidade))]
 public class MarcadorTerritorio : MonoBehaviour
@@ -8,8 +9,16 @@ public class MarcadorTerritorio : MonoBehaviour
     private static readonly Dictionary<int, CidadeComplexoUrbano> CidadeGuiaExpansaoPorTime = new Dictionary<int, CidadeComplexoUrbano>();
     private static readonly HashSet<int> TimesConstruindoCidade = new HashSet<int>();
     private static readonly HashSet<int> TimesComExpansaoPaga = new HashSet<int>();
+    private static readonly HashSet<int> TimesComProgressaoGlobalPreposicionada = new HashSet<int>();
     private const long CustoInvestimentoProximaCidade = 1000L;
     private static bool ProgressaoGlobalPreposicionadaInicializada;
+    private static bool indiceProgressaoGlobalPreposicionadaAtualizado;
+
+    private static int ObterTimeDoJogador()
+    {
+        SistemaGovernoMundial governo = SistemaGovernoMundial.Instancia;
+        return governo != null && governo.teamJogador > 0 ? governo.teamJogador : 1;
+    }
 
     [Header("Área de Domínio")]
     [Tooltip("Metade do tamanho do lado do quadrado. Ex: Raio 100 cria um domínio de 200x200 metros quadrados.")]
@@ -41,7 +50,48 @@ public class MarcadorTerritorio : MonoBehaviour
         CidadeGuiaExpansaoPorTime.Clear();
         TimesConstruindoCidade.Clear();
         TimesComExpansaoPaga.Clear();
+        TimesComProgressaoGlobalPreposicionada.Clear();
         ProgressaoGlobalPreposicionadaInicializada = false;
+        indiceProgressaoGlobalPreposicionadaAtualizado = false;
+    }
+
+    public static bool TemProgressaoGlobalPreposicionada(int timeId)
+    {
+        if (timeId <= 0 || !string.Equals(
+                SceneManager.GetActiveScene().name,
+                "GlobalMapRTS",
+                System.StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        GarantirIndiceProgressaoGlobalPreposicionada();
+        return TimesComProgressaoGlobalPreposicionada.Contains(timeId);
+    }
+
+    private static void GarantirIndiceProgressaoGlobalPreposicionada()
+    {
+        if (indiceProgressaoGlobalPreposicionadaAtualizado)
+            return;
+
+        TimesComProgressaoGlobalPreposicionada.Clear();
+        CidadeComplexoUrbano[] cidades = FindObjectsByType<CidadeComplexoUrbano>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < cidades.Length; i++)
+        {
+            CidadeComplexoUrbano cidade = cidades[i];
+            if (cidade == null || !cidade.participarProgressaoCidadesGlobais
+                || cidade.teamId <= 0 || !EstaNaCenaMapaGlobal(cidade.gameObject))
+                continue;
+            TimesComProgressaoGlobalPreposicionada.Add(cidade.teamId);
+        }
+
+        indiceProgressaoGlobalPreposicionadaAtualizado = true;
+    }
+
+    private static bool EstaNaCenaMapaGlobal(GameObject objeto)
+    {
+        return objeto != null && objeto.scene.IsValid()
+            && string.Equals(objeto.scene.name, "GlobalMapRTS", System.StringComparison.OrdinalIgnoreCase);
     }
 
     public static bool EhSlotDeCidadeNaoConstruido(Component componente)
@@ -137,6 +187,7 @@ public class MarcadorTerritorio : MonoBehaviour
     private static IEnumerator InicializarCidadesGlobaisPreposicionadas()
     {
         ProgressaoGlobalPreposicionadaInicializada = true;
+        GarantirIndiceProgressaoGlobalPreposicionada();
         yield return null;
 
         SistemaSaveGame save = SistemaSaveGame.Instancia;
@@ -150,7 +201,9 @@ public class MarcadorTerritorio : MonoBehaviour
         for (int i = 0; i < cidades.Length; i++)
         {
             CidadeComplexoUrbano cidade = cidades[i];
-            if (cidade == null || !cidade.participarProgressaoCidadesGlobais || cidade.teamId <= 0)
+            if (cidade == null || !cidade.participarProgressaoCidadesGlobais
+                || !CidadeComplexoUrbano.EhNovaAurora(cidade.nomeCidade)
+                || cidade.teamId != ObterTimeDoJogador() || !EstaNaCenaMapaGlobal(cidade.gameObject))
                 continue;
             if (!porTime.TryGetValue(cidade.teamId, out List<CidadeComplexoUrbano> lista))
             {
@@ -163,7 +216,13 @@ public class MarcadorTerritorio : MonoBehaviour
         foreach (KeyValuePair<int, List<CidadeComplexoUrbano>> grupo in porTime)
         {
             List<CidadeComplexoUrbano> lista = grupo.Value;
-            lista.Sort((a, b) => a.ordemProgressaoGlobal.CompareTo(b.ordemProgressaoGlobal));
+            lista.Sort((a, b) =>
+            {
+                int comparacaoOrdem = a.ordemProgressaoGlobal.CompareTo(b.ordemProgressaoGlobal);
+                return comparacaoOrdem != 0
+                    ? comparacaoOrdem
+                    : CompararOrdemNaHierarquia(a.transform, b.transform);
+            });
             CidadeComplexoUrbano inicial = lista[0];
             for (int i = 0; i < lista.Count; i++)
             {
@@ -203,17 +262,27 @@ public class MarcadorTerritorio : MonoBehaviour
         TentarConstruirProximaCidade(teamID);
     }
 
-    private static void TentarConstruirProximaCidade(int timeId)
+    private static void TentarConstruirProximaCidade(
+        int timeId,
+        bool permitirDesbloqueioPorPopulacao = false,
+        bool permitirInvestimentoAntesDaCapacidade = false)
     {
         if (timeId <= 0 || TimesConstruindoCidade.Contains(timeId)) return;
 
         CidadeGuiaExpansaoPorTime.TryGetValue(timeId, out CidadeComplexoUrbano cidadeGuia);
         if (cidadeGuia != null)
         {
-            if (cidadeGuia.populacaoResidente < cidadeGuia.capacidadeHabitacional)
+            bool atingiuCapacidade = cidadeGuia.populacaoResidente >= cidadeGuia.capacidadeHabitacional;
+            bool investimentoPago = TimesComExpansaoPaga.Contains(timeId);
+            if (permitirInvestimentoAntesDaCapacidade && !investimentoPago)
                 return;
-            if (!TimesComExpansaoPaga.Remove(timeId))
+            if (!atingiuCapacidade && !permitirInvestimentoAntesDaCapacidade && !investimentoPago)
                 return;
+            if (!investimentoPago && !permitirDesbloqueioPorPopulacao)
+                return;
+
+            if (investimentoPago)
+                TimesComExpansaoPaga.Remove(timeId);
         }
 
         MarcadorTerritorio proximo = null;
@@ -245,14 +314,36 @@ public class MarcadorTerritorio : MonoBehaviour
             return false;
         }
 
-        if (!CidadeGuiaExpansaoPorTime.TryGetValue(timeId, out CidadeComplexoUrbano cidadeAtual)
-            || cidadeAtual == null || cidadeAtual.populacaoResidente < cidadeAtual.capacidadeHabitacional)
+        CidadeComplexoUrbano cidadeAtual = ObterCidadeGuiaParaInvestimento(timeId);
+        bool progressaoGlobalPreposicionada = cidadeAtual != null
+            && cidadeAtual.participarProgressaoCidadesGlobais
+            && CidadeComplexoUrbano.EhNovaAurora(cidadeAtual.nomeCidade)
+            && EstaNaCenaMapaGlobal(cidadeAtual.gameObject);
+        if (progressaoGlobalPreposicionada && timeId != ObterTimeDoJogador())
+        {
+            mensagem = "A expans\u00e3o das cidades pr\u00e9-posicionadas est\u00e1 dispon\u00edvel apenas para o jogador.";
+            return false;
+        }
+        if (cidadeAtual == null)
+        {
+            mensagem = "Não há uma cidade ativa para expandir.";
+            return false;
+        }
+
+        if (!progressaoGlobalPreposicionada
+            && cidadeAtual.populacaoResidente < cidadeAtual.capacidadeHabitacional)
         {
             mensagem = "A cidade atual precisa atingir seu limite de habitantes antes da expansão.";
             return false;
         }
 
         CidadeComplexoUrbano proximaCidade = EncontrarProximaCidadeGlobalPreposicionada(timeId, cidadeAtual);
+        if (progressaoGlobalPreposicionada && proximaCidade == null)
+        {
+            mensagem = "Todas as cidades pr\u00e9-posicionadas j\u00e1 foram desbloqueadas.";
+            return false;
+        }
+
         MarcadorTerritorio[] marcadores = FindObjectsByType<MarcadorTerritorio>(FindObjectsSortMode.None);
         bool existeProxima = false;
         for (int i = 0; i < marcadores.Length; i++)
@@ -281,28 +372,17 @@ public class MarcadorTerritorio : MonoBehaviour
 
         if (proximaCidade != null)
         {
-            proximaCidade.teamId = timeId;
-            if (CidadeComplexoUrbano.EhNovaAurora(proximaCidade.nomeCidade))
-            {
-                proximaCidade.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
-                proximaCidade.populacaoResidente = CidadeComplexoUrbano.PopulacaoInicialNovaAurora;
-            }
-            else
-            {
-                proximaCidade.populacaoResidente = Mathf.Max(10000, proximaCidade.populacaoResidente);
-            }
-            IdentidadeUnidade identidade = proximaCidade.GetComponent<IdentidadeUnidade>();
-            if (identidade != null) identidade.teamID = timeId;
-            proximaCidade.gameObject.SetActive(true);
-            proximaCidade.SincronizarEstruturaEconomica();
-            RegistrarCidadeGuiaExpansao(timeId, proximaCidade);
+            AtivarCidadePreposicionada(timeId, proximaCidade);
         }
         else
         {
             TimesComExpansaoPaga.Add(timeId);
-            TentarConstruirProximaCidade(timeId);
+            TentarConstruirProximaCidade(
+                timeId,
+                permitirInvestimentoAntesDaCapacidade: progressaoGlobalPreposicionada,
+                permitirDesbloqueioPorPopulacao: false);
         }
-        mensagem = "Investimento de 1.000M aprovado. A próxima cidade está sendo desbloqueada.";
+        mensagem = "Investimento de 1.000M aprovado. A próxima cidade foi desbloqueada.";
         return true;
     }
 
@@ -320,12 +400,89 @@ public class MarcadorTerritorio : MonoBehaviour
             CidadeComplexoUrbano candidata = cidades[i];
             if (candidata == null || !candidata.participarProgressaoCidadesGlobais
                 || candidata.teamId != timeId || candidata.gameObject.activeSelf
+                || (CidadeComplexoUrbano.EhNovaAurora(cidadeAtual.nomeCidade)
+                    && !CidadeComplexoUrbano.EhNovaAurora(candidata.nomeCidade))
                 || candidata.ordemProgressaoGlobal <= cidadeAtual.ordemProgressaoGlobal)
                 continue;
-            if (proxima == null || candidata.ordemProgressaoGlobal < proxima.ordemProgressaoGlobal)
+            if (EstaNaCenaMapaGlobal(cidadeAtual.gameObject)
+                && !candidata.gameObject.scene.Equals(cidadeAtual.gameObject.scene))
+                continue;
+            if (proxima == null || candidata.ordemProgressaoGlobal < proxima.ordemProgressaoGlobal
+                || (candidata.ordemProgressaoGlobal == proxima.ordemProgressaoGlobal
+                    && CompararOrdemNaHierarquia(candidata.transform, proxima.transform) < 0))
                 proxima = candidata;
         }
         return proxima;
+    }
+
+    private static CidadeComplexoUrbano ObterCidadeGuiaParaInvestimento(int timeId)
+    {
+        if (string.Equals(
+                SceneManager.GetActiveScene().name,
+                "GlobalMapRTS",
+                System.StringComparison.OrdinalIgnoreCase))
+            return ObterCidadeGuiaGlobalAtiva(timeId);
+
+        CidadeGuiaExpansaoPorTime.TryGetValue(timeId, out CidadeComplexoUrbano cidadeAtual);
+        return cidadeAtual;
+    }
+
+    private static CidadeComplexoUrbano ObterCidadeGuiaGlobalAtiva(int timeId)
+    {
+        if (timeId <= 0)
+            return null;
+
+        CidadeComplexoUrbano[] cidades = FindObjectsByType<CidadeComplexoUrbano>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        CidadeComplexoUrbano guia = null;
+        for (int i = 0; i < cidades.Length; i++)
+        {
+            CidadeComplexoUrbano candidata = cidades[i];
+            if (candidata == null || !candidata.isActiveAndEnabled
+                || !candidata.participarProgressaoCidadesGlobais || candidata.teamId != timeId
+                || !EstaNaCenaMapaGlobal(candidata.gameObject))
+                continue;
+
+            if (guia == null || candidata.ordemProgressaoGlobal > guia.ordemProgressaoGlobal
+                || (candidata.ordemProgressaoGlobal == guia.ordemProgressaoGlobal
+                    && CompararOrdemNaHierarquia(candidata.transform, guia.transform) > 0))
+                guia = candidata;
+        }
+
+        if (guia != null)
+            RegistrarCidadeGuiaExpansao(timeId, guia);
+        else
+            CidadeGuiaExpansaoPorTime.Remove(timeId);
+
+        return guia;
+    }
+
+    private static void AtivarCidadePreposicionada(int timeId, CidadeComplexoUrbano cidade)
+    {
+        if (timeId <= 0 || cidade == null)
+            return;
+
+        cidade.teamId = timeId;
+        if (CidadeComplexoUrbano.EhNovaAurora(cidade.nomeCidade))
+        {
+            cidade.capacidadeHabitacional = CidadeComplexoUrbano.CapacidadeMaximaNovaAurora;
+            cidade.populacaoResidente = CidadeComplexoUrbano.PopulacaoInicialNovaAurora;
+        }
+        else
+        {
+            cidade.populacaoResidente = Mathf.Max(10000, cidade.populacaoResidente);
+        }
+
+        IdentidadeUnidade identidade = cidade.GetComponent<IdentidadeUnidade>();
+        if (identidade != null)
+            identidade.teamID = timeId;
+
+        TimesComProgressaoGlobalPreposicionada.Add(timeId);
+        if (!cidade.gameObject.activeSelf)
+            cidade.gameObject.SetActive(true);
+        cidade.SincronizarEstruturaEconomica();
+        RegistrarCidadeGuiaExpansao(timeId, cidade);
     }
 
     private static int CompararOrdemNaHierarquia(Transform a, Transform b)
@@ -465,10 +622,40 @@ public class MarcadorTerritorio : MonoBehaviour
             || cidade.populacaoResidente < cidade.capacidadeHabitacional)
             return;
 
+        if (cidade.participarProgressaoCidadesGlobais
+            && CidadeComplexoUrbano.EhNovaAurora(cidade.nomeCidade)
+            && cidade.teamId == ObterTimeDoJogador()
+            && EstaNaCenaMapaGlobal(cidade.gameObject))
+        {
+            // Instancias pre-posicionadas do mapa global so avancam pelo investimento explicito no menu de Governo.
+            return;
+        }
+
         if (CidadeGuiaExpansaoPorTime.TryGetValue(cidade.teamId, out CidadeComplexoUrbano cidadeGuia)
             && cidadeGuia == cidade)
         {
             TentarConstruirProximaCidade(cidade.teamId);
+        }
+    }
+
+    public static void ProcessarExpansoesPopulacionaisGlobais()
+    {
+        if (!string.Equals(
+                SceneManager.GetActiveScene().name,
+                "GlobalMapRTS",
+                System.StringComparison.OrdinalIgnoreCase))
+            return;
+
+        CidadeComplexoUrbano[] cidades = FindObjectsByType<CidadeComplexoUrbano>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+        for (int i = 0; i < cidades.Length; i++)
+        {
+            CidadeComplexoUrbano cidade = cidades[i];
+            if (cidade != null && cidade.isActiveAndEnabled
+                && cidade.participarProgressaoCidadesGlobais
+                && cidade.populacaoResidente >= cidade.capacidadeHabitacional)
+                NotificarCidadeAtingiuCapacidade(cidade);
         }
     }
 

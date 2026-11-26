@@ -1032,6 +1032,12 @@ public class GerenciadorDivisaoTerritorial : MonoBehaviour
             && string.Equals(c.id, id, StringComparison.Ordinal));
         if (cidade == null) return false;
 
+        // No mapa global, uma equipe com posições urbanas pré-configuradas só
+        // materializa cidades pelo fluxo de expansão dessas posições. Isso
+        // evita criar uma segunda cidade automática fora do layout escolhido.
+        if (MarcadorTerritorio.TemProgressaoGlobalPreposicionada(cidade.teamID))
+            return false;
+
         bool atingiuLimiar = cidade.populacaoCivil >= populacaoMinimaMaterializacao
             || cidade.desenvolvimento >= desenvolvimentoMinimoMaterializacao
             || cidade.importanciaEstrategica >= importanciaMinimaMaterializacao

@@ -1186,6 +1186,7 @@ public class SistemaSaveGame : MonoBehaviour
         DiagnosticoDesempenhoJogo.RegistrarEvento("Save", "Mundo restaurado (entidades=" + (dadosAtuais.entidades != null ? dadosAtuais.entidades.Count : 0) + ")");
         RestauracaoDoMundoEmAndamento = false;
     }
+        MarcadorTerritorio.ProcessarExpansoesPopulacionaisGlobais();
 
     private void SanitizarCenaDePartidaNova(Scene cena)
     {
