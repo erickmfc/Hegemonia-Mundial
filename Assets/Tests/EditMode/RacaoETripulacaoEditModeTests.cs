@@ -242,6 +242,45 @@ public sealed class RacaoETripulacaoEditModeTests
     }
 
     [Test]
+    public void NavioAbastecimentoTransfereNaDistanciaDeChegadaEDebitaApenasOCombustivelRecebido()
+    {
+        GameObject abastecedorObj = CriarUnidade("Nav abastecimento", "Naval", 1);
+        GameObject alvo = CriarUnidade("Navio militar", "Naval", 1);
+        // Com emparelhamento de 30 m, o ponto mais próximo fica a 14 m do abastecedor.
+        alvo.transform.position = Vector3.right * 44f;
+
+        GameObject controlador = new GameObject("Controlador naval");
+        controlador.transform.SetParent(alvo.transform, false);
+        Type tipoControlador = Resolve("ControleNavioRealista");
+        controlador.AddComponent(tipoControlador);
+        Component controladorAbastecedor = abastecedorObj.AddComponent(tipoControlador);
+        tipoControlador.GetField("distanciaChegada").SetValue(controladorAbastecedor, 15f);
+
+        Type tipoTanque = Resolve("CombustivelUnidade");
+        Component tanque = alvo.AddComponent(tipoTanque);
+        tipoTanque.GetField("capacidade").SetValue(tanque, 100f);
+        tipoTanque.GetField("combustivelAtual").SetValue(tanque, 20f);
+
+        Type tipoAbastecedor = Resolve("NavioAbastecimento");
+        Component abastecedor = abastecedorObj.AddComponent(tipoAbastecedor);
+        tipoAbastecedor.GetField("controleNavio", BindingFlags.NonPublic | BindingFlags.Instance)
+            .SetValue(abastecedor, controladorAbastecedor);
+        FieldInfo reserva = tipoAbastecedor.GetField("combustivelTotal");
+        reserva.SetValue(abastecedor, 200f);
+        MethodInfo iniciar = tipoAbastecedor.GetMethod("IniciarProcessoAbastecimento", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.That(iniciar.Invoke(abastecedor, new object[] { controlador.transform, null, false }), Is.EqualTo(true));
+
+        // Outra fonte enche parte do tanque enquanto o abastecimento já está ativo.
+        tipoTanque.GetMethod("Abastecer").Invoke(tanque, new object[] { 70f });
+        tipoAbastecedor.GetMethod("RotinaAbastecendo", BindingFlags.NonPublic | BindingFlags.Instance)
+            .Invoke(abastecedor, new object[] { 1f });
+
+        Assert.That(tipoTanque.GetProperty("CombustivelAtual").GetValue(tanque), Is.EqualTo(100f));
+        Assert.That(reserva.GetValue(abastecedor), Is.EqualTo(190f));
+        Assert.That(tipoAbastecedor.GetProperty("EstadoOperacaoAtual").GetValue(abastecedor), Is.EqualTo("Parado"));
+    }
+
+    [Test]
     public void EstruturasEAeronavesNaoRecebemRacaoEEstruturasNaoRecebemTripulacao()
     {
         GameObject govObj = new GameObject("GovernoTesteExclusoes");
